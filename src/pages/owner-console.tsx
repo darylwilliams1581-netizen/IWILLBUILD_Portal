@@ -3,6 +3,7 @@ import { useNavigate, useSearchParams } from "react-router";
 import { Helmet } from '@dr.pogodin/react-helmet';
 import { RefreshCw, Shield, ChevronRight, Activity, Loader2, ShieldCheck, FileText, ClipboardList, CheckCircle2, XCircle, ChevronDown, ExternalLink, ShieldAlert, X, Bot, Mail, BarChart2, StickyNote, Receipt, Send, Ban, RotateCcw, Server, AlertCircle, Play, Info, Clock, Copy, Check, Plus, Database, Settings, Users, Building2, LogOut, ArrowLeft, Bug, AlertTriangle, Phone, Code2, FileCode, BookOpen } from 'lucide-react';
 import { usePermissions } from '@/lib/usePermissions';
+import { goBack } from '@/lib/navigation';
 import DesktopTopBar from '@/components/DesktopTopBar';
 import DesktopDock from '@/components/DesktopDock';
 import PortalSidebar from '@/components/PortalSidebar';
@@ -724,7 +725,7 @@ export default function OwnerConsolePage() {
 
         {/* Header */}
         <div className="bg-white border-b border-slate-200 px-4 py-4 flex items-center gap-3 shrink-0">
-          <button onClick={() => window.history.length > 1 ? navigate(-1) : navigate(-1)} className="w-9 h-9 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 flex items-center justify-center text-slate-500 transition-colors shrink-0" aria-label="Go back">
+          <button onClick={() => goBack(navigate, '/home')} className="w-9 h-9 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 flex items-center justify-center text-slate-500 transition-colors shrink-0" aria-label="Go back">
             <ArrowLeft size={16} />
           </button>
           <div className="flex-1 min-w-0">

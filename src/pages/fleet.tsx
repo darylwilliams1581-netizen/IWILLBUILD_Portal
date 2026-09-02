@@ -9,6 +9,7 @@ import DesktopDock from '@/components/DesktopDock';
 import PortalSidebar from '@/components/PortalSidebar';
 import StartDrivingModal from '@/components/fleet/StartDrivingModal';
 import { fetchFleet, createAsset, ASSET_TYPES, ASSET_STATUSES, getAssetStatusStyle, type FleetAsset, type CreateAssetPayload } from '@/lib/fleet-api';
+import { goBack } from '@/lib/navigation';
 import { useViewOnly } from '@/components/ViewOnlyGuard';
 import { usePermissions } from '@/lib/usePermissions';
 import { lazy, Suspense } from 'react';
@@ -306,7 +307,7 @@ export default function FleetPage() {
         <header className="sticky top-0 z-30 bg-white border-b border-border shrink-0 safe-top">
           <div className="flex items-center gap-2 px-3 h-12 min-w-0">
             {/* Left: back + icon — fixed width, never grows */}
-            <button onClick={() => navigate(-1)} className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors shrink-0" aria-label="Back to Home">
+            <button onClick={() => goBack(navigate, '/home')} className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors shrink-0" aria-label="Back to Home">
               <ArrowLeft size={16} />
             </button>
             <Truck size={16} className="text-primary shrink-0" />

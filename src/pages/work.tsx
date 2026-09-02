@@ -24,6 +24,7 @@ import {
 import PortalSidebar from '@/components/PortalSidebar';
 import NewJobModal from '@/components/NewJobModal';
 import { usePermissions } from '@/lib/usePermissions';
+import { goBack } from '@/lib/navigation';
 import WorkToolsTab from '@/components/work/WorkToolsTab';
 
 // ── Tools sub-items ───────────────────────────────────────────────────────────
@@ -323,7 +324,7 @@ function MobileWorkLauncher({ onToolsOpen, onNewJob, isViewOnly }: MobileLaunche
       <div className="flex items-center justify-between px-4 py-3 border-b border-border bg-background shrink-0">
         <div className="flex items-center gap-2.5">
           <button
-            onClick={() => navigate(-1)}
+            onClick={() => goBack(navigate, '/home')}
             className="w-8 h-8 rounded-xl bg-muted flex items-center justify-center shrink-0 hover:bg-muted/80 transition-colors"
             aria-label="Back to Home"
           >

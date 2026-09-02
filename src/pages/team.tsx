@@ -5,6 +5,7 @@ import { Users, Plus, Search, Crown, Shield, HardHat, Truck, Eye, UserCheck, Mai
 import { ArrowLeft } from 'lucide-react';
 import { useNavigate } from "react-router";
 import { usePermissions } from '@/lib/usePermissions';
+import { goBack } from '@/lib/navigation';
 import { useViewOnly } from '@/components/ViewOnlyGuard';
 import HomeIconPermissions from '@/components/team/HomeIconPermissions';
 import DesktopTopBar from '@/components/DesktopTopBar';
@@ -738,7 +739,7 @@ export default function TeamPage() {
         {/* Top bar */}
         <header className="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-4 md:px-6 shrink-0 sticky top-0 z-30 safe-top">
           <div className="flex items-center gap-3">
-            <button onClick={() => navigate(-1)} className="p-2 -ml-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors" aria-label="Back to Home">
+            <button onClick={() => goBack(navigate, '/home')} className="p-2 -ml-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors" aria-label="Back to Home">
               <ArrowLeft size={20} />
             </button>
             <Users size={18} className="text-primary shrink-0" />

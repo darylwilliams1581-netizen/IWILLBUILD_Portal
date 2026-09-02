@@ -11,6 +11,7 @@ import { fetchEstimate, updateEstimate, createEstimate, getEstimateStatusStyle, 
 import { fetchJob, type Job } from '@/lib/jobs-api';
 import CsvImportModal from '@/components/CsvImportModal';
 import { LIMITS } from '@/lib/limits';
+import { goBack } from '@/lib/navigation';
 import { CostGuidePicker, RecipePicker, type CostItem, type Recipe } from '@/components/estimate/EstimatePickerModals';
 
 // ── Local helpers ─────────────────────────────────────────────────────────────
@@ -238,7 +239,7 @@ export default function EstimateEditorPage() {
       navigate(`/jobs/${est.jobId}/quotes`);
     } else {
       // No estimate loaded — go back in history, or fall back to jobs list
-      window.history.length > 1 ? navigate(-1) : navigate('/estimating');
+      goBack(navigate, '/estimating');
     }
   }
   function updateEstimateField<K extends keyof Estimate>(key: K, value: Estimate[K]) {

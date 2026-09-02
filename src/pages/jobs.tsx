@@ -9,9 +9,12 @@ import DesktopTopBar from '@/components/DesktopTopBar';
 import DesktopDock from '@/components/DesktopDock';
 import PortalSidebar from '@/components/PortalSidebar';
 import { fetchJobs, getStatusStyle, type Job } from '@/lib/jobs-api';
+import { goBack } from '@/lib/navigation';
 import { fetchCustomers, type Customer } from '@/lib/customers-api';
+import { goBack } from '@/lib/navigation';
 import { useViewOnly } from '@/components/ViewOnlyGuard';
 import { useTerminology } from '@/lib/useTerminology';
+import { goBack } from '@/lib/navigation';
 const fadeUp = {
   hidden: {
     opacity: 0,
@@ -124,7 +127,7 @@ export default function JobsPage() {
         {/* ── Mobile header ── */}
         <header className="md:hidden h-14 bg-white border-b border-gray-200 flex items-center justify-between px-4 shrink-0 sticky top-0 z-30 safe-top">
           <div className="flex items-center gap-2">
-            <button onClick={() => navigate(-1)} className="p-1.5 -ml-1 rounded text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors" aria-label="Back">
+            <button onClick={() => goBack(navigate, '/home')} className="p-1.5 -ml-1 rounded text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors" aria-label="Back">
               <ArrowLeft size={18} />
             </button>
             <HardHat size={16} className="text-primary shrink-0" />
@@ -137,7 +140,7 @@ export default function JobsPage() {
 
         {/* ── Desktop op-page-header ── */}
         <header className="op-page-header hidden md:flex sticky top-0 z-30">
-          <button onClick={() => navigate(-1)} className="p-1 -ml-0.5 rounded text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors shrink-0" aria-label="Back">
+          <button onClick={() => goBack(navigate, '/home')} className="p-1 -ml-0.5 rounded text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors shrink-0" aria-label="Back">
             <ArrowLeft size={15} />
           </button>
           <HardHat size={14} className="text-primary shrink-0" />

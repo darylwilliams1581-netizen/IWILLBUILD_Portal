@@ -11,6 +11,7 @@ import type { DocumentBlock } from '@/components/DocumentBuilder/types';
 import { toast } from 'sonner';
 import { AnimatePresence } from 'motion/react';
 import { usePermissions } from '@/lib/usePermissions';
+import { goBack } from '@/lib/navigation';
 import DesktopTopBar from '@/components/DesktopTopBar';
 import DesktopDock from '@/components/DesktopDock';
 import PortalSidebar from '@/components/PortalSidebar';
@@ -199,7 +200,7 @@ export default function StudioPage() {
 
       {/* ── Sticky header — matches fleet/jobs pattern ── */}
       <header className="sticky top-0 z-30 h-12 bg-white border-b border-border flex items-center px-4 shrink-0 gap-2 safe-top">
-        <button onClick={() => navigate(-1)} className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors shrink-0" aria-label="Back to Home">
+        <button onClick={() => goBack(navigate, '/studio')} className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors shrink-0" aria-label="Back to Home">
           <ArrowLeft size={16} />
           <span className="hidden sm:inline">Home</span>
         </button>

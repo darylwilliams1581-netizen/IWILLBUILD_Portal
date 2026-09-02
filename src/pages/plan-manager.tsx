@@ -132,7 +132,7 @@ export default function PlanManagerPage() {
           <div className="flex items-center gap-3 px-4 md:px-6 py-4 border-b border-slate-200 flex-shrink-0 bg-white">
             {/* Mobile back button */}
             <button
-              onClick={() => window.history.length > 1 ? navigate(-1) : navigate(-1)}
+              onClick={() => goBack(navigate, '/home')}
               className="lg:hidden flex items-center justify-center w-9 h-9 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-600 transition-colors shrink-0"
               aria-label="Go back"
             >

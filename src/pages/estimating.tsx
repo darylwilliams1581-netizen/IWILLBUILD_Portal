@@ -7,6 +7,7 @@ import BuildersCalc from '@/components/estimating/BuildersCalc';
 import TakeoffPad from '@/components/estimating/TakeoffPad';
 import CsvImportModal from '@/components/CsvImportModal';
 import { LIMITS } from '@/lib/limits';
+import { goBack } from '@/lib/navigation';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 interface CostItem {
@@ -801,7 +802,7 @@ export default function EstimatingPage() {
       <div className="portal-main">
         {/* Top bar */}
         <header className="h-16 bg-white border-b border-slate-200 flex items-center px-4 md:px-6 shrink-0 gap-3">
-          <button onClick={() => navigate(-1)} className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors shrink-0" aria-label="Back to Home">
+          <button onClick={() => goBack(navigate, '/estimating')} className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors shrink-0" aria-label="Back to Home">
             <ArrowLeft size={16} />
           </button>
           <Calculator size={18} className="text-primary shrink-0" />

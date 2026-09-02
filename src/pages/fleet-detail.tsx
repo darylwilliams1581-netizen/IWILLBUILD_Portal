@@ -6,8 +6,10 @@ import { Truck, ChevronLeft, Edit2, Check, X, Loader2, AlertCircle, ClipboardLis
 import PortalErrorBoundary from '@/components/PortalErrorBoundary';
 import FilePanel from '@/components/FilePanel';
 import { usePermissions } from '@/lib/usePermissions';
+import { goBack } from '@/lib/navigation';
 import NotesPanel from '@/components/notes/NotesPanel';
 import { fetchAsset, updateAsset, deleteAsset, fetchPrestarts, submitPrestart, ASSET_TYPES, ASSET_STATUSES, getAssetStatusStyle, type FleetAsset, type FleetPrestart, type CreateAssetPayload } from '@/lib/fleet-api';
+import { goBack } from '@/lib/navigation';
 type Tab = 'details' | 'prestarts' | 'maintenance' | 'history' | 'files' | 'notes';
 
 // ── Prestart Modal ────────────────────────────────────────────────────────────
@@ -711,7 +713,7 @@ export default function FleetDetailPage() {
       <div className="flex flex-col flex-1">
         {/* Slim top bar — nav only */}
         <header className="sticky top-0 z-30 bg-white border-b border-border flex items-center gap-2 px-4 py-2 shrink-0 safe-top">
-          <button onClick={() => navigate(-1)} className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors shrink-0" aria-label="Back to Home">
+          <button onClick={() => goBack(navigate, '/home')} className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors shrink-0" aria-label="Back to Home">
             <ArrowLeft size={14} />
             <span className="hidden sm:inline">Home</span>
           </button>

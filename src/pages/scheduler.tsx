@@ -5,6 +5,7 @@ import { motion } from 'motion/react';
 import { CalendarDays, List, BarChart2, Search, ChevronRight, ChevronLeft, ExternalLink, Loader2, AlertCircle, Clock, User, MapPin, Calendar, Users, GripVertical, CheckCircle2, AlertTriangle, Truck, ArrowLeft, Home } from 'lucide-react';
 import PortalSidebar from '@/components/PortalSidebar';
 import { getStatusStyle, JOB_STATUSES } from '@/lib/jobs-api';
+import { goBack } from '@/lib/navigation';
 import AssetSchedulerView from '@/components/scheduler/AssetSchedulerView';
 import TasksSchedulerView from '@/components/scheduler/TasksSchedulerView';
 
@@ -1497,7 +1498,7 @@ export default function SchedulerPage() {
 
           {/* Period navigation */}
           {view !== 'table' && <div className="flex items-center gap-1 ml-auto">
-              <button onClick={() => navigate(-1)} className="p-1 rounded hover:bg-gray-100 text-gray-500 hover:text-gray-700 transition-colors" title="Previous period">
+              <button onClick={() => goBack(navigate, '/home')} className="p-1 rounded hover:bg-gray-100 text-gray-500 hover:text-gray-700 transition-colors" title="Previous period">
                 <ChevronLeft size={13} />
               </button>
               <span className="text-xs font-semibold text-gray-700 min-w-[130px] text-center px-1">{windowLabel}</span>
