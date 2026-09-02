@@ -33,8 +33,8 @@ export default function JobInvoicesPage() {
   return (
     <div className="portal-page">
       <Helmet>
-        <title>{fullJob ? `Invoices — ${fullJob.name}` : 'Invoices'} — IWILLBUILD</title>
-        <meta name="description" content="View and manage invoices for this job in IWILLBUILD." />
+        <title>{fullJob ? `Invoices — ${fullJob.name}` : 'Invoices'} — IWIIlBUILD</title>
+        <meta name="description" content="View and manage invoices for this job in IWIIlBUILD." />
         <meta name="robots" content="noindex" />
         {fullJob && <link rel="canonical" href={`https://iwillbuild.com/jobs/${fullJob.id}/invoices`} />}
       </Helmet>

@@ -1,5 +1,5 @@
 /**
- * /help — IWILLBUILD Portal User Manual
+ * /help — IWIIlBUILD Portal User Manual
  *
  * SOURCE OF TRUTH: homeIcons.ts → VISIBLE_GROUP_CONFIG
  *
@@ -228,7 +228,7 @@ const ICON_DOCS: Record<string, IconDoc> = {
     tip: 'Owners and Admins always have full access. Field workers only see the features you assign to them.',
   },
   billing: {
-    purpose: 'Manage your IWILLBUILD subscription — view your current plan, update payment details, and see billing history.',
+    purpose: 'Manage your IWIIlBUILD subscription — view your current plan, update payment details, and see billing history.',
     howTo: ['Tap My Billing on the home screen.', 'View your current plan and next billing date.', 'Tap Manage Subscription to upgrade, downgrade, or cancel.', 'Update your payment method if needed.', 'Download past invoices from the billing history.'],
   },
   settings: {
@@ -236,7 +236,7 @@ const ICON_DOCS: Record<string, IconDoc> = {
     howTo: ['Tap Settings on the home screen.', 'Update your company name, logo, and contact details.', 'Configure notification preferences.', 'Manage integrations (Xero, QuickBooks, etc.).', 'Set default values for jobs, costs, and forms.'],
   },
   help: {
-    purpose: 'This page — the IWILLBUILD User Manual. Every feature explained with step-by-step instructions.',
+    purpose: 'This page — the IWIIlBUILD User Manual. Every feature explained with step-by-step instructions.',
     howTo: ['Tap Help on the home screen.', 'Browse by group or use the search bar to find a feature.', 'Tap any feature to expand its instructions.'],
   },
 };
@@ -300,8 +300,8 @@ export default function HelpPage() {
 
   return <>
     <Helmet>
-      <title>User Manual — IWILLBUILD Portal</title>
-      <meta name="description" content="How to use every feature in the IWILLBUILD Portal." />
+      <title>User Manual — IWIIlBUILD Portal</title>
+      <meta name="description" content="How to use every feature in the IWIIlBUILD Portal." />
       <meta name="robots" content="noindex" />
       <link rel="canonical" href="https://iwillbuild.com/help" />
     </Helmet>
@@ -473,7 +473,7 @@ export default function HelpPage() {
                 <FileDown size={28} className="text-white" />
               </div>
               <div className="flex-1 min-w-0">
-                <h2 className="text-base font-bold text-slate-900 leading-tight">IWILLBUILD Product Guide</h2>
+                <h2 className="text-base font-bold text-slate-900 leading-tight">IWIIlBUILD Product Guide</h2>
                 <p className="text-sm text-slate-500 mt-0.5 leading-snug">
                   The complete product and platform guide — features, workflows, and best practices.
                 </p>
@@ -481,7 +481,7 @@ export default function HelpPage() {
               </div>
               <a
                 href="/data/Iwillbuild Product Guild.pdf"
-                download="IWILLBUILD-Product-Guide.pdf"
+                download="IWIIlBUILD-Product-Guide.pdf"
                 className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-violet-600 hover:bg-violet-700 active:bg-violet-800 text-white text-sm font-bold transition-colors shrink-0 shadow-sm"
               >
                 <Download size={16} />

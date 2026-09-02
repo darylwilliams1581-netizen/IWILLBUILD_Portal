@@ -400,7 +400,7 @@ export async function generateFormSubmissionPdf(data: FormSubmissionPdfData): Pr
 
   pages.forEach((target, index) => {
     target.drawLine({ start: { x: MARGIN, y: 30 }, end: { x: PAGE_W - MARGIN, y: 30 }, thickness: 0.55, color: BORDER });
-    target.drawText(printable(data.footerText || data.companyName || 'IWILLBUILD'), {
+    target.drawText(printable(data.footerText || data.companyName || 'IWIIlBUILD'), {
       x: MARGIN, y: 16, font: regular, size: 7.5, color: MUTED,
     });
     const pageLabel = `Page ${index + 1} of ${pages.length}`;

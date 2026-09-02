@@ -117,7 +117,7 @@ export default function PlanManagerPage() {
   }, [loadAll]);
   return <>
       <Helmet>
-        <title>Plan Manager — IWILLBUILD</title>
+        <title>Plan Manager — IWIIlBUILD</title>
         <meta name="description" content="Upload, annotate and share construction drawings with your team." />
         <link rel="canonical" href="https://iwillbuild.com/plan-manager" />
         <meta name="robots" content="noindex" />

@@ -75,7 +75,7 @@ export default async function handler(req: Request, res: Response) {
     });
 
     // Send SMS
-    const sent = await sendSms(e164, `Your IWILLBUILD verification code is: ${code}. Expires in 10 minutes.`);
+    const sent = await sendSms(e164, `Your IWIIlBUILD verification code is: ${code}. Expires in 10 minutes.`);
     if (!sent) {
       return res.status(500).json({ error: 'Failed to send SMS. Please try again or use a different verification method.' });
     }

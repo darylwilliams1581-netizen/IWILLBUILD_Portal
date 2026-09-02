@@ -40,7 +40,7 @@ export default function JobDrawingsPage() {
   return (
     <div className="portal-page">
       <Helmet>
-        <title>{job ? `Drawings — ${job.name}` : 'Drawings'} — IWILLBUILD</title>
+        <title>{job ? `Drawings — ${job.name}` : 'Drawings'} — IWIIlBUILD</title>
         <meta name="description" content="View and manage drawings for this job." />
         <link rel="canonical" href={`https://iwillbuild.com/jobs/${jobId}/drawings`} />
         <meta name="robots" content="noindex" />

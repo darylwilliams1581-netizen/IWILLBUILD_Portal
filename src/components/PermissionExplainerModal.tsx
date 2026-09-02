@@ -54,50 +54,50 @@ const CONTENT: Record<PermissionType, PermissionContent> = {
     iconBg: 'bg-blue-50',
     iconColor: 'text-blue-500',
     title: 'Enable Camera',
-    body: 'IWILLBUILD uses your camera to capture job photos, receipts, incidents, and site evidence for your work records.',
+    body: 'IWIIlBUILD uses your camera to capture job photos, receipts, incidents, and site evidence for your work records.',
     enableLabel: 'Enable Camera',
     settingsHint:
-      'Camera access is turned off. To fix it: open iPhone Settings → IWILLBUILD → turn on Camera.',
+      'Camera access is turned off. To fix it: open iPhone Settings → IWIIlBUILD → turn on Camera.',
   },
   photos: {
     icon: <Image size={28} />,
     iconBg: 'bg-purple-50',
     iconColor: 'text-purple-500',
     title: 'Access Photos',
-    body: 'IWILLBUILD uses your photo library so you can upload job photos, receipts, and site evidence from your camera roll.',
+    body: 'IWIIlBUILD uses your photo library so you can upload job photos, receipts, and site evidence from your camera roll.',
     enableLabel: 'Allow Photos',
     settingsHint:
-      'Photo access is turned off. To fix it: open iPhone Settings → IWILLBUILD → turn on Photos.',
+      'Photo access is turned off. To fix it: open iPhone Settings → IWIIlBUILD → turn on Photos.',
   },
   location: {
     icon: <MapPin size={28} />,
     iconBg: 'bg-emerald-50',
     iconColor: 'text-emerald-500',
     title: 'Enable Location',
-    body: 'IWILLBUILD uses your location for job travel, fleet tracking, and site attendance records.',
+    body: 'IWIIlBUILD uses your location for job travel, fleet tracking, and site attendance records.',
     enableLabel: 'Enable Location',
     settingsHint:
-      'Location access is turned off. To fix it: open iPhone Settings → IWILLBUILD → Location → While Using the App.',
+      'Location access is turned off. To fix it: open iPhone Settings → IWIIlBUILD → Location → While Using the App.',
   },
   microphone: {
     icon: <Mic size={28} />,
     iconBg: 'bg-violet-50',
     iconColor: 'text-violet-600',
     title: 'Enable Microphone',
-    body: 'IWILLBUILD uses your microphone for voice notes and dictation where enabled.',
+    body: 'IWIIlBUILD uses your microphone for voice notes and dictation where enabled.',
     enableLabel: 'Enable Microphone',
     settingsHint:
-      'Microphone access is turned off. To fix it: open iPhone Settings → IWILLBUILD → turn on Microphone.',
+      'Microphone access is turned off. To fix it: open iPhone Settings → IWIIlBUILD → turn on Microphone.',
   },
   notifications: {
     icon: <Bell size={28} />,
     iconBg: 'bg-amber-50',
     iconColor: 'text-amber-500',
     title: 'Enable Notifications',
-    body: 'IWILLBUILD sends you reminders and job updates — like when a job is assigned to you or an invoice is paid.',
+    body: 'IWIIlBUILD sends you reminders and job updates — like when a job is assigned to you or an invoice is paid.',
     enableLabel: 'Enable Notifications',
     settingsHint:
-      'Notifications are turned off. To fix it: open iPhone Settings → Notifications → IWILLBUILD → turn on Allow Notifications.',
+      'Notifications are turned off. To fix it: open iPhone Settings → Notifications → IWIIlBUILD → turn on Allow Notifications.',
   },
 };
 

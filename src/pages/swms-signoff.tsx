@@ -429,7 +429,7 @@ export default function SwmsSignoffPage() {
 
         {/* Footer */}
         <p className="text-center text-xs text-slate-400 pb-4">
-          Powered by IWILLBUILD · This document is legally binding
+          Powered by IWIIlBUILD · This document is legally binding
         </p>
       </div>
     </div>;

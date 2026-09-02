@@ -1,5 +1,5 @@
 /**
- * Canonical public base URL for IWILLBUILD.
+ * Canonical public base URL for IWIIlBUILD.
  *
  * Used wherever the server needs to construct a public-facing link
  * (share tokens, form links, SWMS sign-on links, QR codes).

@@ -61,13 +61,13 @@ export async function sendVerificationEmail(userId: string, userEmail: string, u
   const firstName = userName.split(' ')[0] || userName;
 
   await sendEmail({
-    fromName: 'IWILLBUILD Portal',
+    fromName: 'IWIIlBUILD Portal',
     to: userEmail,
-    subject: 'Verify your email — IWILLBUILD Portal',
+    subject: 'Verify your email — IWIIlBUILD Portal',
     text: [
       `Hi ${firstName},`,
       '',
-      'Thanks for signing up to IWILLBUILD Portal. Please verify your email address to activate your account.',
+      'Thanks for signing up to IWIIlBUILD Portal. Please verify your email address to activate your account.',
       '',
       `Verification link: ${verifyUrl}`,
       '',
@@ -75,7 +75,7 @@ export async function sendVerificationEmail(userId: string, userEmail: string, u
       '',
       'If you did not create an account, you can safely ignore this email.',
       '',
-      '— The IWILLBUILD Team',
+      '— The IWIIlBUILD Team',
     ].join('\n'),
     html: `
 <!DOCTYPE html>
@@ -88,7 +88,7 @@ export async function sendVerificationEmail(userId: string, userEmail: string, u
         <!-- Header -->
         <tr>
           <td style="background:#7C3AED;padding:24px 32px;">
-            <p style="margin:0;font-size:20px;font-weight:700;color:#fff;letter-spacing:-0.3px;">IWILLBUILD Portal</p>
+            <p style="margin:0;font-size:20px;font-weight:700;color:#fff;letter-spacing:-0.3px;">IWIIlBUILD Portal</p>
           </td>
         </tr>
         <!-- Body -->
@@ -112,7 +112,7 @@ export async function sendVerificationEmail(userId: string, userEmail: string, u
         <!-- Footer -->
         <tr>
           <td style="padding:16px 32px;border-top:1px solid rgba(255,255,255,0.06);">
-            <p style="margin:0;font-size:12px;color:rgba(255,255,255,0.25);">© ${new Date().getFullYear()} IWILLBUILD Portal. All rights reserved.</p>
+            <p style="margin:0;font-size:12px;color:rgba(255,255,255,0.25);">© ${new Date().getFullYear()} IWIIlBUILD Portal. All rights reserved.</p>
           </td>
         </tr>
       </table>

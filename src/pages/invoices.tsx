@@ -132,17 +132,17 @@ export default function InvoicesPage() {
   }
   return <div className="portal-page">
       <Helmet>
-        <title>Invoices — IWILLBUILD Portal</title>
+        <title>Invoices — IWIIlBUILD Portal</title>
         <meta name="description" content="Create, manage and track invoices linked to jobs. Export to Xero and QuickBooks." />
         <link rel="canonical" href="https://iwillbuild.com/invoices" />
         <meta name="robots" content="noindex" />
-        <meta property="og:title" content="Invoices — IWILLBUILD Portal" />
+        <meta property="og:title" content="Invoices — IWIIlBUILD Portal" />
         <meta property="og:description" content="Create, manage and track invoices linked to jobs. Export to Xero and QuickBooks." />
         <meta property="og:type" content="website" />
         <meta property="og:url" content="https://iwillbuild.com/invoices" />
         <meta property="og:image" content="https://iwillbuild.com/airo-assets/images/pages/home/og-image" />
         <meta name="twitter:card" content="summary_large_image" />
-        <meta name="twitter:title" content="Invoices — IWILLBUILD Portal" />
+        <meta name="twitter:title" content="Invoices — IWIIlBUILD Portal" />
         <meta name="twitter:description" content="Create, manage and track invoices linked to jobs. Export to Xero and QuickBooks." />
         <meta name="twitter:image" content="https://iwillbuild.com/airo-assets/images/pages/home/og-image" />
       </Helmet>

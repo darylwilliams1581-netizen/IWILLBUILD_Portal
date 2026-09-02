@@ -6,7 +6,7 @@
  *
  * Answer priority:
  *   A. Stateless local tools (instant, no context needed)
- *   B. Load permitted IWILLBUILD context
+ *   B. Load permitted IWIIlBUILD context
  *   C. Context local tools (fast portal facts)
  *   D. Quick urgent / problems today
  *   E. Annette health check (full brain check)
@@ -72,7 +72,7 @@ function buildNoOpenAiFallback(message: string, warnings: string[]): string {
   const lines = [
     dazzaOpening(true),
     "",
-    "From IWILLBUILD data:",
+    "From IWIIlBUILD data:",
     "- I loaded your permitted company context, but this question needs a bit more explanation or drafting than the local tools can do.",
     "- OpenAI is not configured on the server, so I won't invent an answer.",
     "",
@@ -97,12 +97,12 @@ export async function handleDazzaChat(input: DazzaChatInput): Promise<DazzaChatR
   const trimmedMessage = input.message.trim();
 
   if (!trimmedMessage) {
-    return refusal("Righto — ask Dazza about IWILLBUILD jobs, fleet, forms, estimates, files, safety, simple maths, GST, or say 'Run Annette' for a health check.");
+    return refusal("Righto — ask Dazza about IWIIlBUILD jobs, fleet, forms, estimates, files, safety, simple maths, GST, or say 'Run Annette' for a health check.");
   }
 
   if (isCrossCompanyDataRequest(trimmedMessage)) {
     return refusal(
-      "I can't show data from another company, mate. Dazza is strictly company-scoped to your current IWILLBUILD login."
+      "I can't show data from another company, mate. Dazza is strictly company-scoped to your current IWIIlBUILD login."
     );
   }
 
@@ -110,7 +110,7 @@ export async function handleDazzaChat(input: DazzaChatInput): Promise<DazzaChatR
   const stateless = tryStatelessLocalTool(trimmedMessage, input.gstRate);
   if (stateless) return stateless;
 
-  // B. Load permitted IWILLBUILD context (every module is independently guarded)
+  // B. Load permitted IWIIlBUILD context (every module is independently guarded)
   const context = input.context ?? await loadDazzaContext(input.user, input.adapter);
 
   // C. Context local tools (fast portal facts)
@@ -137,7 +137,7 @@ export async function handleDazzaChat(input: DazzaChatInput): Promise<DazzaChatR
       return isHighRisk && !hasSwms;
     }).length;
 
-    const reply = `${dazzaOpening(true)}\n\nFrom IWILLBUILD data (quick urgent scan):\n- Overdue to-dos: ${overdueTodos}\n- Fleet service overdue: ${overdueService}\n- High-risk jobs possibly missing SWMS: ${highRiskNoSwms}\n\nSource: JobTodos + Fleet + Safety (quick scan)\n\nRecommended: Say "Run Annette Health Check" for the full detailed brain check with actions.`;
+    const reply = `${dazzaOpening(true)}\n\nFrom IWIIlBUILD data (quick urgent scan):\n- Overdue to-dos: ${overdueTodos}\n- Fleet service overdue: ${overdueService}\n- High-risk jobs possibly missing SWMS: ${highRiskNoSwms}\n\nSource: JobTodos + Fleet + Safety (quick scan)\n\nRecommended: Say "Run Annette Health Check" for the full detailed brain check with actions.`;
     return {
       reply,
       mode: "context",
@@ -197,7 +197,7 @@ export async function handleDazzaChat(input: DazzaChatInput): Promise<DazzaChatR
       : formatContextAnswer({
           context,
           sources: ["Safety"],
-          answer: "- I can check whether safety/SWMS data exists in IWILLBUILD, but I can't certify WHS, legal, building code or safety compliance. That's for a competent person on site."
+          answer: "- I can check whether safety/SWMS data exists in IWIIlBUILD, but I can't certify WHS, legal, building code or safety compliance. That's for a competent person on site."
         });
     return {
       reply: safetySummary,
@@ -227,7 +227,7 @@ export async function handleDazzaChat(input: DazzaChatInput): Promise<DazzaChatR
 
     const sources = sourcesFromContextQuestion(trimmedMessage);
     const answer = likelyNeedsPortalData(trimmedMessage)
-      ? "- Dazza loaded your permitted IWILLBUILD context first. Any portal facts must come from the listed source modules."
+      ? "- Dazza loaded your permitted IWIIlBUILD context first. Any portal facts must come from the listed source modules."
       : "- This looks like general guidance rather than a direct portal-data request. I've kept it practical.";
 
     return {

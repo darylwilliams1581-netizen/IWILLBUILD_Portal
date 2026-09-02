@@ -194,7 +194,7 @@ describe('comingSoon routes have no route registration', () => {
 // ── 6. /annette — protected, not removed ─────────────────────────────────────
 //
 // Annette is an intentional, permanent, owner-only intelligence and oversight
-// layer for IWILLBUILD. These tests verify she is protected and excluded from
+// layer for IWIIlBUILD. These tests verify she is protected and excluded from
 // public search — not that she is removed.
 
 describe('/annette — protected and owner-gated', () => {

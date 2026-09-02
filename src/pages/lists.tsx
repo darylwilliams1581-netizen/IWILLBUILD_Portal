@@ -1815,16 +1815,16 @@ export default function ListsPage() {
       <Helmet>
         {/* Authenticated portal page — must not be indexed by search engines */}
         <meta name="robots" content="noindex,nofollow" />
-        <title>Office Lists — Reports &amp; Registers | IWILLBUILD</title>
-        <meta name="description" content="Generate, filter, and export construction records — jobs, incidents, SWMS, timesheets, fleet logs, and more. Part of the IWILLBUILD job management portal." />
+        <title>Office Lists — Reports &amp; Registers | IWIIlBUILD</title>
+        <meta name="description" content="Generate, filter, and export construction records — jobs, incidents, SWMS, timesheets, fleet logs, and more. Part of the IWIIlBUILD job management portal." />
         <link rel="canonical" href="https://iwillbuild.com/lists" />
-        <meta property="og:title" content="Office Lists — Reports &amp; Registers | IWILLBUILD" />
+        <meta property="og:title" content="Office Lists — Reports &amp; Registers | IWIIlBUILD" />
         <meta property="og:description" content="Generate, filter, and export construction records — jobs, incidents, SWMS, timesheets, fleet logs, and more." />
         <meta property="og:type" content="website" />
         <meta property="og:url" content="https://iwillbuild.com/lists" />
         <meta property="og:image" content="https://iwillbuild.com/airo-assets/images/pages/home/og-image" />
         <meta name="twitter:card" content="summary_large_image" />
-        <meta name="twitter:title" content="Office Lists — Reports &amp; Registers | IWILLBUILD" />
+        <meta name="twitter:title" content="Office Lists — Reports &amp; Registers | IWIIlBUILD" />
         <meta name="twitter:description" content="Generate, filter, and export construction records — jobs, incidents, SWMS, timesheets, fleet logs, and more." />
         <meta name="twitter:image" content="https://iwillbuild.com/airo-assets/images/pages/home/og-image" />
         <script type="application/ld+json">{JSON.stringify({
@@ -1846,7 +1846,7 @@ export default function ListsPage() {
       <div className="portal-page">
         <DesktopTopBar />
         <DesktopDock />
-        <h1 className="sr-only">Lists — IWILLBUILD</h1>
+        <h1 className="sr-only">Lists — IWIIlBUILD</h1>
         <main className="portal-main flex flex-col min-h-0 overflow-hidden">
 
           {/* ── Breadcrumb ── */}

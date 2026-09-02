@@ -56,7 +56,7 @@ export default async function handler(req: Request, res: Response) {
     const [compRows] = await db.execute(
       sql`SELECT name FROM companies WHERE id = ${profile.companyId} LIMIT 1`
     ) as unknown as [Array<Record<string, unknown>>];
-    const companyName = String(compRows?.[0]?.name ?? 'IWILLBUILD');
+    const companyName = String(compRows?.[0]?.name ?? 'IWIIlBUILD');
 
     const portalUrl = `${process.env.APP_URL ?? 'https://iwillbuild.com'}/portal/login?token=${token}`;
 

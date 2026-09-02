@@ -1,7 +1,7 @@
 /**
  * Central Storage Service
  * ─────────────────────────────────────────────────────────────────────────────
- * Single entry point for all file I/O in IWILLBUILD.
+ * Single entry point for all file I/O in IWIIlBUILD.
  *
  * PHYSICAL vs LOGICAL STORAGE MODEL (CP10A2)
  * ──────────────────────────────────────────

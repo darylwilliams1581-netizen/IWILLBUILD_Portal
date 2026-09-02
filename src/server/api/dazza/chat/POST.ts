@@ -5,7 +5,7 @@
  *
  * Answer priority:
  *  1. Local tools  — simple math, GST, basic construction calcs
- *  2. Live context — IWILLBUILD portal data (jobs, fleet, forms, estimates, files)
+ *  2. Live context — IWIIlBUILD portal data (jobs, fleet, forms, estimates, files)
  *  3. OpenAI       — general guidance / fallback
  *
  * Security:
@@ -279,7 +279,7 @@ function tryContextHandler(q: string, ctx: DazzaContext): string | null {
   if (
     /another company|other company|different company|competitor|someone elses?\s+(?:quote|job|data|estimate)/i.test(lq)
   ) {
-    return `I can't access another company's private IWILLBUILD data. I only have access to ${cn}'s data.`;
+    return `I can't access another company's private IWIIlBUILD data. I only have access to ${cn}'s data.`;
   }
 
   // ══════════════════════════════════════════════════════════════════════════
@@ -290,8 +290,8 @@ function tryContextHandler(q: string, ctx: DazzaContext): string | null {
   if (/how many jobs|job count|number of jobs|total jobs/i.test(lq)) {
     if (!p.canJobs) return "You don't have Jobs access.";
     const count = ctx.jobs?.length ?? 0;
-    if (count === 0) return `📋 From IWILLBUILD data:\nNo jobs found for ${cn} yet.\n\n📦 Source modules:\nJobs\n\n📊 Confidence:\nHigh`;
-    return `📋 From IWILLBUILD data:\nThere ${count === 1 ? 'is' : 'are'} **${count}** job${count === 1 ? '' : 's'} in IWILLBUILD for ${cn}.\n\n📦 Source modules:\nJobs\n\n📊 Confidence:\nHigh`;
+    if (count === 0) return `📋 From IWIIlBUILD data:\nNo jobs found for ${cn} yet.\n\n📦 Source modules:\nJobs\n\n📊 Confidence:\nHigh`;
+    return `📋 From IWIIlBUILD data:\nThere ${count === 1 ? 'is' : 'are'} **${count}** job${count === 1 ? '' : 's'} in IWIIlBUILD for ${cn}.\n\n📦 Source modules:\nJobs\n\n📊 Confidence:\nHigh`;
   }
 
   // ── Active / open jobs ────────────────────────────────────────────────────
@@ -299,20 +299,20 @@ function tryContextHandler(q: string, ctx: DazzaContext): string | null {
     if (!p.canJobs) return "You don't have Jobs access.";
     const jobs = (ctx.jobs ?? []) as Array<Record<string, unknown>>;
     const active = jobs.filter((j) => !['completed','cancelled'].includes(String(j.status ?? '').toLowerCase()));
-    if (active.length === 0) return `📋 From IWILLBUILD data:\nNo active jobs found for ${cn}.\n\n📦 Source modules:\nJobs\n\n📊 Confidence:\nHigh`;
+    if (active.length === 0) return `📋 From IWIIlBUILD data:\nNo active jobs found for ${cn}.\n\n📦 Source modules:\nJobs\n\n📊 Confidence:\nHigh`;
     const list = active.slice(0, 12).map((j) =>
       `• **${String(j.name ?? 'Unnamed')}** — ${String(j.status ?? 'Unknown')}${j.client ? ` | Client: ${String(j.client)}` : ''}${j.address ? ` | ${String(j.address)}` : ''}`
     ).join('\n');
-    return `📋 From IWILLBUILD data:\n**${active.length}** active job${active.length === 1 ? '' : 's'} for ${cn}:\n${list}${active.length > 12 ? `\n…and ${active.length - 12} more.` : ''}\n\n📦 Source modules:\nJobs\n\n📊 Confidence:\nHigh`;
+    return `📋 From IWIIlBUILD data:\n**${active.length}** active job${active.length === 1 ? '' : 's'} for ${cn}:\n${list}${active.length > 12 ? `\n…and ${active.length - 12} more.` : ''}\n\n📦 Source modules:\nJobs\n\n📊 Confidence:\nHigh`;
   }
 
   // ── Latest / newest job ───────────────────────────────────────────────────
   if (/latest job|newest job|most recent job|last job added|last job created/i.test(lq)) {
     if (!p.canJobs) return "You don't have Jobs access.";
     const jobs = (ctx.jobs ?? []) as Array<Record<string, unknown>>;
-    if (jobs.length === 0) return `📋 From IWILLBUILD data:\nNo jobs found for ${cn} yet.\n\n📦 Source modules:\nJobs\n\n📊 Confidence:\nHigh`;
+    if (jobs.length === 0) return `📋 From IWIIlBUILD data:\nNo jobs found for ${cn} yet.\n\n📦 Source modules:\nJobs\n\n📊 Confidence:\nHigh`;
     const latest = jobs[0];
-    return `📋 From IWILLBUILD data:\nThe latest job is **${String(latest.name ?? 'Unnamed')}**` +
+    return `📋 From IWIIlBUILD data:\nThe latest job is **${String(latest.name ?? 'Unnamed')}**` +
       `${latest.client ? ` for ${String(latest.client)}` : ''}` +
       `${latest.status ? ` — Status: ${String(latest.status)}` : ''}` +
       `${latest.address ? ` | Address: ${String(latest.address)}` : ''}` +
@@ -325,9 +325,9 @@ function tryContextHandler(q: string, ctx: DazzaContext): string | null {
     if (!p.canJobs) return "You don't have Jobs access.";
     const jobs = (ctx.jobs ?? []) as Array<Record<string, unknown>>;
     const completed = jobs.filter((j) => String(j.status ?? '').toLowerCase() === 'completed');
-    if (completed.length === 0) return `📋 From IWILLBUILD data:\nNo completed jobs found for ${cn}.\n\n📦 Source modules:\nJobs\n\n📊 Confidence:\nHigh`;
+    if (completed.length === 0) return `📋 From IWIIlBUILD data:\nNo completed jobs found for ${cn}.\n\n📦 Source modules:\nJobs\n\n📊 Confidence:\nHigh`;
     const list = completed.slice(0, 10).map((j) => `• **${String(j.name ?? 'Unnamed')}**${j.client ? ` — ${String(j.client)}` : ''}`).join('\n');
-    return `📋 From IWILLBUILD data:\n**${completed.length}** completed job${completed.length === 1 ? '' : 's'} for ${cn}:\n${list}${completed.length > 10 ? `\n…and ${completed.length - 10} more.` : ''}\n\n📦 Source modules:\nJobs\n\n📊 Confidence:\nHigh`;
+    return `📋 From IWIIlBUILD data:\n**${completed.length}** completed job${completed.length === 1 ? '' : 's'} for ${cn}:\n${list}${completed.length > 10 ? `\n…and ${completed.length - 10} more.` : ''}\n\n📦 Source modules:\nJobs\n\n📊 Confidence:\nHigh`;
   }
 
   // ── Jobs by supervisor ────────────────────────────────────────────────────
@@ -335,7 +335,7 @@ function tryContextHandler(q: string, ctx: DazzaContext): string | null {
     if (!p.canJobs) return "You don't have Jobs access.";
     const jobs = (ctx.jobs ?? []) as Array<Record<string, unknown>>;
     const withSup = jobs.filter((j) => j.supervisor_name || j.assigned_supervisor_user_id);
-    if (withSup.length === 0) return `📋 From IWILLBUILD data:\nNo jobs with assigned supervisors found for ${cn}.\n\n📦 Source modules:\nJobs\n\n📊 Confidence:\nHigh`;
+    if (withSup.length === 0) return `📋 From IWIIlBUILD data:\nNo jobs with assigned supervisors found for ${cn}.\n\n📦 Source modules:\nJobs\n\n📊 Confidence:\nHigh`;
     const grouped: Record<string, string[]> = {};
     for (const j of withSup) {
       const sup = String(j.supervisor_name ?? j.assigned_supervisor_user_id ?? 'Unknown');
@@ -343,7 +343,7 @@ function tryContextHandler(q: string, ctx: DazzaContext): string | null {
       grouped[sup].push(String(j.name ?? 'Unnamed'));
     }
     const list = Object.entries(grouped).map(([sup, jbs]) => `• **${sup}**: ${jbs.join(', ')}`).join('\n');
-    return `📋 From IWILLBUILD data:\nJobs by supervisor for ${cn}:\n${list}\n\n📦 Source modules:\nJobs\n\n📊 Confidence:\nHigh`;
+    return `📋 From IWIIlBUILD data:\nJobs by supervisor for ${cn}:\n${list}\n\n📦 Source modules:\nJobs\n\n📊 Confidence:\nHigh`;
   }
 
   // ── Jobs needing attention / overdue to-dos ───────────────────────────────
@@ -352,39 +352,39 @@ function tryContextHandler(q: string, ctx: DazzaContext): string | null {
     const overdue = (ctx.openTodos ?? []) as Array<Record<string, unknown>>;
     const today = new Date().toISOString().slice(0, 10);
     const overdueItems = overdue.filter((t) => t.due_date && String(t.due_date).slice(0, 10) < today);
-    if (overdueItems.length === 0) return `📋 From IWILLBUILD data:\nNo jobs with overdue to-dos found for ${cn}.\n\n📦 Source modules:\nJobs, To-do\n\n📊 Confidence:\nHigh`;
+    if (overdueItems.length === 0) return `📋 From IWIIlBUILD data:\nNo jobs with overdue to-dos found for ${cn}.\n\n📦 Source modules:\nJobs, To-do\n\n📊 Confidence:\nHigh`;
     const list = overdueItems.slice(0, 8).map((t) => `• **${String(t.job_name ?? 'Unknown job')}** — "${String(t.title ?? '')}" overdue since ${String(t.due_date ?? '').slice(0, 10)}`).join('\n');
-    return `📋 From IWILLBUILD data:\n**${overdueItems.length}** overdue to-do${overdueItems.length === 1 ? '' : 's'} across jobs:\n${list}\n\n📦 Source modules:\nJobs, To-do\n\n📊 Confidence:\nHigh`;
+    return `📋 From IWIIlBUILD data:\n**${overdueItems.length}** overdue to-do${overdueItems.length === 1 ? '' : 's'} across jobs:\n${list}\n\n📦 Source modules:\nJobs, To-do\n\n📊 Confidence:\nHigh`;
   }
 
   // ── Job delays ────────────────────────────────────────────────────────────
   if (/job.*delay|delay.*job|which jobs.*delayed|most delayed/i.test(lq)) {
     if (!p.canJobs) return "You don't have Jobs access.";
     const delays = (ctx.jobDelays ?? []) as Array<Record<string, unknown>>;
-    if (delays.length === 0) return `📋 From IWILLBUILD data:\nNo job delays recorded for ${cn}.\n\n📦 Source modules:\nJobs\n\n📊 Confidence:\nHigh`;
+    if (delays.length === 0) return `📋 From IWIIlBUILD data:\nNo job delays recorded for ${cn}.\n\n📦 Source modules:\nJobs\n\n📊 Confidence:\nHigh`;
     const sorted = [...delays].sort((a, b) => (Number(b.total_delay_days ?? 0)) - (Number(a.total_delay_days ?? 0)));
     const list = sorted.slice(0, 8).map((d) => `• **${String(d.job_name ?? 'Unknown')}** — ${String(d.total_delay_days ?? 0)} day${Number(d.total_delay_days ?? 0) === 1 ? '' : 's'} delay (${String(d.delay_count ?? 0)} event${Number(d.delay_count ?? 0) === 1 ? '' : 's'})`).join('\n');
     const totalDays = delays.reduce((s, d) => s + Number(d.total_delay_days ?? 0), 0);
-    return `📋 From IWILLBUILD data:\n**${delays.length}** job${delays.length === 1 ? '' : 's'} with delays (${totalDays} total delay days):\n${list}\n\n📦 Source modules:\nJobs\n\n📊 Confidence:\nHigh`;
+    return `📋 From IWIIlBUILD data:\n**${delays.length}** job${delays.length === 1 ? '' : 's'} with delays (${totalDays} total delay days):\n${list}\n\n📦 Source modules:\nJobs\n\n📊 Confidence:\nHigh`;
   }
 
   // ── Job progress ──────────────────────────────────────────────────────────
   if (/jobs.*progress|progress.*jobs|which jobs.*progress|progress recorded|job.*percent|percent.*complete/i.test(lq)) {
     if (!p.canJobs) return "You don't have Jobs access.";
     const progress = (ctx.jobProgress ?? []) as Array<Record<string, unknown>>;
-    if (progress.length === 0) return `📋 From IWILLBUILD data:\nNo job progress recorded for ${cn} yet.\n\n📦 Source modules:\nProgress\n\n📊 Confidence:\nHigh`;
+    if (progress.length === 0) return `📋 From IWIIlBUILD data:\nNo job progress recorded for ${cn} yet.\n\n📦 Source modules:\nProgress\n\n📊 Confidence:\nHigh`;
     const sorted = [...progress].sort((a, b) => Number(b.avg_percent ?? 0) - Number(a.avg_percent ?? 0));
     const list = sorted.slice(0, 10).map((p) => `• **${String(p.job_name ?? 'Unknown')}** — ${String(p.avg_percent ?? 0)}% complete`).join('\n');
-    return `📋 From IWILLBUILD data:\n**${progress.length}** job${progress.length === 1 ? '' : 's'} with progress recorded:\n${list}\n\n📦 Source modules:\nProgress\n\n📊 Confidence:\nHigh`;
+    return `📋 From IWIIlBUILD data:\n**${progress.length}** job${progress.length === 1 ? '' : 's'} with progress recorded:\n${list}\n\n📦 Source modules:\nProgress\n\n📊 Confidence:\nHigh`;
   }
 
   // ── Open to-dos ───────────────────────────────────────────────────────────
   if (/open to.?do|outstanding to.?do|my to.?do|to.?do list|pending task/i.test(lq)) {
     if (!p.canJobs) return "You don't have Jobs access.";
     const todos = (ctx.openTodos ?? []) as Array<Record<string, unknown>>;
-    if (todos.length === 0) return `📋 From IWILLBUILD data:\nNo open to-dos found for ${cn}.\n\n📦 Source modules:\nTo-do\n\n📊 Confidence:\nHigh`;
+    if (todos.length === 0) return `📋 From IWIIlBUILD data:\nNo open to-dos found for ${cn}.\n\n📦 Source modules:\nTo-do\n\n📊 Confidence:\nHigh`;
     const list = todos.slice(0, 10).map((t) => `• **${String(t.job_name ?? 'Unknown job')}** — "${String(t.title ?? '')}"${t.due_date ? ` (due ${String(t.due_date).slice(0, 10)})` : ''}`).join('\n');
-    return `📋 From IWILLBUILD data:\n**${todos.length}** open to-do${todos.length === 1 ? '' : 's'}:\n${list}${todos.length > 10 ? `\n…and ${todos.length - 10} more.` : ''}\n\n📦 Source modules:\nTo-do\n\n📊 Confidence:\nHigh`;
+    return `📋 From IWIIlBUILD data:\n**${todos.length}** open to-do${todos.length === 1 ? '' : 's'}:\n${list}${todos.length > 10 ? `\n…and ${todos.length - 10} more.` : ''}\n\n📦 Source modules:\nTo-do\n\n📊 Confidence:\nHigh`;
   }
 
   // ══════════════════════════════════════════════════════════════════════════
@@ -395,27 +395,27 @@ function tryContextHandler(q: string, ctx: DazzaContext): string | null {
   if (/how many fleet|fleet count|number of fleet|total fleet|how many.*asset|fleet.*asset.*count/i.test(lq)) {
     if (!p.canFleet) return "You don't have Fleet access.";
     const count = ctx.fleet?.length ?? 0;
-    if (count === 0) return `📋 From IWILLBUILD data:\nNo fleet assets found for ${cn} yet.\n\n📦 Source modules:\nFleet\n\n📊 Confidence:\nHigh`;
-    return `📋 From IWILLBUILD data:\nThere ${count === 1 ? 'is' : 'are'} **${count}** fleet asset${count === 1 ? '' : 's'} in IWILLBUILD for ${cn}.\n\n📦 Source modules:\nFleet\n\n📊 Confidence:\nHigh`;
+    if (count === 0) return `📋 From IWIIlBUILD data:\nNo fleet assets found for ${cn} yet.\n\n📦 Source modules:\nFleet\n\n📊 Confidence:\nHigh`;
+    return `📋 From IWIIlBUILD data:\nThere ${count === 1 ? 'is' : 'are'} **${count}** fleet asset${count === 1 ? '' : 's'} in IWIIlBUILD for ${cn}.\n\n📦 Source modules:\nFleet\n\n📊 Confidence:\nHigh`;
   }
 
   // ── List all fleet ────────────────────────────────────────────────────────
   if (/list.*fleet|show.*fleet|all.*fleet|fleet.*list/i.test(lq)) {
     if (!p.canFleet) return "You don't have Fleet access.";
     const fleet = (ctx.fleet ?? []) as Array<Record<string, unknown>>;
-    if (fleet.length === 0) return `📋 From IWILLBUILD data:\nNo fleet assets found for ${cn} yet.\n\n📦 Source modules:\nFleet\n\n📊 Confidence:\nHigh`;
+    if (fleet.length === 0) return `📋 From IWIIlBUILD data:\nNo fleet assets found for ${cn} yet.\n\n📦 Source modules:\nFleet\n\n📊 Confidence:\nHigh`;
     const list = fleet.slice(0, 15).map((f) => `• **${String(f.name ?? 'Unnamed')}** — ${String(f.asset_type ?? f.type ?? 'Asset')}${f.rego ? ` | Rego: ${String(f.rego)}` : ''}`).join('\n');
-    return `📋 From IWILLBUILD data:\n**${fleet.length}** fleet asset${fleet.length === 1 ? '' : 's'} for ${cn}:\n${list}${fleet.length > 15 ? `\n…and ${fleet.length - 15} more.` : ''}\n\n📦 Source modules:\nFleet\n\n📊 Confidence:\nHigh`;
+    return `📋 From IWIIlBUILD data:\n**${fleet.length}** fleet asset${fleet.length === 1 ? '' : 's'} for ${cn}:\n${list}${fleet.length > 15 ? `\n…and ${fleet.length - 15} more.` : ''}\n\n📦 Source modules:\nFleet\n\n📊 Confidence:\nHigh`;
   }
 
   // ── Last / latest prestart ────────────────────────────────────────────────
   if (/last prestart|latest prestart|most recent prestart|last.*daily check|recent.*prestart/i.test(lq)) {
     if (!p.canFleet) return "You don't have Fleet access.";
     const prestarts = (ctx.prestarts ?? []) as Array<Record<string, unknown>>;
-    if (prestarts.length === 0) return `📋 From IWILLBUILD data:\nNo prestarts found for ${cn} yet.\n\n📦 Source modules:\nFleet\n\n📊 Confidence:\nHigh`;
+    if (prestarts.length === 0) return `📋 From IWIIlBUILD data:\nNo prestarts found for ${cn} yet.\n\n📦 Source modules:\nFleet\n\n📊 Confidence:\nHigh`;
     const last = prestarts[0];
     const flagged = last.issue_needs_attention ? ` ⚠️ Issue flagged: "${String(last.issue_comment ?? '')}"` : ' No issues flagged.';
-    return `📋 From IWILLBUILD data:\nThe last prestart was for **${String(last.asset_name ?? 'Unknown asset')}**` +
+    return `📋 From IWIIlBUILD data:\nThe last prestart was for **${String(last.asset_name ?? 'Unknown asset')}**` +
       `${last.submitted_by_name ? ` submitted by ${String(last.submitted_by_name)}` : ''}` +
       `${last.created_at ? ` on ${String(last.created_at).slice(0, 10)}` : ''}.${flagged}` +
       `\n\n📦 Source modules:\nFleet\n\n📊 Confidence:\nHigh`;
@@ -428,11 +428,11 @@ function tryContextHandler(q: string, ctx: DazzaContext): string | null {
     const withDates = fleet
       .filter((f) => f.service_date)
       .sort((a, b) => String(a.service_date).localeCompare(String(b.service_date)));
-    if (withDates.length === 0) return `📋 From IWILLBUILD data:\nNo service dates recorded for any fleet assets.\n\n📦 Source modules:\nFleet\n\n📊 Confidence:\nHigh`;
+    if (withDates.length === 0) return `📋 From IWIIlBUILD data:\nNo service dates recorded for any fleet assets.\n\n📦 Source modules:\nFleet\n\n📊 Confidence:\nHigh`;
     const next = withDates[0];
     const today = new Date().toISOString().slice(0, 10);
     const isOverdue = String(next.service_date).slice(0, 10) < today;
-    return `📋 From IWILLBUILD data:\nThe next service due is **${String(next.name ?? 'Unknown')}** — service date **${String(next.service_date).slice(0, 10)}**${isOverdue ? ' ⚠️ (overdue)' : ''}.\n\n📦 Source modules:\nFleet\n\n📊 Confidence:\nHigh`;
+    return `📋 From IWIIlBUILD data:\nThe next service due is **${String(next.name ?? 'Unknown')}** — service date **${String(next.service_date).slice(0, 10)}**${isOverdue ? ' ⚠️ (overdue)' : ''}.\n\n📦 Source modules:\nFleet\n\n📊 Confidence:\nHigh`;
   }
 
   // ── Rego expiry ───────────────────────────────────────────────────────────
@@ -454,55 +454,55 @@ function tryContextHandler(q: string, ctx: DazzaContext): string | null {
       lines.push(`\nUpcoming rego renewals:`);
       upcoming.forEach((f) => lines.push(`  • **${String(f.name ?? 'Unknown')}** — due ${String(f.rego_expiry).slice(0, 10)}`));
     }
-    if (lines.length === 0) return `📋 From IWILLBUILD data:\nNo rego expiry dates recorded for fleet assets.\n\n📦 Source modules:\nFleet\n\n📊 Confidence:\nHigh`;
-    return `📋 From IWILLBUILD data:\n${lines.join('\n')}\n\n📦 Source modules:\nFleet\n\n📊 Confidence:\nHigh`;
+    if (lines.length === 0) return `📋 From IWIIlBUILD data:\nNo rego expiry dates recorded for fleet assets.\n\n📦 Source modules:\nFleet\n\n📊 Confidence:\nHigh`;
+    return `📋 From IWIIlBUILD data:\n${lines.join('\n')}\n\n📦 Source modules:\nFleet\n\n📊 Confidence:\nHigh`;
   }
 
   // ── Fleet issues / flags ──────────────────────────────────────────────────
   if (/fleet issue|fleet flag|fleet problem|fleet.*attention|attention.*fleet/i.test(lq)) {
     if (!p.canFleet) return "You don't have Fleet access.";
     const flags = (ctx.fleetFlags ?? []) as Array<Record<string, unknown>>;
-    if (flags.length === 0) return `📋 From IWILLBUILD data:\nNo fleet issues flagged for ${cn}.\n\n📦 Source modules:\nFleet\n\n📊 Confidence:\nHigh`;
+    if (flags.length === 0) return `📋 From IWIIlBUILD data:\nNo fleet issues flagged for ${cn}.\n\n📦 Source modules:\nFleet\n\n📊 Confidence:\nHigh`;
     const list = flags.slice(0, 8).map((f) => `• **${String(f.asset_name ?? 'Unknown')}** — "${String(f.issue_comment ?? '')}" (${String(f.created_at ?? '').slice(0, 10)})`).join('\n');
-    return `📋 From IWILLBUILD data:\n**${flags.length}** fleet issue${flags.length === 1 ? '' : 's'} flagged:\n${list}\n\n📦 Source modules:\nFleet\n\n📊 Confidence:\nHigh`;
+    return `📋 From IWIIlBUILD data:\n**${flags.length}** fleet issue${flags.length === 1 ? '' : 's'} flagged:\n${list}\n\n📦 Source modules:\nFleet\n\n📊 Confidence:\nHigh`;
   }
 
   // ── Who is driving / currently driving ────────────────────────────────────
   if (/who.*driving|driving.*who|who.*got.*vehicle|who.*has.*vehicle|who.*checked.*out|currently.*driving|active.*session|who.*in.*the\s+\w+/i.test(lq)) {
     if (!p.canFleet) return "You don't have Fleet access.";
     const active = (ctx.activeDriverSessions ?? []) as Array<Record<string, unknown>>;
-    if (active.length === 0) return `📋 From IWILLBUILD data:\nNo vehicles are currently being driven.\n\n📦 Source modules:\nFleet · Driver Sessions\n\n📊 Confidence:\nHigh`;
+    if (active.length === 0) return `📋 From IWIIlBUILD data:\nNo vehicles are currently being driven.\n\n📦 Source modules:\nFleet · Driver Sessions\n\n📊 Confidence:\nHigh`;
     const list = active.map((s) => `• **${String(s.asset_name ?? 'Unknown')}** — driven by **${String(s.driver_name ?? 'Unknown')}** since ${String(s.start_at ?? '').slice(11, 16)}`).join('\n');
-    return `📋 From IWILLBUILD data:\n**${active.length}** vehicle${active.length === 1 ? '' : 's'} currently being driven:\n${list}\n\n📦 Source modules:\nFleet · Driver Sessions\n\n📊 Confidence:\nHigh`;
+    return `📋 From IWIIlBUILD data:\n**${active.length}** vehicle${active.length === 1 ? '' : 's'} currently being driven:\n${list}\n\n📦 Source modules:\nFleet · Driver Sessions\n\n📊 Confidence:\nHigh`;
   }
 
   // ── Which vehicles are active / being driven ──────────────────────────────
   if (/which.*vehicle.*driven|which.*vehicle.*active|vehicles.*being.*driven|active.*vehicle.*session/i.test(lq)) {
     if (!p.canFleet) return "You don't have Fleet access.";
     const active = (ctx.activeDriverSessions ?? []) as Array<Record<string, unknown>>;
-    if (active.length === 0) return `📋 From IWILLBUILD data:\nNo vehicles are currently being driven.\n\n📦 Source modules:\nFleet · Driver Sessions\n\n📊 Confidence:\nHigh`;
+    if (active.length === 0) return `📋 From IWIIlBUILD data:\nNo vehicles are currently being driven.\n\n📦 Source modules:\nFleet · Driver Sessions\n\n📊 Confidence:\nHigh`;
     const list = active.map((s) => `• **${String(s.asset_name ?? 'Unknown')}** — ${String(s.driver_name ?? 'Unknown')}`).join('\n');
-    return `📋 From IWILLBUILD data:\n${list}\n\n📦 Source modules:\nFleet · Driver Sessions\n\n📊 Confidence:\nHigh`;
+    return `📋 From IWIIlBUILD data:\n${list}\n\n📦 Source modules:\nFleet · Driver Sessions\n\n📊 Confidence:\nHigh`;
   }
 
   // ── Who had / drove a vehicle (historical) ────────────────────────────────
   if (/who.*had|who.*drove|who.*was.*driving|who.*last.*drove|last.*driver|had.*yesterday|drove.*yesterday|drove.*last/i.test(lq)) {
     if (!p.canFleet) return "You don't have Fleet access.";
     const sessions = (ctx.recentDriverSessions ?? []) as Array<Record<string, unknown>>;
-    if (sessions.length === 0) return `📋 From IWILLBUILD data:\nNo driver session history found.\n\n📦 Source modules:\nFleet · Driver Sessions\n\n📊 Confidence:\nHigh`;
+    if (sessions.length === 0) return `📋 From IWIIlBUILD data:\nNo driver session history found.\n\n📦 Source modules:\nFleet · Driver Sessions\n\n📊 Confidence:\nHigh`;
     // Try to match a vehicle name from the question
     const fleet = (ctx.fleet ?? []) as Array<Record<string, unknown>>;
     const mentionedVehicle = fleet.find((f) => lq.includes(String(f.name ?? '').toLowerCase()));
     const relevant = mentionedVehicle
       ? sessions.filter((s) => String(s.asset_name ?? '').toLowerCase() === String(mentionedVehicle.name ?? '').toLowerCase())
       : sessions;
-    if (relevant.length === 0) return `📋 From IWILLBUILD data:\nNo driver sessions found${mentionedVehicle ? ` for ${String(mentionedVehicle.name)}` : ''}.\n\n📦 Source modules:\nFleet · Driver Sessions\n\n📊 Confidence:\nHigh`;
+    if (relevant.length === 0) return `📋 From IWIIlBUILD data:\nNo driver sessions found${mentionedVehicle ? ` for ${String(mentionedVehicle.name)}` : ''}.\n\n📦 Source modules:\nFleet · Driver Sessions\n\n📊 Confidence:\nHigh`;
     const list = relevant.slice(0, 8).map((s) => {
       const start = String(s.start_at ?? '').slice(0, 16).replace('T', ' ');
       const end = s.end_at ? String(s.end_at).slice(0, 16).replace('T', ' ') : 'still active';
       return `• **${String(s.driver_name ?? 'Unknown')}** drove **${String(s.asset_name ?? 'Unknown')}** — ${start} → ${end}`;
     }).join('\n');
-    return `📋 From IWILLBUILD data:\n${list}\n\n📦 Source modules:\nFleet · Driver Sessions\n\n📊 Confidence:\nHigh`;
+    return `📋 From IWIIlBUILD data:\n${list}\n\n📦 Source modules:\nFleet · Driver Sessions\n\n📊 Confidence:\nHigh`;
   }
 
   // ── When did [person] stop driving ────────────────────────────────────────
@@ -510,17 +510,17 @@ function tryContextHandler(q: string, ctx: DazzaContext): string | null {
     if (!p.canFleet) return "You don't have Fleet access.";
     const sessions = (ctx.recentDriverSessions ?? []) as Array<Record<string, unknown>>;
     const completed = sessions.filter((s) => s.status === 'completed' && s.end_at);
-    if (completed.length === 0) return `📋 From IWILLBUILD data:\nNo completed driving sessions found.\n\n📦 Source modules:\nFleet · Driver Sessions\n\n📊 Confidence:\nHigh`;
+    if (completed.length === 0) return `📋 From IWIIlBUILD data:\nNo completed driving sessions found.\n\n📦 Source modules:\nFleet · Driver Sessions\n\n📊 Confidence:\nHigh`;
     const last = completed[0];
     const endTime = String(last.end_at ?? '').slice(0, 16).replace('T', ' ');
-    return `📋 From IWILLBUILD data:\n**${String(last.driver_name ?? 'Unknown')}** stopped driving **${String(last.asset_name ?? 'Unknown')}** at **${endTime}**.\n\n📦 Source modules:\nFleet · Driver Sessions\n\n📊 Confidence:\nHigh`;
+    return `📋 From IWIIlBUILD data:\n**${String(last.driver_name ?? 'Unknown')}** stopped driving **${String(last.asset_name ?? 'Unknown')}** at **${endTime}**.\n\n📦 Source modules:\nFleet · Driver Sessions\n\n📊 Confidence:\nHigh`;
   }
 
   // ── Prestart count ────────────────────────────────────────────────────────
   if (/how many prestart|prestart count|number of prestart/i.test(lq)) {
     if (!p.canFleet) return "You don't have Fleet access.";
     const count = ctx.prestartCount ?? 0;
-    return `📋 From IWILLBUILD data:\n**${count}** prestart${count === 1 ? '' : 's'} recorded for ${cn}.\n\n📦 Source modules:\nFleet\n\n📊 Confidence:\nHigh`;
+    return `📋 From IWIIlBUILD data:\n**${count}** prestart${count === 1 ? '' : 's'} recorded for ${cn}.\n\n📦 Source modules:\nFleet\n\n📊 Confidence:\nHigh`;
   }
 
   // ══════════════════════════════════════════════════════════════════════════
@@ -532,11 +532,11 @@ function tryContextHandler(q: string, ctx: DazzaContext): string | null {
     if (!p.canEstimating) return "You don't have Estimating access.";
     if (!p.seeDollars) return "I can't show cost values with your current permissions.";
     const estimates = (ctx.estimates ?? []) as Array<Record<string, unknown>>;
-    if (estimates.length === 0) return `📋 From IWILLBUILD data:\nNo estimates found for ${cn} yet.\n\n📦 Source modules:\nEstimates\n\n📊 Confidence:\nHigh`;
+    if (estimates.length === 0) return `📋 From IWIIlBUILD data:\nNo estimates found for ${cn} yet.\n\n📦 Source modules:\nEstimates\n\n📊 Confidence:\nHigh`;
     const approved = estimates.filter((e) => String(e.status ?? '').toLowerCase() === 'approved');
     const totalApproved = approved.reduce((sum, e) => sum + (parseFloat(String(e.subtotal ?? '0')) || 0), 0);
     const totalAll = estimates.reduce((sum, e) => sum + (parseFloat(String(e.subtotal ?? '0')) || 0), 0);
-    return `📋 From IWILLBUILD data:\n**${estimates.length}** estimate${estimates.length === 1 ? '' : 's'} total.\n` +
+    return `📋 From IWIIlBUILD data:\n**${estimates.length}** estimate${estimates.length === 1 ? '' : 's'} total.\n` +
       `• All estimates subtotal: **$${totalAll.toLocaleString('en-AU', { minimumFractionDigits: 2 })}** (ex. markup/GST)\n` +
       `• Approved estimates: **${approved.length}** totalling **$${totalApproved.toLocaleString('en-AU', { minimumFractionDigits: 2 })}** (ex. markup/GST)\n\n📦 Source modules:\nEstimates\n\n📊 Confidence:\nHigh`;
   }
@@ -545,26 +545,26 @@ function tryContextHandler(q: string, ctx: DazzaContext): string | null {
   if (/how many estimate|estimate count|number of estimate|how many quote/i.test(lq)) {
     if (!p.canEstimating) return "You don't have Estimating access.";
     const count = ctx.estimates?.length ?? 0;
-    if (count === 0) return `📋 From IWILLBUILD data:\nNo estimates found for ${cn} yet.\n\n📦 Source modules:\nEstimates\n\n📊 Confidence:\nHigh`;
+    if (count === 0) return `📋 From IWIIlBUILD data:\nNo estimates found for ${cn} yet.\n\n📦 Source modules:\nEstimates\n\n📊 Confidence:\nHigh`;
     const estimates = (ctx.estimates ?? []) as Array<Record<string, unknown>>;
     const approved = estimates.filter((e) => String(e.status ?? '').toLowerCase() === 'approved').length;
     const draft = estimates.filter((e) => String(e.status ?? '').toLowerCase() === 'draft').length;
     const sent = estimates.filter((e) => String(e.status ?? '').toLowerCase() === 'sent').length;
-    return `📋 From IWILLBUILD data:\n**${count}** estimate${count === 1 ? '' : 's'} for ${cn}:\n• Draft: ${draft} | Sent: ${sent} | Approved: ${approved}\n\n📦 Source modules:\nEstimates\n\n📊 Confidence:\nHigh`;
+    return `📋 From IWIIlBUILD data:\n**${count}** estimate${count === 1 ? '' : 's'} for ${cn}:\n• Draft: ${draft} | Sent: ${sent} | Approved: ${approved}\n\n📦 Source modules:\nEstimates\n\n📊 Confidence:\nHigh`;
   }
 
   // ── List / show estimates ─────────────────────────────────────────────────
   if (/what estimates|list.*estimate|show.*estimate|estimates.*exist|which estimates|all.*estimate|estimate.*list/i.test(lq)) {
     if (!p.canEstimating) return "You don't have Estimating access.";
     const estimates = (ctx.estimates ?? []) as Array<Record<string, unknown>>;
-    if (estimates.length === 0) return `📋 From IWILLBUILD data:\nNo estimates found for ${cn} yet.\n\n📦 Source modules:\nEstimates\n\n📊 Confidence:\nHigh`;
+    if (estimates.length === 0) return `📋 From IWIIlBUILD data:\nNo estimates found for ${cn} yet.\n\n📦 Source modules:\nEstimates\n\n📊 Confidence:\nHigh`;
     const list = estimates.slice(0, 15).map((e) => {
       const status = String(e.status ?? 'Draft');
       const jobName = e.job_name ? ` | Job: ${String(e.job_name)}` : '';
       const total = p.seeDollars && e.subtotal ? ` | $${parseFloat(String(e.subtotal)).toLocaleString('en-AU', { minimumFractionDigits: 2 })}` : '';
       return `• **${String(e.title ?? 'Unnamed')}** — ${status}${jobName}${total}`;
     }).join('\n');
-    return `📋 From IWILLBUILD data:\n**${estimates.length}** estimate${estimates.length === 1 ? '' : 's'} for ${cn}:\n${list}${estimates.length > 15 ? `\n…and ${estimates.length - 15} more.` : ''}\n\n📦 Source modules:\nEstimates\n\n📊 Confidence:\nHigh`;
+    return `📋 From IWIIlBUILD data:\n**${estimates.length}** estimate${estimates.length === 1 ? '' : 's'} for ${cn}:\n${list}${estimates.length > 15 ? `\n…and ${estimates.length - 15} more.` : ''}\n\n📦 Source modules:\nEstimates\n\n📊 Confidence:\nHigh`;
   }
 
   // ── Approved estimates ────────────────────────────────────────────────────
@@ -572,13 +572,13 @@ function tryContextHandler(q: string, ctx: DazzaContext): string | null {
     if (!p.canEstimating) return "You don't have Estimating access.";
     const estimates = (ctx.estimates ?? []) as Array<Record<string, unknown>>;
     const approved = estimates.filter((e) => String(e.status ?? '').toLowerCase() === 'approved');
-    if (approved.length === 0) return `📋 From IWILLBUILD data:\nNo approved estimates found for ${cn}.\n\n📦 Source modules:\nEstimates\n\n📊 Confidence:\nHigh`;
+    if (approved.length === 0) return `📋 From IWIIlBUILD data:\nNo approved estimates found for ${cn}.\n\n📦 Source modules:\nEstimates\n\n📊 Confidence:\nHigh`;
     const list = approved.slice(0, 12).map((e) => {
       const jobName = e.job_name ? ` | Job: ${String(e.job_name)}` : '';
       const total = p.seeDollars && e.subtotal ? ` | $${parseFloat(String(e.subtotal)).toLocaleString('en-AU', { minimumFractionDigits: 2 })}` : '';
       return `• **${String(e.title ?? 'Unnamed')}**${jobName}${total}`;
     }).join('\n');
-    return `📋 From IWILLBUILD data:\n**${approved.length}** approved estimate${approved.length === 1 ? '' : 's'} for ${cn}:\n${list}${approved.length > 12 ? `\n…and ${approved.length - 12} more.` : ''}\n\n📦 Source modules:\nEstimates\n\n📊 Confidence:\nHigh`;
+    return `📋 From IWIIlBUILD data:\n**${approved.length}** approved estimate${approved.length === 1 ? '' : 's'} for ${cn}:\n${list}${approved.length > 12 ? `\n…and ${approved.length - 12} more.` : ''}\n\n📦 Source modules:\nEstimates\n\n📊 Confidence:\nHigh`;
   }
 
   // ── Draft estimates ───────────────────────────────────────────────────────
@@ -586,12 +586,12 @@ function tryContextHandler(q: string, ctx: DazzaContext): string | null {
     if (!p.canEstimating) return "You don't have Estimating access.";
     const estimates = (ctx.estimates ?? []) as Array<Record<string, unknown>>;
     const drafts = estimates.filter((e) => String(e.status ?? '').toLowerCase() === 'draft');
-    if (drafts.length === 0) return `📋 From IWILLBUILD data:\nNo draft estimates found for ${cn}.\n\n📦 Source modules:\nEstimates\n\n📊 Confidence:\nHigh`;
+    if (drafts.length === 0) return `📋 From IWIIlBUILD data:\nNo draft estimates found for ${cn}.\n\n📦 Source modules:\nEstimates\n\n📊 Confidence:\nHigh`;
     const list = drafts.slice(0, 12).map((e) => {
       const jobName = e.job_name ? ` | Job: ${String(e.job_name)}` : '';
       return `• **${String(e.title ?? 'Unnamed')}**${jobName}`;
     }).join('\n');
-    return `📋 From IWILLBUILD data:\n**${drafts.length}** draft estimate${drafts.length === 1 ? '' : 's'} for ${cn}:\n${list}${drafts.length > 12 ? `\n…and ${drafts.length - 12} more.` : ''}\n\n📦 Source modules:\nEstimates\n\n📊 Confidence:\nHigh`;
+    return `📋 From IWIIlBUILD data:\n**${drafts.length}** draft estimate${drafts.length === 1 ? '' : 's'} for ${cn}:\n${list}${drafts.length > 12 ? `\n…and ${drafts.length - 12} more.` : ''}\n\n📦 Source modules:\nEstimates\n\n📊 Confidence:\nHigh`;
   }
 
   // ── Job costs / over budget ───────────────────────────────────────────────
@@ -599,7 +599,7 @@ function tryContextHandler(q: string, ctx: DazzaContext): string | null {
     if (!p.canJobs) return "You don't have Jobs access.";
     if (!p.seeDollars) return "I can't show cost values with your current permissions.";
     const costs = (ctx.jobCosts ?? []) as Array<Record<string, unknown>>;
-    if (costs.length === 0) return `📋 From IWILLBUILD data:\nNo job costs recorded for ${cn} yet.\n\n📦 Source modules:\nJobs\n\n📊 Confidence:\nHigh`;
+    if (costs.length === 0) return `📋 From IWIIlBUILD data:\nNo job costs recorded for ${cn} yet.\n\n📦 Source modules:\nJobs\n\n📊 Confidence:\nHigh`;
     const sorted = [...costs].sort((a, b) => Number(b.total_actual ?? 0) - Number(a.total_actual ?? 0));
     const list = sorted.slice(0, 8).map((c) => {
       const actual = Number(c.total_actual ?? 0);
@@ -608,7 +608,7 @@ function tryContextHandler(q: string, ctx: DazzaContext): string | null {
       return `• **${String(c.job_name ?? 'Unknown')}** — $${actual.toLocaleString('en-AU', { minimumFractionDigits: 2 })} actual${approved > 0 ? ` vs $${approved.toLocaleString('en-AU', { minimumFractionDigits: 2 })} approved${overBudget ? ' ⚠️ over budget' : ''}` : ''}`;
     }).join('\n');
     const totalActual = costs.reduce((s, c) => s + Number(c.total_actual ?? 0), 0);
-    return `📋 From IWILLBUILD data:\nJob costs for ${cn} (total: **$${totalActual.toLocaleString('en-AU', { minimumFractionDigits: 2 })}**):\n${list}\n\n📦 Source modules:\nJobs\n\n📊 Confidence:\nHigh`;
+    return `📋 From IWIIlBUILD data:\nJob costs for ${cn} (total: **$${totalActual.toLocaleString('en-AU', { minimumFractionDigits: 2 })}**):\n${list}\n\n📦 Source modules:\nJobs\n\n📊 Confidence:\nHigh`;
   }
 
   // ══════════════════════════════════════════════════════════════════════════
@@ -619,24 +619,24 @@ function tryContextHandler(q: string, ctx: DazzaContext): string | null {
   if (/how many forms|form count|number of forms|form template|available forms/i.test(lq)) {
     if (!p.canForms) return "You don't have Forms access.";
     const count = ctx.formTemplates?.length ?? 0;
-    if (count === 0) return `📋 From IWILLBUILD data:\nNo form templates found for ${cn} yet.\n\n📦 Source modules:\nForms\n\n📊 Confidence:\nHigh`;
-    return `📋 From IWILLBUILD data:\nThere ${count === 1 ? 'is' : 'are'} **${count}** form template${count === 1 ? '' : 's'} available for ${cn}.\n\n📦 Source modules:\nForms\n\n📊 Confidence:\nHigh`;
+    if (count === 0) return `📋 From IWIIlBUILD data:\nNo form templates found for ${cn} yet.\n\n📦 Source modules:\nForms\n\n📊 Confidence:\nHigh`;
+    return `📋 From IWIIlBUILD data:\nThere ${count === 1 ? 'is' : 'are'} **${count}** form template${count === 1 ? '' : 's'} available for ${cn}.\n\n📦 Source modules:\nForms\n\n📊 Confidence:\nHigh`;
   }
 
   // ── List form templates ───────────────────────────────────────────────────
   if (/list.*forms|show.*forms|what forms|forms.*available|which forms/i.test(lq)) {
     if (!p.canForms) return "You don't have Forms access.";
     const templates = (ctx.formTemplates ?? []) as Array<Record<string, unknown>>;
-    if (templates.length === 0) return `📋 From IWILLBUILD data:\nNo form templates found for ${cn} yet.\n\n📦 Source modules:\nForms\n\n📊 Confidence:\nHigh`;
+    if (templates.length === 0) return `📋 From IWIIlBUILD data:\nNo form templates found for ${cn} yet.\n\n📦 Source modules:\nForms\n\n📊 Confidence:\nHigh`;
     const list = templates.slice(0, 15).map((t) => `• **${String(t.name ?? 'Unnamed')}**${t.category ? ` (${String(t.category)})` : ''}`).join('\n');
-    return `📋 From IWILLBUILD data:\n**${templates.length}** form template${templates.length === 1 ? '' : 's'} for ${cn}:\n${list}${templates.length > 15 ? `\n…and ${templates.length - 15} more.` : ''}\n\n📦 Source modules:\nForms\n\n📊 Confidence:\nHigh`;
+    return `📋 From IWIIlBUILD data:\n**${templates.length}** form template${templates.length === 1 ? '' : 's'} for ${cn}:\n${list}${templates.length > 15 ? `\n…and ${templates.length - 15} more.` : ''}\n\n📦 Source modules:\nForms\n\n📊 Confidence:\nHigh`;
   }
 
   // ── Form submissions ──────────────────────────────────────────────────────
   if (/form.*submission|submission.*form|how many.*submitted|forms.*submitted/i.test(lq)) {
     if (!p.canForms) return "You don't have Forms access.";
     const count = ctx.formSubmissions?.length ?? 0;
-    return `📋 From IWILLBUILD data:\n**${count}** form submission${count === 1 ? '' : 's'} recorded for ${cn}.\n\n📦 Source modules:\nForms\n\n📊 Confidence:\nHigh`;
+    return `📋 From IWIIlBUILD data:\n**${count}** form submission${count === 1 ? '' : 's'} recorded for ${cn}.\n\n📦 Source modules:\nForms\n\n📊 Confidence:\nHigh`;
   }
 
   // ══════════════════════════════════════════════════════════════════════════
@@ -647,7 +647,7 @@ function tryContextHandler(q: string, ctx: DazzaContext): string | null {
   if (/how many files|file count|number of files|total files/i.test(lq)) {
     if (!p.canFiles) return "You don't have Files access.";
     const count = ctx.files?.length ?? 0;
-    return `📋 From IWILLBUILD data:\n**${count}** file${count === 1 ? '' : 's'} stored for ${cn}.\n\n📦 Source modules:\nFiles\n\n📊 Confidence:\nHigh`;
+    return `📋 From IWIIlBUILD data:\n**${count}** file${count === 1 ? '' : 's'} stored for ${cn}.\n\n📦 Source modules:\nFiles\n\n📊 Confidence:\nHigh`;
   }
 
   // ══════════════════════════════════════════════════════════════════════════
@@ -657,23 +657,23 @@ function tryContextHandler(q: string, ctx: DazzaContext): string | null {
   // ── Share link count ──────────────────────────────────────────────────────
   if (/how many.*share.*link|share.*link.*count|number of.*share|active.*link|secure.*link/i.test(lq)) {
     const links = (ctx.shareLinks ?? []) as Array<Record<string, unknown>>;
-    if (links.length === 0) return `📋 From IWILLBUILD data:\nNo secure share links found for ${cn}.\n\n📦 Source modules:\nSecure Share\n\n📊 Confidence:\nHigh`;
+    if (links.length === 0) return `📋 From IWIIlBUILD data:\nNo secure share links found for ${cn}.\n\n📦 Source modules:\nSecure Share\n\n📊 Confidence:\nHigh`;
     const active = links.filter((l) => !l.revoked && !l.isExpired && !l.isMaxed).length;
     const revoked = links.filter((l) => l.revoked).length;
     const expired = links.filter((l) => l.isExpired && !l.revoked).length;
-    return `📋 From IWILLBUILD data:\n**${links.length}** secure share link${links.length === 1 ? '' : 's'} for ${cn}:\n• Active: ${active} | Expired: ${expired} | Revoked: ${revoked}\n\n📦 Source modules:\nSecure Share\n\n📊 Confidence:\nHigh`;
+    return `📋 From IWIIlBUILD data:\n**${links.length}** secure share link${links.length === 1 ? '' : 's'} for ${cn}:\n• Active: ${active} | Expired: ${expired} | Revoked: ${revoked}\n\n📦 Source modules:\nSecure Share\n\n📊 Confidence:\nHigh`;
   }
 
   // ── List share links ──────────────────────────────────────────────────────
   if (/list.*share.*link|show.*share.*link|what.*share.*link|share.*link.*exist|all.*share.*link/i.test(lq)) {
     const links = (ctx.shareLinks ?? []) as Array<Record<string, unknown>>;
-    if (links.length === 0) return `📋 From IWILLBUILD data:\nNo secure share links found for ${cn}.\n\n📦 Source modules:\nSecure Share\n\n📊 Confidence:\nHigh`;
+    if (links.length === 0) return `📋 From IWIIlBUILD data:\nNo secure share links found for ${cn}.\n\n📦 Source modules:\nSecure Share\n\n📊 Confidence:\nHigh`;
     const list = links.slice(0, 15).map((l) => {
       const status = l.revoked ? '🔴 Revoked' : l.isExpired ? '🟡 Expired' : l.isMaxed ? '🟡 Limit reached' : '🟢 Active';
       const target = `${String(l.target_type ?? '').replace(/_/g, ' ')} #${String(l.target_id ?? '')}`;
       return `• **${String(l.title ?? 'Untitled')}** — ${status} | ${target} | ${String(l.link_type ?? '').replace(/_/g, ' ')}`;
     }).join('\n');
-    return `📋 From IWILLBUILD data:\n**${links.length}** secure share link${links.length === 1 ? '' : 's'} for ${cn}:\n${list}${links.length > 15 ? `\n…and ${links.length - 15} more.` : ''}\n\n📦 Source modules:\nSecure Share\n\n📊 Confidence:\nHigh`;
+    return `📋 From IWIIlBUILD data:\n**${links.length}** secure share link${links.length === 1 ? '' : 's'} for ${cn}:\n${list}${links.length > 15 ? `\n…and ${links.length - 15} more.` : ''}\n\n📦 Source modules:\nSecure Share\n\n📊 Confidence:\nHigh`;
   }
 
   // ── Expired / revoked share links (Annette hygiene) ───────────────────────
@@ -688,8 +688,8 @@ function tryContextHandler(q: string, ctx: DazzaContext): string | null {
     if (revoked.length > 0) {
       parts.push(`**${revoked.length}** revoked link${revoked.length === 1 ? '' : 's'}:\n${revoked.slice(0, 8).map((l) => `• ${String(l.title ?? 'Untitled')}`).join('\n')}`);
     }
-    if (parts.length === 0) return `📋 From IWILLBUILD data:\nNo expired or revoked share links found for ${cn}. All links are active.\n\n📦 Source modules:\nSecure Share\n\n📊 Confidence:\nHigh`;
-    return `📋 From IWILLBUILD data:\n${parts.join('\n\n')}\n\n⚠️ Hygiene tip:\nExpired links are harmless but can be confusing. Consider revoking old links you no longer need.\n\n📦 Source modules:\nSecure Share\n\n📊 Confidence:\nHigh`;
+    if (parts.length === 0) return `📋 From IWIIlBUILD data:\nNo expired or revoked share links found for ${cn}. All links are active.\n\n📦 Source modules:\nSecure Share\n\n📊 Confidence:\nHigh`;
+    return `📋 From IWIIlBUILD data:\n${parts.join('\n\n')}\n\n⚠️ Hygiene tip:\nExpired links are harmless but can be confusing. Consider revoking old links you no longer need.\n\n📦 Source modules:\nSecure Share\n\n📊 Confidence:\nHigh`;
   }
 
   return null; // no local handler matched — fall through to OpenAI
@@ -745,7 +745,7 @@ export function buildSystemPrompt(ctx: DazzaContext): string {
   const today = new Date().toLocaleDateString('en-AU', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', timeZone: 'Australia/Brisbane' });
 
   const lines: string[] = [
-    `You are Dazza, the AI assistant built into the IWILLBUILD construction management portal.`,
+    `You are Dazza, the AI assistant built into the IWIIlBUILD construction management portal.`,
     `You are a practical, no-nonsense construction industry expert who knows Australian building, WHS, and business practices inside out.`,
     `Tone: ${tone}. Be direct, helpful, and specific. Avoid corporate waffle.`,
     `Today's date: ${today} (Australia/Brisbane time).`,
@@ -766,7 +766,7 @@ export function buildSystemPrompt(ctx: DazzaContext): string {
     `Every answer MUST use the following section labels, in this order.`,
     `Omit a section only if it genuinely does not apply — NEVER omit "📦 Source modules:" or "📊 Confidence:".`,
     ``,
-    `📋 From IWILLBUILD data:`,
+    `📋 From IWIIlBUILD data:`,
     `  Use when the answer draws on portal data (jobs, fleet, forms, estimates, files, to-dos, prestarts, costs, delays).`,
     `  Start with this section if portal data is available. NEVER invent data — only use what is provided below.`,
     `  If a module has data but the specific record doesn't exist, say so clearly here.`,
@@ -790,7 +790,7 @@ export function buildSystemPrompt(ctx: DazzaContext): string {
     `  If Low, briefly explain why.`,
     ``,
     `💡 Suggested next action:`,
-    `  Include when there is a clear, useful next step in IWILLBUILD.`,
+    `  Include when there is a clear, useful next step in IWIIlBUILD.`,
     `  One sentence. Omit if no obvious next action.`,
     ``,
     `⚠️ Verification reminder:`,
@@ -806,9 +806,9 @@ export function buildSystemPrompt(ctx: DazzaContext): string {
     `- General industry knowledge for a ${ctx.industry ?? 'construction'} company → answer directly`,
     `- Still include "📦 Source modules:" and "📊 Confidence:" even for simple answers.`,
     ``,
-    `### 2. IWILLBUILD portal data — use the data sections below`,
+    `### 2. IWIIlBUILD portal data — use the data sections below`,
     `- Jobs, fleet, forms, estimates, files, to-dos, prestarts → use the data provided below`,
-    `- Put portal data findings in "📋 From IWILLBUILD data:" section`,
+    `- Put portal data findings in "📋 From IWIIlBUILD data:" section`,
     `- NEVER say "I don't have enough data" when the data IS provided below — use it.`,
     ``,
     `### 3. General guidance — use your construction industry knowledge`,
@@ -866,11 +866,11 @@ export function buildSystemPrompt(ctx: DazzaContext): string {
     `### Company boundary`,
     `1. You ONLY have data for ONE company: "${ctx.companyName}".`,
     `2. NEVER use, reference, compare, or reveal data from any other company.`,
-    `3. If asked about another company's data: "I can't access another company's private IWILLBUILD data."`,
+    `3. If asked about another company's data: "I can't access another company's private IWIIlBUILD data."`,
     ``,
     `### Data integrity`,
     `4. NEVER invent jobs, fleet assets, estimates, forms, files, or users. Only use data provided below.`,
-    `5. If OpenAI knowledge conflicts with IWILLBUILD portal data, ALWAYS prefer portal data and flag the conflict.`,
+    `5. If OpenAI knowledge conflicts with IWIIlBUILD portal data, ALWAYS prefer portal data and flag the conflict.`,
     ``,
     `### Permission enforcement`,
     `6. canJobs: ${p.canJobs} — if false, refuse all job questions: "You don't have Jobs access."`,
@@ -898,7 +898,7 @@ export function buildSystemPrompt(ctx: DazzaContext): string {
     ``,
     `### Read-only`,
     `17. You are a read-only assistant. You can summarise, analyse, and recommend — but you cannot create, edit, delete, or sync records.`,
-    `    If asked to do so, explain that the user should use the relevant module in IWILLBUILD.`,
+    `    If asked to do so, explain that the user should use the relevant module in IWIIlBUILD.`,
     ``,
   ];
 
@@ -1382,7 +1382,7 @@ function buildLocalToolAnswer(answer: string, question: string): string {
 
 function buildGuardAnswer(companyName: string): string {
   return [
-    `📋 From IWILLBUILD data:\nI can only access data for **${companyName}**. I cannot access, compare, or reveal data from any other company.`,
+    `📋 From IWIIlBUILD data:\nI can only access data for **${companyName}**. I cannot access, compare, or reveal data from any other company.`,
     `📦 Source modules:\nNo portal data used — security guard triggered.`,
     `📊 Confidence:\nHigh — this is a security boundary, not a data question.`,
   ].join('\n\n');
@@ -1392,9 +1392,9 @@ function buildMutationConfirmationReply(action: string, companyName: string): st
   const actionLabel = action.replace(/_/g, ' ');
   return [
     `🧠 AI reasoning:\nI can help you **${actionLabel}** for **${companyName}**, but I need your explicit confirmation before making any changes.`,
-    `To proceed, please go to the relevant module in IWILLBUILD and confirm the action there. Dazza is a read-only assistant — all changes must be confirmed through the portal interface.`,
+    `To proceed, please go to the relevant module in IWIIlBUILD and confirm the action there. Dazza is a read-only assistant — all changes must be confirmed through the portal interface.`,
     `📦 Source modules:\nNo portal data used — action safety boundary.`,
     `📊 Confidence:\nHigh — this is a safety boundary to prevent unintended changes.`,
-    `💡 Suggested next action:\nNavigate to the relevant module in IWILLBUILD to complete this action with full confirmation.`,
+    `💡 Suggested next action:\nNavigate to the relevant module in IWIIlBUILD to complete this action with full confirmation.`,
   ].join('\n\n');
 }

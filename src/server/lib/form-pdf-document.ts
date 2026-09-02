@@ -177,7 +177,7 @@ export async function buildFormPdfDocument(
   const [companyRows] = await db.execute(sql`
     SELECT name FROM companies WHERE id = ${companyId} LIMIT 1
   `) as unknown as [Array<{ name?: string }>, unknown];
-  const companyName = String(companyRows?.[0]?.name ?? 'IWILLBUILD');
+  const companyName = String(companyRows?.[0]?.name ?? 'IWIIlBUILD');
 
   // ── PDF settings ────────────────────────────────────────────────────────────
   let footerText = '';

@@ -3,8 +3,8 @@ import { Menu, X, ChevronDown } from 'lucide-react';
 import { useState, useRef, useEffect } from 'react';
 
 /**
- * IWILLBUILD marketing header
- * Sticky, glass-blur, IWILLBUILD brand mark, primary nav with Features dropdown,
+ * IWIIlBUILD marketing header
+ * Sticky, glass-blur, IWIIlBUILD brand mark, primary nav with Features dropdown,
  * Pricing anchor, Sign in + Start free trial CTAs.
  * Mobile: hamburger with full-screen slide-down panel.
  */
@@ -86,7 +86,7 @@ export default function Header() {
         textDecoration: 'none',
         flexShrink: 0
       }}>
-          <img src="/airo-assets/images/logo/horizontal/dark" alt="IWILLBUILD" style={{
+          <img src="/airo-assets/images/logo/horizontal/dark" alt="IWIIlBUILD" style={{
           height: 40,
           width: 'auto',
           maxWidth: 200,

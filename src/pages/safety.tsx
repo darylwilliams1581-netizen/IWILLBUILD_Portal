@@ -901,7 +901,7 @@ export default function SafetyPage() {
       <DesktopTopBar />
       <DesktopDock />
       <Helmet>
-        <title>Safety — IWILLBUILD</title>
+        <title>Safety — IWIIlBUILD</title>
         <meta name="description" content="Manage SWMS, safety plans, policies and compliance documents for your trades business." />
         <link rel="canonical" href="https://iwillbuild.com/safety" />
         <meta name="robots" content="noindex" />

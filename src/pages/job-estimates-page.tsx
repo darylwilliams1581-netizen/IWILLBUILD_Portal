@@ -29,8 +29,8 @@ export default function JobEstimatesPage() {
   return (
     <div className="portal-page">
       <Helmet>
-        <title>{job ? `Estimates — ${job.name}` : 'Estimates'} — IWILLBUILD</title>
-        <meta name="description" content="View and manage estimates for this job in IWILLBUILD." />
+        <title>{job ? `Estimates — ${job.name}` : 'Estimates'} — IWIIlBUILD</title>
+        <meta name="description" content="View and manage estimates for this job in IWIIlBUILD." />
         <meta name="robots" content="noindex" />
         {job && <link rel="canonical" href={`https://iwillbuild.com/jobs/${job.id}/quotes`} />}
       </Helmet>

@@ -227,7 +227,7 @@ export const INDUSTRY_CONFIG: Record<IndustryId, IndustryConfig> = {
       'Incident Report',
       'Checklist',
     ],
-    dazzaContext: 'business using IWILLBUILD for field operations management',
+    dazzaContext: 'business using IWIIlBUILD for field operations management',
   },
 };
 

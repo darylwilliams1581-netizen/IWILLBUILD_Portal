@@ -210,7 +210,7 @@ export function getAuth() {
 
     plugins: [
       twoFactor({
-        issuer: 'IWILLBUILD',
+        issuer: 'IWIIlBUILD',
         // 10-minute window for the two_factor challenge cookie
         twoFactorCookieMaxAge: 600,
         // Account lockout: 10 failures → 15-minute lock (NIST SP 800-63B)

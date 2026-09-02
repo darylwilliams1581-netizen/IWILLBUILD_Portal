@@ -260,7 +260,7 @@ export default function JobQuotesPage() {
   return <div className="flex-1 bg-gray-50 flex flex-col lg-portal">
       <PortalSidebar />
       <Helmet>
-        <title>{job ? `Estimates — ${job.name}` : 'Estimates'} — IWILLBUILD</title>
+        <title>{job ? `Estimates — ${job.name}` : 'Estimates'} — IWIIlBUILD</title>
         <meta name="description" content="View and manage estimates for this job." />
         <meta name="robots" content="noindex" />
         <link rel="canonical" href={`https://iwillbuild.com/jobs/${id}/quotes`} />

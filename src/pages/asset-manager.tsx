@@ -34,7 +34,7 @@ export default function AssetManagerPage() {
   }, []);
   return <div className="portal-page">
       <Helmet>
-        <title>Equipment Manager — IWILLBUILD</title>
+        <title>Equipment Manager — IWIIlBUILD</title>
         <meta name="description" content="Manage equipment, tools, plant, safety gear and hire items." />
         <link rel="canonical" href="https://iwillbuild.com/studio/asset-manager" />
         <meta name="robots" content="noindex" />

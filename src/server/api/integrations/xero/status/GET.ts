@@ -2,7 +2,7 @@
  * GET /api/integrations/xero/status
  * Returns the Xero connection status for the current company.
  * Also returns platformReady: true/false so the UI knows whether the
- * IWILLBUILD owner has configured the Xero Developer App credentials.
+ * IWIIlBUILD owner has configured the Xero Developer App credentials.
  * Customers never need to touch those credentials — they just click Connect.
  */
 import type { Request, Response } from 'express';

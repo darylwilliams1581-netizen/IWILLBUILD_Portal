@@ -250,7 +250,7 @@ export default function SignupPage() {
   if (incompleteSignup) {
     return <div className="relative min-h-screen flex items-center justify-center overflow-hidden bg-[#0F1117] py-8">
         <Helmet>
-          <title>Complete Your Setup — IWILLBUILD Portal</title>
+          <title>Complete Your Setup — IWIIlBUILD Portal</title>
           <meta name="robots" content="noindex" />
         </Helmet>
         <BlueprintBg />
@@ -265,7 +265,7 @@ export default function SignupPage() {
         ease: 'easeOut' as const
       }} className="relative z-10 w-full max-w-md mx-4">
           <div className="flex justify-center mb-6">
-            <img src="/airo-assets/images/logo/horizontal" alt="IWILLBUILD Portal" className="h-8 w-auto" />
+            <img src="/airo-assets/images/logo/horizontal" alt="IWIIlBUILD Portal" className="h-8 w-auto" />
           </div>
           <div className="bg-white/5 border border-white/10 rounded-2xl p-8">
             <div className="w-12 h-12 rounded-xl bg-amber-500/15 border border-amber-500/30 flex items-center justify-center mx-auto mb-4">
@@ -307,12 +307,12 @@ export default function SignupPage() {
   }
   return <div className="relative min-h-screen flex items-center justify-center overflow-hidden bg-[#0F1117] py-8">
       <Helmet>
-        <title>Get Started Free — IWILLBUILD Fleet & Construction Portal</title>
-        <meta name="description" content="Create your IWILLBUILD portal account. 30-day free trial, no credit card required. Fleet tracking, SWMS safety, jobs and more." />
+        <title>Get Started Free — IWIIlBUILD Fleet & Construction Portal</title>
+        <meta name="description" content="Create your IWIIlBUILD portal account. 30-day free trial, no credit card required. Fleet tracking, SWMS safety, jobs and more." />
         <meta name="robots" content="noindex, nofollow" />
         <link rel="canonical" href="https://iwillbuild.com/signup" />
         <meta name="robots" content="noindex" />
-        <meta property="og:title" content="Get Started Free — IWILLBUILD" />
+        <meta property="og:title" content="Get Started Free — IWIIlBUILD" />
         <meta property="og:description" content="30-day free trial. Fleet tracking, SWMS safety management, jobs, forms and files — all in one portal." />
         <meta property="og:type" content="website" />
         <meta property="og:url" content="https://iwillbuild.com/signup" />
@@ -335,7 +335,7 @@ export default function SignupPage() {
     }} className="relative z-10 w-full max-w-lg mx-4">
         {/* Logo */}
         <div className="flex justify-center mb-6">
-          <img src="/airo-assets/images/logo/horizontal" alt="IWILLBUILD" className="h-10 w-auto object-contain" />
+          <img src="/airo-assets/images/logo/horizontal" alt="IWIIlBUILD" className="h-10 w-auto object-contain" />
         </div>
 
         <div className="bg-[#1A1D23] border border-white/10 rounded-xl shadow-2xl overflow-hidden">
@@ -609,7 +609,7 @@ export default function SignupPage() {
           {/* Footer */}
           <div className="px-8 py-4 bg-black/20 border-t border-white/5 text-center">
             <p className="text-xs text-white/25">
-              IWILLBUILD Pty Ltd &mdash; By signing up you agree to our Terms of Service
+              IWIIlBUILD Pty Ltd &mdash; By signing up you agree to our Terms of Service
             </p>
           </div>
         </div>

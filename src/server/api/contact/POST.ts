@@ -21,13 +21,13 @@ async function getEmailSettings(): Promise<{
     return {
       notifyEmail: map['contact_notification_email'] || 'darylwilliams1581@gmail.com',
       replyTo:     map['support_reply_to']           || 'support@iwillbuild.com',
-      fromName:    map['from_name']                  || 'IWILLBUILD',
+      fromName:    map['from_name']                  || 'IWIIlBUILD',
     };
   } catch {
     return {
       notifyEmail: 'darylwilliams1581@gmail.com',
       replyTo:     'support@iwillbuild.com',
-      fromName:    'IWILLBUILD',
+      fromName:    'IWIIlBUILD',
     };
   }
 }
@@ -80,7 +80,7 @@ export default async function handler(req: Request, res: Response) {
       html: `
         <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;padding:24px;background:#f8fafc;border-radius:8px;">
           <div style="background:#0f172a;padding:20px 24px;border-radius:6px 6px 0 0;margin-bottom:0;">
-            <span style="color:#7c3aed;font-size:20px;font-weight:700;letter-spacing:-0.5px;">IWILLBUILD</span>
+            <span style="color:#7c3aed;font-size:20px;font-weight:700;letter-spacing:-0.5px;">IWIIlBUILD</span>
             <span style="color:#94a3b8;font-size:14px;margin-left:12px;">New Website Enquiry</span>
           </div>
           <div style="background:#ffffff;padding:24px;border-radius:0 0 6px 6px;border:1px solid #e2e8f0;border-top:none;">
@@ -120,7 +120,7 @@ export default async function handler(req: Request, res: Response) {
       html: `
         <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;padding:24px;background:#f8fafc;border-radius:8px;">
           <div style="background:#0f172a;padding:20px 24px;border-radius:6px 6px 0 0;">
-            <span style="color:#7c3aed;font-size:20px;font-weight:700;letter-spacing:-0.5px;">IWILLBUILD</span>
+            <span style="color:#7c3aed;font-size:20px;font-weight:700;letter-spacing:-0.5px;">IWIIlBUILD</span>
           </div>
           <div style="background:#ffffff;padding:28px 24px;border-radius:0 0 6px 6px;border:1px solid #e2e8f0;border-top:none;">
             <p style="color:#0f172a;font-size:16px;font-weight:600;margin:0 0 12px;">Hi ${senderName},</p>

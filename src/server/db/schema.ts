@@ -89,7 +89,7 @@ export const twoFactor = mysqlTable('twoFactor', {
   lockedUntil:            datetime('locked_until'),
 });
 
-// ── IWILLBUILD app tables ────────────────────────────────────────────────────
+// ── IWIIlBUILD app tables ────────────────────────────────────────────────────
 
 export const companies = mysqlTable('companies', {
   id: int('id').primaryKey().autoincrement(),
@@ -156,7 +156,7 @@ export const profiles = mysqlTable('profiles', {
   permDeleteRecords: boolean('perm_delete_records').notNull().default(false),
   permInvoices: boolean('perm_invoices').notNull().default(true),
   // Platform-level role — separate from company role.
-  // 'developer' = IWILLBUILD platform developer (full Owner Console access)
+  // 'developer' = IWIIlBUILD platform developer (full Owner Console access)
   // 'support' = platform support staff (read-only Owner Console)
   // null = normal company user
   // platform_role is NOT in the Drizzle schema — it's a late-added column read via raw SQL only.

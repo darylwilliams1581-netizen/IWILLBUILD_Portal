@@ -25,8 +25,8 @@ export default function JobSafetyPage() {
   return (
     <div className="portal-page">
       <Helmet>
-        <title>{job ? `Safety — ${job.name}` : 'Safety'} — IWILLBUILD</title>
-        <meta name="description" content="Manage safety records and SWMS for this job in IWILLBUILD." />
+        <title>{job ? `Safety — ${job.name}` : 'Safety'} — IWIIlBUILD</title>
+        <meta name="description" content="Manage safety records and SWMS for this job in IWIIlBUILD." />
         <meta name="robots" content="noindex" />
         {job && <link rel="canonical" href={`https://iwillbuild.com/jobs/${job.id}/safety`} />}
       </Helmet>

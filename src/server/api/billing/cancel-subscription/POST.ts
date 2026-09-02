@@ -37,7 +37,7 @@ async function sendCancellationEmail(opts: {
       <div style="background:#f8fafc;padding:32px;border-radius:0 0 8px 8px;border:1px solid #e2e8f0;border-top:none;">
         <p style="margin:0 0 16px;">Hi ${name},</p>
         <p style="margin:0 0 16px;">
-          We've received your cancellation request for <strong>${companyName}</strong> on IWILLBUILD.
+          We've received your cancellation request for <strong>${companyName}</strong> on IWIIlBUILD.
         </p>
         <p style="margin:0 0 24px;">
           Your account will remain fully active until <strong>${accessUntil}</strong>.
@@ -68,7 +68,7 @@ async function sendCancellationEmail(opts: {
   const text = [
     `Hi ${name},`,
     ``,
-    `We've received your cancellation request for ${companyName} on IWILLBUILD.`,
+    `We've received your cancellation request for ${companyName} on IWIIlBUILD.`,
     ``,
     `Your account will remain fully active until ${accessUntil}. You can reactivate at any time before then.`,
     ``,
@@ -82,7 +82,7 @@ async function sendCancellationEmail(opts: {
     `Questions? Email support@iwillbuild.com`,
   ].join('\n');
   try {
-    await sendEmail({ to, subject: `Your IWILLBUILD subscription has been cancelled`, fromName: 'IWILLBUILD', html, text });
+    await sendEmail({ to, subject: `Your IWIIlBUILD subscription has been cancelled`, fromName: 'IWIIlBUILD', html, text });
   } catch (emailErr) {
     console.error('billing/cancel-subscription: failed to send confirmation email:', emailErr);
   }

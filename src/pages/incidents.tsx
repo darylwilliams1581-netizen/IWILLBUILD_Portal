@@ -191,7 +191,7 @@ export default function IncidentsPage() {
       <DesktopTopBar />
       <DesktopDock />
       <Helmet>
-        <title>Incident Register — IWILLBUILD</title>
+        <title>Incident Register — IWIIlBUILD</title>
         <meta name="description" content="Company incident register — injuries, near misses, property damage, and safety events." />
         <link rel="canonical" href="https://iwillbuild.com/incidents" />
         <meta name="robots" content="noindex, nofollow" />

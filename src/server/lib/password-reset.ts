@@ -92,7 +92,7 @@ export async function sendPasswordResetEmail(email: string): Promise<void> {
     ? [
         `Hi ${firstName},`,
         '',
-        'We received a request to reset your IWILLBUILD Portal password.',
+        'We received a request to reset your IWIIlBUILD Portal password.',
         '',
         `Reset link: ${resetUrl}`,
         '',
@@ -100,16 +100,16 @@ export async function sendPasswordResetEmail(email: string): Promise<void> {
         '',
         'If you did not request a password reset, you can safely ignore this email.',
         '',
-        '— The IWILLBUILD Team',
+        '— The IWIIlBUILD Team',
       ].join('\n')
     : [
         `Hi ${firstName},`,
         '',
-        'We received a request to reset your IWILLBUILD Portal password.',
+        'We received a request to reset your IWIIlBUILD Portal password.',
         '',
         'Our system is currently being set up. Please ask your platform owner to visit the Owner Console to complete the setup, then try again.',
         '',
-        '— The IWILLBUILD Team',
+        '— The IWIIlBUILD Team',
       ].join('\n');
 
   const bodyHtml = tokenStored ? `
@@ -122,7 +122,7 @@ export async function sendPasswordResetEmail(email: string): Promise<void> {
       <table width="100%" style="max-width:520px;background:#1A1D27;border-radius:12px;overflow:hidden;border:1px solid rgba(255,255,255,0.08);">
         <tr>
           <td style="background:#7C3AED;padding:24px 32px;">
-            <p style="margin:0;font-size:20px;font-weight:700;color:#fff;letter-spacing:-0.3px;">IWILLBUILD Portal</p>
+            <p style="margin:0;font-size:20px;font-weight:700;color:#fff;letter-spacing:-0.3px;">IWIIlBUILD Portal</p>
           </td>
         </tr>
         <tr>
@@ -144,7 +144,7 @@ export async function sendPasswordResetEmail(email: string): Promise<void> {
         </tr>
         <tr>
           <td style="padding:16px 32px;border-top:1px solid rgba(255,255,255,0.06);">
-            <p style="margin:0;font-size:12px;color:rgba(255,255,255,0.25);">© ${new Date().getFullYear()} IWILLBUILD Portal. All rights reserved.</p>
+            <p style="margin:0;font-size:12px;color:rgba(255,255,255,0.25);">© ${new Date().getFullYear()} IWIIlBUILD Portal. All rights reserved.</p>
           </td>
         </tr>
       </table>
@@ -160,7 +160,7 @@ export async function sendPasswordResetEmail(email: string): Promise<void> {
     <tr><td align="center">
       <table width="100%" style="max-width:520px;background:#1A1D27;border-radius:12px;overflow:hidden;border:1px solid rgba(255,255,255,0.08);">
         <tr><td style="background:#7C3AED;padding:24px 32px;">
-          <p style="margin:0;font-size:20px;font-weight:700;color:#fff;">IWILLBUILD Portal</p>
+          <p style="margin:0;font-size:20px;font-weight:700;color:#fff;">IWIIlBUILD Portal</p>
         </td></tr>
         <tr><td style="padding:32px;">
           <h1 style="margin:0 0 8px;font-size:22px;font-weight:700;color:#fff;">Password Reset Request</h1>
@@ -172,7 +172,7 @@ export async function sendPasswordResetEmail(email: string): Promise<void> {
           </p>
         </td></tr>
         <tr><td style="padding:16px 32px;border-top:1px solid rgba(255,255,255,0.06);">
-          <p style="margin:0;font-size:12px;color:rgba(255,255,255,0.25);">© ${new Date().getFullYear()} IWILLBUILD Portal.</p>
+          <p style="margin:0;font-size:12px;color:rgba(255,255,255,0.25);">© ${new Date().getFullYear()} IWIIlBUILD Portal.</p>
         </td></tr>
       </table>
     </td></tr>
@@ -182,9 +182,9 @@ export async function sendPasswordResetEmail(email: string): Promise<void> {
 
   try {
     await sendEmail({
-      fromName: 'IWILLBUILD Portal',
+      fromName: 'IWIIlBUILD Portal',
       to: normalised,
-      subject: 'Reset your password — IWILLBUILD Portal',
+      subject: 'Reset your password — IWIIlBUILD Portal',
       text: bodyText,
       html: bodyHtml,
     });

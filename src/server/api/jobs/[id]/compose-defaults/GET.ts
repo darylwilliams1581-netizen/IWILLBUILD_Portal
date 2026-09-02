@@ -38,7 +38,7 @@ export default async function handler(req: Request, res: Response) {
     const [companyRows] = await db.execute(sql`
       SELECT name FROM companies WHERE id = ${profile.companyId} LIMIT 1
     `) as unknown as [Array<{ name?: string }>, unknown];
-    const companyName = String(companyRows?.[0]?.name ?? 'IWILLBUILD');
+    const companyName = String(companyRows?.[0]?.name ?? 'IWIIlBUILD');
 
     const jobNumber  = String(row.job_number  ?? '');
     const jobName    = String(row.name        ?? '');

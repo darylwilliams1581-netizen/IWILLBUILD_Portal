@@ -4,7 +4,7 @@
  * CP12A §5 — Subtle notice shown near image upload controls.
  *
  * Wording (exact, per spec §5):
- *   "Images are protected by the IWILLBUILD Image Safeguard Protocol."
+ *   "Images are protected by the IWIIlBUILD Image Safeguard Protocol."
  *
  * Linked to the Privacy and Acceptable Use information (/privacy).
  *

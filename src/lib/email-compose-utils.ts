@@ -41,6 +41,6 @@ export function removeOverlap(list: string[], others: string[]): string[] {
   return list.filter((a) => !otherSet.has(a.toLowerCase()));
 }
 
-export const SYSTEM_FOOTER = 'This email was sent automatically from IWILLBUILD. Please do not reply.';
+export const SYSTEM_FOOTER = 'This email was sent automatically from IWIIlBUILD. Please do not reply.';
 export const MAX_SUBJECT_LEN = 200;
 export const MAX_MESSAGE_LEN = 4000;

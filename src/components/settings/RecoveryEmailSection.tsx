@@ -136,7 +136,7 @@ export default function RecoveryEmailSection({ twoFactorEnabled }: Props) {
       {state?.frozen && (
         <div className="flex items-start gap-2 bg-red-50 border border-red-200 rounded-lg px-3 py-2.5 text-xs text-red-700">
           <AlertTriangle size={13} className="shrink-0 mt-0.5" />
-          <span>This account is frozen. Contact IWILLBUILD support to open a recovery case.</span>
+          <span>This account is frozen. Contact IWIIlBUILD support to open a recovery case.</span>
         </div>
       )}
 

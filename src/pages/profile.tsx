@@ -289,7 +289,7 @@ export default function ProfilePage() {
       <DesktopTopBar />
       <DesktopDock />
       <Helmet>
-        <title>My Profile — IWILLBUILD Portal</title>
+        <title>My Profile — IWIIlBUILD Portal</title>
         <meta name="description" content="Manage your profile, licences, emergency contact and security settings." />
         <link rel="canonical" href="https://iwillbuild.com/profile" />
         <meta name="robots" content="noindex" />
@@ -527,7 +527,7 @@ export default function ProfilePage() {
               </div>
               <div className="flex-1">
                 <h2 className="font-bold text-slate-900 text-base leading-tight">Install App</h2>
-                <p className="text-xs text-slate-400 mt-0.5">Add IWILLBUILD to your home screen</p>
+                <p className="text-xs text-slate-400 mt-0.5">Add IWIIlBUILD to your home screen</p>
               </div>
               <button onClick={() => setInstallOpen(false)} className="w-8 h-8 rounded-lg flex items-center justify-center text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition-colors" aria-label="Close">
                 <X size={16} />

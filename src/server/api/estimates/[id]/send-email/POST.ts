@@ -23,7 +23,7 @@ import { getAuth } from '../../../../../lib/auth/auth.js';
 const MAX_SUBJECT = 200;
 const MAX_MESSAGE = 4000;
 const EMAIL_ATTACHMENT_LIMIT = 2 * 1024 * 1024;
-const SYSTEM_FOOTER = 'This email was sent automatically from IWILLBUILD. Please do not reply.';
+const SYSTEM_FOOTER = 'This email was sent automatically from IWIIlBUILD. Please do not reply.';
 
 function isValidEmail(addr: string): boolean {
   return /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(addr.trim());

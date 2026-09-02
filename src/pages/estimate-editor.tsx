@@ -459,8 +459,8 @@ export default function EstimateEditorPage() {
   return <div className="flex-1 bg-gray-50 flex flex-col lg-portal">
       <PortalSidebar />
       <Helmet>
-        <title>{estimate ? `${estimate.title} — Estimate — IWILLBUILD` : 'Estimate — IWILLBUILD'}</title>
-        <meta name="description" content={estimate ? `Estimate: ${estimate.title}` : 'Estimate editor — IWILLBUILD Portal'} />
+        <title>{estimate ? `${estimate.title} — Estimate — IWIIlBUILD` : 'Estimate — IWIIlBUILD'}</title>
+        <meta name="description" content={estimate ? `Estimate: ${estimate.title}` : 'Estimate editor — IWIIlBUILD Portal'} />
         <link rel="canonical" href={`https://iwillbuild.com/estimates/${id}`} />
         <meta name="robots" content="noindex" />
       </Helmet>

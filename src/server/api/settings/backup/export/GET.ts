@@ -231,7 +231,7 @@ export default async function handler(req: Request, res: Response) {
     const dateStr = exportedAt.slice(0, 10);
 
     const readme = [
-      `IWILLBUILD — Data Backup`,
+      `IWIIlBUILD — Data Backup`,
       `========================`,
       ``,
       `Company:     ${companyName}`,

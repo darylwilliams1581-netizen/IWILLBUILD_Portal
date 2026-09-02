@@ -1373,17 +1373,17 @@ export default function SchedulerPage() {
   const visibleCount = view === 'timeline' || view === 'crew' ? filtered.filter(j => overlapsWindow(j, windowStart, windowEnd)).length : filtered.length;
   return <div className="portal-page">
       <Helmet>
-        <title>Scheduler — IWILLBUILD</title>
+        <title>Scheduler — IWIIlBUILD</title>
         <meta name="description" content="View and manage job schedules, timelines and upcoming work." />
         <link rel="canonical" href="https://iwillbuild.com/scheduler" />
         <meta name="robots" content="noindex" />
-        <meta property="og:title" content="Scheduler — IWILLBUILD" />
+        <meta property="og:title" content="Scheduler — IWIIlBUILD" />
         <meta property="og:description" content="View and manage job schedules, timelines and upcoming work." />
         <meta property="og:type" content="website" />
         <meta property="og:url" content="https://iwillbuild.com/scheduler" />
         <meta property="og:image" content="https://iwillbuild.com/airo-assets/images/pages/home/og-image" />
         <meta name="twitter:card" content="summary_large_image" />
-        <meta name="twitter:title" content="Scheduler — IWILLBUILD" />
+        <meta name="twitter:title" content="Scheduler — IWIIlBUILD" />
         <meta name="twitter:description" content="View and manage job schedules, timelines and upcoming work." />
         <meta name="twitter:image" content="https://iwillbuild.com/airo-assets/images/pages/home/og-image" />
       </Helmet>

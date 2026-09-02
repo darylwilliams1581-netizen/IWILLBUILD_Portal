@@ -161,7 +161,7 @@ export default function JobPhotosPage() {
       try {
         await navigator.share({
           title: `${job?.name ?? 'Job'} — Photos`,
-          text: `View photos for ${job?.name ?? 'this job'} on IWILLBUILD`,
+          text: `View photos for ${job?.name ?? 'this job'} on IWIIlBUILD`,
           url: window.location.href
         });
         return;
@@ -202,7 +202,7 @@ export default function JobPhotosPage() {
   const title = job ? `${job.name} — Photos` : 'Job Photos';
   return <div className="portal-page">
       <Helmet>
-        <title>{title} — IWILLBUILD</title>
+        <title>{title} — IWIIlBUILD</title>
         <meta name="description" content="View and manage photos for this job." />
         <meta name="robots" content="noindex" />
         <link rel="canonical" href={`https://iwillbuild.com/jobs/${id}/photos`} />

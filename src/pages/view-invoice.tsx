@@ -36,8 +36,8 @@ export default function ViewInvoicePage() {
   const sl = status ? STATUS_LABELS[status] : '';
   return <>
       <Helmet>
-        <title>{invoice ? `${invoice.invoice_number} — Invoice — IWILLBUILD` : 'Invoice Viewer — IWILLBUILD'}</title>
-        <meta name="description" content="Authenticated invoice viewer — IWILLBUILD portal" />
+        <title>{invoice ? `${invoice.invoice_number} — Invoice — IWIIlBUILD` : 'Invoice Viewer — IWIIlBUILD'}</title>
+        <meta name="description" content="Authenticated invoice viewer — IWIIlBUILD portal" />
         <link rel="canonical" href={`https://iwillbuild.com/view/invoice/${id ?? ''}`} />
         <meta name="robots" content="noindex, nofollow" />
       </Helmet>

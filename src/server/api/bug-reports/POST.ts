@@ -223,7 +223,7 @@ async function triggerAutoAnalysis(
     const apiKey = getSecret('OPENAI_API_KEY');
     if (!apiKey) return;
 
-    const systemPrompt = `You are Dazza, the IWILLBUILD platform AI. Analyse this bug report and return JSON with keys: "analysis", "suggestedFix", "suggestedPrompt". Be specific and technical.`;
+    const systemPrompt = `You are Dazza, the IWIIlBUILD platform AI. Analyse this bug report and return JSON with keys: "analysis", "suggestedFix", "suggestedPrompt". Be specific and technical.`;
     const userPrompt = `Category: ${report.category}\nDescription: ${report.description?.slice(0, 1500)}\nRoute: ${report.current_route || report.page_url}\nPlatform: ${report.platform}\nVersion: ${report.app_version}`;
 
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
@@ -281,7 +281,7 @@ async function triggerAutoAnalysis(
     const ownerPhone = getSecret('PLATFORM_OWNER_PHONE') ?? process.env.PLATFORM_OWNER_PHONE ?? '';
     if (isSmsConfigured() && ownerPhone) {
       const smsBody =
-        `🐛 New IWILLBUILD Bug\n` +
+        `🐛 New IWIIlBUILD Bug\n` +
         `${report.category?.replace(/_/g, ' ') ?? 'Unknown'}: ${report.description?.slice(0, 80) ?? ''}...\n\n` +
         `Dazza: ${suggestedFix.slice(0, 100)}\n\n` +
         `Auth code: ${code} (15 min)`;

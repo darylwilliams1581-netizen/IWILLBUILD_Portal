@@ -25,8 +25,8 @@ export default function JobFilesPage() {
   return (
     <div className="portal-page">
       <Helmet>
-        <title>{job ? `Files — ${job.name}` : 'Files'} — IWILLBUILD</title>
-        <meta name="description" content="Manage documents and files for this job in IWILLBUILD." />
+        <title>{job ? `Files — ${job.name}` : 'Files'} — IWIIlBUILD</title>
+        <meta name="description" content="Manage documents and files for this job in IWIIlBUILD." />
         <meta name="robots" content="noindex" />
         {job && <link rel="canonical" href={`https://iwillbuild.com/jobs/${job.id}/files`} />}
       </Helmet>

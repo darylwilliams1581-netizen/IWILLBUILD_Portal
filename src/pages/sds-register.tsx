@@ -544,7 +544,7 @@ export default function SdsRegisterPage() {
   return (
     <>
       <Helmet>
-        <title>SDS / MSDS Register — IWILLBUILD</title>
+        <title>SDS / MSDS Register — IWIIlBUILD</title>
         <meta name="description" content="Safety Data Sheet register — search, view and manage SDS/MSDS documents on-site." />
         <link rel="canonical" href="https://iwillbuild.com/sds-register" />
         <meta name="robots" content="noindex" />

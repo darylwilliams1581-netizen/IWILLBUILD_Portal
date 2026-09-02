@@ -2048,12 +2048,12 @@ export default function HomeScreen() {
       {/* All content above the overlay */}
       <div className="relative z-10 flex flex-col flex-1 min-h-0">
       <Helmet>
-        <title>Home — IWILLBUILD</title>
-        <meta name="description" content="IWILLBUILD field launcher — quick access to camera, drive, forms, job costs and more." />
+        <title>Home — IWIIlBUILD</title>
+        <meta name="description" content="IWIIlBUILD field launcher — quick access to camera, drive, forms, job costs and more." />
         <meta name="robots" content="noindex" />
         <link rel="canonical" href="https://iwillbuild.com/home" />
       </Helmet>
-      <h1 className="sr-only">IWILLBUILD Home</h1>
+      <h1 className="sr-only">IWIIlBUILD Home</h1>
 
       {/* ── Top bar ── */}
       <div className="px-4 pb-3" style={{
@@ -2080,7 +2080,7 @@ export default function HomeScreen() {
           </div>
           {/* System logo badge — display only */}
           <div className="w-16 h-16 rounded-2xl flex items-center justify-center shrink-0 mb-0.5 overflow-hidden">
-            <img src="/airo-assets/images/logo/primary" alt="IWILLBUILD" className="w-full h-full object-contain" />
+            <img src="/airo-assets/images/logo/primary" alt="IWIIlBUILD" className="w-full h-full object-contain" />
           </div>
         </div>
       </div>

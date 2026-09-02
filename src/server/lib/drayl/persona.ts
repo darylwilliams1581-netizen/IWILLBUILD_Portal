@@ -10,7 +10,7 @@
  */
 export function dazzaOpening(brief = false): string {
   if (brief) return "G'day — Dazza here.";
-  return "G'day! Dazza here — your IWILLBUILD site intelligence. What do you need?";
+  return "G'day! Dazza here — your IWIIlBUILD site intelligence. What do you need?";
 }
 
 /**

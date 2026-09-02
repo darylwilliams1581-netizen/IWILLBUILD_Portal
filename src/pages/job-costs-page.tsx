@@ -47,7 +47,7 @@ export default function JobCostsPage() {
   return (
     <div className="portal-page">
       <Helmet>
-        <title>{job ? `Job Ledger — ${job.name}` : 'Job Ledger'} — IWILLBUILD</title>
+        <title>{job ? `Job Ledger — ${job.name}` : 'Job Ledger'} — IWIIlBUILD</title>
         <meta name="description" content="View and manage cost ledger entries for this job." />
         <meta name="robots" content="noindex" />
         {id && <link rel="canonical" href={`https://iwillbuild.com/jobs/${id}/costs`} />}

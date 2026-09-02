@@ -94,7 +94,7 @@ export default function OverviewTab({ stats, companies, activity, enteringSuppor
         </div>
         <div className="flex-1 min-w-0">
           <p className="text-sm font-bold text-slate-800 group-hover:text-primary transition-colors">GoDaddy Developer Dashboard</p>
-          <p className="text-xs text-slate-400 truncate">Open the IWILLBUILD Portal development workspace</p>
+          <p className="text-xs text-slate-400 truncate">Open the IWIIlBUILD Portal development workspace</p>
         </div>
         <ExternalLink size={15} className="text-slate-400 group-hover:text-primary transition-colors shrink-0" />
       </a>

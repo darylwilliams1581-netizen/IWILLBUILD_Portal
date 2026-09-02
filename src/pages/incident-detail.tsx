@@ -657,7 +657,7 @@ export default function IncidentDetailPage() {
   return <>
       {/* CP12A: Subtle safeguard notice rendered at page level (hidden, used by upload sections) */}
       <Helmet>
-        <title>{pageTitle} — IWILLBUILD</title>
+        <title>{pageTitle} — IWIIlBUILD</title>
         <meta name="description" content="Incident record detail and corrective actions." />
         <link rel="canonical" href={`https://iwillbuild.com/incidents/${id}`} />
         <meta name="robots" content="noindex, nofollow" />

@@ -1,7 +1,7 @@
 /**
  * uploadService.ts
  * ─────────────────────────────────────────────────────────────────────────────
- * Canonical upload service for all IWILLBUILD media destinations.
+ * Canonical upload service for all IWIIlBUILD media destinations.
  *
  * Responsibilities:
  *  - Authenticated company ownership check

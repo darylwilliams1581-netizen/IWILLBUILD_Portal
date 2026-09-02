@@ -9,7 +9,7 @@ export default function TakeoffPadPage() {
   return (
     <div className="portal-page">
       <Helmet>
-        <title>Take-off Pad — IWILLBUILD</title>
+        <title>Take-off Pad — IWIIlBUILD</title>
         <meta name="description" content="Voice and manual quantity take-off pad for construction estimating." />
         <meta name="robots" content="noindex" />
         <link rel="canonical" href="https://iwillbuild.com/takeoff-pad" />

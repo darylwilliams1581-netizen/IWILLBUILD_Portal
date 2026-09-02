@@ -293,7 +293,7 @@ function PortalMockup() {
       {/* Screenshot */}
       <img
         src="/airo-assets/images/pages/home/mockup-desktop"
-        alt="IWILLBUILD office portal dashboard"
+        alt="IWIIlBUILD office portal dashboard"
         style={{ width: '100%', display: 'block' }}
         loading="eager"
       />
@@ -329,7 +329,7 @@ function PhoneMockup() {
       {/* Screenshot */}
       <img
         src="/airo-assets/images/pages/home/mockup-mobile"
-        alt="IWILLBUILD mobile field app"
+        alt="IWIIlBUILD mobile field app"
         style={{ width: '100%', display: 'block' }}
         loading="eager"
       />
@@ -340,20 +340,20 @@ function PhoneMockup() {
 // ── Main component ────────────────────────────────────────────────────────────
 export default function HomePage() {
   const site = 'https://iwillbuild.com';
-  const title = 'IWILLBUILD | Construction Job Management — Jobs, Forms, Fleet, Safety & Files';
-  const description = 'IWILLBUILD manages the work — jobs, estimates, forms, photos, fleet, safety, invoicing and files — in one clean construction portal. Accounting integrations sync approved invoices to Xero and QuickBooks. 30-day free trial.';
+  const title = 'IWIIlBUILD | Construction Job Management — Jobs, Forms, Fleet, Safety & Files';
+  const description = 'IWIIlBUILD manages the work — jobs, estimates, forms, photos, fleet, safety, invoicing and files — in one clean construction portal. Accounting integrations sync approved invoices to Xero and QuickBooks. 30-day free trial.';
   const ogDescription = 'Manage construction jobs, estimates, forms, photos, fleet, safety and files in one clean portal. Accounting integrations sync approved invoices to Xero and QuickBooks.';
   const jsonLd = {
     '@context': 'https://schema.org',
     '@graph': [{
       '@type': 'WebSite',
       '@id': `${site}/#website`,
-      name: 'IWILLBUILD',
+      name: 'IWIIlBUILD',
       url: `${site}/`
     }, {
       '@type': 'Organization',
       '@id': `${site}/#organization`,
-      name: 'IWILLBUILD',
+      name: 'IWIIlBUILD',
       url: `${site}/`,
       logo: {
         '@type': 'ImageObject',
@@ -363,11 +363,11 @@ export default function HomePage() {
     }, {
       '@type': 'SoftwareApplication',
       '@id': `${site}/#app`,
-      name: 'IWILLBUILD',
+      name: 'IWIIlBUILD',
       url: `${site}/`,
       applicationCategory: 'BusinessApplication',
       operatingSystem: 'Web',
-      description: 'IWILLBUILD manages the work — jobs, estimates, forms, photos, fleet, safety and files — in one clean construction portal. Accounting integrations help approved invoices and contacts flow into Xero, QuickBooks and MYOB.',
+      description: 'IWIIlBUILD manages the work — jobs, estimates, forms, photos, fleet, safety and files — in one clean construction portal. Accounting integrations help approved invoices and contacts flow into Xero, QuickBooks and MYOB.',
       keywords: 'field service management software, trades management app, job management software Australia, fleet management for tradies, safety forms software, construction job management, SWMS, site safety, QR attendance',
       publisher: {
         '@id': `${site}/#organization`
@@ -423,7 +423,7 @@ export default function HomePage() {
         <meta property="og:image" content={`${site}/airo-assets/images/pages/home/og-image`} />
         <meta property="og:image:width" content="1200" />
         <meta property="og:image:height" content="630" />
-        <meta property="og:site_name" content="IWILLBUILD" />
+        <meta property="og:site_name" content="IWIIlBUILD" />
         {/* Twitter */}
         <meta name="twitter:card" content="summary_large_image" />
         <meta name="twitter:title" content={title} />
@@ -455,7 +455,7 @@ export default function HomePage() {
         `}</style>
       </Helmet>
 
-      {/* ── Topbar — IWILLBUILD branded header ────────────────────────────── */}
+      {/* ── Topbar — IWIIlBUILD branded header ────────────────────────────── */}
       <Header />
 
       <main suppressHydrationWarning>
@@ -1205,7 +1205,7 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* ── Why IWILLBUILD ─────────────────────────────────────────────────── */}
+      {/* ── Why IWIIlBUILD ─────────────────────────────────────────────────── */}
       <section id="why" style={{
         backgroundColor: '#0f172a',
         borderTop: '1px solid #1e293b'
@@ -1252,7 +1252,7 @@ export default function HomePage() {
               margin: '0 0 28px',
               maxWidth: 560
             }}>
-              IWILLBUILD brings your projects, estimates, forms, photos, safety docs, fleet and scheduling into a single clean portal. Your team works from site, your office stays across everything.
+              IWIIlBUILD brings your projects, estimates, forms, photos, safety docs, fleet and scheduling into a single clean portal. Your team works from site, your office stays across everything.
             </p>
             <div>
               <Link to="/signup" style={{
@@ -1304,7 +1304,7 @@ export default function HomePage() {
                   fontSize: 13,
                   fontWeight: 700,
                   color: '#f1f5f9'
-                }}>IWILLBUILD Portal</div>
+                }}>IWIIlBUILD Portal</div>
                 <div style={{
                   fontSize: 11,
                   color: '#22c55e'
@@ -1416,7 +1416,7 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* ── Footer — IWILLBUILD branded footer ────────────────────────────── */}
+      {/* ── Footer — IWIIlBUILD branded footer ────────────────────────────── */}
       <Footer />
 
       {/* Responsive styles */}
