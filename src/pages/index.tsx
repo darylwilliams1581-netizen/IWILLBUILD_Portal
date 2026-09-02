@@ -288,7 +288,7 @@ function PortalMockup() {
         <span style={{ width: 10, height: 10, borderRadius: '50%', backgroundColor: '#f59e0b', display: 'inline-block' }} />
         <span style={{ width: 10, height: 10, borderRadius: '50%', backgroundColor: '#22c55e', display: 'inline-block' }} />
         <span style={{ flex: 1, backgroundColor: '#334155', borderRadius: 4, height: 16, marginLeft: 8 }} />
-        <span style={{ fontSize: 10, color: '#475569', fontWeight: 600 }}>iwillbuild.com/home</span>
+        <span style={{ fontSize: 10, color: '#475569', fontWeight: 600 }}>IWIllBUIlD.com/home</span>
       </div>
       {/* Screenshot */}
       <img
