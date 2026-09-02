@@ -6,7 +6,7 @@ const downloads = [
   {
     id: 'DL-001',
     name: 'Clean Blocks v96',
-    description: 'The latest edition of the IWIllBUILD Clean Blocks cost guide. Use this as the foundation for all estimates.',
+    description: 'The latest edition of the IWIllBUIlD Clean Blocks cost guide. Use this as the foundation for all estimates.',
     type: 'PDF',
     size: '4.2 MB',
     version: 'v96',
@@ -45,18 +45,18 @@ export default function DownloadsPage() {
   return (
     <div className="portal-page">
       <Helmet>
-        <title>Downloads — IWIllBUILD Portal</title>
-        <meta name="description" content="Download Clean Blocks, templates and compliance documents from the IWIllBUILD portal." />
+        <title>Downloads — IWIllBUIlD Portal</title>
+        <meta name="description" content="Download Clean Blocks, templates and compliance documents from the IWIllBUIlD portal." />
         <link rel="canonical" href="https://iwillbuild.com/downloads" />
         <meta name="robots" content="noindex" />
-        <meta property="og:title" content="Downloads — IWIllBUILD Portal" />
-        <meta property="og:description" content="Download Clean Blocks, templates and compliance documents from the IWIllBUILD portal." />
+        <meta property="og:title" content="Downloads — IWIllBUIlD Portal" />
+        <meta property="og:description" content="Download Clean Blocks, templates and compliance documents from the IWIllBUIlD portal." />
         <meta property="og:type" content="website" />
         <meta property="og:url" content="https://iwillbuild.com/downloads" />
         <meta property="og:image" content="https://iwillbuild.com/airo-assets/images/pages/home/og-image" />
         <meta name="twitter:card" content="summary_large_image" />
-        <meta name="twitter:title" content="Downloads — IWIllBUILD Portal" />
-        <meta name="twitter:description" content="Download Clean Blocks, templates and compliance documents from the IWIllBUILD portal." />
+        <meta name="twitter:title" content="Downloads — IWIllBUIlD Portal" />
+        <meta name="twitter:description" content="Download Clean Blocks, templates and compliance documents from the IWIllBUIlD portal." />
         <meta name="twitter:image" content="https://iwillbuild.com/airo-assets/images/pages/home/og-image" />
       </Helmet>
 

@@ -47,7 +47,7 @@ function newBody(titleExpr, swmsVar) {
         '\${safe(title)}',
         'General Construction / Site Works',
         '1',
-        'Site Supervisor / IWIllBUILD',
+        'Site Supervisor / IWIllBUIlD',
         'Principal Contractor',
         'draft',
         'advanced',

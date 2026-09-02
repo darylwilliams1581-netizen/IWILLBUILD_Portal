@@ -25,8 +25,8 @@ export default function JobTasksPage() {
   return (
     <div className="portal-page">
       <Helmet>
-        <title>{job ? `Tasks — ${job.name}` : 'Tasks'} — IWIllBUILD</title>
-        <meta name="description" content="Manage tasks and to-dos for this job in IWIllBUILD." />
+        <title>{job ? `Tasks — ${job.name}` : 'Tasks'} — IWIllBUIlD</title>
+        <meta name="description" content="Manage tasks and to-dos for this job in IWIllBUIlD." />
         <meta name="robots" content="noindex" />
         {job && <link rel="canonical" href={`https://iwillbuild.com/jobs/${job.id}/tasks`} />}
       </Helmet>

@@ -1,16 +1,16 @@
-# IWIllBUILD release candidate - Version 12, Build 12
+# IWIllBUIlD release candidate - Version 12, Build 12
 
 This is the prepared GitHub/TestFlight source based on successful Appflow Build Package #59.
 
 - Application base: installed Airo download
-- Source Git remote: `https://github.com/darylwilliams1581-netizen/IWIllBUILD_Portal.git`
+- Source Git remote: `https://github.com/darylwilliams1581-netizen/IWIllBUIlD_Portal.git`
 - Build #59 source commit: `8bf95229e533493b66ca281c2a98044d7f65832d`
 - iOS version/build: `12 (12)`
 - npm application version: `12.0.0`
 
 ## Document email repair
 
-Quote Email now uses IWIllBUILD's server email service and attaches the generated quote PDF. It no longer opens an Outlook `mailto:` draft, and no private in-app link is sent to external customers.
+Quote Email now uses IWIllBUIlD's server email service and attaches the generated quote PDF. It no longer opens an Outlook `mailto:` draft, and no private in-app link is sent to external customers.
 
 Completed Form Send Email now generates and attaches a PDF containing the form details, stored photos and captured signatures. Invoice Email has been aligned to the same reusable email dialog while retaining its existing attachment endpoint.
 

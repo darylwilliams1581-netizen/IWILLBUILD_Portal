@@ -218,7 +218,7 @@ export default function AnnettePage() {
   return (
     <>
       <Helmet>
-        <title>Dazza Health Check — IWIllBUILD</title>
+        <title>Dazza Health Check — IWIllBUIlD</title>
         <meta name="description" content="Dazza Health Check — structured company health check across jobs, fleet, forms, estimates and to-dos." />
         <link rel="canonical" href="https://iwillbuild.com/annette" />
         <meta name="robots" content="noindex" />
@@ -359,7 +359,7 @@ export default function AnnettePage() {
                 <div className="mt-5 bg-slate-50 border border-slate-200 rounded-xl p-4 flex gap-3">
                   <Info size={13} className="text-slate-400 shrink-0 mt-0.5" />
                   <p className="text-xs text-slate-500 leading-relaxed">
-                    Dazza Health Check reports are based on data currently in your IWIllBUILD portal. For WHS, building code, or legal compliance matters, always verify with a competent person or the current official standard. Dazza Health Check does not provide legal or professional advice.
+                    Dazza Health Check reports are based on data currently in your IWIllBUIlD portal. For WHS, building code, or legal compliance matters, always verify with a competent person or the current official standard. Dazza Health Check does not provide legal or professional advice.
                   </p>
                 </div>
               </>

@@ -100,7 +100,7 @@ export const forms: {
   deleteConfirm: { heading: string; body: string; confirmLabel: string; deletingLabel: string; cancelLabel: string };
   drawer: { createHeading: string; editHeading: string; namePlaceholder: string; categoryPlaceholder: string; descriptionPlaceholder: string; availabilityLabel: string; activeLabel: string; dashboardLabel: string; jobsLabel: string; fleetLabel: string };
 } = {
-  page: { title: 'Forms — IWIllBUILD', heading: 'Forms', metaDescription: 'Manage form templates for jobs, fleet, safety and company operations.' },
+  page: { title: 'Forms — IWIllBUIlD', heading: 'Forms', metaDescription: 'Manage form templates for jobs, fleet, safety and company operations.' },
   FORM_TYPES: ['Job', 'Company', 'Fleet', 'Accounts'],
   emptyState: { heading: 'No form templates yet', body: 'Create your first form template to get started.' },
   deleteConfirm: { heading: 'Delete Template?', body: 'will be permanently deleted. This cannot be undone.', confirmLabel: 'Delete', deletingLabel: 'Deleting…', cancelLabel: 'Cancel' },
@@ -113,7 +113,7 @@ export const job_field_docs: {
   signOnRegister: { heading: string; workerNote: string; noSignOnsBody: string };
   addDocModal: { heading: string; addLabel: string; cancelLabel: string };
 } = {
-  page: { title: 'Field Docs | IWIllBUILD', heading: 'Field Docs', metaDescription: 'View, review and sign on to job documents in the field.' },
+  page: { title: 'Field Docs | IWIllBUIlD', heading: 'Field Docs', metaDescription: 'View, review and sign on to job documents in the field.' },
   emptyState: { heading: 'No documents added', body: 'Add SWMS documents to this job so workers can review and sign on.', addLabel: 'Add Document' },
   signOnRegister: { heading: 'Sign-on Register', workerNote: 'Workers can sign on from their phone — no login needed.', noSignOnsBody: 'Workers sign on via the share link on each document.' },
   addDocModal: { heading: 'Add Document to Job', addLabel: 'Add Docs', cancelLabel: 'Cancel' },
@@ -129,7 +129,7 @@ export const login: {
   errors: { missingCredentials: string; pinLength: string; pinVerifiedFallback: string };
   submitLabel: string;
 } = {
-  page: { title: 'Sign In — IWIllBUILD Portal', metaDescription: 'Sign in to the IWIllBUILD portal to manage jobs, crews, fleet, safety and more.', ogTitle: 'Sign In — IWIllBUILD Portal', ogDescription: 'Sign in to manage your construction jobs, fleet, safety docs and team.' },
+  page: { title: 'Sign In — IWIllBUIlD Portal', metaDescription: 'Sign in to the IWIllBUIlD portal to manage jobs, crews, fleet, safety and more.', ogTitle: 'Sign In — IWIllBUIlD Portal', ogDescription: 'Sign in to manage your construction jobs, fleet, safety docs and team.' },
   heading: 'Portal Sign In',
   subheading: 'Internal access only',
   tabs: { password: 'Password', pin: 'PIN Login' },

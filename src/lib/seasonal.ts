@@ -53,7 +53,7 @@ export const SEASONAL_EVENTS: SeasonalEvent[] = [
     accentColor: '#be185d',
     secondaryColor: '#f9a8d4',
     bannerTitle: "Happy Valentine's Day",
-    bannerMessage: 'From the whole IWIllBUILD team.',
+    bannerMessage: 'From the whole IWIllBUIlD team.',
     icon: 'Heart',
     themeClass: 'season-valentines',
   },

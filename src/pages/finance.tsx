@@ -78,7 +78,7 @@ export default function FinancePage() {
   return (
     <div className="portal-page">
       <Helmet>
-        <title>Finance — IWIllBUILD</title>
+        <title>Finance — IWIllBUIlD</title>
         <meta name="description" content="Company-wide estimates, invoices, job cost ledger and finance settings." />
         <link rel="canonical" href="https://iwillbuild.com/finance" />
         <meta name="robots" content="noindex,nofollow" />

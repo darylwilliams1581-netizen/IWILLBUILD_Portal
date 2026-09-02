@@ -127,7 +127,7 @@ export default function IntegrationsTab({ isOwner = false }: { isOwner?: boolean
     <div className="space-y-6 max-w-2xl">
       <div>
         <h2 className="font-heading font-bold text-lg text-slate-900">Integrations</h2>
-        <p className="text-sm text-slate-500 mt-0.5">Connect IWIllBUILD to external services.</p>
+        <p className="text-sm text-slate-500 mt-0.5">Connect IWIllBUIlD to external services.</p>
       </div>
 
       {/* Success banner */}
@@ -213,8 +213,8 @@ export default function IntegrationsTab({ isOwner = false }: { isOwner?: boolean
               <div className="flex items-start gap-2 bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-xs text-slate-600">
                 <FolderOpen size={13} className="shrink-0 mt-0.5 text-slate-400" />
                 <span>
-                  Files are transferred to <strong>/IWIllBUILD/</strong> in your OneDrive.
-                  Job files go into <strong>/IWIllBUILD/Job [ID]/</strong> and general files into <strong>/IWIllBUILD/Company Files/</strong>.
+                  Files are transferred to <strong>/IWIllBUIlD/</strong> in your OneDrive.
+                  Job files go into <strong>/IWIllBUIlD/Job [ID]/</strong> and general files into <strong>/IWIllBUIlD/Company Files/</strong>.
                 </span>
               </div>
 

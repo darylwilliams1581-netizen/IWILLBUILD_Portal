@@ -115,7 +115,7 @@ async function buildPosterPdf(
 
   // ── Footer ────────────────────────────────────────────────────────────────
   page.drawLine({ start: { x: MARGIN, y: 30 }, end: { x: PAGE_W - MARGIN, y: 30 }, thickness: 0.5, color: LIGHT });
-  page.drawText('IWIllBUILD — Safety Poster', { x: MARGIN, y: 16, font: reg, size: 7.5, color: MUTED });
+  page.drawText('IWIllBUIlD — Safety Poster', { x: MARGIN, y: 16, font: reg, size: 7.5, color: MUTED });
   const dateStr = new Date().toLocaleDateString('en-AU', { day: '2-digit', month: 'short', year: 'numeric' });
   const dw = reg.widthOfTextAtSize(dateStr, 7.5);
   page.drawText(dateStr, { x: PAGE_W - MARGIN - dw, y: 16, font: reg, size: 7.5, color: MUTED });

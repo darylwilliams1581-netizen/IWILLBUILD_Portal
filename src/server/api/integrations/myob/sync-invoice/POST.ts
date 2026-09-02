@@ -1,6 +1,6 @@
 /**
  * POST /api/integrations/myob/sync-invoice/:invoiceId
- * Pushes an IWIllBUILD invoice to MYOB AccountRight as a Sale Invoice.
+ * Pushes an IWIllBUIlD invoice to MYOB AccountRight as a Sale Invoice.
  */
 import type { Request, Response } from 'express';
 import { getAuth } from '../../../../../lib/auth/auth.js';

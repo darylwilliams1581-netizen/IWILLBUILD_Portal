@@ -105,7 +105,7 @@ export default function CustomerDetailPage() {
   }
   return <div className="portal-page">
       <Helmet>
-        <title>{customer ? `${customer.name} — Contacts` : 'Contact'} — IWIllBUILD Portal</title>
+        <title>{customer ? `${customer.name} — Contacts` : 'Contact'} — IWIllBUIlD Portal</title>
         <meta name="description" content={customer ? `View details, contact info, and linked jobs for ${customer.name}.` : 'Customer details'} />
         <link rel="canonical" href={`https://iwillbuild.com/customers/${id}`} />
         <meta name="robots" content="noindex" />

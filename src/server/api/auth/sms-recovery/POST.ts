@@ -87,7 +87,7 @@ export default async function handler(req: Request, res: Response) {
     const resetUrl = `${baseUrl}/reset-password?token=${token}&uid=${row.id}`;
     const firstName = (row.name ?? 'there').split(' ')[0];
 
-    const message = `Hi ${firstName}, reset your IWIllBUILD Portal password here: ${resetUrl} — expires in 30 mins. If you didn't request this, ignore this message.`;
+    const message = `Hi ${firstName}, reset your IWIllBUIlD Portal password here: ${resetUrl} — expires in 30 mins. If you didn't request this, ignore this message.`;
 
     await sendSms(e164, message);
 

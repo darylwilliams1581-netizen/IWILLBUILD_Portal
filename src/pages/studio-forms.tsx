@@ -12,8 +12,8 @@ export default function StudioFormsPage() {
       <DesktopTopBar />
       <DesktopDock />
       <Helmet>
-        <title>Forms — IWIllBUILD</title>
-        <meta name="description" content="IWIllBUILD form templates — build and complete field forms." />
+        <title>Forms — IWIllBUIlD</title>
+        <meta name="description" content="IWIllBUIlD form templates — build and complete field forms." />
         <link rel="canonical" href="https://iwillbuild.com/studio/forms" />
         <meta name="robots" content="noindex" />
       </Helmet>

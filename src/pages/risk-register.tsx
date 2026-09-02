@@ -704,7 +704,7 @@ export default function RiskRegisterPage() {
       <DesktopTopBar />
       <DesktopDock />
       <Helmet>
-        <title>Risk Register — IWIllBUILD</title>
+        <title>Risk Register — IWIllBUIlD</title>
         <meta name="description" content="Company risk register — identify, assess, and control workplace hazards and risks." />
         <link rel="canonical" href="https://iwillbuild.com/risk-register" />
         <meta name="robots" content="noindex, nofollow" />

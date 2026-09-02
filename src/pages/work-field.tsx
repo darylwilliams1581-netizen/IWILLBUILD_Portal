@@ -38,7 +38,7 @@ export default function WorkFieldRedirect() {
   return (
     <>
       <Helmet>
-        <title>Redirecting — IWIllBUILD</title>
+        <title>Redirecting — IWIllBUIlD</title>
         <meta name="description" content="Redirecting to home screen" />
         <link rel="canonical" href="https://iwillbuild.com/" />
         <meta name="robots" content="noindex, nofollow" />

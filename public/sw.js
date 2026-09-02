@@ -1,5 +1,5 @@
 /**
- * IWIllBUILD Service Worker — v7
+ * IWIllBUIlD Service Worker — v7
  * App Shell Cache + Push Notifications + Background Sync
  */
 
@@ -105,7 +105,7 @@ self.addEventListener('fetch', (event) => {
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>IWIllBUILD — Offline</title>
+  <title>IWIllBUIlD — Offline</title>
   <style>
     body { font-family: Arial, sans-serif; background: #111827; color: #f9fafb;
            display: flex; align-items: center; justify-content: center;
@@ -120,7 +120,7 @@ self.addEventListener('fetch', (event) => {
 <body>
   <div>
     <h1>You're offline</h1>
-    <p>IWIllBUILD needs an internet connection.<br>Check your connection and try again.</p>
+    <p>IWIllBUIlD needs an internet connection.<br>Check your connection and try again.</p>
     <button onclick="location.reload()">Try Again</button>
   </div>
 </body>
@@ -152,10 +152,10 @@ self.addEventListener('push', (event) => {
   try {
     data = event.data ? event.data.json() : {};
   } catch {
-    data = { title: 'IWIllBUILD', body: event.data ? event.data.text() : '' };
+    data = { title: 'IWIllBUIlD', body: event.data ? event.data.text() : '' };
   }
 
-  const title = data.title ?? 'IWIllBUILD';
+  const title = data.title ?? 'IWIllBUIlD';
   const options = {
     body: data.body ?? '',
     icon: data.icon ?? '/icon-192.svg',

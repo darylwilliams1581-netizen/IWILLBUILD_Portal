@@ -1,5 +1,5 @@
 /**
- * useShell — Two-interface shell detection for IWIllBUILD.
+ * useShell — Two-interface shell detection for IWIllBUIlD.
  * ─────────────────────────────────────────────────────────────────────────────
  * Determines whether the current context should render the mobile App shell
  * (field-first, icon grid, bottom tab bar) or the Office shell (desktop

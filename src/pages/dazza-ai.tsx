@@ -171,8 +171,8 @@ const ANSWER_SECTIONS: Array<{
   bgClass: string;
 }> = [
   {
-    prefix: '📋 From IWIllBUILD data:',
-    label: 'From IWIllBUILD data',
+    prefix: '📋 From IWIllBUIlD data:',
+    label: 'From IWIllBUIlD data',
     icon: '📋',
     chipClass: 'bg-blue-600 text-white',
     borderClass: 'border-blue-200',
@@ -406,7 +406,7 @@ function CalcWidget({ calc, onSendToChat }: { calc: CalcDef; onSendToChat: (msg:
 
 // ── Main page ─────────────────────────────────────────────────────────────────
 
-const WELCOME_MSG = `G'day Daryl. I'm Dazza, IWIllBUILD's read-only system watcher and investigator. I'm here to help you maintain the platform, investigate bugs, examine authorised system evidence, prepare repair cases and work with Annette's approved memory. I can investigate and recommend, but I cannot change business data, code, deployments or publishing state.`;
+const WELCOME_MSG = `G'day Daryl. I'm Dazza, IWIllBUIlD's read-only system watcher and investigator. I'm here to help you maintain the platform, investigate bugs, examine authorised system evidence, prepare repair cases and work with Annette's approved memory. I can investigate and recommend, but I cannot change business data, code, deployments or publishing state.`;
 
 // ── SSE event types ───────────────────────────────────────────────────────────
 
@@ -1094,23 +1094,23 @@ Rules: Do not pretend you changed any code. Do not expose secrets. Prefer small 
       <DesktopTopBar />
       <DesktopDock />
       <Helmet>
-        <title>Dazza AI — IWIllBUILD Portal</title>
-        <meta name="description" content="Ask Dazza AI about your jobs, fleet, estimates and data health in the IWIllBUILD portal." />
+        <title>Dazza AI — IWIllBUIlD Portal</title>
+        <meta name="description" content="Ask Dazza AI about your jobs, fleet, estimates and data health in the IWIllBUIlD portal." />
         <link rel="canonical" href="https://iwillbuild.com/dazza-ai" />
         <meta name="robots" content="noindex" />
-        <meta property="og:title" content="Dazza AI — IWIllBUILD Portal" />
-        <meta property="og:description" content="Ask Dazza AI about your jobs, fleet, estimates and data health in the IWIllBUILD portal." />
+        <meta property="og:title" content="Dazza AI — IWIllBUIlD Portal" />
+        <meta property="og:description" content="Ask Dazza AI about your jobs, fleet, estimates and data health in the IWIllBUIlD portal." />
         <meta property="og:type" content="website" />
         <meta property="og:url" content="https://iwillbuild.com/dazza-ai" />
         <meta property="og:image" content="https://iwillbuild.com/airo-assets/images/pages/home/og-image" />
         <meta name="twitter:card" content="summary_large_image" />
-        <meta name="twitter:title" content="Dazza AI — IWIllBUILD Portal" />
-        <meta name="twitter:description" content="Ask Dazza AI about your jobs, fleet, estimates and data health in the IWIllBUILD portal." />
+        <meta name="twitter:title" content="Dazza AI — IWIllBUIlD Portal" />
+        <meta name="twitter:description" content="Ask Dazza AI about your jobs, fleet, estimates and data health in the IWIllBUIlD portal." />
         <meta name="twitter:image" content="https://iwillbuild.com/airo-assets/images/pages/home/og-image" />
       </Helmet>
 
       {/* Visually-hidden h1 for accessibility / SEO — page is a full-screen app shell */}
-      <h1 className="sr-only">Dazza AI — IWIllBUILD Portal</h1>
+      <h1 className="sr-only">Dazza AI — IWIllBUIlD Portal</h1>
 
       <div className="flex-1 flex flex-col overflow-hidden">
         {/* ── Sub-header: Dazza status + chat controls ── */}
@@ -1123,7 +1123,7 @@ Rules: Do not pretend you changed any code. Do not expose secrets. Prefer small 
               {activeEngine === 'v3' ? 'Dazza V3' : activeEngine === 'v2-rollback' ? 'Dazza V2' : 'Dazza AI'}
             </span>
             <span className="text-[10px] text-slate-400">
-              {ctxLoading ? 'Loading…' : `${dazzaCtx?.companyName ?? 'IWIllBUILD'} · ${dazzaCtx?.user?.role ?? ''}`}
+              {ctxLoading ? 'Loading…' : `${dazzaCtx?.companyName ?? 'IWIllBUIlD'} · ${dazzaCtx?.user?.role ?? ''}`}
             </span>
             {activeEngine === 'v3' && (
               <span className="flex items-center gap-1 text-[10px] bg-violet-50 text-violet-700 font-bold px-2 py-0.5 rounded-full border border-violet-200">
@@ -1650,7 +1650,7 @@ Rules: Do not pretend you changed any code. Do not expose secrets. Prefer small 
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
                   onKeyDown={handleKeyDown}
-                  placeholder="Investigate, maintain, or query the IWIllBUILD system…"
+                  placeholder="Investigate, maintain, or query the IWIllBUIlD system…"
                   className="flex-1 resize-none text-sm text-slate-800 placeholder:text-slate-400 focus:outline-none bg-transparent leading-relaxed"
                   style={{ maxHeight: 120, minHeight: 24 }}
                 />

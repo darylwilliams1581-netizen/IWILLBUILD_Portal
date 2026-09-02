@@ -1,4 +1,4 @@
-# IWIllBUILD — Capacitor Native App Build Guide
+# IWIllBUIlD — Capacitor Native App Build Guide
 
 Capacitor wraps the existing React web app into a native iOS and Android shell.
 Your web portal at iwillbuild.com continues to work unchanged.

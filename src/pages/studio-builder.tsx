@@ -213,7 +213,7 @@ export default function StudioBuilderPage() {
   if (loading) {
     return <div className="fixed inset-0 bg-[#F4F5F7] flex items-center justify-center z-50">
         <Helmet>
-          <title>Loading — IWIllBUILD Studio</title>
+          <title>Loading — IWIllBUIlD Studio</title>
           <meta name="robots" content="noindex" />
         </Helmet>
         <div className="flex flex-col items-center gap-3">
@@ -227,7 +227,7 @@ export default function StudioBuilderPage() {
   if (error) {
     return <div className="fixed inset-0 bg-[#F4F5F7] flex items-center justify-center z-50">
         <Helmet>
-          <title>Error — IWIllBUILD Studio</title>
+          <title>Error — IWIllBUIlD Studio</title>
           <meta name="robots" content="noindex" />
         </Helmet>
         <div className="flex flex-col items-center gap-4 text-center max-w-sm px-6">
@@ -297,9 +297,9 @@ export default function StudioBuilderPage() {
   return <>
       <Helmet>
         <title>
-          {isNew ? `New ${mapped.name}` : template?.name ?? 'Document'} — IWIllBUILD Studio
+          {isNew ? `New ${mapped.name}` : template?.name ?? 'Document'} — IWIllBUIlD Studio
         </title>
-        <meta name="description" content="Build and edit documents in IWIllBUILD Studio." />
+        <meta name="description" content="Build and edit documents in IWIllBUIlD Studio." />
         <link rel="canonical" href="https://iwillbuild.com/studio/builder" />
         <meta name="robots" content="noindex" />
       </Helmet>

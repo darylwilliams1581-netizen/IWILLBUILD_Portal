@@ -231,8 +231,8 @@ export default function PortalJobDetailPage() {
     </div>;
   return <>
       <Helmet>
-        <title>{job?.name ?? 'Job'} — Client Portal — IWIllBUILD</title>
-        <meta name="description" content="View job details, estimates, and invoices in your IWIllBUILD client portal." />
+        <title>{job?.name ?? 'Job'} — Client Portal — IWIllBUIlD</title>
+        <meta name="description" content="View job details, estimates, and invoices in your IWIllBUIlD client portal." />
         <link rel="canonical" href="https://iwillbuild.com/portal/jobs" />
         <meta name="robots" content="noindex, nofollow" />
       </Helmet>

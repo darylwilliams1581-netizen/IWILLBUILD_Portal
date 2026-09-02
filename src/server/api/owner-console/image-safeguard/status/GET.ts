@@ -54,7 +54,7 @@ export default async function handler(_req: Request, res: Response) {
     capability:  'unavailable',
     counts,
     scannerNote:
-      'Image scanning is not active inside the IWIllBUILD application. ' +
+      'Image scanning is not active inside the IWIllBUIlD application. ' +
       'A separate Cloudflare service handles backend scans on the same R2 store.',
   });
 }

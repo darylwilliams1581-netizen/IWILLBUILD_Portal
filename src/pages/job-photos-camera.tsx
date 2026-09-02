@@ -662,7 +662,7 @@ export default function JobPhotosCameraPage() {
       userSelect: 'none'
     }}>
       <Helmet>
-        <title>Camera — IWIllBUILD</title>
+        <title>Camera — IWIllBUIlD</title>
         <meta name="description" content="Take watermarked job site photos." />
         <link rel="canonical" href={`https://iwillbuild.com/jobs/${jobId}/camera`} />
         <meta name="robots" content="noindex, nofollow" />

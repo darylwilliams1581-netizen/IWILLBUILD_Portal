@@ -131,7 +131,7 @@ export default async function handler(req: Request, res: Response) {
     const masked = phone.replace(/\d(?=\d{4})/g, '*');
 
     diagLog(reqId, 'provider_call_start');
-    const result = await sendSms(phone, `Your IWIllBUILD login code is: ${code}. Expires in 10 minutes. Do not share this code.`);
+    const result = await sendSms(phone, `Your IWIllBUIlD login code is: ${code}. Expires in 10 minutes. Do not share this code.`);
     diagLog(reqId, 'provider_call_end', { ok: result.ok, twilioCode: result.twilioCode });
 
     if (!result.ok) {

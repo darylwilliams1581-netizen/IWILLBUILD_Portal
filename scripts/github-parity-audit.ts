@@ -1,6 +1,6 @@
 /**
  * scripts/github-parity-audit.ts
- * READ-ONLY GitHub production-parity audit for IWIllBUILD.
+ * READ-ONLY GitHub production-parity audit for IWIllBUIlD.
  * Compares GitHub main HEAD against the current Airo project source.
  * No writes, no pushes, no mutations.
  */
@@ -10,7 +10,7 @@ import { readFileSync, existsSync, statSync } from 'fs';
 import { join } from 'path';
 
 const TOKEN = getSecret('GITHUB_DAZZA_READ_TOKEN') as string;
-const REPO  = 'darylwilliams1581-netizen/IWIllBUILD_Portal';
+const REPO  = 'darylwilliams1581-netizen/IWIllBUIlD_Portal';
 const BRANCH = 'main';
 
 if (!TOKEN) { console.error('FATAL: GITHUB_DAZZA_READ_TOKEN not set'); process.exit(1); }

@@ -1,7 +1,7 @@
 {
   "jobId": "56ef23ab-fcc6-40d8-9504-fe7c4144956a",
   "status": "completed",
-  "prompt": "Icon only — the hard hat with gold dome sitting above the purple building/skyscraper mark. No text, no wordmark, no \"IWIllBUILD\" name. Just the icon mark centered with generous padding, clean and bold.",
+  "prompt": "Icon only — the hard hat with gold dome sitting above the purple building/skyscraper mark. No text, no wordmark, no \"IWIllBUIlD\" name. Just the icon mark centered with generous padding, clean and bold.",
   "layouts": [],
   "slots": [
     "logo/primary"

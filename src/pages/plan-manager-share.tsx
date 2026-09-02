@@ -101,7 +101,7 @@ export default function PlanManagerSharePage() {
   }
   return <>
       <Helmet>
-        <title>{data.drawing.title} — IWIllBUILD Plan Manager</title>
+        <title>{data.drawing.title} — IWIllBUIlD Plan Manager</title>
         <meta name="description" content={`View-only shared drawing: ${data.drawing.title}`} />
         <link rel="canonical" href={`https://iwillbuild.com/plan-manager/share/${token}`} />
         <meta name="robots" content="noindex" />
@@ -178,7 +178,7 @@ export default function PlanManagerSharePage() {
 
         {/* Footer */}
         <div className="px-4 py-2 bg-slate-900 border-t border-slate-700 text-[10px] text-slate-600 text-center flex-shrink-0">
-          Shared via IWIllBUILD Plan Manager · View only · Expires {new Date(data.expiresAt).toLocaleDateString('en-AU', {
+          Shared via IWIllBUIlD Plan Manager · View only · Expires {new Date(data.expiresAt).toLocaleDateString('en-AU', {
           day: 'numeric',
           month: 'short',
           year: 'numeric'

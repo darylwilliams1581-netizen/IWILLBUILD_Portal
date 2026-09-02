@@ -242,7 +242,7 @@ export default function JobProgressPage() {
   return (
     <div className="portal-page">
       <Helmet>
-        <title>{pageTitle} — IWIllBUILD</title>
+        <title>{pageTitle} — IWIllBUIlD</title>
         <meta name="description" content="Program of Works — manage activities, sections, progress and scheduling for this job." />
         <link rel="canonical" href={`https://iwillbuild.com/jobs/${id}/progress`} />
         <meta name="robots" content="noindex" />

@@ -302,7 +302,7 @@ export default function PdfStyleTab({ isAdmin }: Props) {
             onChange={(e) => set('headerText', e.target.value)}
             disabled={!isAdmin}
             className={inputClass}
-            placeholder="e.g. IWIllBUILD Pty Ltd — Licensed Builder QLD"
+            placeholder="e.g. IWIllBUIlD Pty Ltd — Licensed Builder QLD"
           />
           <p className="text-xs text-slate-400 mt-1">Appears below the company name in the PDF header. Leave blank to use company name only.</p>
         </div>

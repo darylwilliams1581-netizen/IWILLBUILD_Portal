@@ -27,7 +27,7 @@ export default function ImageSafeguardTab() {
       <div className="flex items-start gap-3 rounded-lg border border-slate-200 bg-slate-50 px-4 py-3">
         <Info size={15} className="text-slate-400 shrink-0 mt-0.5" aria-hidden="true" />
         <p className="text-sm text-slate-600 leading-relaxed">
-          Image scanning is not active inside the IWIllBUILD application.
+          Image scanning is not active inside the IWIllBUIlD application.
         </p>
       </div>
 

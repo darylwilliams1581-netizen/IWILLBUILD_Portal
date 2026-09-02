@@ -201,7 +201,7 @@ export default function LensSelectionBar({
         const blob     = await res.blob();
         const cd       = res.headers.get('Content-Disposition') ?? '';
         const match    = cd.match(/filename="?([^";\n]+)"?/i);
-        const filename = match?.[1] ?? 'IWIllBUILD_Lens_Photos.zip';
+        const filename = match?.[1] ?? 'IWIllBUIlD_Lens_Photos.zip';
         triggerBlobDownload(blob, filename);
       }
 

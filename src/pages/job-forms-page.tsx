@@ -115,7 +115,7 @@ export default function JobFormsPage() {
 
   return <div className="portal-page">
       <Helmet>
-        <title>{title} — IWIllBUILD</title>
+        <title>{title} — IWIllBUIlD</title>
         <meta name="description" content="View and manage form submissions for this job." />
         <link rel="canonical" href={`https://iwillbuild.com/jobs/${id}/forms`} />
         <meta name="robots" content="noindex" />

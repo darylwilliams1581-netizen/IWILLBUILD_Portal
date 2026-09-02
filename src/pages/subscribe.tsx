@@ -54,8 +54,8 @@ export default function SubscribePage() {
   const native = isNative();
   return <>
       <Helmet>
-        <title>Subscribe — IWIllBUILD</title>
-        <meta name="description" content="Choose a plan and start your 30-day free trial of IWIllBUILD construction management software." />
+        <title>Subscribe — IWIllBUIlD</title>
+        <meta name="description" content="Choose a plan and start your 30-day free trial of IWIllBUIlD construction management software." />
         <link rel="canonical" href="https://iwillbuild.com/subscribe" />
         <meta name="robots" content="noindex,nofollow" />
       </Helmet>
@@ -73,7 +73,7 @@ export default function SubscribePage() {
             <div className="w-8 h-8 rounded-xl bg-primary flex items-center justify-center shrink-0">
               <span className="text-white font-black text-xs">IW</span>
             </div>
-            <span className="font-bold text-white text-sm">IWIllBUILD</span>
+            <span className="font-bold text-white text-sm">IWIllBUIlD</span>
           </div>
         </div>
 

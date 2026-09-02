@@ -108,7 +108,7 @@ export default async function handler(req: Request, res: Response) {
 
     // README
     const readme = [
-      `IWIllBUILD — Drawing Set Export`,
+      `IWIllBUIlD — Drawing Set Export`,
       `═══════════════════════════════`,
       `Job:       ${jobLabel}`,
       `Exported:  ${dateStr}`,

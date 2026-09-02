@@ -3,13 +3,13 @@
  * ─────────────────────────────────────────────────────────────────────────────
  * Focused tests for the Finance workspace (/finance).
  * @seo-exempt — test file, not a route page
- * title: Finance Tests | IWIllBUILD
+ * title: Finance Tests | IWIllBUIlD
  * description: Tests for Finance workspace tabs, URL state, and route compatibility.
  * canonical: /finance
  * h1: Finance Tests
  *
  * <Helmet>
- *   <title>Finance Tests | IWIllBUILD</title>
+ *   <title>Finance Tests | IWIllBUIlD</title>
  *   <meta name="description" content="Tests for Finance workspace tabs, URL state, and route compatibility." />
  *   <link rel="canonical" href="https://iwillbuild.com/finance" />
  * </Helmet>

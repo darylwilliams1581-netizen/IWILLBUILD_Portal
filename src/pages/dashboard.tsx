@@ -114,18 +114,18 @@ export default function DashboardPage() {
   const recentJobs = jobs.slice(0, 8);
   return <div className="portal-page">
       <Helmet>
-        <title>Dashboard — IWIllBUILD Portal</title>
-        <meta name="description" content="IWIllBUILD internal dashboard — overview of active jobs, crew, fleet, and quick access to all portal modules." />
+        <title>Dashboard — IWIllBUIlD Portal</title>
+        <meta name="description" content="IWIllBUIlD internal dashboard — overview of active jobs, crew, fleet, and quick access to all portal modules." />
         <link rel="canonical" href="https://iwillbuild.com/dashboard" />
         <meta name="robots" content="noindex" />
-        <meta property="og:title" content="Dashboard — IWIllBUILD Portal" />
-        <meta property="og:description" content="IWIllBUILD internal dashboard — overview of active jobs, crew, fleet, and quick access to all portal modules." />
+        <meta property="og:title" content="Dashboard — IWIllBUIlD Portal" />
+        <meta property="og:description" content="IWIllBUIlD internal dashboard — overview of active jobs, crew, fleet, and quick access to all portal modules." />
         <meta property="og:type" content="website" />
         <meta property="og:url" content="https://iwillbuild.com/dashboard" />
         <meta property="og:image" content="https://iwillbuild.com/airo-assets/images/pages/home/og-image" />
         <meta name="twitter:card" content="summary_large_image" />
-        <meta name="twitter:title" content="Dashboard — IWIllBUILD Portal" />
-        <meta name="twitter:description" content="IWIllBUILD internal dashboard — overview of active jobs, crew, fleet, and quick access to all portal modules." />
+        <meta name="twitter:title" content="Dashboard — IWIllBUIlD Portal" />
+        <meta name="twitter:description" content="IWIllBUIlD internal dashboard — overview of active jobs, crew, fleet, and quick access to all portal modules." />
         <meta name="twitter:image" content="https://iwillbuild.com/airo-assets/images/pages/home/og-image" />
       </Helmet>
 

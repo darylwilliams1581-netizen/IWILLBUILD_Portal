@@ -12,7 +12,7 @@
  *            that they do not contain inappropriate material or information
  *            that breaches another person's privacy.
  *
- *            Images may be reviewed under the IWIllBUILD Image Safeguard
+ *            Images may be reviewed under the IWIllBUIlD Image Safeguard
  *            Protocol."
  *
  * ACTIONS:
@@ -168,7 +168,7 @@ export default function ImageSafeguardBatchModal({
                 <strong>Sharing is not available for these images.</strong>{' '}
                 One or more images cannot be shared externally at this time.
                 If you believe this is an error, please contact{' '}
-                <a href="mailto:support@iwillbuild.com" className="underline">IWIllBUILD Support</a>.
+                <a href="mailto:support@iwillbuild.com" className="underline">IWIllBUIlD Support</a>.
               </p>
             </div>
           )}
@@ -181,7 +181,7 @@ export default function ImageSafeguardBatchModal({
                 contain inappropriate material or information that breaches another person's privacy.
               </p>
               <p className="text-xs text-muted-foreground">
-                Images may be reviewed under the IWIllBUILD Image Safeguard Protocol.
+                Images may be reviewed under the IWIllBUIlD Image Safeguard Protocol.
               </p>
             </div>
           )}

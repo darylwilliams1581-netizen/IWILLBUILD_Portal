@@ -93,7 +93,7 @@ export default function JobCardNewPage() {
   }
   return <div className="flex h-screen bg-[#f5f6f8] overflow-hidden">
       <Helmet>
-        <title>New Job Card — IWIllBUILD</title>
+        <title>New Job Card — IWIllBUIlD</title>
         <meta name="description" content="Create a new job card for reactive or call-out work." />
         <link rel="canonical" href="https://iwillbuild.com/job-cards/new" />
         <meta name="robots" content="noindex" />

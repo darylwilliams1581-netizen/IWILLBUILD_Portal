@@ -14,7 +14,7 @@ export default function NotFoundPage() {
   return (
     <>
       <Helmet>
-        <title>Page Not Found — IWIllBUILD</title>
+        <title>Page Not Found — IWIllBUIlD</title>
         <meta name="description" content="The page you requested could not be found." />
         <link rel="canonical" href="https://iwillbuild.com/" />
         <meta name="robots" content="noindex, nofollow" />

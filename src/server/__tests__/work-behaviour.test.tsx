@@ -2,7 +2,7 @@
  * work-behaviour.test.tsx
  * ─────────────────────────────────────────────────────────────────────────────
  * @seo-exempt — test file, not a route page
- * title: Work Behaviour Tests | IWIllBUILD
+ * title: Work Behaviour Tests | IWIllBUIlD
  * description: Rendered-behaviour tests for the Work workspace and Job detail pill navigation.
  * canonical: /work
  * h1: Work Behaviour Tests

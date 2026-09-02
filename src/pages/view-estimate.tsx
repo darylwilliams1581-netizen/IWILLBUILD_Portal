@@ -48,8 +48,8 @@ export default function ViewEstimatePage() {
   const statusStyle = estimate ? getEstimateStatusStyle(estimate.status) : null;
   return <>
       <Helmet>
-        <title>{estimate ? `${estimate.title} — Estimate — IWIllBUILD` : 'Estimate Viewer — IWIllBUILD'}</title>
-        <meta name="description" content="Authenticated estimate viewer — IWIllBUILD portal" />
+        <title>{estimate ? `${estimate.title} — Estimate — IWIllBUIlD` : 'Estimate Viewer — IWIllBUIlD'}</title>
+        <meta name="description" content="Authenticated estimate viewer — IWIllBUIlD portal" />
         <link rel="canonical" href={`https://iwillbuild.com/view/estimate/${id ?? ''}`} />
         <meta name="robots" content="noindex, nofollow" />
       </Helmet>

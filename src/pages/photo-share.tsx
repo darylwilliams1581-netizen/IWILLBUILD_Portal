@@ -69,7 +69,7 @@ function ErrorShell({
         </div>
         <h1 className="font-heading font-bold text-lg text-slate-900 mb-2">{title}</h1>
         <p className="text-sm text-slate-500">{body}</p>
-        <p className="text-xs text-slate-400 mt-4">Powered by IWIllBUILD</p>
+        <p className="text-xs text-slate-400 mt-4">Powered by IWIllBUIlD</p>
       </div>
     </div>;
 }
@@ -134,7 +134,7 @@ export default function PhotoSharePage() {
   const tok = token ?? '';
   return <>
       <Helmet>
-        <title>{job.name} — Photos · IWIllBUILD</title>
+        <title>{job.name} — Photos · IWIllBUIlD</title>
         <meta name="description" content={`View site photos for ${job.name}${job.jobNumber ? ` (${job.jobNumber})` : ''}.`} />
         <meta name="robots" content="noindex, nofollow" />
         <link rel="canonical" href={`https://iwillbuild.com/photos/share/${token}`} />
@@ -165,7 +165,7 @@ export default function PhotoSharePage() {
             </div>
             <div className="flex items-center gap-1.5 shrink-0">
               <Building2 size={12} className="text-slate-300" />
-              <span className="text-xs text-slate-400 font-semibold">IWIllBUILD</span>
+              <span className="text-xs text-slate-400 font-semibold">IWIllBUIlD</span>
             </div>
           </div>
         </div>
@@ -206,7 +206,7 @@ export default function PhotoSharePage() {
 
         {/* ── Desktop footer ── */}
         <div className="hidden md:block max-w-5xl mx-auto px-4 pb-8 pt-2 text-center">
-          <p className="text-xs text-slate-300">Shared via IWIllBUILD · View only</p>
+          <p className="text-xs text-slate-300">Shared via IWIllBUIlD · View only</p>
         </div>
 
         {/* ── Mobile bottom bar (hidden on md+) ── */}
@@ -230,7 +230,7 @@ export default function PhotoSharePage() {
             </div>
             <div className="flex items-center gap-1 shrink-0">
               <Building2 size={11} className="text-slate-300" />
-              <span className="text-[10px] text-slate-500 font-semibold">IWIllBUILD</span>
+              <span className="text-[10px] text-slate-500 font-semibold">IWIllBUIlD</span>
             </div>
           </div>
         </div>

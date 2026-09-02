@@ -52,15 +52,15 @@ export default async function handler(req: Request, res: Response) {
       const { sendEmail } = await import('../../../../../email.js');
       await sendEmail({
         to: invite.email,
-        subject: `Reminder: You've been invited to join ${company?.name ?? 'IWIllBUILD'}`,
+        subject: `Reminder: You've been invited to join ${company?.name ?? 'IWIllBUIlD'}`,
         html: `
           <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 24px;">
             <div style="background: #7C3AED; padding: 16px 24px; border-radius: 8px 8px 0 0;">
-              <h1 style="color: white; margin: 0; font-size: 20px;">IWIllBUILD Portal</h1>
+              <h1 style="color: white; margin: 0; font-size: 20px;">IWIllBUIlD Portal</h1>
             </div>
             <div style="background: #f9f9f9; padding: 24px; border-radius: 0 0 8px 8px; border: 1px solid #e5e7eb;">
               <h2 style="color: #111; margin-top: 0;">Invitation reminder</h2>
-              <p style="color: #444;">This is a reminder that you've been invited to join <strong>${company?.name}</strong> on IWIllBUILD Portal.</p>
+              <p style="color: #444;">This is a reminder that you've been invited to join <strong>${company?.name}</strong> on IWIllBUIlD Portal.</p>
               <p style="margin: 24px 0;">
                 <a href="${inviteUrl}" style="background: #7C3AED; color: white; padding: 14px 28px; border-radius: 8px; text-decoration: none; font-weight: bold; display: inline-block;">
                   Accept Invitation

@@ -39,8 +39,8 @@ describe('auth.ts: official twoFactor plugin', () => {
     expect(AUTH_SERVER).toContain("twoFactor({");
   });
 
-  it('sets issuer to IWIllBUILD', () => {
-    expect(AUTH_SERVER).toContain("issuer: 'IWIllBUILD'");
+  it('sets issuer to IWIllBUIlD', () => {
+    expect(AUTH_SERVER).toContain("issuer: 'IWIllBUIlD'");
   });
 
   it('does NOT manually create sessions or insert session rows', () => {

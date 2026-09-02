@@ -692,8 +692,8 @@ export default function StudioDocumentsPage() {
       <DesktopTopBar />
       <DesktopDock />
       <Helmet>
-        <title>Documents — IWIllBUILD</title>
-        <meta name="description" content="IWIllBUILD document templates — build, use and manage your company documents." />
+        <title>Documents — IWIllBUIlD</title>
+        <meta name="description" content="IWIllBUIlD document templates — build, use and manage your company documents." />
         <link rel="canonical" href="https://iwillbuild.com/studio/documents" />
         <meta name="robots" content="noindex" />
       </Helmet>

@@ -697,7 +697,7 @@ export default function InvoiceBuilderPage() {
   return <div className="min-h-screen bg-gray-50 flex flex-col lg-portal">
       <PortalSidebar />
       <Helmet>
-        <title>{isNew ? 'New Invoice' : `Invoice ${invoiceNumber}`} — IWIllBUILD Portal</title>
+        <title>{isNew ? 'New Invoice' : `Invoice ${invoiceNumber}`} — IWIllBUIlD Portal</title>
         <meta name="description" content={isNew ? 'Create a new invoice.' : `Edit invoice ${invoiceNumber}.`} />
         <link rel="canonical" href={`https://iwillbuild.com/invoices/${isNew ? 'new' : id}`} />
         <meta name="robots" content="noindex" />

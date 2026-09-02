@@ -249,7 +249,7 @@ export default function StudioGlobalListsPage() {
       <DesktopTopBar />
       <DesktopDock />
       <Helmet>
-        <title>Global Lists — IWIllBUILD</title>
+        <title>Global Lists — IWIllBUIlD</title>
         <meta name="description" content="Manage reusable dropdown lists for form fields." />
         <link rel="canonical" href="https://iwillbuild.com/studio/global-lists" />
         <meta name="robots" content="noindex" />

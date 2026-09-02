@@ -129,7 +129,7 @@ export default function CompanyTab() {
         <h2 className="font-bold text-base text-slate-800 mb-4">Company Profile</h2>
         <div className="bg-white border border-slate-200 rounded-xl p-6 flex flex-col gap-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div><label className={labelClass}>Company Name</label><input value={name} onChange={(e) => setName(e.target.value)} className={inputClass} placeholder="IWIllBUILD Pty Ltd" /></div>
+            <div><label className={labelClass}>Company Name</label><input value={name} onChange={(e) => setName(e.target.value)} className={inputClass} placeholder="IWIllBUIlD Pty Ltd" /></div>
             <div><label className={labelClass}><span className="flex items-center gap-1"><Hash size={11} /> ABN</span></label><input value={abn} onChange={(e) => setAbn(e.target.value)} className={inputClass} placeholder="12 345 678 901" /></div>
             <div><label className={labelClass}><span className="flex items-center gap-1"><Phone size={11} /> Phone</span></label><input value={phone} onChange={(e) => setPhone(e.target.value)} className={inputClass} placeholder="07 3000 0000" /></div>
             <div><label className={labelClass}><span className="flex items-center gap-1"><Mail size={11} /> Email</span></label><input type="email" value={email} onChange={(e) => setEmail(e.target.value)} className={inputClass} placeholder="admin@company.com.au" /></div>

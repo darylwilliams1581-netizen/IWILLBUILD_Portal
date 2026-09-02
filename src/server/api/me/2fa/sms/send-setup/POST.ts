@@ -64,7 +64,7 @@ export default async function handler(req: Request, res: Response) {
           VALUES (${id}, ${session.user.id}, ${hashed}, ${`setup:${e164}`}, ${expiresAt}, 0)`,
     );
 
-    const result = await sendSms(e164, `Your IWIllBUILD 2FA setup code is: ${code}. Expires in 10 minutes.`);
+    const result = await sendSms(e164, `Your IWIllBUIlD 2FA setup code is: ${code}. Expires in 10 minutes.`);
     if (!result.ok) {
       if (result.twilioCode === 21608) {
         return res.status(503).json({

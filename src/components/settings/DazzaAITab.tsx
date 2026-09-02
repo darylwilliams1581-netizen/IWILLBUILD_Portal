@@ -242,7 +242,7 @@ export default function DazzaAITab({ isAdmin }: { isAdmin: boolean }) {
               <label className={`${labelClass} mb-0`}>Disclaimer Text</label>
             </div>
             <p className="text-xs text-slate-500 mb-3">
-              Shown to users when they open Dazza AI. Defaults to the standard IWIllBUILD disclaimer.
+              Shown to users when they open Dazza AI. Defaults to the standard IWIllBUIlD disclaimer.
             </p>
             <textarea
               className={`${inputClass} resize-none`}
@@ -404,7 +404,7 @@ export default function DazzaAITab({ isAdmin }: { isAdmin: boolean }) {
             <ul className="text-xs text-slate-500 flex flex-col gap-1 list-none">
               {[
                 'Never invents or fabricates company, job, fleet, form, estimate or file data',
-                'Clearly separates "From IWIllBUILD data" from "General guidance"',
+                'Clearly separates "From IWIllBUIlD data" from "General guidance"',
                 'Respects user module permissions — only answers from modules the user can access',
                 'Hides dollar amounts for users without the "See Dollars" permission',
                 'Always adds a verification reminder for WHS, building codes and compliance matters',

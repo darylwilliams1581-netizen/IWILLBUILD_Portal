@@ -6,8 +6,8 @@
  * 2. Tool appears in work.tsx TOOL_ITEMS array
  * 3. Exact Google Maps URL is used (no modification)
  * 4. Tool is marked external — no internal navigation
- * 5. No IWIllBUILD location permission requested (no navigator.geolocation call)
- * 6. No coordinates stored or sent by IWIllBUILD (no lat/lng/coords in source)
+ * 5. No IWIllBUIlD location permission requested (no navigator.geolocation call)
+ * 6. No coordinates stored or sent by IWIllBUIlD (no lat/lng/coords in source)
  * 7. No backend API route for toilet finder
  * 8. No database table for toilet/location data
  * 9. Error fallback message present in source
@@ -101,9 +101,9 @@ describe('Public Toilet Finder — exact Google Maps URL', () => {
   });
 });
 
-// ── 4. No IWIllBUILD location permission ─────────────────────────────────────
+// ── 4. No IWIllBUIlD location permission ─────────────────────────────────────
 
-describe('Public Toilet Finder — no IWIllBUILD location permission', () => {
+describe('Public Toilet Finder — no IWIllBUIlD location permission', () => {
   it('WorkToolsTab does not call navigator.geolocation', () => {
     expect(toolsTabSrc).not.toContain('navigator.geolocation');
     expect(toolsTabSrc).not.toContain('getCurrentPosition');
@@ -127,7 +127,7 @@ describe('Public Toilet Finder — no IWIllBUILD location permission', () => {
   });
 });
 
-// ── 5. No coordinates stored or sent by IWIllBUILD ───────────────────────────
+// ── 5. No coordinates stored or sent by IWIllBUIlD ───────────────────────────
 
 describe('Public Toilet Finder — no coordinate storage', () => {
   it('WorkToolsTab does not reference latitude or longitude', () => {

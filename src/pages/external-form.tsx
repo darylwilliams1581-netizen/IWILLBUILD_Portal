@@ -375,9 +375,9 @@ export default function ExternalFormPage() {
   return <>
       <Helmet>
         <title>
-          {data ? `${data.submission.template_name} — ${data.submission.company_name}` : 'Form — IWIllBUILD'}
+          {data ? `${data.submission.template_name} — ${data.submission.company_name}` : 'Form — IWIllBUIlD'}
         </title>
-        <meta name="description" content="Complete and submit a form from IWIllBUILD." />
+        <meta name="description" content="Complete and submit a form from IWIllBUIlD." />
         <link rel="canonical" href={`${typeof window !== 'undefined' ? window.location.origin : ''}/external/form/${token ?? ''}`} />
         <meta name="robots" content="noindex, nofollow" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -390,7 +390,7 @@ export default function ExternalFormPage() {
             <div className="w-7 h-7 bg-primary rounded-lg flex items-center justify-center">
               <FileText size={14} className="text-white" />
             </div>
-            <span className="font-bold text-slate-800 text-sm">IWIllBUILD</span>
+            <span className="font-bold text-slate-800 text-sm">IWIllBUIlD</span>
           </div>
           {data && <>
               <span className="text-slate-300">|</span>

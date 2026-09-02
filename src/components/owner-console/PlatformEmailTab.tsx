@@ -37,9 +37,9 @@ const FIELD_META: Array<{
   {
     key: 'from_name',
     label: 'From display name',
-    description: 'The sender name shown in recipients\' inboxes, e.g. "IWIllBUILD".',
+    description: 'The sender name shown in recipients\' inboxes, e.g. "IWIllBUIlD".',
     type: 'text',
-    placeholder: 'IWIllBUILD',
+    placeholder: 'IWIllBUIlD',
   },
 ];
 

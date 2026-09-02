@@ -47,18 +47,18 @@ export default async function handler(req: Request, res: Response) {
 
     const notifyEmail  = settings['contact_notification_email'] || session.user.email;
     const replyTo      = settings['support_reply_to']           || 'support@iwillbuild.com';
-    const fromName     = settings['from_name']                  || 'IWIllBUILD';
+    const fromName     = settings['from_name']                  || 'IWIllBUIlD';
     const now          = new Date().toLocaleString('en-AU', { timeZone: 'Australia/Brisbane' });
 
     await sendEmail({
       to: notifyEmail,
       replyTo,
       fromName,
-      subject: `[TEST] IWIllBUILD Email Settings — ${now}`,
+      subject: `[TEST] IWIllBUIlD Email Settings — ${now}`,
       html: `
         <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;padding:24px;background:#f8fafc;border-radius:8px;">
           <div style="background:#0f172a;padding:20px 24px;border-radius:6px 6px 0 0;">
-            <span style="color:#7c3aed;font-size:20px;font-weight:700;letter-spacing:-0.5px;">IWIllBUILD</span>
+            <span style="color:#7c3aed;font-size:20px;font-weight:700;letter-spacing:-0.5px;">IWIllBUIlD</span>
             <span style="color:#64748b;font-size:13px;margin-left:12px;">Developer Console — Email Test</span>
           </div>
           <div style="background:#ffffff;padding:28px 24px;border-radius:0 0 6px 6px;border:1px solid #e2e8f0;border-top:none;">
@@ -86,12 +86,12 @@ export default async function handler(req: Request, res: Response) {
             </table>
             <hr style="border:none;border-top:1px solid #f1f5f9;margin:24px 0 16px;" />
             <p style="color:#94a3b8;font-size:12px;margin:0;">
-              IWIllBUILD Developer Console &nbsp;·&nbsp; support@iwillbuild.com
+              IWIllBUIlD Developer Console &nbsp;·&nbsp; support@iwillbuild.com
             </p>
           </div>
         </div>
       `,
-      text: `IWIllBUILD Email Test\n\nDelivery is working.\n\nTriggered by: ${session.user.email}\nTime: ${now}\n\nSettings:\n  contact_notification_email: ${notifyEmail}\n  support_reply_to: ${replyTo}\n  from_name: ${fromName}`,
+      text: `IWIllBUIlD Email Test\n\nDelivery is working.\n\nTriggered by: ${session.user.email}\nTime: ${now}\n\nSettings:\n  contact_notification_email: ${notifyEmail}\n  support_reply_to: ${replyTo}\n  from_name: ${fromName}`,
     });
 
     console.log(`[email-settings] Test email sent to ${notifyEmail} by ${session.user.email}`);

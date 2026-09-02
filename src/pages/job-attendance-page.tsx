@@ -25,8 +25,8 @@ export default function JobAttendancePage() {
   return (
     <div className="portal-page">
       <Helmet>
-        <title>{job ? `Attendance — ${job.name}` : 'Attendance'} — IWIllBUILD</title>
-        <meta name="description" content="Track attendance and sign-on/off for this job in IWIllBUILD." />
+        <title>{job ? `Attendance — ${job.name}` : 'Attendance'} — IWIllBUIlD</title>
+        <meta name="description" content="Track attendance and sign-on/off for this job in IWIllBUIlD." />
         <meta name="robots" content="noindex" />
         {job && <link rel="canonical" href={`https://iwillbuild.com/jobs/${job.id}/attendance`} />}
       </Helmet>

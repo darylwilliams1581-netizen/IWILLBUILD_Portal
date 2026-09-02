@@ -1,7 +1,7 @@
 /**
  * platform-owner-guard.ts
  * ─────────────────────────────────────────────────────────────────────────────
- * Middleware and helper for IWIllBUILD platform-developer access.
+ * Middleware and helper for IWIllBUIlD platform-developer access.
  *
  * Platform developers are distinct from company owners/admins.
  * They have access to the Owner Console (all companies, all users, system AI,
@@ -122,7 +122,7 @@ export async function requirePlatformOwner(
   if (!info.isPlatformOwner) {
     res.status(403).json({
       error: 'forbidden',
-      message: 'Owner Console access is restricted to IWIllBUILD platform developers.',
+      message: 'Owner Console access is restricted to IWIllBUIlD platform developers.',
     });
     return;
   }

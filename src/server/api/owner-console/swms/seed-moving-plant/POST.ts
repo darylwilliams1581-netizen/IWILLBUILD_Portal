@@ -445,7 +445,7 @@ export default async function handler(req, res) {
         '${safe(title)}',
         'General Construction / Site Works',
         '1',
-        'Site Supervisor / IWIllBUILD',
+        'Site Supervisor / IWIllBUIlD',
         'Principal Contractor',
         'draft',
         'advanced',

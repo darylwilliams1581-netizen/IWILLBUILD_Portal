@@ -261,8 +261,8 @@ describe('Two-row stacked header', () => {
     expect(screenSrc).toContain('/airo-assets/images/logo/horizontal/dark');
   });
 
-  it('row 1 contains IWIllBUILD wordmark text', () => {
-    expect(screenSrc).toContain('IWIllBUILD');
+  it('row 1 contains IWIllBUIlD wordmark text', () => {
+    expect(screenSrc).toContain('IWIllBUIlD');
   });
 
   it('utility buttons are flex-1 (fill remaining space equally)', () => {

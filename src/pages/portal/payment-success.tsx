@@ -8,7 +8,7 @@ export default function PortalPaymentSuccessPage() {
   return <>
       <Helmet>
         <title>Payment Successful — Client Portal</title>
-        <meta name="description" content="Your payment has been received. Thank you for using the IWIllBUILD client portal." />
+        <meta name="description" content="Your payment has been received. Thank you for using the IWIllBUIlD client portal." />
         <link rel="canonical" href="https://iwillbuild.com/portal/payment-success" />
         <meta name="robots" content="noindex, nofollow" />
       </Helmet>

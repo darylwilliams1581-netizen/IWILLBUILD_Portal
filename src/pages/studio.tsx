@@ -192,8 +192,8 @@ export default function StudioPage() {
       <DesktopTopBar />
       <DesktopDock />
       <Helmet>
-        <title>Studio — IWIllBUILD</title>
-        <meta name="description" content="IWIllBUILD Studio — build quotes, contracts, safety documents and more." />
+        <title>Studio — IWIllBUIlD</title>
+        <meta name="description" content="IWIllBUIlD Studio — build quotes, contracts, safety documents and more." />
         <link rel="canonical" href="https://iwillbuild.com/studio" />
         <meta name="robots" content="noindex" />
       </Helmet>

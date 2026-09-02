@@ -1,4 +1,4 @@
-# IWIllBUILD delivery patch - Version 12, Build 12
+# IWIllBUIlD delivery patch - Version 12, Build 12
 
 Prepared 2026-08-14 from the successful Build Package #59 source (`8bf9522`).
 
@@ -44,7 +44,7 @@ This delivery contains the existing Version 12 / Build 12 release polish plus th
 - Quote, Invoice and completed Form screens now use the same in-app **Email PDF** dialog.
 - The server generates the latest document and sends the PDF as a real attachment.
 - Quote download and Quote email use the same canonical PDF generator.
-- The private `/view/estimate/:id` application link was removed from customer quote email; recipients do not need an IWIllBUILD login.
+- The private `/view/estimate/:id` application link was removed from customer quote email; recipients do not need an IWIllBUIlD login.
 - Completed Form email now attaches a PDF rather than only sending an HTML summary.
 - Stored Form photos and captured signatures are loaded and rendered inside the attached PDF.
 - Stored photo records, form templates and form fields are company-scoped before access.

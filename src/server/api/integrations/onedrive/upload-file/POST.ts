@@ -3,7 +3,7 @@
  * ─────────────────────────────────────────────────────────────────────────────
  * Transfers a portal file (from company_files) to the connected OneDrive.
  * The file is streamed from local storage and uploaded to:
- *   /IWIllBUILD/<jobName or 'Company Files'>/<originalFileName>
+ *   /IWIllBUIlD/<jobName or 'Company Files'>/<originalFileName>
  *
  * Body: { fileId: number }
  *
@@ -132,10 +132,10 @@ export default async function handler(req: Request, res: Response) {
     const fileBuffer = await streamToBuffer(stream);
 
     // Build the OneDrive folder path
-    // /IWIllBUILD/Company Files/<filename>  (or /IWIllBUILD/<jobId>/<filename> if job-linked)
+    // /IWIllBUIlD/Company Files/<filename>  (or /IWIllBUIlD/<jobId>/<filename> if job-linked)
     const folderName = fileRecord.jobId ? `Job ${fileRecord.jobId}` : 'Company Files';
     const safeName = fileRecord.originalName.replace(/[/\\:*?"<>|]/g, '_');
-    const oneDrivePath = `/IWIllBUILD/${folderName}/${safeName}`;
+    const oneDrivePath = `/IWIllBUIlD/${folderName}/${safeName}`;
 
     // Microsoft Graph upload session (supports files up to 250 MB)
     const uploadSessionRes = await fetch(

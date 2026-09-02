@@ -353,7 +353,7 @@ export default function JobCardsPage() {
   return <div className="flex-1 bg-[#f5f6f8] flex flex-col lg-portal">
       <PortalSidebar />
       <Helmet>
-        <title>Job Cards — IWIllBUILD</title>
+        <title>Job Cards — IWIllBUIlD</title>
         <meta name="description" content="Job Card register — reactive and call-out work records." />
         <meta name="robots" content="noindex" />
         <link rel="canonical" href="https://iwillbuild.com/job-cards" />

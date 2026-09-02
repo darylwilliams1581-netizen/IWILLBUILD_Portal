@@ -62,7 +62,7 @@ async function runDazzaReview(report: Record<string, unknown>): Promise<{
   const reporter    = String(report.submitted_by_name ?? report.submitted_by_email ?? 'Unknown');
   const company     = String(report.company_name ?? '');
 
-  const systemPrompt = `You are Dazza, the senior AI investigator for the IWIllBUILD construction management platform.
+  const systemPrompt = `You are Dazza, the senior AI investigator for the IWIllBUIlD construction management platform.
 You conduct thorough internal bug case reviews for the platform owner only. Your reviews are never shown to end users.
 The platform is a React 19 / TypeScript / Express / MySQL app with Capacitor iOS/Android native wrappers.
 Be specific, technical, and actionable. Return valid JSON only.`;

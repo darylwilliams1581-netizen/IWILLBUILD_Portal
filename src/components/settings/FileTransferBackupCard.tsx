@@ -169,7 +169,7 @@ export default function FileTransferBackupCard({ isAdmin }: { isAdmin: boolean }
         <div className="flex gap-2.5 bg-blue-50 border border-blue-200 rounded-xl p-4">
           <Info size={14} className="text-blue-500 mt-0.5 shrink-0" />
           <p className="text-xs text-blue-700 leading-relaxed">
-            <strong>IWIllBUILD stores your files securely in the app.</strong>{' '}
+            <strong>IWIllBUIlD stores your files securely in the app.</strong>{' '}
             This backup location is saved so your team knows where exported job files, completed forms, photos and archives should be copied.
             Automatic cloud sync will be added later.
           </p>
@@ -210,8 +210,8 @@ export default function FileTransferBackupCard({ isAdmin }: { isAdmin: boolean }
             label="Backup folder link or path"
             hint={
               settings.destType === 'local_sync'
-                ? 'e.g. C:\\Users\\Name\\OneDrive - Company\\IWIllBUILD - Documents'
-                : 'e.g. https://company.sharepoint.com/sites/IWIllBUILD/Shared Documents/IWIllBUILD Backups'
+                ? 'e.g. C:\\Users\\Name\\OneDrive - Company\\IWIllBUIlD - Documents'
+                : 'e.g. https://company.sharepoint.com/sites/IWIllBUIlD/Shared Documents/IWIllBUIlD Backups'
             }
           >
             <input
@@ -221,7 +221,7 @@ export default function FileTransferBackupCard({ isAdmin }: { isAdmin: boolean }
               onChange={e => set('path', e.target.value)}
               placeholder={
                 settings.destType === 'local_sync'
-                  ? 'C:\\Users\\Name\\OneDrive - Company\\IWIllBUILD - Documents'
+                  ? 'C:\\Users\\Name\\OneDrive - Company\\IWIllBUIlD - Documents'
                   : 'https://...'
               }
               className={inputCls(!isAdmin)}

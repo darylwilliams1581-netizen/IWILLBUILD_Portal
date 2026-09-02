@@ -286,7 +286,7 @@ export default async function handler(req: Request, res: Response) {
     }
 
     // Footer
-    text(page, `IWIllBUILD · Progress Report · ${new Date().toLocaleDateString('en-AU')}`, MARGIN, 25, regularFont, 7, MUTED);
+    text(page, `IWIllBUIlD · Progress Report · ${new Date().toLocaleDateString('en-AU')}`, MARGIN, 25, regularFont, 7, MUTED);
 
     const pdfBytes = await pdfDoc.save();
     const filename = `progress-report-job-${jobId}.pdf`;

@@ -25,8 +25,8 @@ export default function JobPurchaseOrdersPage() {
   return (
     <div className="portal-page">
       <Helmet>
-        <title>{job ? `Purchase Orders — ${job.name}` : 'Purchase Orders'} — IWIllBUILD</title>
-        <meta name="description" content="Manage purchase orders for this job in IWIllBUILD." />
+        <title>{job ? `Purchase Orders — ${job.name}` : 'Purchase Orders'} — IWIllBUIlD</title>
+        <meta name="description" content="Manage purchase orders for this job in IWIllBUIlD." />
         <meta name="robots" content="noindex" />
         {job && <link rel="canonical" href={`https://iwillbuild.com/jobs/${job.id}/purchase-orders`} />}
       </Helmet>

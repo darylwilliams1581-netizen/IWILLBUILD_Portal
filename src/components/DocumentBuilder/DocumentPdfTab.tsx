@@ -248,7 +248,7 @@ export default function DocumentPdfTab({ settings, onChange, templateName }: Pro
                 className={inputClass}
                 value={s.coverSubtitle}
                 onChange={(e) => set('coverSubtitle', e.target.value)}
-                placeholder="e.g. Prepared by IWIllBUILD Pty Ltd"
+                placeholder="e.g. Prepared by IWIllBUIlD Pty Ltd"
               />
             </div>
 
@@ -343,7 +343,7 @@ export default function DocumentPdfTab({ settings, onChange, templateName }: Pro
 
         <OverrideTextarea
           label="Header Text"
-          placeholder="e.g. SAFE WORK METHOD STATEMENT — IWIllBUILD Pty Ltd"
+          placeholder="e.g. SAFE WORK METHOD STATEMENT — IWIllBUIlD Pty Ltd"
           hint="Leave as company default to use the value from Settings → PDF / Print Style."
           value={s.headerTextOverride}
           onChange={(v) => set('headerTextOverride', v)}
