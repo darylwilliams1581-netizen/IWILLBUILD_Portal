@@ -229,7 +229,7 @@ const plans = [{
   period: '/ month + GST',
   users: '1 user',
   popular: false,
-  features: ['1 user', 'Projects & job files', 'Forms & templates', 'Estimates', 'Photos & files', 'Fleet basics', 'Safety basics', 'Email support', '30-day free trial'],
+  features: ['1 user', 'Projects & job files', 'Forms & templates', 'Estimates', 'Photos & files', 'Fleet basics', 'Safety basics', 'Email support', '14-day free trial'],
   cta: 'Start Solo Trial',
   ctaStyle: 'outline'
 }, {
@@ -239,7 +239,7 @@ const plans = [{
   period: '/ month + GST',
   users: 'Up to 5 users',
   popular: true,
-  features: ['Up to 5 users', 'Projects & job files', 'Forms & templates', 'Estimates', 'Photos & files', 'Fleet & prestarts', 'Safety library', 'Scheduler', 'Team permissions', 'Priority support', '30-day free trial'],
+  features: ['Up to 5 users', 'Projects & job files', 'Forms & templates', 'Estimates', 'Photos & files', 'Fleet & prestarts', 'Safety library', 'Scheduler', 'Team permissions', 'Priority support', '14-day free trial'],
   cta: 'Start Team Trial',
   ctaStyle: 'primary'
 }, {
@@ -249,7 +249,7 @@ const plans = [{
   period: '/ month + GST',
   users: 'Up to 10 users',
   popular: false,
-  features: ['Up to 10 users', 'Everything in Team', 'Advanced permissions', 'Safety plans & SWMS library', 'Job Ledger / job cost tracking', 'Secure file storage', 'Owner & admin reporting', '30-day free trial'],
+  features: ['Up to 10 users', 'Everything in Team', 'Advanced permissions', 'Safety plans & SWMS library', 'Job Ledger / job cost tracking', 'Secure file storage', 'Owner & admin reporting', '14-day free trial'],
   cta: 'Start Business Trial',
   ctaStyle: 'outline'
 }, {
@@ -341,7 +341,7 @@ function PhoneMockup() {
 export default function HomePage() {
   const site = 'https://iwillbuild.com';
   const title = 'IWIllBUIlD | Construction Job Management — Jobs, Forms, Fleet, Safety & Files';
-  const description = 'IWIllBUIlD manages the work — jobs, estimates, forms, photos, fleet, safety, invoicing and files — in one clean construction portal. Accounting integrations sync approved invoices to Xero and QuickBooks. 30-day free trial.';
+  const description = 'IWIllBUIlD manages the work — jobs, estimates, forms, photos, fleet, safety, invoicing and files — in one clean construction portal. Accounting integrations sync approved invoices to Xero and QuickBooks. 14-day free trial.';
   const ogDescription = 'Manage construction jobs, estimates, forms, photos, fleet, safety and files in one clean portal. Accounting integrations sync approved invoices to Xero and QuickBooks.';
   const jsonLd = {
     '@context': 'https://schema.org',
@@ -504,7 +504,7 @@ export default function HomePage() {
                 fontSize: 13,
                 fontWeight: 700,
                 color: '#7c3aed'
-              }}>30-day free trial — no credit card needed</span>
+              }}>14-day free trial — no credit card needed</span>
             </div>
 
             {/* Headline — dual interface concept */}
@@ -601,7 +601,7 @@ export default function HomePage() {
                 fontSize: 16,
                 textDecoration: 'none'
               }}>
-                Start 30-day free trial
+                Start 14-day free trial
                 <ArrowRight size={16} />
               </Link>
               <Link to="/login" style={{
@@ -698,7 +698,7 @@ export default function HomePage() {
           alignItems: 'center',
           justifyContent: 'center'
         }}>
-          {['✓ Australian-built', '✓ No lock-in contracts', '✓ 30-day free trial', '✓ Cancel anytime'].map(t => <span key={t} style={{
+          {['✓ Australian-built', '✓ No lock-in contracts', '✓ 14-day free trial', '✓ Cancel anytime'].map(t => <span key={t} style={{
             fontSize: 13,
             fontWeight: 700,
             color: '#475569'
@@ -955,7 +955,7 @@ export default function HomePage() {
               textDecoration: 'none',
               boxShadow: '0 4px 18px rgba(249,115,22,.35)'
             }}>
-              Start your free 30-day trial
+              Start your free 14-day trial
               <ArrowRight size={16} />
             </Link>
             <p style={{
@@ -1058,7 +1058,7 @@ export default function HomePage() {
             margin: '0 0 40px',
             maxWidth: 600
           }}>
-            All plans include a 30-day free trial. No credit card required to start.
+            All plans include a 14-day free trial. No credit card required to start.
           </p>
 
           <div style={{
@@ -1267,7 +1267,7 @@ export default function HomePage() {
                 fontSize: 14,
                 textDecoration: 'none'
               }}>
-                Start your free 30-day trial
+                Start your free 14-day trial
                 <ArrowRight size={15} />
               </Link>
             </div>
@@ -1372,7 +1372,7 @@ export default function HomePage() {
               fontSize: 17,
               margin: '0 0 32px'
             }}>
-              Start your 30-day free trial today. No credit card. No setup fee. Cancel anytime.
+              Start your 14-day free trial today. No credit card. No setup fee. Cancel anytime.
             </p>
             <div style={{
               display: 'flex',
@@ -1393,7 +1393,7 @@ export default function HomePage() {
                 textDecoration: 'none',
                 boxShadow: '0 4px 18px rgba(249,115,22,.35)'
               }}>
-                Start 30-day free trial
+                Start 14-day free trial
                 <ArrowRight size={16} />
               </Link>
               <Link to="/login" style={{

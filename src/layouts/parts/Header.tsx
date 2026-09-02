@@ -365,7 +365,7 @@ export default function Header() {
           fontSize: 14,
           textDecoration: 'none'
         }}>
-              Start 30-day free trial
+              Start 14-day free trial
             </Link>
           </div>
         </div>}

@@ -308,12 +308,12 @@ export default function SignupPage() {
   return <div className="relative min-h-screen flex items-center justify-center overflow-hidden bg-[#0F1117] py-8">
       <Helmet>
         <title>Get Started Free — IWIllBUIlD Fleet & Construction Portal</title>
-        <meta name="description" content="Create your IWIllBUIlD portal account. 30-day free trial, no credit card required. Fleet tracking, SWMS safety, jobs and more." />
+        <meta name="description" content="Create your IWIllBUIlD portal account. 14-day free trial, no credit card required. Fleet tracking, SWMS safety, jobs and more." />
         <meta name="robots" content="noindex, nofollow" />
         <link rel="canonical" href="https://iwillbuild.com/signup" />
         <meta name="robots" content="noindex" />
         <meta property="og:title" content="Get Started Free — IWIllBUIlD" />
-        <meta property="og:description" content="30-day free trial. Fleet tracking, SWMS safety management, jobs, forms and files — all in one portal." />
+        <meta property="og:description" content="14-day free trial. Fleet tracking, SWMS safety management, jobs, forms and files — all in one portal." />
         <meta property="og:type" content="website" />
         <meta property="og:url" content="https://iwillbuild.com/signup" />
         <meta property="og:image" content="https://iwillbuild.com/airo-assets/images/pages/home/og-image" />
@@ -371,7 +371,7 @@ export default function SignupPage() {
               duration: 0.2
             }}>
                   <h1 className="font-heading font-bold text-xl text-white text-center">Choose your plan</h1>
-                  <p className="text-sm text-white/40 text-center mt-1">30-day free trial · No credit card required</p>
+                  <p className="text-sm text-white/40 text-center mt-1">14-day free trial · No credit card required</p>
                 </motion.div>}
               {step === 3 && <motion.div key="h3" initial={{
               opacity: 0,
@@ -486,7 +486,7 @@ export default function SignupPage() {
                     </div>
 
                     <p className="text-center text-xs text-white/30 mt-1">
-                      All plans include a 30-day free trial. Billing starts after trial ends.
+                      All plans include a 14-day free trial. Billing starts after trial ends.
                     </p>
 
                     {/* ── Free trial shortcut ─────────────────────────────── */}
