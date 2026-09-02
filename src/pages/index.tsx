@@ -4,6 +4,7 @@ import { Link } from "react-router";
 import { Briefcase, FileText, Camera, Truck, LayoutDashboard, ShieldCheck, Users, CheckCircle, ArrowRight, Star, ChevronRight, Calendar, FolderOpen, Receipt, Map, Link2, ClipboardList, HardHat, Zap, BarChart3, Bell, Smartphone, AlertTriangle, Calculator, Layers, Ruler, FileSpreadsheet, ScrollText, TableProperties, ShieldAlert, TriangleAlert } from 'lucide-react';
 import Header from '@/layouts/parts/Header';
 import Footer from '@/layouts/parts/Footer';
+import { BrandName } from '@/components/BrandName';
 
 // ── Content fallbacks ─────────────────────────────────────────────────────────
 // Guard every field consumed from virtual:content so a missing or malformed
@@ -288,7 +289,7 @@ function PortalMockup() {
         <span style={{ width: 10, height: 10, borderRadius: '50%', backgroundColor: '#f59e0b', display: 'inline-block' }} />
         <span style={{ width: 10, height: 10, borderRadius: '50%', backgroundColor: '#22c55e', display: 'inline-block' }} />
         <span style={{ flex: 1, backgroundColor: '#334155', borderRadius: 4, height: 16, marginLeft: 8 }} />
-        <span style={{ fontSize: 10, color: '#475569', fontWeight: 600 }}>IWIllBUIlD.com/home</span>
+        <span style={{ fontSize: 10, color: '#475569', fontWeight: 600 }}><BrandName />.com/home</span>
       </div>
       {/* Screenshot */}
       <img
@@ -1304,7 +1305,7 @@ export default function HomePage() {
                   fontSize: 13,
                   fontWeight: 700,
                   color: '#f1f5f9'
-                }}>IWIllBUIlD Portal</div>
+                }}><BrandName /> Portal</div>
                 <div style={{
                   fontSize: 11,
                   color: '#22c55e'
