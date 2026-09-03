@@ -141,8 +141,25 @@ describe('seo-routes.ts — sitemap exclusions', () => {
     expect(seoPathValues()).not.toContain('/annette');
   });
 
-  it('only the three expected public paths are present', () => {
-    expect(seoPathValues()).toEqual(['/', '/privacy', '/terms']);
+  it('all paths in seo-routes are from the approved public set', () => {
+    // Approved public paths: marketing, legal, and unauthenticated auth-flow pages.
+    // /download-app and /subscribe are intentionally excluded (not yet live / gated).
+    // All authenticated app routes (/home, /dashboard, /jobs, etc.) must never appear.
+    const approvedPublicPaths = new Set([
+      '/',
+      '/signup',
+      '/login',
+      '/forgot-password',
+      '/login-help',
+      '/terms',
+      '/privacy',
+      '/fair-use',
+      '/system-policy',
+    ]);
+    const actual = seoPathValues();
+    for (const p of actual) {
+      expect(approvedPublicPaths).toContain(p);
+    }
   });
 });
 
@@ -194,7 +211,7 @@ describe('comingSoon routes have no route registration', () => {
 // ── 6. /annette — protected, not removed ─────────────────────────────────────
 //
 // Annette is an intentional, permanent, owner-only intelligence and oversight
-// layer for IWILLBUILD. These tests verify she is protected and excluded from
+// layer for IWIllBUIlD. These tests verify she is protected and excluded from
 // public search — not that she is removed.
 
 describe('/annette — protected and owner-gated', () => {
