@@ -7,13 +7,13 @@
  * shared with the export-pdf endpoint and the secure-share content endpoint.
  *
  * Body: {
- *   to:        string[]
- *   cc?:       string[]
- *   bcc?:      string[]
- *   subject:   string
- *   message:   string
- *   attachPdf: boolean
- *   bccOwner:  boolean
+ *   to:                          string[]
+ *   cc?:                         string[]
+ *   bcc?:                        string[]
+ *   subject:                     string
+ *   message:                     string
+ *   attachPdf:                   boolean
+ *   bccOwner:                    boolean
  * }
  */
 import type { Request, Response } from 'express';
@@ -28,7 +28,7 @@ import { getAuth } from '../../../../../lib/auth/auth.js';
 const EMAIL_ATTACHMENT_LIMIT = 2 * 1024 * 1024;
 const MAX_SUBJECT = 200;
 const MAX_MESSAGE = 4000;
-const SYSTEM_FOOTER = 'This email was sent automatically from IWILLBUILD. Please do not reply.';
+const SYSTEM_FOOTER = 'This email was sent automatically from IWIllBUIlD. Please do not reply.';
 
 function isValidEmail(addr: string): boolean {
   return /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(addr.trim());
@@ -67,6 +67,7 @@ export default async function handler(req: Request, res: Response) {
 
     const profile = await db.query.profiles.findFirst({ where: eq(profiles.userId, session.user.id) });
     if (!profile?.companyId) return res.status(403).json({ error: 'No company' });
+
     if (profile.permForms === false && profile.role !== 'owner' && profile.role !== 'admin') {
       return res.status(403).json({ error: 'No forms permission' });
     }
