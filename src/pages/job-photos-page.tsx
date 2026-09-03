@@ -112,6 +112,14 @@ export default function JobPhotosPage() {
   };
 
   /**
+   * Share link generation — no safeguard gate required.
+   */
+  const handleShareWithGate = useCallback(async () => {
+    if (!jobId) return;
+    photosRef.current?.generateShareLink(false);
+  }, [jobId]);
+
+  /**
    * Download selected photos.
    * On iOS Safari, <a download> is blocked — open each URL in a new tab instead.
    * On desktop, use the standard anchor-click approach.
@@ -131,7 +139,7 @@ export default function JobPhotosPage() {
       try {
         await navigator.share({
           title: `${job?.name ?? 'Job'} — Photos`,
-          text: `View photos for ${job?.name ?? 'this job'} on IWILLBUILD`,
+          text: `View photos for ${job?.name ?? 'this job'} on IWIllBUIlD`,
           url: window.location.href
         });
         return;
@@ -172,7 +180,7 @@ export default function JobPhotosPage() {
   const title = job ? `${job.name} — Photos` : 'Job Photos';
   return <div className="portal-page">
       <Helmet>
-        <title>{title} — IWILLBUILD</title>
+        <title>{title} — IWIllBUIlD</title>
         <meta name="description" content="View and manage photos for this job." />
         <meta name="robots" content="noindex" />
         <link rel="canonical" href={`https://iwillbuild.com/jobs/${id}/photos`} />
@@ -217,7 +225,7 @@ export default function JobPhotosPage() {
                 </button>
               </>}
               {/* Share */}
-              <button onClick={() => photosRef.current?.generateShareLink()} disabled={photoCount === 0} title="Share view-only link" className="flex items-center gap-1.5 px-2.5 py-1 bg-gray-100 hover:bg-gray-200 disabled:opacity-40 text-gray-700 text-xs font-semibold rounded transition-colors">
+              <button onClick={() => void handleShareWithGate()} disabled={photoCount === 0} title="Share view-only link" className="flex items-center gap-1.5 px-2.5 py-1 bg-gray-100 hover:bg-gray-200 disabled:opacity-40 text-gray-700 text-xs font-semibold rounded transition-colors">
                 <Share2 size={12} /> Share
               </button>
             </div>
@@ -255,7 +263,7 @@ export default function JobPhotosPage() {
             </button>
 
             {/* Share */}
-            <button onClick={() => photosRef.current?.generateShareLink()} disabled={photoCount === 0} className="flex flex-col items-center justify-center gap-1 w-14 h-12 rounded-xl text-gray-500 hover:text-gray-700 hover:bg-gray-100 disabled:opacity-40 transition-colors touch-manipulation" title="Share view-only link">
+            <button onClick={() => void handleShareWithGate()} disabled={photoCount === 0} className="flex flex-col items-center justify-center gap-1 w-14 h-12 rounded-xl text-gray-500 hover:text-gray-700 hover:bg-gray-100 disabled:opacity-40 transition-colors touch-manipulation" title="Share view-only link">
               <Share2 size={20} />
               <span className="text-[9px] font-semibold leading-none">Share</span>
             </button>
@@ -367,6 +375,7 @@ export default function JobPhotosPage() {
             </motion.div>
           </div>}
       </AnimatePresence>
+
         </JobFeatureShell>
       </div>
     </div>;
