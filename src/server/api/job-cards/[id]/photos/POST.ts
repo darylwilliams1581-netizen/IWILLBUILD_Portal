@@ -14,6 +14,7 @@ import { getSignedUrl } from '../../../../storage/storage-service.js';
 import { uploadMedia, normaliseMime } from '../../../../lib/uploadService.js';
 import type { CompatibilityContext } from '../../../../lib/uploadService.js';
 import { randomUUID } from 'node:crypto';
+import { buildObjectKey } from '../../../../storage/r2Config.js';
 
 const BUCKET = 'job-card-photos';
 const MAX_BYTES = 20 * 1024 * 1024;
@@ -74,7 +75,13 @@ export default async function handler(req: Request, res: Response) {
       }
 
       const ext = file.mimetype === 'image/png' ? 'png' : 'jpg';
-      const storageKey = `jc-${cardId}-${randomUUID()}.${ext}`;
+      const storageKey = buildObjectKey({
+        logicalNamespace: 'job-card-photos',
+        companyId: profile.companyId,
+        category: 'job-card-photos',
+        uuid: randomUUID(),
+        originalName: file.originalname || `photo.${ext}`,
+      });
 
       const result = await uploadMedia({
         file,
@@ -112,6 +119,7 @@ export default async function handler(req: Request, res: Response) {
         caption,
         url: freshUrl,           // fresh signed URL for immediate display
       });
+
     }
 
     return res.status(201).json({ photos: saved });
