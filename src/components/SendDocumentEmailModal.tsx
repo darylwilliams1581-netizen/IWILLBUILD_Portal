@@ -27,8 +27,6 @@ import {
   User,
   X,
 } from 'lucide-react';
-import { useImageSafeguardBatch } from '@/hooks/useImageSafeguardBatch';
-import ImageSafeguardBatchModal from '@/components/ImageSafeguardBatchModal';
 import {
   dedupeAddresses,
   firstInvalidAddress,
@@ -151,9 +149,6 @@ export default function SendDocumentEmailModal({
   const [sending, setSending] = useState(false);
   const [error, setError] = useState('');
 
-  // CP12A: Safeguard gate — runs at Send time for form emails (after recipients finalised)
-  const { checkBatch, modalProps: safeguardModalProps } = useImageSafeguardBatch();
-
   const pdfPreviewHref =
     documentType === 'quote'
       ? `/api/estimates/${documentId}/export-pdf`
@@ -187,23 +182,6 @@ export default function SendDocumentEmailModal({
     const ccList  = showAdvanced ? dedupeAddresses(parseAddresses(cc)) : [];
     const bccList = showAdvanced ? dedupeAddresses(parseAddresses(bcc)) : [];
 
-    // ── CP12A: Safeguard gate for form emails ─────────────────────────────────
-    // Gate runs here — after recipients are finalised — so the confirmation
-    // covers the exact recipients and photos that will be sent.
-    let imageSafeguardAcknowledged = false;
-    if (documentType === 'form' && submissionId) {
-      const outcome = await checkBatch({
-        action: 'form_email',
-        submissionId,
-        jobId: jobId ?? null,
-      });
-      if (!outcome.allowed) {
-        // User cancelled or images are blocked — do not send
-        return;
-      }
-      imageSafeguardAcknowledged = true;
-    }
-
     setSending(true);
     setError('');
 
@@ -218,7 +196,6 @@ export default function SendDocumentEmailModal({
             to: toList, cc: ccList, bcc: bccList,
             subject: subject.trim(), message: message.trim(),
             attachPdf, bccOwner,
-            ...(imageSafeguardAcknowledged ? { imageSafeguardAcknowledged: true } : {}),
           }),
       });
       const data = await res.json() as { ok?: boolean; messageId?: string; attachedPdf?: boolean; ownerBcced?: boolean; senderName?: string; error?: string };
@@ -547,9 +524,6 @@ export default function SendDocumentEmailModal({
         </motion.div>
       </motion.div>
     </AnimatePresence>
-    {/* CP12A: Safeguard batch confirmation modal — rendered outside AnimatePresence
-        so it can appear over the email compose modal */}
-    <ImageSafeguardBatchModal {...safeguardModalProps} isEmail={true} />
     </>
   );
 }

@@ -32,7 +32,6 @@ import IncidentQueueTab from '@/components/owner-console/IncidentQueueTab';
 import ClientRescueTab from '@/components/owner-console/ClientRescueTab';
 import AnatomyTab from '@/components/owner-console/AnatomyTab';
 import TwilioTab from '@/components/owner-console/TwilioTab';
-import ImageSafeguardTab from '@/components/owner-console/ImageSafeguardTab';
 import OrphanActionModal from '@/components/owner-console/OrphanActionModal';
 import type { UserAction, OcUserForActions } from '@/components/owner-console/UserActionsMenu';
 import type { OrphanAction, OrphanUser } from '@/components/owner-console/OrphanActionsMenu';
@@ -937,7 +936,7 @@ export default function OwnerConsolePage() {
         }}>
             <span className="flex items-center gap-1.5">
               <Shield size={12} />
-              Image Safeguard
+              Image Safeguard (removed)
             </span>
           </Tab>
           {(supportMode.active || tab === 'support-setup') && <Tab active={tab === 'support-setup'} onClick={() => {
@@ -1121,7 +1120,11 @@ export default function OwnerConsolePage() {
                 </div>
               )}
               {tab === 'twilio' && <TwilioTab />}
-              {tab === 'image-safeguard' && <ImageSafeguardTab />}
+              {tab === 'image-safeguard' && (
+                <div className="p-8 text-center text-slate-500 text-sm">
+                  Image Safeguard has been decommissioned. Scanning is handled externally.
+                </div>
+              )}
 
 
               {/* ── Health Check (Annette) ── */}

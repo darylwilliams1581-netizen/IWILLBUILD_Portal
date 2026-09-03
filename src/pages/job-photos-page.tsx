@@ -5,8 +5,6 @@ import { Helmet } from '@dr.pogodin/react-helmet';
 import { motion, AnimatePresence } from 'motion/react';
 import JobPhotos, { type JobPhotosHandle } from '@/components/JobPhotos';
 import JobFeatureShell from '@/components/job/JobFeatureShell';
-import { useImageSafeguardBatch } from '@/hooks/useImageSafeguardBatch';
-import ImageSafeguardBatchModal from '@/components/ImageSafeguardBatchModal';
 // qrcode is loaded lazily (dynamic import) to prevent its module-level
 // constructor code from running on iOS Safari at page parse time, which
 // causes "o is not a constructor" in the minified bundle.
@@ -45,9 +43,6 @@ export default function JobPhotosPage() {
   const qrCanvasRef = useRef<HTMLCanvasElement>(null);
   // Send-selected state
   const [sendMsg, setSendMsg] = useState<string | null>(null);
-
-  // CP12A §6 — batch safeguard confirmation before external sharing
-  const { checkBatch, modalProps: safeguardModalProps } = useImageSafeguardBatch();
   useEffect(() => {
     if (!id) {
       setLoading(false);
@@ -117,29 +112,12 @@ export default function JobPhotosPage() {
   };
 
   /**
-   * CP12A: Safeguard-gated share link generation.
-   * Shows one confirmation modal if the job has photos.
-   * After confirmation, calls generateShareLink(true) — the explicit true
-   * is the only path that passes imageSafeguardAcknowledged: true to the server.
-   * Cancel, or any direct call without going through this gate, sends false
-   * and is rejected by the server when photos exist.
+   * Share link generation — no safeguard gate required.
    */
   const handleShareWithGate = useCallback(async () => {
     if (!jobId) return;
-    if (photoCount > 0) {
-      const outcome = await checkBatch({
-        action: 'share_link',
-        jobId,
-        imageCount: photoCount,
-        sharingSurface: 'share link',
-      });
-      if (!outcome.allowed) return;  // user cancelled or blocked — do not share
-      photosRef.current?.generateShareLink(true);
-    } else {
-      // No photos — no modal needed; acknowledged=false is fine (server skips check)
-      photosRef.current?.generateShareLink(false);
-    }
-  }, [checkBatch, photoCount, jobId]);
+    photosRef.current?.generateShareLink(false);
+  }, [jobId]);
 
   /**
    * Download selected photos.
@@ -397,8 +375,6 @@ export default function JobPhotosPage() {
             </motion.div>
           </div>}
       </AnimatePresence>
-      {/* ── CP12A §6: Batch safeguard confirmation modal ── */}
-      <ImageSafeguardBatchModal {...safeguardModalProps} />
 
         </JobFeatureShell>
       </div>

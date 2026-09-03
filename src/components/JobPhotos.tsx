@@ -840,12 +840,12 @@ const JobPhotos = forwardRef<JobPhotosHandle, JobPhotosProps>(function JobPhotos
 
   // ── Share link ─────────────────────────────────────────────────────────────
 
-  const generateShareLink = useCallback(async (acknowledged = false) => {
+  const generateShareLink = useCallback(async (_acknowledged = false) => {
     try {
       const res = await fetch(`/api/jobs/${jobId}/photos/share`, {
         method: 'POST', credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ imageSafeguardAcknowledged: acknowledged }),
+        body: JSON.stringify({}),
       });
       const data = await res.json() as { shareUrl?: string; error?: string };
       if (!res.ok) throw new Error(data.error ?? 'Failed to generate link');

@@ -98,8 +98,8 @@ export interface AttestationResponse {
 // ── Gate result ───────────────────────────────────────────────────────────────
 
 /**
- * Result of a batch safeguard gate decision.
- * Used by useImageSafeguardBatch to communicate whether external sharing
+ * Result of a batch gate decision.
+ * Used to communicate whether external sharing
  * is permitted, cancelled, or blocked.
  */
 export type GateOutcome =
