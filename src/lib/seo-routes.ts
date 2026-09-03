@@ -27,14 +27,14 @@ export interface SeoRoute {
     | "never";
   priority?: number;
   lastmod?: string;
+  /** Set to false to exclude this route from the generated sitemap.xml. */
+  sitemap?: boolean;
 }
 
 export const seoRoutes: SeoRoute[] = [
   // ── Public marketing pages — crawlable by search engines ──────────────────
-  { path: "/",             changefreq: "weekly",  priority: 1.0, lastmod: "2026-09-03" },
-  { path: "/signup",       changefreq: "monthly", priority: 0.9, lastmod: "2026-09-03" },
-  { path: "/subscribe",    changefreq: "monthly", priority: 0.8, lastmod: "2026-09-03" },
-  { path: "/download-app", changefreq: "monthly", priority: 0.7 },
+  { path: "/",        changefreq: "weekly",  priority: 1.0, lastmod: "2026-09-03" },
+  { path: "/signup",  changefreq: "monthly", priority: 0.9, lastmod: "2026-09-03" },
 
   // ── Legal / policy pages ──────────────────────────────────────────────────
   { path: "/terms",         changefreq: "yearly", priority: 0.4, lastmod: "2026-09-03" },
@@ -50,4 +50,7 @@ export const seoRoutes: SeoRoute[] = [
   // NOTE: All authenticated app routes (/home, /dashboard, /jobs, /fleet, etc.)
   // are intentionally excluded — they are behind auth, blocked in robots.txt,
   // and must not appear in the public sitemap.
+  //
+  // NOTE: /download-app and /subscribe are intentionally excluded — these pages
+  // are not yet publicly live and must not be indexed until launched.
 ];
