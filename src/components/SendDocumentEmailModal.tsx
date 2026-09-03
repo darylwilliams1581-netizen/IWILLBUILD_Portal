@@ -17,7 +17,6 @@ import { AnimatePresence, motion } from 'motion/react';
 import {
   AlertCircle,
   Briefcase,
-  CheckCircle2,
   ChevronDown,
   ChevronUp,
   ExternalLink,
@@ -70,6 +69,12 @@ export interface SendDocumentEmailProps {
    * gateway acceptance. The note is scoped to this job.
    */
   jobId?: number;
+  /**
+   * CP12A7: For documentType='form', the submission ID is required to
+   * resolve the exact photo refs embedded in the PDF for the safeguard gate.
+   * The gate runs at Send time (after recipients are finalised).
+   */
+  submissionId?: number;
   /** Called after the modal closes — parent shows the toast */
   onSuccess?: (payload: SendSuccessPayload) => void;
   onClose: () => void;
@@ -128,6 +133,7 @@ export default function SendDocumentEmailModal({
   defaultMessage = '',
   job,
   jobId,
+  submissionId,
   onSuccess,
   onClose,
 }: SendDocumentEmailProps) {
@@ -186,11 +192,11 @@ export default function SendDocumentEmailModal({
         method: 'POST',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          to: toList, cc: ccList, bcc: bccList,
-          subject: subject.trim(), message: message.trim(),
-          attachPdf, bccOwner,
-        }),
+          body: JSON.stringify({
+            to: toList, cc: ccList, bcc: bccList,
+            subject: subject.trim(), message: message.trim(),
+            attachPdf, bccOwner,
+          }),
       });
       const data = await res.json() as { ok?: boolean; messageId?: string; attachedPdf?: boolean; ownerBcced?: boolean; senderName?: string; error?: string };
       if (!res.ok || !data.ok || !data.messageId) {
@@ -426,6 +432,7 @@ export default function SendDocumentEmailModal({
   );
 
   return (
+    <>
     <AnimatePresence>
       <motion.div
         className="fixed inset-0 z-[200] flex items-end md:items-start md:pt-[124px] justify-center"
@@ -517,5 +524,6 @@ export default function SendDocumentEmailModal({
         </motion.div>
       </motion.div>
     </AnimatePresence>
+    </>
   );
 }
