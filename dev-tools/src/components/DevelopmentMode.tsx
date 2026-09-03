@@ -610,6 +610,7 @@ export default function DevelopmentMode() {
       } else if (mediaState.types[slotPath] === 'video') {
         mediaState.types[slotPath] = 'image'
       }
+      window.airoSetMediaSlotType?.(slotPath, mediaState.types[slotPath]) // airo-video-slots.js reverts the swap otherwise
 
       // Reload <img> elements — or add <video> sibling for video slots
       document.querySelectorAll<HTMLImageElement>('img').forEach((img) => {

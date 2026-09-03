@@ -18,4 +18,5 @@ interface ImportMeta {
 
 interface Window {
   __airoEditModeActive?: boolean
+  airoSetMediaSlotType?: (slotPath: string, mediaType: string | undefined) => void // defined by public/airo-video-slots.js
 }
