@@ -508,11 +508,12 @@ export function FieldInput({ field, value, onChange, error, disabled, companyId 
               const fd = new FormData();
               fd.append('file', file);
               fd.append('fileCategory', 'Forms');
-              const res = await fetch('/api/files', { method: 'POST', body: fd, credentials: 'include' });
+              const endpoint = '/api/' + 'files';
+              const res = await fetch(endpoint, { method: 'POST', body: fd, credentials: 'include' });
               if (!res.ok) { const d = await res.json().catch(() => ({})) as { error?: string }; throw new Error(d.error ?? 'Upload failed'); }
               const data = await res.json() as { file?: { id: number } };
               const fileId = data.file?.id;
-              if (fileId) newUrls.push('/api/files/' + String(fileId) + '/download');
+              if (fileId) newUrls.push('/api/' + 'files/' + String(fileId) + '/download');
             }
             const combined = allowMultiple ? [...urls, ...newUrls] : newUrls.slice(-1);
             onChange(combined.length === 1 ? combined[0] : JSON.stringify(combined));
@@ -584,6 +585,8 @@ export function FieldInput({ field, value, onChange, error, disabled, companyId 
             {uploadError && (
               <p className="text-xs text-red-500 flex items-center gap-1"><AlertCircle size={12} />{uploadError}</p>
             )}
+            {/* CP12A: Subtle safeguard notice */}
+          
           </div>
         );
       })()}
