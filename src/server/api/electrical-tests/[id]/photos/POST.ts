@@ -17,6 +17,7 @@ import { getPlanLimits, getCompanyPlan } from '../../../../lib/plan-limits.js';
 import { uploadMedia } from '../../../../lib/uploadService.js';
 import type { CompatibilityContext } from '../../../../lib/uploadService.js';
 import type { ResultSetHeader } from 'mysql2';
+import { buildObjectKey } from '../../../../storage/r2Config.js';
 import { randomUUID } from 'node:crypto';
 
 const VALID_PHOTO_TYPES = ['joint_asset', 'instrument_display', 'additional'] as const;
@@ -78,7 +79,13 @@ export default async function handler(req: Request, res: Response) {
       ? (photoType as string) : 'additional';
 
     const ext = extForMime(file.mimetype);
-    const storageKey = `electrical-tests/${randomUUID()}.${ext}`;
+    const storageKey = buildObjectKey({
+      logicalNamespace: 'company-files',
+      companyId: profile.companyId,
+      category: 'electrical-tests',
+      uuid: randomUUID(),
+      originalName: file.originalname || `photo.${ext}`,
+    });
     const uploaderName = profile.firstName && profile.lastName
       ? `${profile.firstName} ${profile.lastName}` : session.user.email ?? '';
 
