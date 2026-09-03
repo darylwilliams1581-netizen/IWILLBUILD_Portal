@@ -5,7 +5,7 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { renderHook, act, cleanup } from '@testing-library/react';
 import { createRef } from 'react';
 
-import { useImageHoverDetection } from '../useImageHoverDetection';
+import { resolveHoverableAnchor, useImageHoverDetection } from '../useImageHoverDetection';
 
 type EditingState = { editingElement: HTMLElement | null; saveStatus?: string };
 
@@ -81,6 +81,24 @@ describe('useImageHoverDetection click path', () => {
     fireClick(span);
 
     expect(result.current.hoveredElement?.type).toBe('content');
+    expect(result.current.hoveredElement?.element).toBe(h1);
+    expect(result.current.toolbarMode).toBe(true);
+  });
+
+  it('openToolbarFor opens the toolbar for a resolved anchor without a click', () => {
+    const h1 = document.createElement('h1');
+    h1.textContent = 'Hello';
+    document.body.appendChild(h1);
+    const anchor = resolveHoverableAnchor(h1);
+    expect(anchor).not.toBeNull();
+
+    const editingRef = makeEditingRef();
+    const { result } = renderHook(() => useImageHoverDetection(true, editingRef));
+
+    act(() => {
+      result.current.openToolbarFor(anchor!);
+    });
+
     expect(result.current.hoveredElement?.element).toBe(h1);
     expect(result.current.toolbarMode).toBe(true);
   });

@@ -796,5 +796,6 @@ export function useTextEditing(isEditModeActive: boolean, cmsInlineEditEnabled: 
     /** Ref to current state for use in other hooks' effects */
     stateRef,
     stopEditing,
+    startEditing,
   };
 }

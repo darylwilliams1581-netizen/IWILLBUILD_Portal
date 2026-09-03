@@ -311,7 +311,12 @@ export interface BusEventMap {
   SPEECH_QUERY_SUPPORT: object;
   SPEECH_START: object;
   SPEECH_STOP: object;
-  EDITABLE_ELEMENT_CLICKED_IN_PREVIEW: { tagName: string };
+  PREVIEW_ENTER_EDIT: {
+    selector: string;
+    elementKind: "text" | "image" | "content";
+    clientX: number;
+    clientY: number;
+  };
   /** Preview-mode click on an external (cross-origin) link. The sandboxed
    *  preview iframe can't escape to a real top-level tab, so the builder opens
    *  the URL in a new browser tab from the un-sandboxed top window. */

@@ -269,6 +269,32 @@ export function useImageHoverDetection(
     setToolbarMode(false);
   }, [updateHoveredImage, setToolbarMode]);
 
+  const openToolbarFor = useCallback((anchor: HoveredElement): void => {
+    if (showBarTimerRef.current) {
+      clearTimeout(showBarTimerRef.current);
+      showBarTimerRef.current = null;
+    }
+    if (hideBarTimerRef.current) {
+      clearTimeout(hideBarTimerRef.current);
+      hideBarTimerRef.current = null;
+    }
+    flushSync(() => {
+      if (anchor.type === "image") {
+        updateHoveredImage({
+          element: anchor.element,
+          imageUrl: anchor.imageUrl,
+          isMediaSlot: anchor.isMediaSlot,
+          slotPath: anchor.slotPath,
+          isVideo: anchor.isVideo,
+        });
+      } else {
+        updateHoveredImage(null);
+        updateHoveredElement(anchor);
+      }
+      setToolbarMode(true);
+    });
+  }, [updateHoveredImage, updateHoveredElement, setToolbarMode]);
+
   useEffect(() => {
     if (!isEditModeActive) return;
 
@@ -487,33 +513,7 @@ export function useImageHoverDetection(
       }
       if (!anchor) return;
 
-      if (showBarTimerRef.current) {
-        clearTimeout(showBarTimerRef.current);
-        showBarTimerRef.current = null;
-      }
-      if (hideBarTimerRef.current) {
-        clearTimeout(hideBarTimerRef.current);
-        hideBarTimerRef.current = null;
-      }
-
-      // flushSync so React commits hoveredElement + toolbarMode together
-      // before any subsequent events fire — ElementHoverBar mounts with the
-      // correct element prop and toolbarMode=true in a single layout pass.
-      flushSync(() => {
-        if (anchor.type === "image") {
-          updateHoveredImage({
-            element: anchor.element,
-            imageUrl: anchor.imageUrl,
-            isMediaSlot: anchor.isMediaSlot,
-            slotPath: anchor.slotPath,
-            isVideo: anchor.isVideo,
-          });
-        } else {
-          updateHoveredImage(null);
-          updateHoveredElement(anchor);
-        }
-        setToolbarMode(true);
-      });
+      openToolbarFor(anchor);
     };
 
     const ownsItsOwnEscape = (target: HTMLElement | null): boolean => {
@@ -542,7 +542,7 @@ export function useImageHoverDetection(
       document.removeEventListener("keydown", handleEscapeDismiss);
       clearToolbarAnchor();
     };
-  }, [isEditModeActive, editingStateRef, updateHoveredImage, updateHoveredElement, setToolbarMode, clearToolbarAnchor]);
+  }, [isEditModeActive, editingStateRef, updateHoveredImage, updateHoveredElement, setToolbarMode, clearToolbarAnchor, openToolbarFor]);
 
   const handleBarMouseEnter = useCallback(() => {
     if (hideBarTimerRef.current) {
@@ -563,5 +563,6 @@ export function useImageHoverDetection(
     setToolbarMode,
     handleBarMouseEnter,
     handleBarMouseLeave,
+    openToolbarFor,
   };
 }

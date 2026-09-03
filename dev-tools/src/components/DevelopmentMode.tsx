@@ -15,8 +15,11 @@ import type { RouteSnapshot } from '../utils/eventBus'
 import { showSelectionOverlay } from '../utils/selection-overlay'
 import { useEditMode } from "../hooks/useEditMode";
 import { useComplianceFieldEditor } from "../hooks/useComplianceFieldEditor";
+import { usePendingEditTarget } from "../hooks/usePendingEditTarget";
+import { usePreviewEditInteraction } from "../hooks/usePreviewEditInteraction";
 import AnnotationMode from "./AnnotationMode";
 import ElementHoverBar from "./ElementHoverBar";
+import { PreviewEditAffordance } from "./PreviewEditAffordance";
 import { setTranslations } from "../utils/translations";
 import { discoverRoutes, resolveRouteForModule } from "../route-discovery";
 import {
@@ -28,7 +31,6 @@ import {
 import { handleMediaReplaceParentMessage } from "../utils/media-replace-messages";
 import { collectMediaSlotDomMatches } from "../utils/media-slot-dom";
 import { discardMediaSlotPreviewStash, revertMediaSlotPreview } from "../utils/media-slot-preview";
-import { resolveExternalNavigationHref } from "../utils/link-follow";
 import { isInteractiveTapTarget, isManagedPath, hasManagedDocMarkup } from "../utils/element-detection";
 import CarouselSlotEditNav from "./CarouselSlotEditNav";
 import { setCarouselSlotEdit, setCarouselToolbarPause } from "../utils/carousel-slot-edit";
@@ -40,6 +42,7 @@ export default function DevelopmentMode() {
   const [isEditModeActive, setIsEditModeActive] = useState(false); // off by default, parent enables via EDIT_MODE_ENABLED message
   const [cmsInlineEditEnabled, setCmsInlineEditEnabled] = useState(false); // off by default, parent sets via EDIT_MODE_ENABLED message payload
   const [isMultiSelectActive, setIsMultiSelectActive] = useState(false); // off by default, parent enables via MULTI_SELECT_ENABLED message
+  const [isPreviewDoubleClickEditEnabled, setIsPreviewDoubleClickEditEnabled] = useState<boolean>(false);
   const [isAnnotationModeActive, setIsAnnotationModeActive] = useState(false); // off by default, parent enables via ANNOTATION_MODE_ENABLED message
   const [pausedCarouselCount, setPausedCarouselCount] = useState(0); // count of paused carousel-shaped timers — drives the edit-mode "Next slide" overlay
   const [, setTranslationsLoaded] = useState(0); // counter that always changes to force re-render
@@ -53,7 +56,27 @@ export default function DevelopmentMode() {
   // page without the markup is NOT managed and keeps full inline editing.
   const isManagedDoc = isManagedPath(pathname) && hasManagedMarkup
 
-  const { hoveredElement, toolbarMode, setToolbarMode, handleBarMouseEnter, handleBarMouseLeave, saveStatus } = useEditMode(isEditModeActive && !isManagedDoc, cmsInlineEditEnabled, isMultiSelectActive)
+  const {
+    hoveredElement,
+    toolbarMode,
+    setToolbarMode,
+    handleBarMouseEnter,
+    handleBarMouseLeave,
+    startEditing,
+    openToolbarFor,
+    saveStatus,
+  } = useEditMode(isEditModeActive && !isManagedDoc, cmsInlineEditEnabled, isMultiSelectActive)
+
+  const { affordance } = usePreviewEditInteraction({
+    previewActive: !isEditModeActive,
+    editInteractionEnabled: isPreviewDoubleClickEditEnabled,
+    cmsInlineEditEnabled,
+  })
+
+  usePendingEditTarget(isEditModeActive && !isManagedDoc, {
+    startEditing,
+    openToolbarFor,
+  })
 
   // Compliance docs: highlight + inline-edit field values and toggle boolean
   // sections, gated to edit mode like every other inline-editing affordance.
@@ -1498,6 +1521,14 @@ export default function DevelopmentMode() {
           setIsMultiSelectActive(false);
           return;
         }
+        if (event.data && event.data.type === 'PREVIEW_DOUBLE_CLICK_EDIT_ENABLED') {
+          setIsPreviewDoubleClickEditEnabled(true);
+          return;
+        }
+        if (event.data && event.data.type === 'PREVIEW_DOUBLE_CLICK_EDIT_DISABLED') {
+          setIsPreviewDoubleClickEditEnabled(false);
+          return;
+        }
         // Must match SET_SCROLL_GUTTER_MESSAGE_TYPE and coerceScrollGutterPaddingBottom in
         // app/src/app/[market]/commander/components/commanderMobileScroll.ts
         // (dev-tools cannot import from the builder app).
@@ -1733,40 +1764,6 @@ export default function DevelopmentMode() {
     }
   }, [])
 
-  useEffect(() => {
-    if (isEditModeActive) return
-
-    const handlePreviewClick = (e: MouseEvent) => {
-      const target = e.target as HTMLElement | null
-      if (!target) return
-      // Standalone tab (not framed by the builder): nothing below applies —
-      // no external-link interception and no edit-mode messaging. Bail first so
-      // neither path runs, and there's a single window.parent check.
-      if (window.parent === window) return
-      // External links can't escape the sandboxed preview iframe to a real
-      // top-level tab (framing-restricted sites dead-end on
-      // ERR_BLOCKED_BY_RESPONSE), so hand the URL to the builder to open it at
-      // top level. Intentionally checked BEFORE the nav-surface/dev-tools/form
-      // guards: an external link should open in a new tab wherever it's clicked
-      // (e.g. a social link in the site nav), not fall through to the broken
-      // native path. Only cross-origin http(s) anchors match (see resolver).
-      const externalHref: string | null = resolveExternalNavigationHref(target)
-      if (externalHref) {
-        e.preventDefault()
-        send({ type: 'OPEN_EXTERNAL_URL', url: externalHref })
-        return
-      }
-      // Managed compliance docs restrict editing to compliance fields; don't
-      // prompt the builder to enter general edit mode from a click here.
-      if (isManagedPath() && hasManagedDocMarkup()) return
-      if (isInteractiveTapTarget(target)) return
-      send({ type: 'EDITABLE_ELEMENT_CLICKED_IN_PREVIEW', tagName: target.tagName.toLowerCase() })
-    }
-
-    document.addEventListener('click', handlePreviewClick, true)
-    return () => document.removeEventListener('click', handlePreviewClick, true)
-  }, [isEditModeActive])
-
   // Track whether the current page is a real managed compliance doc (carries the
   // compliance markup). Re-checked on every DOM mutation so it stays correct
   // across SPA navigation and async/HMR renders.
@@ -1804,6 +1801,7 @@ export default function DevelopmentMode() {
           saveStatus={saveStatus}
         />
       )}
+      {affordance ? <PreviewEditAffordance x={affordance.x} y={affordance.y} /> : null}
       <AnnotationMode isActive={isAnnotationModeActive} />
       {isEditModeActive && <CarouselSlotEditNav />}
       {isEditModeActive && pausedCarouselCount > 0 && (
