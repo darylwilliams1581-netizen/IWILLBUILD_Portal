@@ -3,6 +3,7 @@ import { useNavigate, useSearchParams } from "react-router";
 import { Helmet } from '@dr.pogodin/react-helmet';
 import { RefreshCw, Shield, ChevronRight, Activity, Loader2, ShieldCheck, FileText, ClipboardList, CheckCircle2, XCircle, ChevronDown, ExternalLink, ShieldAlert, X, Bot, Mail, BarChart2, StickyNote, Receipt, Send, Ban, RotateCcw, Server, AlertCircle, Play, Info, Clock, Copy, Check, Plus, Database, Settings, Users, Building2, LogOut, ArrowLeft, Bug, AlertTriangle, Phone, Code2, FileCode, BookOpen } from 'lucide-react';
 import { usePermissions } from '@/lib/usePermissions';
+import { goBack } from '@/lib/navigation';
 import DesktopTopBar from '@/components/DesktopTopBar';
 import DesktopDock from '@/components/DesktopDock';
 import PortalSidebar from '@/components/PortalSidebar';
@@ -34,6 +35,7 @@ import TwilioTab from '@/components/owner-console/TwilioTab';
 import OrphanActionModal from '@/components/owner-console/OrphanActionModal';
 import type { UserAction, OcUserForActions } from '@/components/owner-console/UserActionsMenu';
 import type { OrphanAction, OrphanUser } from '@/components/owner-console/OrphanActionsMenu';
+import { extractLeadingEmoji } from '@/lib/string-scanners';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -348,7 +350,7 @@ export default function OwnerConsolePage() {
   const [activity, setActivity] = useState<ActivityEvent[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [tab, setTab] = useState<'overview' | 'companies' | 'users' | 'activity' | 'support-setup' | 'usage' | 'storage' | 'cancellation-feedback' | 'system-ai' | 'audit-log' | 'activity-log' | 'email-log' | 'platform-email' | 'company-health' | 'support-notes' | 'accounting-smoke' | 'health-check' | 'swms-seed' | 'bug-reports' | 'incidents' | 'client-rescue' | 'anatomy' | 'global-library' | 'twilio'>(searchParams.get('tab') as 'support-setup' | 'health-check' | 'bug-reports' | 'incidents' | 'client-rescue' | 'twilio' | null === 'support-setup' ? 'support-setup' : searchParams.get('tab') as 'health-check' | null === 'health-check' ? 'health-check' : searchParams.get('tab') as 'bug-reports' | null === 'bug-reports' ? 'bug-reports' : searchParams.get('tab') as 'incidents' | null === 'incidents' ? 'incidents' : searchParams.get('tab') as 'client-rescue' | null === 'client-rescue' ? 'client-rescue' : searchParams.get('tab') as 'twilio' | null === 'twilio' ? 'twilio' : 'overview');
+  const [tab, setTab] = useState<'overview' | 'companies' | 'users' | 'activity' | 'support-setup' | 'usage' | 'storage' | 'cancellation-feedback' | 'system-ai' | 'audit-log' | 'activity-log' | 'email-log' | 'platform-email' | 'company-health' | 'support-notes' | 'accounting-smoke' | 'health-check' | 'swms-seed' | 'bug-reports' | 'incidents' | 'client-rescue' | 'anatomy' | 'global-library' | 'twilio' | 'image-safeguard'>(searchParams.get('tab') as 'support-setup' | 'health-check' | 'bug-reports' | 'incidents' | 'client-rescue' | 'twilio' | null === 'support-setup' ? 'support-setup' : searchParams.get('tab') as 'health-check' | null === 'health-check' ? 'health-check' : searchParams.get('tab') as 'bug-reports' | null === 'bug-reports' ? 'bug-reports' : searchParams.get('tab') as 'incidents' | null === 'incidents' ? 'incidents' : searchParams.get('tab') as 'client-rescue' | null === 'client-rescue' ? 'client-rescue' : searchParams.get('tab') as 'twilio' | null === 'twilio' ? 'twilio' : 'overview');
   const [bugReportCount, setBugReportCount] = useState(0);
   const [userSearch, setUserSearch] = useState('');
   const [supportCompany, setSupportCompany] = useState<Company | null>(null);
@@ -510,7 +512,7 @@ export default function OwnerConsolePage() {
       if (line.startsWith('## ')) {
         const content = line.slice(3);
         const contentHead = content.slice(0, 8);
-        const emoji = contentHead.match(/^[\u{1F300}-\u{1FFFF}\u2600-\u27BF\u{1F004}\u{1F0CF}]/u)?.[0] ?? '';
+        const emoji = extractLeadingEmoji(contentHead);
         const rest = emoji ? content.slice(emoji.length).trim() : content;
         nodes.push(<div key={key++} className="flex items-center gap-2 mt-6 mb-2 pb-2 border-b border-slate-200">{emoji && <span className="text-lg leading-none">{emoji}</span>}<h2 className="font-heading font-black text-sm text-slate-800 uppercase tracking-wider">{rest}</h2></div>);
         continue;
@@ -705,24 +707,24 @@ export default function OwnerConsolePage() {
 
       <div className="flex flex-col flex-1 min-h-0 overflow-hidden">
         <Helmet>
-          <title>Developer Console — IWILLBUILD Portal</title>
+          <title>Developer Console — IWIllBUIlD Portal</title>
           <meta name="description" content="Owner-only control room for managing companies, users, and activity." />
           <link rel="canonical" href="https://iwillbuild.com/owner-console" />
           <meta name="robots" content="noindex" />
-          <meta property="og:title" content="Developer Console — IWILLBUILD Portal" />
+          <meta property="og:title" content="Developer Console — IWIllBUIlD Portal" />
           <meta property="og:description" content="Owner-only control room for managing companies, users, and activity." />
           <meta property="og:type" content="website" />
           <meta property="og:url" content="https://iwillbuild.com/owner-console" />
           <meta property="og:image" content="https://iwillbuild.com/airo-assets/images/pages/home/og-image" />
           <meta name="twitter:card" content="summary_large_image" />
-          <meta name="twitter:title" content="Developer Console — IWILLBUILD Portal" />
+          <meta name="twitter:title" content="Developer Console — IWIllBUIlD Portal" />
           <meta name="twitter:description" content="Owner-only control room for managing companies, users, and activity." />
           <meta name="twitter:image" content="https://iwillbuild.com/airo-assets/images/pages/home/og-image" />
         </Helmet>
 
         {/* Header */}
         <div className="bg-white border-b border-slate-200 px-4 py-4 flex items-center gap-3 shrink-0">
-          <button onClick={() => window.history.length > 1 ? navigate(-1) : navigate('/home')} className="w-9 h-9 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 flex items-center justify-center text-slate-500 transition-colors shrink-0" aria-label="Go back">
+          <button onClick={() => goBack(navigate, '/home')} className="w-9 h-9 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 flex items-center justify-center text-slate-500 transition-colors shrink-0" aria-label="Go back">
             <ArrowLeft size={16} />
           </button>
           <div className="flex-1 min-w-0">
@@ -928,6 +930,15 @@ export default function OwnerConsolePage() {
               Twilio
             </span>
           </Tab>
+          <Tab active={tab === 'image-safeguard'} onClick={() => {
+          setTab('image-safeguard');
+          setSearchParams({ tab: 'image-safeguard' });
+        }}>
+            <span className="flex items-center gap-1.5">
+              <Shield size={12} />
+              Image Safeguard (removed)
+            </span>
+          </Tab>
           {(supportMode.active || tab === 'support-setup') && <Tab active={tab === 'support-setup'} onClick={() => {
           setTab('support-setup');
           setSearchParams({
@@ -1109,6 +1120,11 @@ export default function OwnerConsolePage() {
                 </div>
               )}
               {tab === 'twilio' && <TwilioTab />}
+              {tab === 'image-safeguard' && (
+                <div className="p-8 text-center text-slate-500 text-sm">
+                  Image Safeguard has been decommissioned. Scanning is handled externally.
+                </div>
+              )}
 
 
               {/* ── Health Check (Annette) ── */}
@@ -1213,7 +1229,7 @@ export default function OwnerConsolePage() {
                   <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 flex gap-3">
                     <Info size={13} className="text-slate-400 shrink-0 mt-0.5" />
                     <p className="text-xs text-slate-500 leading-relaxed">
-                      Reports are based on data currently in your IWILLBUILD portal. For WHS, building code, or legal compliance matters, always verify with a competent person or the current official standard. Dazza Health Check does not provide legal or professional advice.
+                      Reports are based on data currently in your IWIllBUIlD portal. For WHS, building code, or legal compliance matters, always verify with a competent person or the current official standard. Dazza Health Check does not provide legal or professional advice.
                     </p>
                   </div>
                 </div>}
