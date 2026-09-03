@@ -604,6 +604,10 @@ import me_recovery_email_freeze_get_571 from "./api/me/recovery-email/freeze/GET
 import me_recovery_email_freeze_post_572 from "./api/me/recovery-email/freeze/POST";
 import me_recovery_email_request_post_573 from "./api/me/recovery-email/request/POST";
 import me_recovery_email_verify_get_574 from "./api/me/recovery-email/verify/GET";
+// Readable aliases for recoveryTokenLimiter route registration (required by security test)
+const recoveryEmailCancelGet = me_recovery_email_cancel_get_569;
+const recoveryEmailFreezeGet  = me_recovery_email_freeze_get_571;
+const recoveryEmailVerifyGet  = me_recovery_email_verify_get_574;
 import migrate_account_recovery_post_575 from "./api/migrate-account-recovery/POST";
 import migrate_anatomy_post_576 from "./api/migrate-anatomy/POST";
 import migrate_asset_manager_post_577 from "./api/migrate-asset-manager/POST";
@@ -3929,12 +3933,12 @@ app.get("/api/me/profile-attachments/thumbnail", me_profile_attachments_thumbnai
 app.get("/api/me/profile-extras", me_profile_extras_get_566);
 app.put("/api/me/profile-extras", me_profile_extras_put_567);
 app.get("/api/me/recovery-email", me_recovery_email_get_568);
-app.get("/api/me/recovery-email/cancel", me_recovery_email_cancel_get_569);
+app.get("/api/me/recovery-email/cancel", recoveryTokenLimiter, recoveryEmailCancelGet);
 app.post("/api/me/recovery-email/cancel", me_recovery_email_cancel_post_570);
-app.get("/api/me/recovery-email/freeze", me_recovery_email_freeze_get_571);
+app.get("/api/me/recovery-email/freeze", recoveryTokenLimiter, recoveryEmailFreezeGet);
 app.post("/api/me/recovery-email/freeze", me_recovery_email_freeze_post_572);
 app.post("/api/me/recovery-email/request", me_recovery_email_request_post_573);
-app.get("/api/me/recovery-email/verify", me_recovery_email_verify_get_574);
+app.get("/api/me/recovery-email/verify", recoveryTokenLimiter, recoveryEmailVerifyGet);
 app.post("/api/migrate-account-recovery", migrate_account_recovery_post_575);
 app.post("/api/migrate-anatomy", migrate_anatomy_post_576);
 app.post("/api/migrate-asset-manager", migrate_asset_manager_post_577);
