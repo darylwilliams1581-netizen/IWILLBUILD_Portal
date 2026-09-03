@@ -29,6 +29,7 @@ import { getAuth } from '../../../lib/auth/auth.js';
 import { parseMultipartForm } from '../../lib/file-upload.js';
 import { uploadMedia, normaliseMime } from '../../lib/uploadService.js';
 import { randomUUID } from 'node:crypto';
+import { buildObjectKey } from '../../storage/r2Config.js';
 
 const BUCKET       = 'form-attachments';
 const MAX_BYTES    = 30 * 1024 * 1024; // 30 MB
@@ -69,7 +70,13 @@ export default async function handler(req: Request, res: Response) {
       normaliseMime(file);
 
       const ext = file.originalname.includes('.') ? (file.originalname.split('.').pop() ?? 'bin') : 'bin';
-      const storageKey = `${profile.companyId}/${randomUUID()}.${ext}`;
+      const storageKey = buildObjectKey({
+        logicalNamespace: 'form-attachments',
+        companyId: profile.companyId,
+        category: 'form-attachments',
+        uuid: randomUUID(),
+        originalName: file.originalname,
+      });
 
       const result = await uploadMedia({
         file,
@@ -94,6 +101,7 @@ export default async function handler(req: Request, res: Response) {
         fieldKey: fieldKey ?? null,
         jobId: jobId ? parseInt(jobId, 10) : null,
       });
+
     }
 
     return res.status(201).json({ attachments: results });
