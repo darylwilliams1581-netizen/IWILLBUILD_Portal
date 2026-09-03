@@ -21,6 +21,7 @@
   var BG_VIDEO_FILL_STYLE = 'position:absolute;inset:0;width:100%;height:100%;object-fit:cover;z-index:-1;pointer-events:none;'
   var CLEAR_BG_ATTR = 'data-airo-bg-video-clear-bg'
   var mediaTypes = {}
+  var committedSlots = {}
 
   function configureAutoplayVideo(video) {
     // Keep in lockstep with dev-tools/src/utils/autoplay-video.ts (parity test).
@@ -232,6 +233,27 @@
     }
   }
 
+  window.airoSetMediaSlotType = function (slotPath, mediaType) {
+    if (slotPath && mediaType) {
+      mediaTypes[slotPath] = mediaType // dev-tools commits a type after our load-time manifest read; without this the next observer pass reverts its swap
+      committedSlots[slotPath] = mediaType
+    }
+  }
+
+  // Both manifest ingest sites route through here. A dev-tools commit outranks manifest
+  // responses that disagree with it — the in-flight initial fetch, or a poll that has not
+  // caught up — but only until the manifest agrees, after which the slot rejoins normal
+  // synchronization so a later change of kind is not ignored for the rest of the session.
+  function ingestManifestType(slotPath, mediaType) {
+    if (committedSlots[slotPath]) {
+      if (committedSlots[slotPath] !== mediaType) return false
+      delete committedSlots[slotPath]
+    }
+    if (mediaTypes[slotPath] === mediaType) return false
+    mediaTypes[slotPath] = mediaType
+    return true
+  }
+
   // Fetch manifest then start observing
   fetch('/airo-media.json')
     .then(function (res) {
@@ -241,7 +263,7 @@
     .then(function (manifest) {
       for (var key in manifest) {
         if (manifest[key] && manifest[key].mediaType) {
-          mediaTypes[key] = manifest[key].mediaType
+          ingestManifestType(key, manifest[key].mediaType)
         }
       }
       // Patch existing images
@@ -311,8 +333,7 @@
             pollFailures = 0
             var changed = false
             for (var k in m) {
-              if (m[k] && m[k].mediaType && mediaTypes[k] !== m[k].mediaType) {
-                mediaTypes[k] = m[k].mediaType
+              if (m[k] && m[k].mediaType && ingestManifestType(k, m[k].mediaType)) {
                 changed = true
               }
             }
