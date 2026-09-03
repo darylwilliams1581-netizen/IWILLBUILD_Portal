@@ -13,6 +13,7 @@ import { parseMultipartForm } from '../../../../../lib/file-upload.js';
 import { uploadMedia, normaliseMime } from '../../../../../lib/uploadService.js';
 import type { CompatibilityContext } from '../../../../../lib/uploadService.js';
 import { randomUUID } from 'node:crypto';
+import { buildObjectKey } from '../../../../../storage/r2Config.js';
 
 const BUCKET = 'am-inspection-media';
 const MAX_SIZE = 20 * 1024 * 1024;
@@ -48,7 +49,13 @@ export default async function handler(req: Request, res: Response) {
     normaliseMime(file);
 
     const ext = file.originalname.includes('.') ? (file.originalname.split('.').pop() ?? 'bin') : 'bin';
-    const storageKey = `${randomUUID()}.${ext}`;
+    const storageKey = buildObjectKey({
+      logicalNamespace: 'am-inspection-media',
+      companyId: profile.companyId,
+      category: 'am-inspection-media',
+      uuid: randomUUID(),
+      originalName: file.originalname || `photo.${ext}`,
+    });
 
     const result = await uploadMedia({
       file,
@@ -70,6 +77,7 @@ export default async function handler(req: Request, res: Response) {
     });
 
     return res.status(201).json({ ok: true, id: result.destinationId, filePath: result.url, fileName: result.originalName });
+
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     const status = (err as { status?: number }).status ?? 500;
