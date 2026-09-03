@@ -487,8 +487,6 @@ export default function MyAccountTab() {
         <div className="bg-white border border-slate-200 rounded-xl p-5">
           <p className="text-xs text-slate-500 mb-4">Upload copies of your licences and cards — always have them on hand when on site.</p>
           <input ref={fileInputRef} type="file" className="hidden" onChange={handleFileUpload} />
-          {/* CP12A: Subtle safeguard notice */}
-          <ImageSafeguardNotice className="mb-3" />
           {uploadError && (
             <div className="flex items-center gap-2 text-red-600 text-xs bg-red-50 border border-red-200 rounded-lg px-3 py-2 mb-3">
               <AlertCircle size={12} />{uploadError}

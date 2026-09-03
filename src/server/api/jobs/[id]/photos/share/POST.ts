@@ -3,11 +3,6 @@
  * Generate a 90-day view-only share token for a job's photos.
  * Returns { shareUrl, expiresAt }
  *
- * CP12A: When the job has photos, requires imageSafeguardAcknowledged: true
- * in the request body. This is a user confirmation and audit control.
- * The server resolves the job's current photos and checks their statuses.
- * Blocked/elevated images are rejected regardless of acknowledgment.
- *
  * Strategy: DELETE any existing share for this job, then INSERT fresh.
  */
 import type { Request, Response } from 'express';
@@ -16,11 +11,6 @@ import { jobPhotoShares, profiles, jobs } from '../../../../../db/schema.js';
 import { eq, and } from 'drizzle-orm';
 import { getAuth } from '../../../../../../lib/auth/auth.js';
 import { generateShareToken, hashToken, expiresAt } from '../../../../../lib/share-tokens.js';
-import {
-  resolveJobPhotoRefs,
-  getWorstSafeguardStatus,
-  recordSharingAuditEvent,
-} from '../../../../../lib/imageSafeguardService.js';
 
 export default async function handler(req: Request, res: Response) {
   try {
@@ -43,31 +33,6 @@ export default async function handler(req: Request, res: Response) {
     });
     if (!job) return res.status(404).json({ error: 'Job not found' });
 
-    // ── Resolve photos server-side (authenticated, company-scoped) ────────────
-    const currentRefs = await resolveJobPhotoRefs(profile.companyId, jobId);
-
-    // ── Safeguard check ───────────────────────────────────────────────────────
-    if (currentRefs.length > 0) {
-      const worstStatus = await getWorstSafeguardStatus(profile.companyId, currentRefs);
-
-      // Blocked/elevated: reject regardless of acknowledgment
-      if (worstStatus === 'blocked' || worstStatus === 'elevated') {
-        return res.status(403).json({
-          error: 'Sharing is not permitted for these images.',
-          code: 'sharing_blocked',
-        });
-      }
-
-      // Require explicit acknowledgment when images are present
-      const body = req.body as { imageSafeguardAcknowledged?: unknown };
-      if (body.imageSafeguardAcknowledged !== true) {
-        return res.status(403).json({
-          error: 'A safeguard acknowledgment is required before sharing photos.',
-          code: 'safeguard_acknowledgment_required',
-        });
-      }
-    }
-
     // ── Generate share link ───────────────────────────────────────────────────
     const raw = generateShareToken();
     const hash = hashToken(raw);
@@ -88,19 +53,6 @@ export default async function handler(req: Request, res: Response) {
       expiresAt: exp,
       createdByUserId: session.user.id,
     });
-
-    // ── Audit event (best-effort, only after share token is persisted) ───────────
-    // Placed after the DB insert succeeds — so the audit record is only written
-    // when the share link was actually created and will be returned to the caller.
-    if (currentRefs.length > 0) {
-      void recordSharingAuditEvent({
-        companyId: profile.companyId,
-        userId: session.user.id,
-        action: 'job_photo_share',
-        resourceId: jobId,
-        imageCount: currentRefs.length,
-      });
-    }
 
     const origin = `${req.protocol}://${req.get('host')}`;
     const shareUrl = `${origin}/photos/share/${raw}`;

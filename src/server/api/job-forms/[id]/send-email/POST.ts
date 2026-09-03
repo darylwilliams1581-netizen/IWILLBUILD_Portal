@@ -6,12 +6,6 @@
  * PDF assembly is delegated to buildFormPdfDocument() — the canonical builder
  * shared with the export-pdf endpoint and the secure-share content endpoint.
  *
- * CP12A: When the generated document contains images, requires
- * imageSafeguardAcknowledged: true in the request body. This is a user
- * confirmation and audit control shown at the final Send action.
- * The server checks the worst safeguard status for the submission's photos.
- * Blocked/elevated images are rejected regardless of acknowledgment.
- *
  * Body: {
  *   to:                          string[]
  *   cc?:                         string[]
@@ -20,7 +14,6 @@
  *   message:                     string
  *   attachPdf:                   boolean
  *   bccOwner:                    boolean
- *   imageSafeguardAcknowledged?: boolean   // required when doc has images
  * }
  */
 import type { Request, Response } from 'express';
@@ -31,10 +24,6 @@ import { jobFormSubmissions, profiles, user } from '../../../../db/schema.js';
 import { sendEmail } from '../../../../email.js';
 import { buildFormPdfDocument } from '../../../../lib/form-pdf-document.js';
 import { getAuth } from '../../../../../lib/auth/auth.js';
-import {
-  getWorstSafeguardStatus,
-  recordSharingAuditEvent,
-} from '../../../../lib/imageSafeguardService.js';
 
 const EMAIL_ATTACHMENT_LIMIT = 2 * 1024 * 1024;
 const MAX_SUBJECT = 200;
@@ -64,53 +53,6 @@ function escapeHtml(value: string): string {
   return value.replace(/[&<>"']/g, (char) => ({
     '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
   }[char] ?? char));
-}
-
-/**
- * Detect whether a form PDF document contains embedded images.
- * We use the presence of photo-type answers in the submission as a proxy.
- * This avoids parsing the PDF bytes.
- */
-async function submissionHasImages(companyId: number, submissionId: number): Promise<{ hasImages: boolean; storageRefs: string[] }> {
-  try {
-    const rows = await db.execute(sql`
-      SELECT jfs.answers_json, jft.fields_json
-      FROM job_form_submissions jfs
-      JOIN job_form_templates jft ON jft.id = jfs.template_id
-      WHERE jfs.id = ${submissionId} AND jfs.company_id = ${companyId}
-      LIMIT 1
-    `);
-    const row = (rows as unknown as Array<{ answers_json: string | null; fields_json: string | null }>)[0];
-    if (!row) return { hasImages: false, storageRefs: [] };
-
-    let answers: Record<string, unknown> = {};
-    let fields: Array<{ id: string | number; fieldType?: string }> = [];
-    try {
-      if (row.answers_json) answers = JSON.parse(row.answers_json) as Record<string, unknown>;
-      if (row.fields_json) fields = JSON.parse(row.fields_json) as typeof fields;
-    } catch {
-      return { hasImages: false, storageRefs: [] };
-    }
-
-    const photoFieldIds = fields
-      .filter(f => f.fieldType === 'photo')
-      .map(f => String(f.id));
-
-    const hasImages = photoFieldIds.some(id => {
-      const val = answers[id];
-      if (!val) return false;
-      if (Array.isArray(val)) return val.length > 0;
-      if (typeof val === 'string') return val.length > 0;
-      return false;
-    });
-
-    // Build opaque storage refs for the submission (used for status check)
-    const storageRefs = hasImages ? [`form_submission:${submissionId}`] : [];
-    return { hasImages, storageRefs };
-  } catch {
-    // Fail closed — assume images present to require acknowledgment
-    return { hasImages: true, storageRefs: [`form_submission:${submissionId}`] };
-  }
 }
 
 export default async function handler(req: Request, res: Response) {
@@ -155,31 +97,6 @@ export default async function handler(req: Request, res: Response) {
     if (subject.length > MAX_SUBJECT) return res.status(400).json({ error: `Subject must be ${MAX_SUBJECT} characters or fewer.` });
     if (!message) return res.status(400).json({ error: 'Message body is required.' });
     if (message.length > MAX_MESSAGE) return res.status(400).json({ error: `Message must be ${MAX_MESSAGE} characters or fewer.` });
-
-    // ── CP12A: Safeguard check ─────────────────────────────────────────────────
-    // Check whether the submission has images. If so, require acknowledgment
-    // and verify the worst status is not blocked/elevated.
-    const { hasImages, storageRefs } = await submissionHasImages(profile.companyId, submissionId);
-
-    if (hasImages) {
-      // Check worst status server-side (uses opaque form_submission ref)
-      const worstStatus = await getWorstSafeguardStatus(profile.companyId, storageRefs);
-
-      if (worstStatus === 'blocked' || worstStatus === 'elevated') {
-        return res.status(403).json({
-          error: 'Sending is not permitted for these images.',
-          code: 'sharing_blocked',
-        });
-      }
-
-      // Require explicit acknowledgment
-      if (body.imageSafeguardAcknowledged !== true) {
-        return res.status(403).json({
-          error: 'A safeguard acknowledgment is required before sending.',
-          code: 'safeguard_acknowledgment_required',
-        });
-      }
-    }
 
     // ── Build PDF via canonical builder ────────────────────────────────────────
     const doc = await buildFormPdfDocument(profile.companyId, submissionId);
@@ -280,19 +197,6 @@ export default async function handler(req: Request, res: Response) {
       } catch (noteErr) {
         console.warn('POST /api/job-forms/:id/send-email — note creation failed (non-fatal):', noteErr);
       }
-    }
-
-    // ── Safeguard audit event (best-effort, only after email accepted) ──────────
-    // Placed after sendEmail() succeeds and after the job note — so the audit
-    // record is only written when the email was actually accepted for delivery.
-    if (hasImages) {
-      void recordSharingAuditEvent({
-        companyId: profile.companyId,
-        userId: session.user.id,
-        action: 'form_email',
-        resourceId: submissionId,
-        imageCount: storageRefs.length,
-      });
     }
 
     // Verify submission still belongs to this company (belt-and-braces after builder)

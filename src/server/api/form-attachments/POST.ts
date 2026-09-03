@@ -30,7 +30,6 @@ import { parseMultipartForm } from '../../lib/file-upload.js';
 import { uploadMedia, normaliseMime } from '../../lib/uploadService.js';
 import { randomUUID } from 'node:crypto';
 import { buildObjectKey } from '../../storage/r2Config.js';
-import { createPendingSafeguardRecord } from '../../lib/imageSafeguardService.js';
 
 const BUCKET       = 'form-attachments';
 const MAX_BYTES    = 30 * 1024 * 1024; // 30 MB
@@ -103,17 +102,6 @@ export default async function handler(req: Request, res: Response) {
         jobId: jobId ? parseInt(jobId, 10) : null,
       });
 
-      // CP12A: Create pending Image Safeguard record for image attachments (non-blocking)
-      if (file.mimetype?.startsWith('image/')) {
-        void createPendingSafeguardRecord({
-          companyId: profile.companyId,
-          userId: session.user.id,
-          storageRef: `form_attachment:${result.mediaAssetId}`,
-          surface: 'form_attachment',
-          jobId: jobId ? parseInt(jobId, 10) : null,
-          submissionId: destId,
-        }).catch(() => { /* safeguard record failure must not affect upload */ });
-      }
     }
 
     return res.status(201).json({ attachments: results });

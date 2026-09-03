@@ -666,15 +666,7 @@ import owner_console_companies_usage_get_633 from "./api/owner-console/companies
 import owner_console_companies_id_limits_put_634 from "./api/owner-console/companies/[id]/limits/PUT";
 import owner_console_form_templates_get_635 from "./api/owner-console/form-templates/GET";
 import owner_console_form_templates_post_636 from "./api/owner-console/form-templates/POST";
-import owner_console_image_safeguard_debug_runs_get_637 from "./api/owner-console/image-safeguard/debug-runs/GET";
-import owner_console_image_safeguard_findings_preview_get_638 from "./api/owner-console/image-safeguard/findings/preview/GET";
-import owner_console_image_safeguard_findings_id_patch_639 from "./api/owner-console/image-safeguard/findings/[id]/PATCH";
-import owner_console_image_safeguard_runs_delete_640 from "./api/owner-console/image-safeguard/runs/DELETE";
-import owner_console_image_safeguard_runs_get_641 from "./api/owner-console/image-safeguard/runs/GET";
-import owner_console_image_safeguard_runs_runId_export_csv_get_642 from "./api/owner-console/image-safeguard/runs/[runId]/export-csv/GET";
-import owner_console_image_safeguard_runs_runId_progress_get_643 from "./api/owner-console/image-safeguard/runs/[runId]/progress/GET";
-import owner_console_image_safeguard_scan_post_644 from "./api/owner-console/image-safeguard/scan/POST";
-import owner_console_image_safeguard_status_get_645 from "./api/owner-console/image-safeguard/status/GET";
+
 import owner_console_library_items_get_646 from "./api/owner-console/library/items/GET";
 import owner_console_library_items_post_647 from "./api/owner-console/library/items/POST";
 import owner_console_library_items_from_template_post_648 from "./api/owner-console/library/items/from-template/POST";
@@ -3258,18 +3250,7 @@ if (!process.env.VITEST) {
       console.error('[recovery-email] migration fatal:', e)
     )
   );
-  // CP12A: Image Safeguard Protocol — independent, non-blocking
-  void import('./db/migrations/image-safeguard.js').then(m =>
-    m.runImageSafeguardMigration().catch((e: unknown) =>
-      console.error('[image-safeguard] migration fatal:', e)
-    )
-  );
-  // CP12B2: Image Safeguard Scan Runs — independent, non-blocking
-  void import('./db/migrations/image-safeguard-scan-runs.js').then(m =>
-    m.runImageSafeguardScanRunsMigration().catch((e: unknown) =>
-      console.error('[image-safeguard-scan-runs] migration fatal:', e)
-    )
-  );
+
   // ── sms_verification_codes.id column type repair ─────────────────────────────
   // Historical context: the original CREATE TABLE DDL used INT AUTO_INCREMENT for
   // the id column, but the Drizzle schema and all insert paths use VARCHAR(36) UUIDs.
@@ -4016,15 +3997,6 @@ app.get("/api/owner-console/companies/usage", owner_console_companies_usage_get_
 app.put("/api/owner-console/companies/:id/limits", owner_console_companies_id_limits_put_634);
 app.get("/api/owner-console/form-templates", owner_console_form_templates_get_635);
 app.post("/api/owner-console/form-templates", owner_console_form_templates_post_636);
-app.get("/api/owner-console/image-safeguard/debug-runs", owner_console_image_safeguard_debug_runs_get_637);
-app.get("/api/owner-console/image-safeguard/findings/preview", owner_console_image_safeguard_findings_preview_get_638);
-app.patch("/api/owner-console/image-safeguard/findings/:id", owner_console_image_safeguard_findings_id_patch_639);
-app.delete("/api/owner-console/image-safeguard/runs", owner_console_image_safeguard_runs_delete_640);
-app.get("/api/owner-console/image-safeguard/runs", owner_console_image_safeguard_runs_get_641);
-app.get("/api/owner-console/image-safeguard/runs/:runId/export-csv", owner_console_image_safeguard_runs_runId_export_csv_get_642);
-app.get("/api/owner-console/image-safeguard/runs/:runId/progress", owner_console_image_safeguard_runs_runId_progress_get_643);
-app.post("/api/owner-console/image-safeguard/scan", owner_console_image_safeguard_scan_post_644);
-app.get("/api/owner-console/image-safeguard/status", owner_console_image_safeguard_status_get_645);
 app.get("/api/owner-console/library/items", owner_console_library_items_get_646);
 app.post("/api/owner-console/library/items", owner_console_library_items_post_647);
 app.post("/api/owner-console/library/items/from-template", owner_console_library_items_from_template_post_648);

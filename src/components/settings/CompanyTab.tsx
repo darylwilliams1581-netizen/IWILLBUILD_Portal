@@ -4,7 +4,6 @@ import {
   Hash, Factory, Upload, X, ImageIcon,
 } from 'lucide-react';
 import { INDUSTRY_LIST, type IndustryId } from '@/lib/industry-config';
-import ImageSafeguardNotice from '@/components/ImageSafeguardNotice';
 
 const inputClass = 'w-full border border-slate-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-colors';
 const labelClass = 'block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5';
@@ -246,8 +245,7 @@ export default function CompanyTab() {
             className="hidden"
             onChange={handleFileChange}
           />
-          {/* CP12A: Subtle safeguard notice */}
-          <ImageSafeguardNotice className="mt-1" />
+          {/* CP12A: Subtle safeguard notice removed */}
         </div>
       </div>
     </form>

@@ -19,7 +19,6 @@ import { useState, useRef, useCallback, useEffect } from 'react';
 import { Link } from "react-router";
 import { motion, AnimatePresence } from 'motion/react';
 import { Camera, Search, ChevronDown, X, Upload, CheckCircle2, AlertCircle, Loader2, ImagePlus, ExternalLink, RotateCcw } from 'lucide-react';
-import ImageSafeguardNotice from '@/components/ImageSafeguardNotice';
 function randomUUID(): string {
   return crypto.randomUUID();
 }
@@ -478,8 +477,6 @@ export default function DashboardPhotoUploader() {
               duration: 0.18
             }}>
                     <DropZone disabled={uploading} onFiles={addFiles} />
-                    {/* CP12A: Subtle safeguard notice */}
-                    {!uploading && <ImageSafeguardNotice className="mt-2" />}
                   </motion.div>}
               </AnimatePresence>
 
