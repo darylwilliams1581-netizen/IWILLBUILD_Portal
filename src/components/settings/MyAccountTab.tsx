@@ -275,6 +275,7 @@ export default function MyAccountTab() {
     if (!file) return;
     if (attachments.length >= 5) { setUploadError('Maximum 5 attachments allowed.'); return; }
     setUploadError(''); setUploading(true);
+
     const fd = new FormData();
     fd.append('file', file);
     try {
