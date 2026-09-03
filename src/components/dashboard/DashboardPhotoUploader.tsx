@@ -188,7 +188,7 @@ function DropZone({
   onFiles
 }: {
   disabled: boolean;
-  onFiles: (files: File[]) => void;
+  onFiles: (files: File[]) => void | Promise<void>;
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [dragging, setDragging] = useState(false);
@@ -295,9 +295,11 @@ export default function DashboardPhotoUploader() {
   const pendingFiles = files.filter(f => f.status === 'pending' || f.status === 'error');
   const hasFiles = files.length > 0;
   const allDone = files.length > 0 && files.every(f => f.status === 'done');
-  function addFiles(incoming: File[]) {
+
+  async function addFiles(incoming: File[]) {
     const heicFiles = incoming.filter(isHeic);
     const validFiles = incoming.filter(f => !isHeic(f));
+
     const entries: FileEntry[] = validFiles.map(f => ({
       id: randomUUID(),
       file: f,
