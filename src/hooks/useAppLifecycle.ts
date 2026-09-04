@@ -20,7 +20,7 @@
  */
 
 import { useEffect, useRef } from 'react';
-import { isNative } from '@/lib/capacitor-plugins';
+import { isNative, getAppPlugin } from '@/lib/capacitor-plugins';
 
 interface AppLifecycleOptions {
   /** Called when the app returns to the foreground (or tab becomes visible) */
@@ -39,25 +39,6 @@ type AppPlugin = {
     handler: (state: { isActive: boolean }) => void,
   ) => Promise<{ remove: () => void }>;
 };
-
-function getNativeAppPlugin(): AppPlugin | null {
-  if (typeof window === 'undefined') return null;
-  const cap = (window as {
-    Capacitor?: {
-      isNativePlatform?: () => boolean;
-      Plugins?: { App?: AppPlugin };
-    };
-  }).Capacitor;
-  if (!cap?.isNativePlatform?.()) return null;
-  const plugin = cap?.Plugins?.App ?? null;
-  // Guard: on some Capacitor / TestFlight builds the App plugin stub is
-  // registered before the bridge is fully initialised — the object exists but
-  // its methods are not yet callable. Calling addListener() on a stub throws
-  // "p.addListener is not a function" and crashes the whole render tree.
-  // Mirrors the identical guard in DriverSessionContext.tsx (line ~594).
-  if (!plugin || typeof plugin.addListener !== 'function') return null;
-  return plugin;
-}
 
 export function useAppLifecycle({
   onForeground,
@@ -81,7 +62,10 @@ export function useAppLifecycle({
 
     // ── Capacitor App state (native) ─────────────────────────────────────────
     if (isNative()) {
-      const AppPlugin = getNativeAppPlugin();
+      // getAppPlugin() validates that addListener is callable before returning —
+      // returns null if the bridge stub is not yet fully initialised (TestFlight
+      // cold-start race). Safe to call unconditionally.
+      const AppPlugin = getAppPlugin() as AppPlugin | null;
       if (AppPlugin) {
         void AppPlugin.addListener('appStateChange', (state) => {
           if (state.isActive) {

@@ -32,7 +32,7 @@ import {
   Camera, Image, MapPin, Mic, Bell,
   X, ExternalLink, Settings, ShieldCheck,
 } from 'lucide-react';
-import { isNative } from '@/lib/capacitor-plugins';
+import { isNative, getAppPlugin } from '@/lib/capacitor-plugins';
 import type { PermissionType } from '@/lib/usePermissionExplainer';
 
 // ── Per-permission content ────────────────────────────────────────────────────
@@ -139,11 +139,9 @@ export default function PermissionExplainerModal({
   async function handleOpenSettings() {
     if (isNative()) {
       try {
-        // Use window.Capacitor.Plugins global — avoids Vite dynamic import resolution
-        const cap = (window as {
-          Capacitor?: { Plugins?: { App?: { openUrl: (opts: { url: string }) => Promise<void> } } }
-        }).Capacitor;
-        await cap?.Plugins?.App?.openUrl({ url: 'app-settings:' });
+        // Use getAppPlugin() — validates openUrl is available before calling.
+        const App = getAppPlugin();
+        await App?.openUrl({ url: 'app-settings:' });
       } catch { /* silent */ }
     }
     onNotNow();

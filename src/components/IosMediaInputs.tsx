@@ -20,7 +20,7 @@
 import React from 'react';
 import { AlertTriangle, ExternalLink } from 'lucide-react';
 import type { IosMediaPickerState } from '@/hooks/useIosMediaPicker';
-import { isNative } from '@/lib/capacitor-plugins';
+import { isNative, getAppPlugin } from '@/lib/capacitor-plugins';
 
 // ── Hidden inputs ─────────────────────────────────────────────────────────────
 
@@ -87,12 +87,10 @@ export function IosPermissionBanner({ type, onDismiss }: IosPermissionBannerProp
   async function openSettings() {
     if (isNative()) {
       try {
-        // Use window.Capacitor.Plugins global — avoids Vite dynamic import resolution
-        const cap = (window as {
-          Capacitor?: { Plugins?: { App?: { openUrl: (opts: { url: string }) => Promise<void> } } }
-        }).Capacitor;
-        // 'app-settings:' is the iOS deep-link to the app's Settings page
-        await cap?.Plugins?.App?.openUrl({ url: 'app-settings:' });
+        // Use getAppPlugin() — validates openUrl is available before calling.
+        // 'app-settings:' is the iOS deep-link to the app's Settings page.
+        const App = getAppPlugin();
+        await App?.openUrl({ url: 'app-settings:' });
         return;
       } catch { /* fall through */ }
     }

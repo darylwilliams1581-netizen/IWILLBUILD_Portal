@@ -41,13 +41,19 @@ export function useCapacitor() {
     if (!native) return;
     let cleanup: (() => void) | undefined;
 
-    Promise.resolve(getAppPlugin()).then((App) => {
-      if (!App) return;
-      const handle = App.addListener('appStateChange', ({ isActive }) => {
+    // getAppPlugin() validates addListener is callable before returning.
+    // Returns null if the bridge stub is not yet fully initialised.
+    const App = getAppPlugin();
+    if (!App) return;
+
+    try {
+      const handle = App.addListener('appStateChange', ({ isActive }: { isActive: boolean }) => {
         setAppActive(isActive);
       });
       cleanup = () => { void handle.then(h => h.remove()); };
-    }).catch(() => undefined);
+    } catch (err) {
+      console.warn('[useCapacitor] addListener failed (bridge not ready):', err);
+    }
 
     return () => cleanup?.();
   }, [native]);

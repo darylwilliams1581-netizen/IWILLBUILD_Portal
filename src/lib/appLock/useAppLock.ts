@@ -168,27 +168,36 @@ function useAppLockNative(): AppLockState {
   useEffect(() => {
     if (!hasPinSetup) return;
 
+    // getAppPlugin() validates addListener is callable before returning.
+    // Returns null if the bridge stub is not yet fully initialised (TestFlight
+    // cold-start race) — skip silently rather than crashing.
     const App = getAppPlugin();
     if (!App) return;
 
     let removeListener: (() => void) | null = null;
 
-    App.addListener('appStateChange', (state: unknown) => {
-      const { isActive } = state as { isActive: boolean };
-      if (!isActive) {
-        // App going to background — record lock time
-        setLockedAt(Date.now());
-      } else {
-        // App coming to foreground — if we have a locked_at, show lock screen
-        const lockedAt = getLockedAt();
-        if (lockedAt !== null) {
-          setIsLocked(true);
-          setError('');
+    try {
+      App.addListener('appStateChange', (state: unknown) => {
+        const { isActive } = state as { isActive: boolean };
+        if (!isActive) {
+          // App going to background — record lock time
+          setLockedAt(Date.now());
+        } else {
+          // App coming to foreground — if we have a locked_at, show lock screen
+          const lockedAt = getLockedAt();
+          if (lockedAt !== null) {
+            setIsLocked(true);
+            setError('');
+          }
         }
-      }
-    }).then((handle: { remove: () => void }) => {
-      removeListener = handle.remove;
-    }).catch(() => {});
+      }).then((handle: { remove: () => void }) => {
+        removeListener = handle.remove;
+      }).catch(() => {});
+    } catch (err) {
+      // Bridge not ready — fail silently; lock screen will still show on next
+      // foreground event once the bridge is fully initialised.
+      console.warn('[useAppLock] addListener failed (bridge not ready):', err);
+    }
 
     return () => { removeListener?.(); };
   }, [hasPinSetup]);

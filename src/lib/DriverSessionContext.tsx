@@ -55,7 +55,7 @@ import {
   useCallback,
   type ReactNode,
 } from 'react';
-import { getNativeGeo, isNative } from './capacitor-plugins';
+import { getNativeGeo, isNative, getAppPlugin } from './capacitor-plugins';
 import type { GpsPermissionStatus } from './useGpsPermission';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -580,55 +580,54 @@ export function DriverSessionProvider({ children }: Props) {
   // ── Capacitor foreground/background listener ─────────────────────────────────
 
   useEffect(() => {
-    if (typeof window === 'undefined') return;
-    const cap = window.Capacitor;
-    if (!cap?.Plugins?.App) return;
-
-    const App = cap.Plugins.App as {
-      addListener: (event: string, cb: (state: { isActive: boolean }) => void) => Promise<{ remove: () => void }> | { remove: () => void };
-    };
-
-    // Guard: addListener must be a function. On some Capacitor versions the
-    // plugin stub is registered before the bridge is fully initialised, so
-    // Plugins.App is truthy but its methods are not yet callable.
-    if (typeof App.addListener !== 'function') return;
+    // getAppPlugin() validates that addListener is callable before returning.
+    // Returns null if window is undefined (SSR), not native, or the bridge stub
+    // is not yet fully initialised (TestFlight cold-start race). All three cases
+    // are safe to skip — the session will still refresh on the next poll cycle.
+    const App = getAppPlugin();
+    if (!App) return;
 
     let removeListener: (() => void) | null = null;
 
-    const result = App.addListener('appStateChange', (state) => {
-      diag('appStateChange', { isActive: state.isActive });
-      if (state.isActive && sessionIdRef.current !== null) {
-        // Returned to foreground with an active session
-        diag('foreground — refreshing session and restarting watcher');
-        void refresh();
-        // Restart watcher if it was cleared by the OS
-        if (!watchActiveRef.current) {
-          if (isNative()) {
-            startNativeWatch(sessionIdRef.current);
-          } else {
-            startWebWatch(sessionIdRef.current);
+    try {
+      const result = App.addListener('appStateChange', (state: { isActive: boolean }) => {
+        diag('appStateChange', { isActive: state.isActive });
+        if (state.isActive && sessionIdRef.current !== null) {
+          // Returned to foreground with an active session
+          diag('foreground — refreshing session and restarting watcher');
+          void refresh();
+          // Restart watcher if it was cleared by the OS
+          if (!watchActiveRef.current) {
+            if (isNative()) {
+              startNativeWatch(sessionIdRef.current);
+            } else {
+              startWebWatch(sessionIdRef.current);
+            }
           }
+          // Immediate GPS push
+          void pushGpsNow();
+        } else if (!state.isActive) {
+          // Entering background — do NOT claim tracking is live
+          diag('background — foreground-only tracking paused');
+          // We do NOT stop the watcher here; the OS will suspend it.
+          // The stale detection above will catch the gap when we return.
         }
-        // Immediate GPS push
-        void pushGpsNow();
-      } else if (!state.isActive) {
-        // Entering background — do NOT claim tracking is live
-        diag('background — foreground-only tracking paused');
-        // We do NOT stop the watcher here; the OS will suspend it.
-        // The stale detection above will catch the gap when we return.
-      }
-    });
+      });
 
-    // addListener returns Promise<{remove}> on Capacitor 4+, or {remove} directly on older builds
-    if (result && typeof (result as Promise<{ remove: () => void }>).then === 'function') {
-      (result as Promise<{ remove: () => void }>)
-        .then((handle) => { removeListener = handle.remove.bind(handle); })
-        .catch(() => undefined);
-    } else {
-      const handle = result as { remove: () => void };
-      if (typeof handle?.remove === 'function') {
-        removeListener = handle.remove.bind(handle);
+      // addListener returns Promise<{remove}> on Capacitor 4+, or {remove} directly on older builds
+      if (result && typeof (result as Promise<{ remove: () => void }>).then === 'function') {
+        (result as Promise<{ remove: () => void }>)
+          .then((handle) => { removeListener = handle.remove.bind(handle); })
+          .catch(() => undefined);
+      } else {
+        const handle = result as { remove: () => void };
+        if (typeof handle?.remove === 'function') {
+          removeListener = handle.remove.bind(handle);
+        }
       }
+    } catch (err) {
+      // Bridge not ready — fail silently; session poll will still keep data fresh.
+      diag('appStateChange listener failed (bridge not ready)', { err: String(err) });
     }
 
     return () => { removeListener?.(); };
