@@ -781,5 +781,61 @@
     },
     "uploadContentHash": "0997f0b513d025b89cc22c40352fd1ec6059f79bc6a4540a4f39e86427237ce8",
     "caption": "photo gallery selfies and moments"
+  },
+  "debug/ios-bug-layout-21": {
+    "mediaType": "image",
+    "currentUrl": "/airo-assets/uploads/debug-ios-bug-layout-21-b986ef16.png",
+    "searchQuery": "mobile app dashboard with construction tools",
+    "alternatives": [],
+    "userModified": true,
+    "createdAt": "2026-09-04T03:46:45.069Z",
+    "lastUpdated": "2026-09-04T03:46:45.069Z",
+    "uploadSources": {
+      "/airo-assets/uploads/debug-ios-bug-layout-21-b986ef16.png": "f38wenbvln_1788490655094_file_MyYiTOrE5K.png"
+    },
+    "uploadContentHash": "c5a04a5f48e4e7eb16b9f4644ef132b5c1ab6ebb8ed3f65db22151fed796dfd4",
+    "caption": "mobile app dashboard with construction tools"
+  },
+  "debug/ios-bug-screenshot-0217": {
+    "mediaType": "image",
+    "currentUrl": "/airo-assets/uploads/debug-ios-bug-screenshot-0217-26551e4d.jpg",
+    "searchQuery": "developer console dashboard interface overview",
+    "alternatives": [],
+    "userModified": true,
+    "createdAt": "2026-09-04T03:46:45.423Z",
+    "lastUpdated": "2026-09-04T03:46:45.423Z",
+    "uploadSources": {
+      "/airo-assets/uploads/debug-ios-bug-screenshot-0217-26551e4d.jpg": "f38wenbvln_1788488267007_file_O7_623qBaq.jpg"
+    },
+    "uploadContentHash": "58132888f64aa780409626f8a041161da6bd6e071db796f9fe9369719d5c7f90",
+    "caption": "developer console dashboard interface overview"
+  },
+  "debug/ios-bug-layout-22": {
+    "mediaType": "image",
+    "currentUrl": "/airo-assets/uploads/debug-ios-bug-layout-22-77d15701.png",
+    "searchQuery": "construction project management app interface",
+    "alternatives": [],
+    "userModified": true,
+    "createdAt": "2026-09-04T03:46:45.835Z",
+    "lastUpdated": "2026-09-04T03:46:45.835Z",
+    "uploadSources": {
+      "/airo-assets/uploads/debug-ios-bug-layout-22-77d15701.png": "f38wenbvln_1788490655090_file_fzVNb4YhpU.png"
+    },
+    "uploadContentHash": "4632e3f93cf634b11fe9e3b0d4274e0770b2abe2a0f4773e8c589264ceed5a11",
+    "caption": "construction project management app interface"
+  },
+  "debug/ios-bug-screenshot-0224": {
+    "mediaType": "image",
+    "currentUrl": "/airo-assets/uploads/debug-ios-bug-screenshot-0224-5ba6570e.jpg",
+    "searchQuery": "mobile app dashboard with colorful menu options",
+    "alternatives": [],
+    "userModified": true,
+    "createdAt": "2026-09-04T03:46:46.121Z",
+    "lastUpdated": "2026-09-04T03:46:46.121Z",
+    "uploadSources": {
+      "/airo-assets/uploads/debug-ios-bug-screenshot-0224-5ba6570e.jpg": "f38wenbvln_1788488655239_file_UKexVb5hfL.jpg"
+    },
+    "uploadContentHash": "58d8c0f7f248d54b506fed93a48f2b0fa26fabc0b6c8f04426915a247471cd82",
+    "caption": "mobile app dashboard with colorful menu options"
   }
 }

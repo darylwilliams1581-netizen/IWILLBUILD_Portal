@@ -124,7 +124,10 @@ export default function RootLayout({ children }: RootLayoutProps) {
         <PwaInstallPrompt />
       </DeferredMount>
       <DocumentActionsProvider>
-        <div suppressHydrationWarning className="flex-1 min-h-0 flex flex-col" style={{ overflowX: 'clip' }}>
+        {/* overflowX:'clip' replaced with overflow:'hidden' — 'clip' is not
+            supported on iOS Safari and causes the flex child to miscalculate
+            its own width, producing the left-clip bug on the home screen. */}
+        <div suppressHydrationWarning className="flex-1 min-h-0 flex flex-col overflow-hidden w-full min-w-0">
           {children}
         </div>
         {/* Global Document Actions floating widget — hidden on public/share pages */}
