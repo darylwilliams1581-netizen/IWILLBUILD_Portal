@@ -1,5 +1,5 @@
 // native-url.ts — resolves relative paths to absolute URLs on Capacitor native.
-// Set VITE_PROD_HOST in .env.production (e.g. VITE_PROD_HOST=your-domain.com).
+// PROD_HOST is hardcoded — VITE_PROD_HOST is never set in this project.
 
 function isNativePlatform(): boolean {
   if (typeof window === 'undefined') return false;
@@ -7,8 +7,8 @@ function isNativePlatform(): boolean {
     .Capacitor?.isNativePlatform?.();
 }
 
-const PROD_HOST: string =
-  (import.meta.env.VITE_PROD_HOST as string | undefined) ?? '';
+// Hardcoded — do not use import.meta.env.VITE_PROD_HOST (never set).
+const PROD_HOST: string = 'iwillbuild.com';
 
 export function resolveNativeUrl(path: string): string {
   if (!isNativePlatform()) return path;

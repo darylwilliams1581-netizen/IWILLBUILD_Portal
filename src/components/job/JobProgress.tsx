@@ -9,6 +9,7 @@ import type { ProgressSection, ProgressActivity } from '@/lib/pow-types';
 import type { ActivityFormValues } from '@/components/pow/ActivityForm';
 import type { SectionFormValues } from '@/components/pow/SectionForm';
 import ProgramOfWorksView from '@/components/pow/ProgramOfWorksView';
+import { resolveDownloadUrl } from '@/lib/native-api';
 
 interface Props { jobId: number; }
 
@@ -174,14 +175,14 @@ export default function JobProgress({ jobId }: Props) {
         <h2 className="text-base font-bold text-foreground">Program of Works</h2>
         <div className="flex items-center gap-2">
           <a
-            href={`/api/jobs/${jobId}/progress/export-csv`}
+            href={resolveDownloadUrl(`/api/jobs/${jobId}/progress/export-csv`)}
             download
             className="flex items-center gap-1.5 px-3 py-1.5 border border-border rounded-lg text-xs font-semibold hover:bg-muted transition-colors"
           >
             <Download size={13} /> CSV
           </a>
           <a
-            href={`/api/jobs/${jobId}/progress/report/pdf`}
+            href={resolveDownloadUrl(`/api/jobs/${jobId}/progress/report/pdf`)}
             target="_blank"
             rel="noopener noreferrer"
             className="flex items-center gap-1.5 px-3 py-1.5 border border-border rounded-lg text-xs font-semibold hover:bg-muted transition-colors"

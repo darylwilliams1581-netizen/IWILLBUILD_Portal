@@ -5,8 +5,17 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import App from './App';
 import './styles/globals.css';
 import './lib/i18n';
+import { patchFetchForNative } from '@/lib/native-api';
 import { installSessionFetchInterceptor } from '@/lib/auth/session-fetch-interceptor';
 import { initDiagnosticCapture } from '@/lib/diagnosticCapture';
+
+// ── Native API Gate (Layer 2+3) ───────────────────────────────────────────────
+// Patch window.fetch and XMLHttpRequest.prototype.open BEFORE any other code
+// that may trigger API calls. On native (Capacitor), rewrites root-relative
+// /api/... and /auth/... paths to https://iwillbuild.com/api/... so all 856
+// call sites reach the production server without individual changes.
+// No-op on web — returns immediately when not running in native shell.
+patchFetchForNative();
 
 // Install session expiry header interceptor before any fetch calls are made
 installSessionFetchInterceptor();

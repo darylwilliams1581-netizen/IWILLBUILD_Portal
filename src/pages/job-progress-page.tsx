@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import type { ProgressSection, ProgressActivity } from '@/lib/pow-types';
 import type { ActivityFormValues } from '@/components/pow/ActivityForm';
+import { resolveDownloadUrl } from '@/lib/native-api';
 import type { SectionFormValues } from '@/components/pow/SectionForm';
 import ProgramOfWorksView from '@/components/pow/ProgramOfWorksView';
 import JobFeatureShell from '@/components/job/JobFeatureShell';
@@ -262,14 +263,14 @@ export default function JobProgressPage() {
             {/* Export actions */}
             <div className="flex items-center gap-2 justify-end">
               <a
-                href={`/api/jobs/${jobId}/progress/export-csv`}
+                href={resolveDownloadUrl(`/api/jobs/${jobId}/progress/export-csv`)}
                 download
                 className="flex items-center gap-1.5 px-3 py-2 border border-border rounded-lg text-xs font-semibold hover:bg-muted transition-colors min-h-[44px]"
               >
                 <Download size={13} /> CSV
               </a>
               <a
-                href={`/api/jobs/${jobId}/progress/report/pdf`}
+                href={resolveDownloadUrl(`/api/jobs/${jobId}/progress/report/pdf`)}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="flex items-center gap-1.5 px-3 py-2 border border-border rounded-lg text-xs font-semibold hover:bg-muted transition-colors min-h-[44px]"
