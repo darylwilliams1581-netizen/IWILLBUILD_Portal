@@ -562,8 +562,11 @@ export default function PagedHomeScreen({
 
   return <>
     {/* w-full + max-w-full + min-w-0 prevent the 300%-wide swipe track from
-        inflating this flex child beyond the viewport before overflowX:clip fires */}
-    <div className="flex flex-col flex-1 min-h-0 w-full max-w-full min-w-0" style={{ contain: 'layout' }}>
+        inflating this flex child beyond the viewport before overflow:hidden fires.
+        contain:'layout' removed — on iOS Safari it can cause the flex child to
+        miscalculate its own width, producing the left-clip / overflow bug. The
+        overflow:hidden on the swipe container below is sufficient containment. */}
+    <div className="flex flex-col flex-1 min-h-0 w-full max-w-full min-w-0">
       {/* ── Top bar: two-row stacked layout ──────────────────────────────────── */}
       {/* Row 1: logo + name (left) + utility buttons (right) */}
       <div className="flex items-center justify-between shrink-0 px-3 pt-2 pb-1 gap-2">
