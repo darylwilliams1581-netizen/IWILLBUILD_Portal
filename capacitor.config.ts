@@ -166,6 +166,25 @@ const config: CapacitorConfig = {
     PushNotifications: {
       presentationOptions: ['badge', 'sound', 'alert'],
     },
+
+    // CapacitorHttp — routes absolute HTTPS requests through NSURLSession (iOS)
+    // instead of WKWebView's fetch. NSURLSession shares HTTPCookieStorage.shared
+    // with WKWebView via CapacitorCookieManager, giving persistent cookie sessions
+    // across force-close without extra cookie handling code.
+    //
+    // NOTE: CapacitorHttp does NOT intercept relative URLs — isRelativeOrProxyUrl()
+    // in the native bridge passes them through unchanged to the original WebKit fetch.
+    // The global fetch patch in src/lib/native-api.ts handles relative URL rewriting.
+    CapacitorHttp: {
+      enabled: true,
+    },
+
+    // CapacitorCookies — syncs NSHTTPCookieStorage.shared ↔ WKWebView cookie store
+    // so cookies set by NSURLSession (via CapacitorHttp) are visible to the WebView
+    // and vice versa. Required for BetterAuth session cookies to persist correctly.
+    CapacitorCookies: {
+      enabled: true,
+    },
   },
 };
 

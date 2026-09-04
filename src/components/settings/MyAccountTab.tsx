@@ -8,6 +8,7 @@ import { useMe } from '@/lib/usePermissions';
 import SecurityTab from '@/components/settings/SecurityTab';
 import AppLockSettings from '@/components/settings/AppLockSettings';
 import PhoneInput from '@/components/ui/PhoneInput';
+import { resolveDownloadUrl } from '@/lib/native-api';
 
 const inputClass = 'w-full border border-slate-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-colors';
 const labelClass = 'block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5';
@@ -533,7 +534,7 @@ export default function MyAccountTab() {
                       <p className="text-xs text-slate-400">{formatBytes(att.size)} · {new Date(att.uploadedAt).toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric' })}</p>
                     </div>
                     <a
-                      href={`/api/me/profile-attachments/${att.id}/download`}
+                      href={resolveDownloadUrl(`/api/me/profile-attachments/${att.id}/download`)}
                       download={att.filename}
                       className="text-slate-600 hover:text-slate-900 transition-colors p-1.5 rounded-lg hover:bg-slate-200"
                     >
@@ -626,7 +627,7 @@ export default function MyAccountTab() {
               <p className="text-white text-sm font-medium truncate max-w-[calc(100%-80px)]">{lightboxAtt.filename}</p>
               <div className="flex items-center gap-2 shrink-0">
                 <a
-                  href={`/api/me/profile-attachments/${lightboxAtt.id}/download`}
+                  href={resolveDownloadUrl(`/api/me/profile-attachments/${lightboxAtt.id}/download`)}
                   download={lightboxAtt.filename}
                   className="text-white/70 hover:text-white transition-colors p-1.5 rounded-lg hover:bg-white/10"
                   title="Download"

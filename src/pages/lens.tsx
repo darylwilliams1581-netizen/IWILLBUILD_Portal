@@ -28,6 +28,7 @@ import LensGroupByUploader from '@/components/lens/LensGroupByUploader';
 import { type LensPhoto, type LensResponse } from '@/components/lens/lensTypes';
 import PhotoEditor, { type EditorConfig } from '@/components/PhotoEditor';
 import PortalSidebar from '@/components/PortalSidebar';
+import { resolveDownloadUrl } from '@/lib/native-api';
 
 // ── View mode ─────────────────────────────────────────────────────────────────
 
@@ -179,7 +180,7 @@ function Lightbox({
             </button>}
 
           {/* Download */}
-          <a href={`/api/lens/photos/${photo.id}/download`} download className="min-w-[44px] min-h-[44px] flex items-center justify-center rounded-lg bg-white/10 hover:bg-white/20 text-white transition-colors" aria-label="Download photo" title="Download original">
+          <a href={resolveDownloadUrl(`/api/lens/photos/${photo.id}/download`)} download className="min-w-[44px] min-h-[44px] flex items-center justify-center rounded-lg bg-white/10 hover:bg-white/20 text-white transition-colors" aria-label="Download photo" title="Download original">
             <Download size={16} />
           </a>
 
@@ -263,7 +264,7 @@ function Lightbox({
             {!isLocked && <button type="button" onClick={() => onEdit(photo)} className="flex items-center justify-center gap-2 min-h-[40px] rounded-lg bg-violet-600 hover:bg-violet-700 text-white text-sm font-medium transition-colors">
                 <Pencil size={14} /> Edit photo
               </button>}
-            <a href={`/api/lens/photos/${photo.id}/download`} download className="flex items-center justify-center gap-2 min-h-[40px] rounded-lg bg-white/10 hover:bg-white/20 text-white text-sm font-medium transition-colors">
+            <a href={resolveDownloadUrl(`/api/lens/photos/${photo.id}/download`)} download className="flex items-center justify-center gap-2 min-h-[40px] rounded-lg bg-white/10 hover:bg-white/20 text-white text-sm font-medium transition-colors">
               <Download size={14} /> Download
             </a>
             {jobLabel && <button type="button" onClick={() => onOpenJob(photo.jobId)} className="flex items-center justify-center gap-2 min-h-[40px] rounded-lg border border-white/20 hover:bg-white/10 text-white/80 text-sm font-medium transition-colors">

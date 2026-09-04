@@ -49,11 +49,18 @@ function authLog(event: string, data?: Record<string, unknown>) {
 // returns the literal string "null" in standalone mode on some iOS versions.
 // We detect this and fall back to the known production origin so auth requests
 // are sent to the correct server instead of "null/api/auth/...".
+//
+// Capacitor native shell: window.location.origin is "capacitor://localhost" which
+// is not the production server. Detect and fall back to production origin.
 function getAuthBaseURL(): string {
   if (typeof window === 'undefined') return '';
   const origin = window.location.origin;
   // "null" string origin = Safari standalone PWA mode quirk
   if (!origin || origin === 'null') {
+    return 'https://iwillbuild.com';
+  }
+  // Capacitor native shell — origin is the native scheme, not the API server
+  if (origin === 'capacitor://localhost' || origin.startsWith('ionic://')) {
     return 'https://iwillbuild.com';
   }
   return origin;

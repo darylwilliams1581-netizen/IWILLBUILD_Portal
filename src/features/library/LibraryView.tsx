@@ -28,6 +28,7 @@ import {
   ClipboardList, Wrench, Calculator, Package, AlertCircle, Trash2, ArrowRight,
 } from 'lucide-react';
 import { usePermissions } from '@/lib/usePermissions';
+import { resolveDownloadUrl } from '@/lib/native-api';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -381,7 +382,7 @@ export function LibraryView({ initialTypeFilter }: LibraryViewProps = {}) {
                         {/* Download original file if available */}
                         {!!item.has_file && (
                           <a
-                            href={`/api/library/items/${item.id}/download`}
+                            href={resolveDownloadUrl(`/api/library/items/${item.id}/download`)}
                             download={item.source_file_name ?? undefined}
                             title={`Download ${item.source_file_name ?? 'original file'}`}
                             className="flex items-center gap-1 px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-600 text-xs font-semibold rounded-lg transition-colors"

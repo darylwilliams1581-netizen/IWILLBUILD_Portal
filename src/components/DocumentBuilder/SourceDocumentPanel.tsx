@@ -23,6 +23,7 @@ import {
   ChevronDown, ChevronUp, Clock, Briefcase, Eye, EyeOff,
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { resolveDownloadUrl } from '@/lib/native-api';
 import AttachToJobSheet from '@/components/studio/AttachToJobSheet';
 
 interface SourceMeta {
@@ -145,7 +146,7 @@ export default function SourceDocumentPanel({
 
   async function handleDownload() {
     const a = document.createElement('a');
-    a.href = `/api/document-templates/${templateId}/source-document/download`;
+    a.href = resolveDownloadUrl(`/api/document-templates/${templateId}/source-document/download`);
     a.download = meta?.sourceFileName ?? `${templateName}.${meta?.sourceType ?? 'docx'}`;
     document.body.appendChild(a);
     a.click();
