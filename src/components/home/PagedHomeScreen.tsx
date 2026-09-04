@@ -565,37 +565,35 @@ export default function PagedHomeScreen({
       {/* ── Top bar: two-row stacked layout ──────────────────────────────────── */}
       {/* Row 1: logo + name (left) + utility buttons (right) */}
       <div className="flex items-center justify-between shrink-0 px-3 pt-2 pb-1 gap-2">
-        {/* Brand mark + wordmark */}
-        <div className="flex items-center gap-2 min-w-0 shrink-0">
+        {/* Brand mark — logo asset already contains the IWILLBUILD wordmark; no extra text span */}
+        <div className="flex items-center shrink-0">
           <img
             src="/airo-assets/images/logo/horizontal/dark"
-            alt="IWIllBUIlD"
-            className="h-7 w-auto max-w-[80px] object-contain shrink-0"
+            alt="IWILLBUILD"
+            className="h-7 w-auto max-w-[140px] object-contain"
           />
-          <span className="text-[15px] font-black tracking-tight text-foreground select-none">
-            IWIllBUIlD
-          </span>
         </div>
-        <div className="flex items-center gap-1.5 flex-1 justify-end">
+        {/* Utility buttons — min-w-0 so they can shrink; text hidden below 360 px */}
+        <div className="flex items-center gap-1.5 min-w-0 justify-end">
           <div className="shrink-0">
             <NotificationBell />
           </div>
           <button
             onClick={() => navigate('/profile')}
-            className="flex-1 flex items-center justify-center gap-1.5 h-8 rounded-xl bg-violet-600 border border-violet-500 text-white text-[11px] font-semibold hover:bg-violet-500 active:scale-95 transition-all px-2"
+            className="flex items-center justify-center gap-1.5 h-8 rounded-xl bg-violet-600 border border-violet-500 text-white text-[11px] font-semibold hover:bg-violet-500 active:scale-95 transition-all px-2 shrink-0"
             aria-label="Profile"
           >
             <User size={14} className="text-white shrink-0" />
-            <span className="truncate">Profile</span>
+            <span className="hidden min-[360px]:inline truncate">Profile</span>
           </button>
           <button
             onClick={async () => { await signOut(); navigate('/login'); }}
-            className="flex-1 flex items-center justify-center gap-1.5 h-8 rounded-xl bg-slate-700 border border-slate-600 text-slate-200 text-[11px] font-semibold hover:bg-red-600 hover:border-red-500 active:scale-95 transition-all px-2"
+            className="flex items-center justify-center gap-1.5 h-8 rounded-xl bg-slate-700 border border-slate-600 text-slate-200 text-[11px] font-semibold hover:bg-red-600 hover:border-red-500 active:scale-95 transition-all px-2 shrink-0"
             aria-label="Log out"
             title="Log out"
           >
             <LogOut size={13} className="shrink-0" />
-            <span className="truncate">Sign out</span>
+            <span className="hidden min-[360px]:inline truncate">Sign out</span>
           </button>
         </div>
       </div>

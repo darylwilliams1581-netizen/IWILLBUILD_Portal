@@ -261,23 +261,33 @@ describe('Two-row stacked header', () => {
     expect(screenSrc).toContain('/airo-assets/images/logo/horizontal/dark');
   });
 
-  it('row 1 contains IWIllBUIlD wordmark text', () => {
-    expect(screenSrc).toContain('IWIllBUIlD');
+  it('row 1 branding comes from the logo image asset only — no duplicate text span', () => {
+    // The horizontal/dark logo asset already contains the IWILLBUILD wordmark.
+    // A separate <span> beside it would duplicate the branding on mobile.
+    expect(screenSrc).toContain('/airo-assets/images/logo/horizontal/dark');
+    // The alt attribute identifies the brand in the image
+    expect(screenSrc).toContain('alt="IWILLBUILD"');
+    // No standalone wordmark span next to the logo
+    expect(screenSrc).not.toMatch(/<span[^>]*>\s*IWIll?BUILD\s*<\/span>/i);
   });
 
-  it('utility buttons are flex-1 (fill remaining space equally)', () => {
-    expect(screenSrc).toContain('flex-1 justify-end');
+  it('utility button container uses min-w-0 justify-end (shrinks without overflow)', () => {
+    // flex-1 was removed from the container to prevent the logo being squeezed;
+    // min-w-0 + justify-end is the replacement that allows shrinking without overflow.
+    expect(screenSrc).toContain('min-w-0 justify-end');
   });
 
   it('NotificationBell is icon-only (no label prop)', () => {
     expect(screenSrc).not.toContain('label="Alerts"');
   });
 
-  it('Profile button is flex-1 with label', () => {
-    expect(screenSrc).toContain('flex-1 flex items-center justify-center gap-1.5 h-8 rounded-xl bg-violet-600');
+  it('Profile button is shrink-0 with violet background', () => {
+    // flex-1 removed — buttons are now fixed-width shrink-0 to prevent clipping
+    expect(screenSrc).toContain('bg-violet-600 border border-violet-500');
+    expect(screenSrc).toContain('shrink-0');
   });
 
-  it('Sign out button is flex-1 with label', () => {
+  it('Sign out button text is present (visible ≥360 px via responsive class)', () => {
     expect(screenSrc).toContain('Sign out');
   });
 
