@@ -171,7 +171,22 @@ export default async function handler(req: Request, res: Response) {
     const report = reportRows?.[0];
     if (!report) return res.status(404).json({ error: 'Bug report not found.' });
 
-    // 3. Atomic check-and-claim: look for existing Initial Review
+    // 3a. Fetch anatomy snapshot early — needed by both the stuck-reset branch
+    //     and the normal new-review branch below.
+    let anatomySnapshotId: string | null = null;
+    let anatomyCommitSha: string | null = null;
+    let anatomySourceType: string | null = null;
+    let anatomyMeta: Record<string, unknown> | null = null;
+    try {
+      anatomySnapshotId = await getActiveSnapshotId();
+      anatomyMeta       = anatomySnapshotId ? await getSnapshotMeta(anatomySnapshotId) : null;
+      anatomyCommitSha  = (anatomyMeta?.commit_sha  as string | null) ?? null;
+      anatomySourceType = (anatomyMeta?.source_type as string | null) ?? null;
+    } catch {
+      // Anatomy tables not yet migrated — proceed without snapshot citation
+    }
+
+    // 3b. Atomic check-and-claim: look for existing Initial Review
     const [existingRows] = await db.execute(sql.raw(`
       SELECT id, version_label, review_status, what_happened, what_found,
              likely_cause, recommended_fix, airo_prompt, confidence,
@@ -185,27 +200,102 @@ export default async function handler(req: Request, res: Response) {
 
     const existing = existingRows?.[0];
 
-    // Already complete or running — return without calling AI
     if (existing) {
-      return res.json({ ok: true, review: existing, created: false });
+      const status = String(existing.review_status ?? '');
+
+      // Already finished — return immediately, no AI call needed
+      if (status === 'complete' || status === 'failed') {
+        return res.json({ ok: true, review: existing, created: false });
+      }
+
+      // Stuck in reviewing/queued: if the row is older than 90 seconds it will
+      // never resolve on its own (the previous request that inserted it crashed
+      // before writing the result — e.g. the anatomyMeta ReferenceError that
+      // caused BUG-2026-BDBCD to spin forever).  Reset it to 'reviewing' and
+      // fall through to re-run the AI call.
+      const createdAt = existing.created_at
+        ? new Date(String(existing.created_at).includes('T')
+            ? String(existing.created_at)
+            : String(existing.created_at).replace(' ', 'T') + 'Z').getTime()
+        : 0;
+      const ageMs = Date.now() - createdAt;
+      const STUCK_THRESHOLD_MS = 90_000; // 90 s — well beyond the 45 s OpenAI timeout
+
+      if (ageMs < STUCK_THRESHOLD_MS) {
+        // Still within the normal processing window — return and let the UI keep polling
+        return res.json({ ok: true, review: existing, created: false });
+      }
+
+      // Stuck row — reset it so we can re-run the AI call below
+      const stuckId = String(existing.id);
+      await db.execute(sql.raw(`
+        UPDATE dazza_review_comments
+        SET review_status = 'reviewing',
+            failure_reason = NULL,
+            updated_at = NOW()
+        WHERE id = '${esc(stuckId)}'
+      `));
+
+      // Re-use the existing row id so the UI keeps the same comment card
+      // Skip the INSERT below by jumping straight to the AI call with this id
+      const reviewId = stuckId;
+
+      // ── AI call (duplicate of the main path below, scoped to the stuck-reset branch) ──
+      let reviewResult2: Awaited<ReturnType<typeof runDazzaReview>> | null = null;
+      let failureReason2 = '';
+      try {
+        reviewResult2 = await runDazzaReview(report);
+      } catch (err) {
+        failureReason2 = err instanceof Error ? err.message.slice(0, 500) : 'Unknown error';
+      }
+
+      if (reviewResult2 && anatomySnapshotId) {
+        const snapshotCitation = anatomyMeta
+          ? `\n\n---\nAnatomy snapshot used: ${String(anatomyMeta.snapshot_name ?? anatomySnapshotId)} | Source: ${anatomySourceType ?? 'unknown'} | SHA: ${anatomyCommitSha?.slice(0, 8) ?? 'n/a'}`
+          : `\n\n---\nAnatomy snapshot ID: ${anatomySnapshotId}`;
+        reviewResult2.airoPrompt = (reviewResult2.airoPrompt + snapshotCitation).slice(0, 8000);
+      }
+
+      if (reviewResult2) {
+        await db.execute(sql.raw(`
+          UPDATE dazza_review_comments
+          SET review_status   = 'complete',
+              what_happened   = '${esc(reviewResult2.whatHappened)}',
+              what_found      = '${esc(reviewResult2.whatFound)}',
+              likely_cause    = '${esc(reviewResult2.likelyCause)}',
+              recommended_fix = '${esc(reviewResult2.recommendedFix)}',
+              airo_prompt     = '${esc(reviewResult2.airoPrompt)}',
+              confidence      = ${reviewResult2.confidence},
+              completed_at    = NOW(),
+              updated_at      = NOW()
+          WHERE id = '${esc(reviewId)}'
+        `));
+      } else {
+        await db.execute(sql.raw(`
+          UPDATE dazza_review_comments
+          SET review_status  = 'failed',
+              failure_reason = '${esc(failureReason2)}',
+              updated_at     = NOW()
+          WHERE id = '${esc(reviewId)}'
+        `));
+      }
+
+      const [recoveredRows] = await db.execute(sql.raw(`
+        SELECT id, version_label, review_status, what_happened, what_found,
+               likely_cause, recommended_fix, airo_prompt, confidence,
+               failure_reason, created_at, completed_at
+        FROM dazza_review_comments
+        WHERE id = '${esc(reviewId)}'
+        LIMIT 1
+      `)) as unknown as [Array<Record<string, unknown>>, unknown];
+
+      return res.json({ ok: true, review: recoveredRows?.[0] ?? null, created: false });
     }
 
     // 4. Claim the slot atomically — INSERT with unique constraint
     const reviewId = randomUUID();
 
-    // Capture active anatomy snapshot at time of review (best-effort — columns may not exist yet)
-    let anatomySnapshotId: string | null = null;
-    let anatomyCommitSha: string | null = null;
-    let anatomySourceType: string | null = null;
-    let anatomyMeta: Record<string, unknown> | null = null;
-    try {
-      anatomySnapshotId = await getActiveSnapshotId();
-      anatomyMeta       = anatomySnapshotId ? await getSnapshotMeta(anatomySnapshotId) : null;
-      anatomyCommitSha  = (anatomyMeta?.commit_sha  as string | null) ?? null;
-      anatomySourceType = (anatomyMeta?.source_type as string | null) ?? null;
-    } catch {
-      // Anatomy tables not yet migrated — proceed without snapshot citation
-    }
+    // (anatomy snapshot already fetched above in step 3a)
 
     try {
       // Try INSERT with anatomy columns first (post-migration)
