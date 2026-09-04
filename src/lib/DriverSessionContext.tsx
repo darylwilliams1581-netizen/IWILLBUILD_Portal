@@ -585,10 +585,17 @@ export function DriverSessionProvider({ children }: Props) {
     if (!cap?.Plugins?.App) return;
 
     const App = cap.Plugins.App as {
-      addListener: (event: string, cb: (state: { isActive: boolean }) => void) => { remove: () => void };
+      addListener: (event: string, cb: (state: { isActive: boolean }) => void) => Promise<{ remove: () => void }> | { remove: () => void };
     };
 
-    const handle = App.addListener('appStateChange', (state) => {
+    // Guard: addListener must be a function. On some Capacitor versions the
+    // plugin stub is registered before the bridge is fully initialised, so
+    // Plugins.App is truthy but its methods are not yet callable.
+    if (typeof App.addListener !== 'function') return;
+
+    let removeListener: (() => void) | null = null;
+
+    const result = App.addListener('appStateChange', (state) => {
       diag('appStateChange', { isActive: state.isActive });
       if (state.isActive && sessionIdRef.current !== null) {
         // Returned to foreground with an active session
@@ -612,7 +619,19 @@ export function DriverSessionProvider({ children }: Props) {
       }
     });
 
-    return () => { handle.remove(); };
+    // addListener returns Promise<{remove}> on Capacitor 4+, or {remove} directly on older builds
+    if (result && typeof (result as Promise<{ remove: () => void }>).then === 'function') {
+      (result as Promise<{ remove: () => void }>)
+        .then((handle) => { removeListener = handle.remove.bind(handle); })
+        .catch(() => undefined);
+    } else {
+      const handle = result as { remove: () => void };
+      if (typeof handle?.remove === 'function') {
+        removeListener = handle.remove.bind(handle);
+      }
+    }
+
+    return () => { removeListener?.(); };
   }, [refresh, startNativeWatch, startWebWatch, pushGpsNow]);
 
   // ── Session poll ─────────────────────────────────────────────────────────────
