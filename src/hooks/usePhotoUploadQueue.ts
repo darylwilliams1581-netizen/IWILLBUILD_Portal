@@ -29,6 +29,7 @@ import {
 } from '@/lib/offlinePhotoStore';
 import { recordUploadFailure, clearUploadFailure, getStorageWarningMessage } from '@/lib/storageDiagnostics';
 import { useAppLifecycle } from '@/hooks/useAppLifecycle';
+import { readLocalPhoto, deleteLocalPhoto } from '@/lib/capturePhotoLocally';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
