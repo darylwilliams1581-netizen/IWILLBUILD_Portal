@@ -1203,6 +1203,109 @@ app.use((_req: Request, res: Response, next: NextFunction) => {
   next();
 });
 
+// ── Silent traffic counter (server-side only — invisible to end users) ────────
+// Counts every inbound request. Prints a summary to stdout every 5 minutes.
+// Visible in: production logs (GoDaddy builder → History / Logs tab) and
+// `console.log` output captured by the platform. Never sent to the client.
+{
+  interface TrafficBucket {
+    total: number;
+    pageViews: number;   // non-API GET requests (HTML page loads)
+    apiCalls: number;    // /api/* requests
+    uniqueIps: Set<string>;
+    paths: Map<string, number>;
+    statusCodes: Map<number, number>;
+    startedAt: Date;
+  }
+
+  const bucket: TrafficBucket = {
+    total: 0,
+    pageViews: 0,
+    apiCalls: 0,
+    uniqueIps: new Set(),
+    paths: new Map(),
+    statusCodes: new Map(),
+    startedAt: new Date(),
+  };
+
+  // Middleware: count every request before it is handled
+  app.use((req: Request, res: Response, next: NextFunction) => {
+    const ip =
+      (req.headers['x-forwarded-for'] as string | undefined)?.split(',')[0]?.trim() ??
+      req.socket?.remoteAddress ??
+      'unknown';
+
+    bucket.total += 1;
+    bucket.uniqueIps.add(ip);
+
+    const path = req.path.split('?')[0]; // strip query string
+    if (req.path.startsWith('/api/')) {
+      bucket.apiCalls += 1;
+    } else if (req.method === 'GET') {
+      bucket.pageViews += 1;
+      bucket.paths.set(path, (bucket.paths.get(path) ?? 0) + 1);
+    }
+
+    // Capture status code after response finishes
+    res.on('finish', () => {
+      const code = res.statusCode;
+      bucket.statusCodes.set(code, (bucket.statusCodes.get(code) ?? 0) + 1);
+    });
+
+    next();
+  });
+
+  // Print summary every 5 minutes
+  const INTERVAL_MS = 5 * 60 * 1000;
+  setInterval(() => {
+    const now = new Date();
+    const uptimeSecs = Math.round((now.getTime() - bucket.startedAt.getTime()) / 1000);
+    const mins = Math.floor(uptimeSecs / 60);
+    const secs = uptimeSecs % 60;
+
+    // Top 5 page paths by hit count
+    const topPaths = [...bucket.paths.entries()]
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 5)
+      .map(([p, n]) => `    ${n.toString().padStart(4)}  ${p}`)
+      .join('\n');
+
+    // Status code breakdown
+    const statusSummary = [...bucket.statusCodes.entries()]
+      .sort((a, b) => a[0] - b[0])
+      .map(([code, n]) => `${code}×${n}`)
+      .join('  ');
+
+    console.log(
+      [
+        '',
+        '┌─────────────────────────────────────────────────────┐',
+        `│  IWB TRAFFIC REPORT  ${now.toISOString()}  │`,
+        '├─────────────────────────────────────────────────────┤',
+        `│  Window : last ${mins}m ${secs}s`,
+        `│  Total  : ${bucket.total} requests`,
+        `│  Pages  : ${bucket.pageViews} page views`,
+        `│  API    : ${bucket.apiCalls} API calls`,
+        `│  Unique : ${bucket.uniqueIps.size} IP addresses`,
+        `│  Status : ${statusSummary || 'none yet'}`,
+        '│  Top paths:',
+        topPaths || '│    (none)',
+        '└─────────────────────────────────────────────────────┘',
+        '',
+      ].join('\n')
+    );
+
+    // Reset window counters (keep startedAt as process start for context)
+    bucket.total = 0;
+    bucket.pageViews = 0;
+    bucket.apiCalls = 0;
+    bucket.uniqueIps.clear();
+    bucket.paths.clear();
+    bucket.statusCodes.clear();
+    bucket.startedAt = now;
+  }, INTERVAL_MS).unref(); // .unref() so the timer doesn't prevent clean shutdown
+}
+
 // ── Global API rate limiting ───────────────────────────────────────────────────
 // Applied before auth guard so even unauthenticated flood attempts are throttled.
 // Auth routes get a tighter sub-limit on top of the global one.
