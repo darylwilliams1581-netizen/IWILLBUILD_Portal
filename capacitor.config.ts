@@ -40,8 +40,8 @@ import type { CapacitorConfig } from '@capacitor/cli';
 
 // ── SINGLE SOURCE OF TRUTH FOR BUILD NUMBER ───────────────────────────────────
 // Increment this before every App Store / TestFlight upload.
-// Current: 11 (schema-compat camera upload fix; INFORMATION_SCHEMA migration)
-const IOS_BUILD_NUMBER = 12;
+// Current: 21 (server.url removed; RootLayout overflow:clip → overflow:hidden layout fix)
+const IOS_BUILD_NUMBER = 21;
 
 const config: CapacitorConfig = {
   // Reverse-domain app identifier — must match your Apple/Google developer account
@@ -52,19 +52,14 @@ const config: CapacitorConfig = {
   webDir: 'dist/client',
 
   // ── Server config ─────────────────────────────────────────────────────────
-  // ⚠️  BUILD 11: server.url is ENABLED — app loads from live server.
-  //     This is intentional for this Appflow/TestFlight build.
+  // ⚠️  server.url is intentionally ABSENT for App Store / TestFlight builds.
+  //     The native app loads bundled assets from dist/client — no network
+  //     dependency on first paint. API calls go to https://iwillbuild.com via
+  //     normal fetch(). A live server.url causes white screen on slow/no network
+  //     and may trigger App Store review rejection.
   //
-  // ⚠️  BEFORE App Store submission: comment server.url back out.
-  //     A live server.url causes white screen on slow/no network and may
-  //     trigger App Store review rejection (apps must not require network to launch).
+  // For local development only: add server: { url: 'http://YOUR_LAN_IP:5173' }
   //
-  server: {
-    url: 'https://iwillbuild.com',
-    cleartext: false,
-    allowNavigation: ['iwillbuild.com', '*.iwillbuild.com'],
-  },
-
   // ── iOS specific ──────────────────────────────────────────────────────────
   ios: {
     contentInset: 'automatic',
