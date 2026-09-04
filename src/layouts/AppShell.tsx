@@ -28,13 +28,14 @@ export default function AppShell({ children }: AppShellProps) {
       }}
     >
       {/* Main content area — scrollable, leaves room for MobileTabBar (56px + safe-area).
-          overflow-x:hidden + contain:layout are the last-resort clip for the 300%-wide
-          swipe track inside PagedHomeScreen; the swipe container itself also clips. */}
+          overflow-x:hidden clips the 300%-wide swipe track inside PagedHomeScreen.
+          contain:'layout' removed — on iOS Safari it causes flex children to
+          miscalculate their own width, producing the left-clip / overflow bug.
+          The overflow:hidden on the swipe container in PagedHomeScreen is sufficient. */}
       <main
         className="flex-1 overflow-y-auto overflow-x-hidden"
         style={{
           paddingBottom: 'calc(56px + env(safe-area-inset-bottom, 0px))',
-          contain: 'layout',
           minWidth: 0,
           maxWidth: '100%',
         }}

@@ -11,7 +11,7 @@
  *   • Page-label tab bar at the top of the swipe area
  */
 
-import { useState, useRef, useCallback, useEffect, type TouchEvent as ReactTouchEvent } from 'react';
+import { useState, useRef, useCallback, useEffect, memo, type TouchEvent as ReactTouchEvent } from 'react';
 import { useNavigate, useSearchParams } from "react-router";
 import { LayoutDashboard, Briefcase, Settings2, ShieldCheck, Plus, LogIn, Car, HardHat, Camera as CameraIcon, User, LogOut, Users, ChevronDown } from 'lucide-react';
 import * as Collapsible from '@radix-ui/react-collapsible';
@@ -56,6 +56,12 @@ interface PagedHomeScreenProps {
   isPlatformOwner: boolean;
   userId: string;
   onNavigate: (href: string) => void;
+  /** First name of the signed-in user — shown in the greeting row */
+  firstName?: string;
+  /** Greeting text e.g. "Good morning" */
+  greeting?: string;
+  /** Formatted date string e.g. "Thursday, 4 September" */
+  dateStr?: string;
 }
 
 // ── Group panel config ────────────────────────────────────────────────────────
@@ -148,7 +154,7 @@ function JobFeatureCard({
 
 // ── Job feature page (Page 1) ─────────────────────────────────────────────────
 
-function JobFeaturePage({
+const JobFeaturePage = memo(function JobFeaturePage({
   onFeatureClick,
 }: {
   onFeatureClick: (f: JobFeature) => void;
@@ -203,11 +209,11 @@ function JobFeaturePage({
       </div>
     </div>
   );
-}
+});
 
 // ── Dashboard page ────────────────────────────────────────────────────────────
 
-function DashboardPage({
+const DashboardPage = memo(function DashboardPage({
   userId,
   role,
   onNavigate,
@@ -311,7 +317,7 @@ function DashboardPage({
       <MyTasksPanel userRole={role} />
       </div>
     </div>;
-}
+});
 
 // ── Manage page (Page 2) ──────────────────────────────────────────────────────
 
@@ -450,16 +456,20 @@ function ManagePage({
     </div>
   );
 }
+const ManagePageMemo = memo(ManagePage);
 
 // ── Main component ────────────────────────────────────────────────────────────
 
-export default function PagedHomeScreen({
+export default memo(function PagedHomeScreen({
   iconPermissions,
   role,
   isSolo,
   isPlatformOwner,
   userId,
-  onNavigate
+  onNavigate,
+  firstName,
+  greeting,
+  dateStr,
 }: PagedHomeScreenProps) {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -602,6 +612,22 @@ export default function PagedHomeScreen({
           </button>
         </div>
       </div>
+      {/* Row 1b: greeting + date — compact, only shown when props provided */}
+      {(firstName || dateStr) && (
+        <div className="flex items-center justify-between shrink-0 px-3 pb-1 gap-2">
+          <div className="flex items-baseline gap-1.5 min-w-0">
+            {greeting && (
+              <span className="text-[11px] text-gray-400 font-medium shrink-0">{greeting},</span>
+            )}
+            {firstName && (
+              <span className="text-[13px] font-bold text-gray-800 truncate">{firstName}</span>
+            )}
+          </div>
+          {dateStr && (
+            <span className="text-[10px] text-gray-400 font-medium shrink-0 text-right">{dateStr}</span>
+          )}
+        </div>
+      )}
       {/* Row 2: page tabs — full width, no scroll, equal-width pills */}
       <div className="flex items-center shrink-0 px-2 pb-1.5 gap-1.5">
         {PAGE_LABELS.map((label, i) => {
@@ -653,7 +679,7 @@ export default function PagedHomeScreen({
 
           {/* Page 2 — Management */}
           <div className="min-h-0" style={{ width: '33.333%', height: '100%' }}>
-            <ManagePage icons={mgmtIcons} onNavigate={onNavigate} />
+            <ManagePageMemo icons={mgmtIcons} onNavigate={onNavigate} />
           </div>
         </div>
       </div>
@@ -693,4 +719,4 @@ export default function PagedHomeScreen({
       />
     )}
   </>;
-}
+});

@@ -4,7 +4,7 @@
  * dark text — iOS-style feel, not dark like the drive app.
  */
 
-import { useState, useEffect, useRef, type ComponentType, type ReactNode, type ChangeEvent } from 'react';
+import { useState, useEffect, useRef, useCallback, type ComponentType, type ReactNode, type ChangeEvent } from 'react';
 import { useNavigate } from "react-router";
 import { motion, AnimatePresence } from 'motion/react';
 import { Helmet } from '@dr.pogodin/react-helmet';
@@ -1928,7 +1928,7 @@ export default function HomeScreen() {
     day: 'numeric',
     month: 'long'
   });
-  function handleNavigate(href: string) {
+  const handleNavigate = useCallback(function handleNavigate(href: string) {
     if (href === '?panel=notes') {
       setNotesOpen(true);
       return;
@@ -1991,7 +1991,8 @@ export default function HomeScreen() {
       return;
     }
     navigate(href);
-  }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [navigate]);
   if (loading) {
     return <div className="flex-1 flex items-center justify-center min-h-0" style={{
       background: '#edf0f5'
@@ -2055,36 +2056,6 @@ export default function HomeScreen() {
       </Helmet>
       <h1 className="sr-only">IWIllBUIlD Home</h1>
 
-      {/* ── Top bar ── */}
-      <div className="px-4 pb-3" style={{
-          paddingTop: 'calc(env(safe-area-inset-top) + 14px)',
-          background: 'linear-gradient(150deg, #0d1117 0%, #161d2e 55%, #1a1208 100%)',
-          boxShadow: '0 1px 0 rgba(255,255,255,0.04), 0 8px 28px rgba(0,0,0,0.35)'
-        }}>
-        {/* Row 1: date pill — full width, no weather widget */}
-        <div className="flex items-center mb-2.5">
-          <span className="text-white/70 text-[11px] font-semibold tracking-[0.06em] uppercase px-2.5 py-1 rounded-full bg-white/10 border border-white/15">{dateStr}</span>
-        </div>
-        {/* Row 2: greeting — large, bold, personal */}
-        <div className="flex items-end justify-between gap-3">
-          <div className="min-w-0">
-            <p className="text-white/50 text-[11px] font-medium leading-tight mb-0.5">{greeting}</p>
-            <p className="font-extrabold text-[22px] leading-tight tracking-[-0.03em] truncate" style={{
-                background: 'linear-gradient(100deg, #ffffff 0%, #c4b5fd 55%, #fb923c 100%)',
-                WebkitBackgroundClip: 'text',
-                WebkitTextFillColor: 'transparent',
-                backgroundClip: 'text'
-              }}>
-              {firstName}
-            </p>
-          </div>
-          {/* System logo badge — display only */}
-          <div className="w-16 h-16 rounded-2xl flex items-center justify-center shrink-0 mb-0.5 overflow-hidden">
-            <img src="/airo-assets/images/logo/primary" alt="IWIllBUIlD" className="w-full h-full object-contain" />
-          </div>
-        </div>
-      </div>
-
       {/* ── Active status sub-header ── */}
       <AnimatePresence>
         {(activeStatus?.jobSignIn || activeStatus?.driving || (activeStatus?.drivingSessions?.length ?? 0) > 0) && <ActiveStatusBar status={activeStatus} onJobSignOut={() => setActiveStatusKey(k => k + 1)} onDriveStop={async sessionId => {
@@ -2098,7 +2069,7 @@ export default function HomeScreen() {
 
       {/* ── Paged home screen (Dashboard / Field / Manage) ── */}
       {/* PagedHomeScreen handles its own scroll per page and the page dots */}
-      <PagedHomeScreen iconPermissions={iconPermissions} role={role ?? ''} isSolo={isSolo} isPlatformOwner={isPlatformOwner} userId={session?.user?.id ?? me?.user?.id ?? ''} onNavigate={handleNavigate} />
+      <PagedHomeScreen iconPermissions={iconPermissions} role={role ?? ''} isSolo={isSolo} isPlatformOwner={isPlatformOwner} userId={session?.user?.id ?? me?.user?.id ?? ''} onNavigate={handleNavigate} firstName={firstName} greeting={greeting} dateStr={dateStr} />
 
       {/* ── Sheets ── */}
 

@@ -445,12 +445,23 @@ export default function JobPhotosCameraPage() {
     stopStream();
     setCamState('loading');
     setCamErrMsg('');
-    if (!navigator.mediaDevices?.getUserMedia) {
+    // On capacitor://localhost, navigator.mediaDevices may be undefined on the
+    // first tick because WKWebView's secure-context initialisation is async.
+    // Retry up to 10 times (500 ms total) before giving up.
+    let mediaDevices = navigator.mediaDevices;
+    if (!mediaDevices?.getUserMedia) {
+      for (let i = 0; i < 10; i++) {
+        await new Promise<void>(r => setTimeout(r, 50));
+        mediaDevices = navigator.mediaDevices;
+        if (mediaDevices?.getUserMedia) break;
+      }
+    }
+    if (!mediaDevices?.getUserMedia) {
       setCamState('unavailable');
       return;
     }
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({
+      const stream = await mediaDevices.getUserMedia({
         video: {
           facingMode: {
             ideal: facing
