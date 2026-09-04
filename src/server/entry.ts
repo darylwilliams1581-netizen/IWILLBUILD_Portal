@@ -3928,12 +3928,12 @@ app.get("/api/me/profile-attachments/thumbnail", me_profile_attachments_thumbnai
 app.get("/api/me/profile-extras", me_profile_extras_get_566);
 app.put("/api/me/profile-extras", me_profile_extras_put_567);
 app.get("/api/me/recovery-email", me_recovery_email_get_568);
-app.get("/api/me/recovery-email/cancel", me_recovery_email_cancel_get_569);
+app.get("/api/me/recovery-email/cancel", recoveryTokenLimiter, me_recovery_email_cancel_get_569);
 app.post("/api/me/recovery-email/cancel", me_recovery_email_cancel_post_570);
-app.get("/api/me/recovery-email/freeze", me_recovery_email_freeze_get_571);
+app.get("/api/me/recovery-email/freeze", recoveryTokenLimiter, me_recovery_email_freeze_get_571);
 app.post("/api/me/recovery-email/freeze", me_recovery_email_freeze_post_572);
 app.post("/api/me/recovery-email/request", me_recovery_email_request_post_573);
-app.get("/api/me/recovery-email/verify", me_recovery_email_verify_get_574);
+app.get("/api/me/recovery-email/verify", recoveryTokenLimiter, me_recovery_email_verify_get_574);
 app.post("/api/migrate-account-recovery", migrate_account_recovery_post_575);
 app.post("/api/migrate-anatomy", migrate_anatomy_post_576);
 app.post("/api/migrate-asset-manager", migrate_asset_manager_post_577);

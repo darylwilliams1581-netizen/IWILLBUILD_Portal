@@ -579,10 +579,13 @@ describe('Rate limiting — recoveryTokenLimiter', () => {
       'utf8',
     );
     expect(entry).toContain('recoveryTokenLimiter');
-    // Must be applied to verify, cancel, and freeze
-    expect(entry).toContain("recoveryTokenLimiter, recoveryEmailVerifyGet");
-    expect(entry).toContain("recoveryTokenLimiter, recoveryEmailCancelGet");
-    expect(entry).toContain("recoveryTokenLimiter, recoveryEmailFreezeGet");
+    // Must be applied to verify, cancel, and freeze GET endpoints.
+    // The Airo workspace uses auto-generated import aliases (e.g. me_recovery_email_verify_get_NNN)
+    // while the export branch uses human-readable aliases (recoveryEmailVerifyGet).
+    // Assert the limiter is wired to each route path regardless of alias name.
+    expect(entry).toMatch(/app\.get\(["']\/api\/me\/recovery-email\/cancel["'],\s*recoveryTokenLimiter,/);
+    expect(entry).toMatch(/app\.get\(["']\/api\/me\/recovery-email\/freeze["'],\s*recoveryTokenLimiter,/);
+    expect(entry).toMatch(/app\.get\(["']\/api\/me\/recovery-email\/verify["'],\s*recoveryTokenLimiter,/);
   });
 });
 

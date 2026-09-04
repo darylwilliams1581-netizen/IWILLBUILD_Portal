@@ -197,9 +197,10 @@ export default async function handler(req: Request, res: Response) {
     let anatomySnapshotId: string | null = null;
     let anatomyCommitSha: string | null = null;
     let anatomySourceType: string | null = null;
+    let anatomyMeta: Record<string, unknown> | null = null;
     try {
       anatomySnapshotId = await getActiveSnapshotId();
-      const anatomyMeta = anatomySnapshotId ? await getSnapshotMeta(anatomySnapshotId) : null;
+      anatomyMeta       = anatomySnapshotId ? await getSnapshotMeta(anatomySnapshotId) : null;
       anatomyCommitSha  = (anatomyMeta?.commit_sha  as string | null) ?? null;
       anatomySourceType = (anatomyMeta?.source_type as string | null) ?? null;
     } catch {
