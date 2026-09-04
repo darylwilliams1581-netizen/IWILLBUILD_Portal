@@ -930,15 +930,7 @@ export default function OwnerConsolePage() {
               Twilio
             </span>
           </Tab>
-          <Tab active={tab === 'image-safeguard'} onClick={() => {
-          setTab('image-safeguard');
-          setSearchParams({ tab: 'image-safeguard' });
-        }}>
-            <span className="flex items-center gap-1.5">
-              <Shield size={12} />
-              Image Safeguard (removed)
-            </span>
-          </Tab>
+
           {(supportMode.active || tab === 'support-setup') && <Tab active={tab === 'support-setup'} onClick={() => {
           setTab('support-setup');
           setSearchParams({
@@ -1120,11 +1112,6 @@ export default function OwnerConsolePage() {
                 </div>
               )}
               {tab === 'twilio' && <TwilioTab />}
-              {tab === 'image-safeguard' && (
-                <div className="p-8 text-center text-slate-500 text-sm">
-                  Image Safeguard has been decommissioned. Scanning is handled externally.
-                </div>
-              )}
 
 
               {/* ── Health Check (Annette) ── */}
