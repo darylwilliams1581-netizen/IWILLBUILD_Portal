@@ -49,7 +49,14 @@ function getNativeAppPlugin(): AppPlugin | null {
     };
   }).Capacitor;
   if (!cap?.isNativePlatform?.()) return null;
-  return cap?.Plugins?.App ?? null;
+  const plugin = cap?.Plugins?.App ?? null;
+  // Guard: on some Capacitor / TestFlight builds the App plugin stub is
+  // registered before the bridge is fully initialised — the object exists but
+  // its methods are not yet callable. Calling addListener() on a stub throws
+  // "p.addListener is not a function" and crashes the whole render tree.
+  // Mirrors the identical guard in DriverSessionContext.tsx (line ~594).
+  if (!plugin || typeof plugin.addListener !== 'function') return null;
+  return plugin;
 }
 
 export function useAppLifecycle({
