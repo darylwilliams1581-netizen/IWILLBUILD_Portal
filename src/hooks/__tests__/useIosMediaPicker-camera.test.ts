@@ -109,18 +109,24 @@ describe('Camera — source code safety checks', () => {
   });
 });
 
-describe('Camera — job-photos-camera.tsx getUserMedia retry', () => {
+describe('Camera — job-photos-camera.tsx native capture architecture (Build 22)', () => {
   const cam = readSrc('pages/job-photos-camera.tsx');
+  // Strip comments for accurate analysis
+  const camCode = cam.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/.*/g, '');
 
-  it('16. getUserMedia retry loop present (up to 10 attempts, 50ms each)', () => {
-    // The retry loop was added to handle WKWebView async initialisation
-    expect(cam).toMatch(/for\s*\(\s*let\s+i\s*=\s*0\s*;\s*i\s*<\s*10/);
-    expect(cam).toMatch(/setTimeout.*50/);
+  it('16. Camera page uses Camera.getPhoto() via capturePhotoLocally (not getUserMedia)', () => {
+    // Build 22: replaced getUserMedia stream with native Camera.getPhoto() path
+    expect(camCode).toContain('capturePhotoLocally');
+    expect(camCode).toContain('@capacitor/core');
+    // Must NOT use getUserMedia in executable code (comments are stripped above)
+    expect(camCode).not.toContain('getUserMedia');
+    expect(camCode).not.toContain('mediaDevices');
   });
 
-  it('16b. mediaDevices variable used after retry (not navigator.mediaDevices directly)', () => {
-    // After the retry loop, the call must use the local `mediaDevices` variable
-    expect(cam).toMatch(/mediaDevices\.getUserMedia/);
+  it('16b. Camera page enqueues with localPath + idempotencyKey (offline-first)', () => {
+    expect(camCode).toContain('localPath');
+    expect(camCode).toContain('idempotencyKey');
+    expect(camCode).toContain('enqueueFiles');
   });
 });
 
@@ -136,8 +142,8 @@ describe('Camera — capacitor.config.ts', () => {
     expect(noComments).not.toMatch(/server\s*:\s*\{[^}]*url\s*:/);
   });
 
-  it('18. Build number is 21', () => {
-    expect(config).toMatch(/IOS_BUILD_NUMBER\s*=\s*21/);
+  it('18. Build number is 22', () => {
+    expect(config).toMatch(/IOS_BUILD_NUMBER\s*=\s*22/);
   });
 
   it('19. NSCameraUsageDescription is present', () => {

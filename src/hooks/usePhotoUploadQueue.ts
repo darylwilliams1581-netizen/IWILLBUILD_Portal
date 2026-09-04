@@ -29,6 +29,7 @@ import {
 } from '@/lib/offlinePhotoStore';
 import { recordUploadFailure, clearUploadFailure, getStorageWarningMessage } from '@/lib/storageDiagnostics';
 import { useAppLifecycle } from '@/hooks/useAppLifecycle';
+import { readLocalPhoto, deleteLocalPhoto } from '@/lib/capturePhotoLocally';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -51,6 +52,16 @@ export interface PendingPhoto {
   _file: File | null;
   /** Whether this item was restored from IDB on mount */
   restoredFromDevice: boolean;
+  /**
+   * Path relative to Filesystem Directory.Data — present for photos captured
+   * via capturePhotoLocally(). Used to recover the File after a force-close
+   * when the IDB blob may have been evicted.
+   */
+  localPath?: string;
+  /**
+   * Sent as X-Idempotency-Key on upload — prevents duplicate photos on retry.
+   */
+  idempotencyKey?: string;
 }
 
 interface UsePhotoUploadQueueOptions {
@@ -60,6 +71,20 @@ interface UsePhotoUploadQueueOptions {
   onBatchComplete?: (uploaded: number, failed: number) => void;
   /** Called immediately after each individual photo is confirmed on the server */
   onPhotoSynced?: (serverPhotoId: number) => void;
+}
+
+// ── Enqueue options ───────────────────────────────────────────────────────────
+
+export interface EnqueueFileOptions {
+  /**
+   * Path relative to Filesystem Directory.Data — present for photos captured
+   * via capturePhotoLocally(). Enables Filesystem fallback after force-close.
+   */
+  localPath?: string;
+  /**
+   * Sent as X-Idempotency-Key on upload — prevents duplicate photos on retry.
+   */
+  idempotencyKey?: string;
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -151,6 +176,7 @@ function uploadFileXhr(
   onProgress: (pct: number) => void,
   clientId: string,
   uploadEndpoint?: string,
+  idempotencyKey?: string,
 ): Promise<{ id: number }> {
   return new Promise((resolve, reject) => {
     const fd = new FormData();
@@ -161,6 +187,11 @@ function uploadFileXhr(
     xhr.withCredentials = true;
     // Server uses this to deduplicate retried/replayed requests
     xhr.setRequestHeader('X-Client-Id', clientId);
+    // Idempotency key — prevents duplicate photos when the same capture is
+    // retried after a network failure or app restart
+    if (idempotencyKey) {
+      xhr.setRequestHeader('X-Idempotency-Key', idempotencyKey);
+    }
 
     xhr.upload.addEventListener('progress', (e) => {
       if (e.lengthComputable) {
@@ -289,6 +320,8 @@ export function usePhotoUploadQueue({ jobId, uploadEndpoint, onBatchComplete, on
         error:             null,
         _file:             s.file,
         restoredFromDevice: true,
+        localPath:         s.localPath,
+        idempotencyKey:    s.idempotencyKey,
       }));
 
       setQueue(restored);
@@ -340,6 +373,14 @@ export function usePhotoUploadQueue({ jobId, uploadEndpoint, onBatchComplete, on
 
     void (async () => {
       let file: File | null = next._file;
+
+      // ── Filesystem fallback ──────────────────────────────────────────────
+      // After a force-close, the IDB blob may have been evicted by iOS but the
+      // Filesystem copy in Directory.Data persists. Attempt to recover it.
+      if (!file && next.localPath) {
+        file = await readLocalPhoto(next.localPath, next.fileName, next.mimeType);
+      }
+
       if (!file) {
         updateItem(clientId, { status: 'failed', error: 'File missing — please retry' });
         activeRef.current -= 1;
@@ -363,6 +404,7 @@ export function usePhotoUploadQueue({ jobId, uploadEndpoint, onBatchComplete, on
           (pct) => updateItem(clientId, { progress: pct }),
           clientId,
           uploadEndpoint,
+          next.idempotencyKey,
         );
 
         // Revoke blob URL — server is now the source of truth
@@ -371,6 +413,8 @@ export function usePhotoUploadQueue({ jobId, uploadEndpoint, onBatchComplete, on
 
         // Remove from IDB — confirmed synced
         void removePhoto(clientId);
+        // Delete the Filesystem copy — server + R2 confirmed the save
+        if (next.localPath) void deleteLocalPhoto(next.localPath);
         // Clear last-failure record on any successful upload
         clearUploadFailure();
 
@@ -421,12 +465,13 @@ export function usePhotoUploadQueue({ jobId, uploadEndpoint, onBatchComplete, on
 
   // ── Enqueue files ──────────────────────────────────────────────────────────
 
-  const enqueueFiles = useCallback(async (files: File[]) => {
+  const enqueueFiles = useCallback(async (files: File[], options?: EnqueueFileOptions[]) => {
     const now = Date.now();
     const newItems: PendingPhoto[] = [];
 
     for (let i = 0; i < files.length; i++) {
       const file = files[i];
+      const opts = options?.[i];
 
       // Check queue capacity before saving each file
       const capacityError = await checkQueueCapacity(jobId, file.size);
@@ -444,11 +489,13 @@ export function usePhotoUploadQueue({ jobId, uploadEndpoint, onBatchComplete, on
       void savePhoto({
         clientId,
         jobId,
-        fileName:   file.name,
-        mimeType:   file.type || 'application/octet-stream',
+        fileName:        file.name,
+        mimeType:        file.type || 'application/octet-stream',
         file,
-        capturedAt: now + i,
-        attempts:   0,
+        capturedAt:      now + i,
+        attempts:        0,
+        localPath:       opts?.localPath,
+        idempotencyKey:  opts?.idempotencyKey,
       });
 
       newItems.push({
@@ -462,6 +509,8 @@ export function usePhotoUploadQueue({ jobId, uploadEndpoint, onBatchComplete, on
         error:             null,
         _file:             file,
         restoredFromDevice: false,
+        localPath:         opts?.localPath,
+        idempotencyKey:    opts?.idempotencyKey,
       });
     }
 

@@ -29,11 +29,24 @@ export interface StoredPhoto {
   capturedAt: number;
   /** How many upload attempts have been made */
   attempts: number;
+  /**
+   * Path relative to Filesystem Directory.Data where the photo was copied
+   * immediately after capture (Stage 1 offline-first architecture).
+   * Present for photos captured via capturePhotoLocally(); absent for photos
+   * added via the file picker or legacy camera path.
+   */
+  localPath?: string;
+  /**
+   * Sent as X-Idempotency-Key on upload — prevents duplicate photos on retry.
+   * Present for photos captured via capturePhotoLocally().
+   */
+  idempotencyKey?: string;
 }
 
 const DB_NAME    = 'sos-photo-queue';
 const STORE_NAME = 'pending_photos';
-const DB_VERSION = 1;
+// v2: adds localPath + idempotencyKey fields (additive — no migration needed)
+const DB_VERSION = 2;
 
 // ── Safety limits ─────────────────────────────────────────────────────────────
 

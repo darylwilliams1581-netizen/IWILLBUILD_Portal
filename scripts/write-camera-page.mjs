@@ -1,4 +1,22 @@
 /**
+ * Writes the Build 22 offline-first camera page to src/pages/job-photos-camera.tsx
+ * Run: node scripts/write-camera-page.mjs
+ */
+import { writeFileSync, readFileSync } from 'fs';
+import { resolve, dirname } from 'path';
+import { fileURLToPath } from 'url';
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
+
+// Read the capturePhotoLocally source to verify it exists
+const captureSrc = readFileSync(resolve(__dirname, '../src/lib/capturePhotoLocally.ts'), 'utf8');
+if (!captureSrc.includes('capturePhotoLocally')) {
+  throw new Error('capturePhotoLocally.ts not found or invalid');
+}
+
+const dest = resolve(__dirname, '../src/pages/job-photos-camera.tsx');
+
+const content = `/**
  * JobPhotosCameraPage  (/jobs/:id/camera)
  * ─────────────────────────────────────────────────────────────────────────────
  * Offline-first native camera page — Build 22.
@@ -37,12 +55,12 @@ interface Job { id: number; name: string; jobNumber?: string | null; }
 
 function sanitizeLabel(raw: string): string {
   return raw
-    .replace(/<script[\s\S]*?<\/script>/gi, '')
-    .replace(/<style[\s\S]*?<\/style>/gi, '')
+    .replace(/<script[\\s\\S]*?<\\/script>/gi, '')
+    .replace(/<style[\\s\\S]*?<\\/style>/gi, '')
     .replace(/<[^>]*>/g, '')
-    .replace(/[\r\n]+/g, ' ')
+    .replace(/[\\r\\n]+/g, ' ')
     // eslint-disable-next-line no-control-regex
-    .replace(/[\x00-\x1F\x7F-\x9F]/g, '')
+    .replace(/[\\x00-\\x1F\\x7F-\\x9F]/g, '')
     .replace(/ {2,}/g, ' ')
     .trim();
 }
@@ -86,8 +104,8 @@ async function compositeWatermark(
   const z = (n: number) => String(n).padStart(2, '0');
   const line1Parts: string[] = [];
   if (opts.showJobName && opts.jobName.trim()) line1Parts.push(opts.jobName.trim().slice(0, 60));
-  if (opts.showDate) line1Parts.push(`${z(now.getDate())}/${z(now.getMonth() + 1)}/${now.getFullYear()}`);
-  if (opts.showTime) line1Parts.push(`${z(now.getHours())}:${z(now.getMinutes())}`);
+  if (opts.showDate) line1Parts.push(\`\${z(now.getDate())}/\${z(now.getMonth() + 1)}/\${now.getFullYear()}\`);
+  if (opts.showTime) line1Parts.push(\`\${z(now.getHours())}:\${z(now.getMinutes())}\`);
   const line1 = line1Parts.join('  —  ');
   const line2 = opts.showLabel && opts.label.trim() ? sanitizeLabel(opts.label).trim().slice(0, 120) : '';
   const hasLine1 = line1.length > 0;
@@ -102,7 +120,7 @@ async function compositeWatermark(
   const fontSize = Math.max(16, Math.round(refDim * 0.024));
   const lineH = fontSize * 1.35; const padH = fontSize * 0.55; const padV = fontSize * 0.45;
   const margin = Math.round(refDim * 0.022); const radius = fontSize * 0.32;
-  ctx.font = `bold ${fontSize}px -apple-system, Arial, sans-serif`;
+  ctx.font = \`bold \${fontSize}px -apple-system, Arial, sans-serif\`;
   ctx.textBaseline = 'alphabetic';
   const line1Rows = hasLine1 ? [line1] : [];
   const line2Rows = hasLine2 ? wrapLabel(line2) : [];
@@ -121,7 +139,7 @@ async function compositeWatermark(
     ctx.fillStyle = '#ffffff'; ctx.textBaseline = 'alphabetic';
     allRows.forEach((row, i) => {
       const isLabel = i >= line1Rows.length;
-      ctx.font = isLabel ? `600 ${Math.round(fontSize * 0.92)}px -apple-system, Arial, sans-serif` : `bold ${fontSize}px -apple-system, Arial, sans-serif`;
+      ctx.font = isLabel ? \`600 \${Math.round(fontSize * 0.92)}px -apple-system, Arial, sans-serif\` : \`bold \${fontSize}px -apple-system, Arial, sans-serif\`;
       ctx.fillStyle = '#ffffff';
       ctx.fillText(row, panelX + padH, panelY + padV + fontSize + i * lineH, panelW - padH * 2);
     });
@@ -155,7 +173,7 @@ export default function JobPhotosCameraPage() {
   const [job, setJob] = useState<Job | null>(null);
   useEffect(() => {
     if (!id || jobNameOverride) return;
-    fetch(`/api/jobs/${id}`, { credentials: 'include' })
+    fetch(\`/api/jobs/\${id}\`, { credentials: 'include' })
       .then(async r => {
         if (!r.ok) return;
         if (!(r.headers.get('content-type') ?? '').includes('application/json')) return;
@@ -226,7 +244,7 @@ export default function JobPhotosCameraPage() {
       setComposeError(true); setCapturing(false); return;
     }
     if (!captured) { setCapturing(false); return; }
-    const fileName = `job-${jobId}-photo-${Date.now()}.jpg`;
+    const fileName = \`job-\${jobId}-photo-\${Date.now()}.jpg\`;
     let file: File | null = null;
     try {
       const resp = await fetch(captured.previewUrl);
@@ -275,8 +293,8 @@ export default function JobPhotosCameraPage() {
   const z = (n: number) => String(n).padStart(2, '0');
   const previewLine1Parts: string[] = [];
   if (settings.showJobName && (jobNameOverride ?? job?.name)) previewLine1Parts.push((jobNameOverride ?? job?.name)!);
-  if (settings.showDate) previewLine1Parts.push(`${z(now.getDate())}/${z(now.getMonth() + 1)}/${now.getFullYear()}`);
-  if (settings.showTime) previewLine1Parts.push(`${z(now.getHours())}:${z(now.getMinutes())}`);
+  if (settings.showDate) previewLine1Parts.push(\`\${z(now.getDate())}/\${z(now.getMonth() + 1)}/\${now.getFullYear()}\`);
+  if (settings.showTime) previewLine1Parts.push(\`\${z(now.getHours())}:\${z(now.getMinutes())}\`);
   const previewLine1 = previewLine1Parts.join('  —  ');
   const previewLabelRows = settings.showLabel && label.trim() ? wrapLabel(label.trim()) : [];
   const hasPreview = previewLine1.length > 0 || previewLabelRows.length > 0;
@@ -286,20 +304,20 @@ export default function JobPhotosCameraPage() {
       <Helmet>
         <title>Camera — IWILLBUILD</title>
         <meta name="description" content="Take watermarked job site photos." />
-        <link rel="canonical" href={`https://iwillbuild.com/jobs/${jobId}/camera`} />
+        <link rel="canonical" href={\`https://iwillbuild.com/jobs/\${jobId}/camera\`} />
         <meta name="robots" content="noindex, nofollow" />
       </Helmet>
       <h1 className="sr-only">Job Camera</h1>
 
       <div className="relative z-20 flex items-center gap-2 px-3 shrink-0 bg-gradient-to-b from-black/70 to-transparent"
         style={{ paddingTop: 'max(env(safe-area-inset-top), 10px)', paddingBottom: '10px' }}>
-        <button onClick={() => navigate(backPath ?? `/jobs/${id}?tab=photos`)}
+        <button onClick={() => navigate(backPath ?? \`/jobs/\${id}?tab=photos\`)}
           className="w-9 h-9 flex items-center justify-center rounded-full bg-black/40 text-white hover:bg-black/60 transition-colors shrink-0" aria-label="Back to photos">
           <ArrowLeft size={18} />
         </button>
         <span className="flex-1 text-white text-sm font-semibold truncate px-1">{jobNameOverride ?? job?.name ?? 'Camera'}</span>
         <button onClick={() => setShowSettings(v => !v)}
-          className={`w-9 h-9 flex items-center justify-center rounded-full transition-colors shrink-0 ${showSettings ? 'bg-primary text-white' : 'bg-black/40 text-white/80 hover:bg-black/60'}`}
+          className={\`w-9 h-9 flex items-center justify-center rounded-full transition-colors shrink-0 \${showSettings ? 'bg-primary text-white' : 'bg-black/40 text-white/80 hover:bg-black/60'}\`}
           aria-label="Watermark settings"><Settings size={16} /></button>
       </div>
 
@@ -314,7 +332,7 @@ export default function JobPhotosCameraPage() {
             </div>}
         {hasPreview && (
           <button onClick={openWatermarkPopup}
-            className={`absolute z-10 text-left ${settings.orientation === '-90' ? 'bottom-3 right-3 origin-bottom-right' : 'bottom-3 left-3'}`}
+            className={\`absolute z-10 text-left \${settings.orientation === '-90' ? 'bottom-3 right-3 origin-bottom-right' : 'bottom-3 left-3'}\`}
             style={settings.orientation === '-90' ? { transform: 'rotate(-90deg)', transformOrigin: 'bottom right' } : undefined}
             aria-label="Edit watermark">
             <div className="inline-flex flex-col gap-0.5 bg-black/65 rounded-lg px-2.5 py-1.5 max-w-[calc(100vw-1.5rem)]">
@@ -337,7 +355,7 @@ export default function JobPhotosCameraPage() {
       <div className="relative z-20 shrink-0 bg-gradient-to-t from-black/90 to-transparent"
         style={{ paddingBottom: 'max(env(safe-area-inset-bottom), 16px)', paddingTop: '12px' }}>
         <div className="flex items-center justify-between px-6">
-          <button onClick={() => navigate(backPath ?? `/jobs/${id}?tab=photos`)}
+          <button onClick={() => navigate(backPath ?? \`/jobs/\${id}?tab=photos\`)}
             className="w-14 h-14 rounded-xl overflow-hidden border-2 border-white/30 bg-white/10 flex items-center justify-center shrink-0 touch-manipulation" aria-label="Back to photos">
             {lastThumb
               ? <img src={lastThumb} alt="Last captured" className="w-full h-full object-cover" />
@@ -347,7 +365,7 @@ export default function JobPhotosCameraPage() {
                 </div>}
           </button>
           <button onClick={() => setLabelLocked(v => !v)}
-            className={`w-11 h-11 flex flex-col items-center justify-center rounded-full transition-colors shrink-0 gap-0.5 ${labelLocked ? 'bg-primary text-white' : 'bg-white/10 text-white/60 hover:bg-white/20'}`}
+            className={\`w-11 h-11 flex flex-col items-center justify-center rounded-full transition-colors shrink-0 gap-0.5 \${labelLocked ? 'bg-primary text-white' : 'bg-white/10 text-white/60 hover:bg-white/20'}\`}
             aria-label={labelLocked ? 'Label locked — tap to unlock' : 'Label unlocked — tap to lock'}>
             {labelLocked ? <Lock size={16} /> : <Unlock size={16} />}
             <span className="text-[8px] font-semibold leading-none opacity-70">{labelLocked ? 'LOCKED' : 'LOCK'}</span>
@@ -357,7 +375,7 @@ export default function JobPhotosCameraPage() {
             {capturing && !pendingCapture ? <Loader2 size={28} className="animate-spin text-white" /> : <div className="w-14 h-14 rounded-full bg-white" />}
           </button>
           <button onClick={() => setShowSettings(v => !v)}
-            className={`w-11 h-11 flex flex-col items-center justify-center rounded-full transition-colors shrink-0 gap-0.5 ${showSettings ? 'bg-primary text-white' : 'bg-white/10 text-white/60 hover:bg-white/20'}`}
+            className={\`w-11 h-11 flex flex-col items-center justify-center rounded-full transition-colors shrink-0 gap-0.5 \${showSettings ? 'bg-primary text-white' : 'bg-white/10 text-white/60 hover:bg-white/20'}\`}
             aria-label="Watermark settings">
             <Settings size={16} /><span className="text-[8px] font-semibold leading-none opacity-70">FIELDS</span>
           </button>
@@ -379,7 +397,7 @@ export default function JobPhotosCameraPage() {
           <div className="grid grid-cols-2 gap-2">
             {([{ key: 'showJobName', display: 'Job name' }, { key: 'showDate', display: 'Date' }, { key: 'showTime', display: 'Time' }, { key: 'showLabel', display: 'Label' }] as { key: keyof typeof settings; display: string }[]).map(({ key, display }) => (
               <button key={key} onClick={() => toggle(key)}
-                className={`flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-medium transition-colors ${settings[key] ? 'bg-primary text-white' : 'bg-white/10 text-white/55'}`}>
+                className={\`flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-medium transition-colors \${settings[key] ? 'bg-primary text-white' : 'bg-white/10 text-white/55'}\`}>
                 {settings[key] ? <Check size={13} /> : <X size={13} />}{display}
               </button>
             ))}
@@ -390,7 +408,7 @@ export default function JobPhotosCameraPage() {
             <div className="flex gap-2">
               {(['0', '-90'] as const).map(val => (
                 <button key={val} onClick={() => update({ orientation: val })}
-                  className={`flex-1 py-2 rounded-xl text-sm font-semibold transition-colors ${settings.orientation === val ? 'bg-primary text-white' : 'bg-white/10 text-white/55'}`}>
+                  className={\`flex-1 py-2 rounded-xl text-sm font-semibold transition-colors \${settings.orientation === val ? 'bg-primary text-white' : 'bg-white/10 text-white/55'}\`}>
                   {val === '0' ? '0°' : '−90°'}
                 </button>
               ))}
@@ -413,7 +431,7 @@ export default function JobPhotosCameraPage() {
             <div className="grid grid-cols-2 gap-2 mb-4">
               {([{ key: 'showJobName', display: 'Job name' }, { key: 'showDate', display: 'Date' }, { key: 'showTime', display: 'Time' }, { key: 'showLabel', display: 'Label' }] as { key: keyof typeof settings; display: string }[]).map(({ key, display }) => (
                 <button key={key} onClick={() => toggle(key)}
-                  className={`flex items-center gap-2 px-3 py-2.5 rounded-xl text-sm font-medium transition-colors ${settings[key] ? 'bg-primary text-white' : 'bg-white/10 text-white/55'}`}>
+                  className={\`flex items-center gap-2 px-3 py-2.5 rounded-xl text-sm font-medium transition-colors \${settings[key] ? 'bg-primary text-white' : 'bg-white/10 text-white/55'}\`}>
                   {settings[key] ? <Check size={13} /> : <X size={13} />}{display}
                 </button>
               ))}
@@ -431,11 +449,11 @@ export default function JobPhotosCameraPage() {
               </div>
               <div className="flex items-center justify-between mt-1 px-1">
                 <span className="text-white/30 text-[10px]">~60 chars per line · 2 lines max</span>
-                <span className={`text-[10px] ${draftLabel.length >= 110 ? 'text-yellow-400' : 'text-white/40'}`}>{draftLabel.length} / 120</span>
+                <span className={\`text-[10px] \${draftLabel.length >= 110 ? 'text-yellow-400' : 'text-white/40'}\`}>{draftLabel.length} / 120</span>
               </div>
             </div>
             <button onClick={() => setDraftLocked(v => !v)}
-              className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl mb-4 text-sm font-medium transition-colors ${draftLocked ? 'bg-primary/20 text-primary border border-primary/40' : 'bg-white/10 text-white/60'}`}>
+              className={\`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl mb-4 text-sm font-medium transition-colors \${draftLocked ? 'bg-primary/20 text-primary border border-primary/40' : 'bg-white/10 text-white/60'}\`}>
               {draftLocked ? <Lock size={15} /> : <Unlock size={15} />}
               <span>{draftLocked ? 'Label locked — reused for every shot' : 'Label unlocked — prompted after each shot'}</span>
             </button>
@@ -469,7 +487,7 @@ export default function JobPhotosCameraPage() {
             </div>
             <div className="flex items-center justify-between mb-4 px-1">
               <span className="text-white/30 text-[10px]">~60 chars per line · 2 lines max</span>
-              <span className={`text-[10px] ${pendingLabel.length >= 110 ? 'text-yellow-400' : 'text-white/40'}`}>{pendingLabel.length} / 120</span>
+              <span className={\`text-[10px] \${pendingLabel.length >= 110 ? 'text-yellow-400' : 'text-white/40'}\`}>{pendingLabel.length} / 120</span>
             </div>
             <div className="flex gap-2">
               <button onClick={cancelPending} className="flex-1 py-2.5 rounded-xl border border-white/12 text-sm font-semibold text-gray-400 hover:text-white transition-colors">Cancel</button>
@@ -499,3 +517,7 @@ export default function JobPhotosCameraPage() {
     </div>
   );
 }
+`;
+
+writeFileSync(dest, content);
+console.log('written', dest, content.length, 'bytes');
