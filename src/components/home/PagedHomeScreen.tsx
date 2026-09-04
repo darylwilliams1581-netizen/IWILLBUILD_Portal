@@ -286,7 +286,7 @@ const DashboardPage = memo(function DashboardPage({
             <HardHat size={16} strokeWidth={2} />
           </div>
           <div className="flex flex-col items-start">
-            <span className="text-[13px] font-bold leading-tight">Site Prestart</span>
+            <span className="text-[13px] font-bold leading-tight">Site Prestart / HazChat</span>
             <span className="text-[10px] text-white/60 leading-tight">Daily site checklist</span>
           </div>
         </button>
