@@ -27,11 +27,16 @@ export default function AppShell({ children }: AppShellProps) {
         paddingTop: 'env(safe-area-inset-top, 0px)',
       }}
     >
-      {/* Main content area — scrollable, leaves room for MobileTabBar (56px + safe-area) */}
+      {/* Main content area — scrollable, leaves room for MobileTabBar (56px + safe-area).
+          overflow-x:hidden + contain:layout are the last-resort clip for the 300%-wide
+          swipe track inside PagedHomeScreen; the swipe container itself also clips. */}
       <main
         className="flex-1 overflow-y-auto overflow-x-hidden"
         style={{
           paddingBottom: 'calc(56px + env(safe-area-inset-bottom, 0px))',
+          contain: 'layout',
+          minWidth: 0,
+          maxWidth: '100%',
         }}
       >
         {children}

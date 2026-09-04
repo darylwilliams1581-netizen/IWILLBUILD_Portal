@@ -561,7 +561,9 @@ export default function PagedHomeScreen({
   const totalTranslate = baseTranslate + dragPercent;
 
   return <>
-    <div className="flex flex-col flex-1 min-h-0">
+    {/* w-full + max-w-full + min-w-0 prevent the 300%-wide swipe track from
+        inflating this flex child beyond the viewport before overflowX:clip fires */}
+    <div className="flex flex-col flex-1 min-h-0 w-full max-w-full min-w-0" style={{ contain: 'layout' }}>
       {/* ── Top bar: two-row stacked layout ──────────────────────────────────── */}
       {/* Row 1: logo + name (left) + utility buttons (right) */}
       <div className="flex items-center justify-between shrink-0 px-3 pt-2 pb-1 gap-2">
@@ -616,18 +618,21 @@ export default function PagedHomeScreen({
       </div>
 
       {/* ── Swipe container ──────────────────────────────────────────────────── */}
+      {/* overflow:hidden (not clip) — broader iOS Safari support; width+min-width
+          prevent the 300%-wide track from inflating the container before clipping */}
       <div
         ref={containerRef}
         className="flex-1 min-h-0 relative"
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
-        style={{ touchAction: 'pan-y', overflowX: 'clip', overflowY: 'visible' }}
+        style={{ touchAction: 'pan-y', overflow: 'hidden', width: '100%', maxWidth: '100%', minWidth: 0 }}
       >
         <div
           className="flex h-full"
           style={{
             width: '300%',
+            minWidth: 0,
             transform: `translateX(${totalTranslate / 3}%)`,
             transition: isDragging ? 'none' : 'transform 0.32s cubic-bezier(0.25, 0.46, 0.45, 0.94)',
             willChange: 'transform',
