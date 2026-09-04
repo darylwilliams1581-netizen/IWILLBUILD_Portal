@@ -1,5 +1,5 @@
 /**
- * useShell — Two-interface shell detection for IWILLBUILD.
+ * useShell — Two-interface shell detection for IWIllBUIlD.
  * ─────────────────────────────────────────────────────────────────────────────
  * Determines whether the current context should render the mobile App shell
  * (field-first, icon grid, bottom tab bar) or the Office shell (desktop
@@ -61,8 +61,21 @@ function resolveShell(override: Shell | null, viewportShell: Shell): Shell {
 }
 
 export function useShell() {
-  const [override, setOverrideState] = useState<Shell | null>(() => readOverride());
-  const [viewportShell, setViewportShell] = useState<Shell>(() => getViewportShell());
+  // IMPORTANT: initialise both to their server-side defaults (null / 'office')
+  // so hydrateRoot sees the same tree the server rendered. Reading localStorage
+  // or window.innerWidth in the useState initialiser causes React #418 on mobile
+  // because the server always returns null / 'office' while the client may return
+  // a stored override or 'app' (narrow viewport). The real values are read in the
+  // first useEffect (post-hydration) and applied without a hydration mismatch.
+  const [override, setOverrideState] = useState<Shell | null>(null);
+  const [viewportShell, setViewportShell] = useState<Shell>('office');
+
+  // Read real values post-hydration (avoids #418 — see comment above)
+  useEffect(() => {
+    setOverrideState(readOverride());
+    setViewportShell(getViewportShell());
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Track viewport width changes (resize + orientation change)
   useEffect(() => {

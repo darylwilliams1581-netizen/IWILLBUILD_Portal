@@ -31,6 +31,20 @@ export interface SaveFileInput {
   bucket: string;
   /** Optional: pre-generated key.  If omitted the provider generates one. */
   storageKey?: string;
+  /**
+   * Skip upload-policy validation for this call.
+   *
+   * ONLY set this to true for server-generated buffers that are NOT derived
+   * from user-supplied file uploads — e.g. Jimp-generated thumbnails/previews,
+   * in-place rotation of an already-validated stored image, or images extracted
+   * from an already-validated DOCX by the import pipeline.
+   *
+   * NEVER set this for any buffer that originates from a multipart upload,
+   * a base64-encoded client payload, or any other user-controlled input.
+   *
+   * The default is false (validation enforced).
+   */
+  skipValidation?: boolean;
 }
 
 export interface SaveFileResult {

@@ -1,12 +1,43 @@
 import { Helmet } from '@dr.pogodin/react-helmet';
 import { Link } from "react-router";
 import { ArrowLeft, Shield } from 'lucide-react';
-const LAST_UPDATED = '13 July 2026';
+
+const VERSION = '2.0';
+const EFFECTIVE_DATE = '3 September 2026';
+const LAST_UPDATED = '3 September 2026';
+
+function PolicyFooter({ active }: { active: string }) {
+  const navLinks = [
+    { to: '/', label: 'Home' },
+    { to: '/terms', label: 'Terms of Use' },
+    { to: '/privacy', label: 'Privacy Policy' },
+    { to: '/fair-use', label: 'Fair Use Policy' },
+    { to: '/system-policy', label: 'System Policy' },
+    { to: '/login', label: 'Sign In' },
+  ];
+  return (
+    <footer className="border-t border-border px-6 py-6 text-center">
+      <div className="flex justify-center gap-5 flex-wrap mb-3">
+        {privacy.navLinks.map(l => (
+          <Link key={l.to} to={l.to}
+            className={`text-sm no-underline transition-colors hover:text-foreground ${l.label === active ? 'text-primary' : 'text-muted-foreground'}`}>
+            {l.label}
+          </Link>
+        ))}
+      </div>
+      <p className="text-xs text-muted-foreground m-0">
+        © {new Date().getFullYear()} IWILLBUILD · ABN 89 791 350 823 · Queensland, Australia
+      </p>
+    </footer>
+  );
+}
+
 export default function PrivacyPage() {
-  return <>
+  return (
+    <>
       <Helmet>
         <title>Privacy Policy — IWILLBUILD</title>
-        <meta name="description" content="How IWILLBUILD collects, uses, discloses and protects your personal information. Read our Privacy Policy for the fleet and construction management portal." />
+        <meta name="description" content="How IWILLBUILD collects, uses, discloses and protects your personal information. Version 2.0 — effective 3 September 2026." />
         <link rel="canonical" href="https://iwillbuild.com/privacy" />
         <meta property="og:title" content="Privacy Policy — IWILLBUILD" />
         <meta property="og:description" content="How IWILLBUILD collects, uses, discloses and protects your personal information." />
@@ -22,395 +53,223 @@ export default function PrivacyPage() {
           name: 'Privacy Policy — IWILLBUILD',
           url: 'https://iwillbuild.com/privacy',
           description: 'How IWILLBUILD collects, uses, discloses and protects your personal information.',
-          isPartOf: {
-            '@id': 'https://iwillbuild.com/#website'
-          },
-          about: {
-            '@id': 'https://iwillbuild.com/#organization'
-          },
-          dateModified: '2026-07-13'
+          isPartOf: { '@id': 'https://iwillbuild.com/#website' },
+          about: { '@id': 'https://iwillbuild.com/#organization' },
+          dateModified: '2026-09-03',
         })}</script>
       </Helmet>
 
-      <div style={{
-      minHeight: '100vh',
-      backgroundColor: '#0f172a',
-      color: '#e2e8f0',
-      fontFamily: 'Inter, system-ui, sans-serif'
-    }}>
+      <div className="min-h-screen bg-background text-foreground" style={{ fontFamily: 'Inter, system-ui, sans-serif' }}>
 
-        {/* ── Nav bar ── */}
-        <header style={{
-        borderBottom: '1px solid #1e293b',
-        padding: '0 24px'
-      }}>
-          <div style={{
-          maxWidth: 860,
-          margin: '0 auto',
-          height: 64,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between'
-        }}>
-            <Link to="/" style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: 10,
-            textDecoration: 'none'
-          }}>
-              <span style={{
-              width: 32,
-              height: 32,
-              borderRadius: 7,
-              background: 'linear-gradient(135deg,#1263d8,#0f8aa8)',
-              display: 'grid',
-              placeItems: 'center',
-              color: '#fff',
-              fontWeight: 900,
-              fontSize: 13,
-              flexShrink: 0
-            }}>IW</span>
-              <strong style={{
-              color: '#f1f5f9',
-              fontSize: 15
-            }}>IWILLBUILD</strong>
+        <header className="border-b border-border px-6">
+          <div className="max-w-3xl mx-auto h-16 flex items-center justify-between">
+            <Link to="/" className="flex items-center gap-2.5 no-underline">
+              <span className="w-8 h-8 rounded-lg flex items-center justify-center text-primary-foreground font-black text-sm shrink-0 bg-primary">IW</span>
+              <strong className="text-foreground text-sm">IWILLBUILD</strong>
             </Link>
-            <Link to="/" style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: 6,
-            color: '#94a3b8',
-            textDecoration: 'none',
-            fontSize: 14
-          }} className="hover:text-white transition-colors">
-              <ArrowLeft size={15} />
-              Back to home
+            <Link to="/" className="flex items-center gap-1.5 text-muted-foreground no-underline text-sm hover:text-foreground transition-colors">
+              <ArrowLeft size={15} />Back to home
             </Link>
           </div>
         </header>
 
-        {/* ── Hero ── */}
-        <div style={{
-        borderBottom: '1px solid #1e293b',
-        padding: '48px 24px 40px'
-      }}>
-          <div style={{
-          maxWidth: 860,
-          margin: '0 auto'
-        }}>
-            <div style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: 12,
-            marginBottom: 14
-          }}>
-              <div style={{
-              width: 40,
-              height: 40,
-              borderRadius: 10,
-              backgroundColor: '#1e3a5f',
-              display: 'grid',
-              placeItems: 'center'
-            }}>
-                <Shield size={20} color="#60a5fa" />
+        <div className="border-b border-border px-6 py-12">
+          <div className="max-w-3xl mx-auto">
+            <div className="flex items-center gap-3 mb-3">
+              <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
+                <Shield size={20} className="text-primary" />
               </div>
-              <span style={{
-              fontSize: 12,
-              fontWeight: 700,
-              color: '#60a5fa',
-              textTransform: 'uppercase',
-              letterSpacing: '0.08em'
-            }}>Privacy Policy</span>
+              <span className="text-xs font-bold text-primary uppercase tracking-widest">Privacy Policy</span>
             </div>
-            <h1 style={{
-            fontSize: 'clamp(26px,4vw,38px)',
-            fontWeight: 800,
-            color: '#f1f5f9',
-            margin: '0 0 12px',
-            lineHeight: 1.2
-          }}>
-              Your data, handled with care
-            </h1>
-            <p style={{
-            color: '#94a3b8',
-            fontSize: 15,
-            margin: 0
-          }}>
-              Last updated: {LAST_UPDATED}&nbsp;·&nbsp;IWILLBUILD, Queensland, Australia
+            <h1 className="text-3xl md:text-4xl font-extrabold text-foreground mb-3 leading-tight">Your data, handled with care</h1>
+            <p className="text-muted-foreground text-sm m-0">
+              Version {VERSION} &nbsp;·&nbsp; Effective: {EFFECTIVE_DATE} &nbsp;·&nbsp; Last updated: {LAST_UPDATED}
+            </p>
+            <p className="text-muted-foreground text-xs mt-2 m-0">
+              Operator: IWILLBUILD (ABN 89 791 350 823), Queensland, Australia &nbsp;·&nbsp; Jurisdiction: Queensland, Australia; New Zealand provisions apply where relevant
             </p>
           </div>
         </div>
 
-        {/* ── Content ── */}
-        <main style={{
-        maxWidth: 860,
-        margin: '0 auto',
-        padding: '48px 24px 80px'
-      }}>
-          <div style={{
-          display: 'flex',
-          flexDirection: 'column',
-          gap: 40
-        }}>
+        <main className="max-w-3xl mx-auto px-6 py-12 pb-20">
+          <div className="flex flex-col gap-10">
 
-            <Section title="1. About this policy">
-              <p>
-                IWILLBUILD (ABN 89 791 350 823) is a construction and job management software platform operated from Queensland, Australia (<strong style={{
-                color: '#f1f5f9'
-              }}>"we"</strong>, <strong style={{
-                color: '#f1f5f9'
-              }}>"us"</strong>, <strong style={{
-                color: '#f1f5f9'
-              }}>"our"</strong>).
-              </p>
-              <p>
-                This Privacy Policy explains how we collect, hold, use and disclose personal information in accordance with the <em>Privacy Act 1988</em> (Cth) and the Australian Privacy Principles (APPs). It applies to all users of the IWILLBUILD portal, website, and related services (collectively, the <strong style={{
-                color: '#f1f5f9'
-              }}>"Service"</strong>).
-              </p>
-              <p>
-                By using the Service you consent to the collection, use and disclosure of your personal information as described in this policy. If you do not agree, please do not use the Service.
-              </p>
+            <Section title="1. Who we are">
+              <p>IWILLBUILD (ABN 89 791 350 823) is a construction and job-management software platform operated from Queensland, Australia (<strong className="text-foreground">we</strong>, <strong className="text-foreground">us</strong> or <strong className="text-foreground">our</strong>). This Policy explains how we collect, hold, use and disclose personal information when you use the IWILLBUILD website, web portal, progressive web app, iOS or Android application, and related services (together, the <strong className="text-foreground">Service</strong>).</p>
+              <p>We aim to follow the Australian Privacy Principles in the <em>Privacy Act 1988</em> (Cth) and, for New Zealand users where applicable, the information privacy principles in the <em>Privacy Act 2020</em> (NZ).</p>
+              <p>The <Link to="/terms" className="text-primary hover:text-primary/80">Terms of Use</Link> form the service contract. This Privacy Policy is a notice about information handling. Acknowledging this Policy does not waive privacy rights or create consent where the law requires a different lawful basis or express permission.</p>
             </Section>
 
-            <Section title="2. What personal information we collect">
-              <p>We collect personal information that is reasonably necessary to provide the Service. This includes:</p>
+            <Section title="2. Scope and roles">
+              <p>This Policy covers account holders, organisation administrators, invited workers, people whose details appear in customer records, website visitors and people who contact us.</p>
+              <p>Where you use IWILLBUILD through an employer, builder, principal or contractor, that organisation usually controls why business records are created and who may access them. IWILLBUILD processes those records to provide and secure the Service. The organisation's own privacy policy may also apply.</p>
+              <p>Third-party sites and applications linked from the Service have their own privacy practices.</p>
+            </Section>
+
+            <Section title="3. Personal information we collect and hold">
               <ul>
-                <li><strong>Identity and account data</strong> — full name, email address, hashed password, phone number, and hashed PIN (if set).</li>
-                <li><strong>Company and business data</strong> — business name, ABN, address, and configuration settings you enter.</li>
-                <li><strong>Job and project data</strong> — job names, site addresses, notes, status, assigned team members, and related records you create.</li>
-                <li><strong>Financial data</strong> — estimates, invoice line items, pricing, GST amounts, and payment history you record in the portal.</li>
-                <li><strong>Safety and compliance records</strong> — completed forms, SWMS, site safety plans, and any data entered by your team.</li>
-                <li><strong>Fleet and asset data</strong> — vehicle records, registrations, maintenance notes, and asset bookings you enter.</li>
-                <li><strong>Files, photos and documents</strong> — attachments uploaded through the portal.</li>
-                <li><strong>Technical and usage data</strong> — IP address, browser type, pages visited, actions taken, and session information collected automatically when you use the Service.</li>
-              </ul>
-              <p>
-                We collect personal information directly from you when you register, use the Service, or contact us. We may also collect information from your employer or the company account administrator who invited you to the platform.
-              </p>
-              <p>
-                Where it is lawful and practicable to do so, you may use the Service without identifying yourself (for example, when browsing public pages). However, most features require you to create an account.
-              </p>
-            </Section>
-
-            <Section title="3. How we use your personal information">
-              <p>We use personal information to:</p>
-              <ul>
-                <li>Provide, operate and maintain the Service and its features.</li>
-                <li>Create and manage your account and company workspace.</li>
-                <li>Process subscription payments and manage billing.</li>
-                <li>Provide customer support and respond to enquiries.</li>
-                <li>Send transactional communications — password resets, account notifications, and service updates.</li>
-                <li>Detect, investigate and prevent fraud, security incidents, and unauthorised access.</li>
-                <li>Comply with legal obligations, including tax and record-keeping requirements.</li>
-                <li>Improve the platform, fix bugs, and develop new features (using aggregated or de-identified data where possible).</li>
-              </ul>
-              <p>
-                We will not use your personal information for direct marketing without your consent. We do not sell your personal information to third parties or use it for advertising purposes.
-              </p>
-            </Section>
-
-            <Section title="4. Disclosure of personal information">
-              <p>We may disclose your personal information to:</p>
-              <ul>
-                <li><strong>Service providers</strong> — third-party vendors who assist us in operating the Service, including cloud hosting providers, database infrastructure, email delivery services, and payment processors. These providers are contractually required to handle your information securely and only for the purposes we specify.</li>
-                <li><strong>Payment processor (Stripe)</strong> — subscription payments are processed by Stripe, Inc. IWILLBUILD does not store your full card number or CVV. Stripe handles payment data under its own privacy policy and PCI-DSS compliance program. See <a href="https://stripe.com/au/privacy" target="_blank" rel="noopener noreferrer" style={{
-                  color: '#7c3aed'
-                }}>stripe.com/au/privacy</a>.</li>
-                <li><strong>Accounting integrations (e.g. Xero)</strong> — if you choose to connect a third-party accounting platform, data such as approved invoices and customer contacts may be synced to that platform at your direction. You can disconnect integrations at any time from <strong>Settings → Integrations</strong>. Data already transmitted to a third-party platform is governed by that platform's privacy policy.</li>
-                <li><strong>Your company administrator</strong> — account owners and administrators within your company workspace can access data created by team members in accordance with their role permissions.</li>
-                <li><strong>Legal and regulatory authorities</strong> — where required by law, court order, or to protect the rights, property, or safety of IWILLBUILD, our users, or the public.</li>
-                <li><strong>Business transfers</strong> — in the event of a merger, acquisition, or sale of assets, your information may be transferred as part of that transaction. We will notify affected users before personal information is transferred and becomes subject to a different privacy policy.</li>
-              </ul>
-              <p>We do not otherwise disclose your personal information to third parties without your consent.</p>
-            </Section>
-
-            <Section title="5. Overseas disclosure">
-              <p>
-                Some of our service providers are located or store data outside Australia, including in the United States and the European Union. Where we disclose personal information to overseas recipients, we take reasonable steps to ensure those recipients handle your information in a manner consistent with the APPs, including through contractual data processing agreements.
-              </p>
-              <p>
-                By using the Service, you acknowledge that your information may be transferred to and processed in countries outside Australia. If you do not consent to this, please contact us before using the Service.
-              </p>
-            </Section>
-
-            <Section title="6. File and photo storage">
-              <p>
-                Files, photos, and documents you upload are stored in secure cloud storage (currently Cloudflare R2 or equivalent infrastructure). Your company's files are isolated and are not accessible to other companies on the platform. Data is stored using industry-standard security controls.
-              </p>
-            </Section>
-
-            <Section title="7. Data quality and accuracy">
-              <p>
-                We take reasonable steps to ensure the personal information we hold is accurate, up to date, complete, and relevant. You can update your account details at any time from your profile settings. If you believe information we hold about you is inaccurate or out of date, please contact us using the details in section 12.
-              </p>
-            </Section>
-
-            <Section title="8. Security">
-              <p>
-                We take reasonable steps to protect personal information from misuse, interference, loss, and unauthorised access, modification, or disclosure. Our security measures include:
-              </p>
-              <ul>
-                <li>Encrypted connections (HTTPS/TLS) for all data in transit.</li>
-                <li>Hashed storage of passwords and PINs (never stored in plain text).</li>
-                <li>Role-based access controls limiting data access to authorised users.</li>
-                <li>Rate limiting and session management to reduce unauthorised access risk.</li>
-                <li>Regular review of security practices as the platform evolves.</li>
-              </ul>
-              <p>
-                No system is completely secure. We encourage you to use a strong, unique password and to keep your login credentials private. If you suspect unauthorised access to your account, contact us immediately at <a href="mailto:support@iwillbuild.com" style={{
-                color: '#7c3aed'
-              }}>support@iwillbuild.com</a>.
-              </p>
-            </Section>
-
-            <Section title="9. Cookies and tracking">
-              <p>
-                We use session cookies to keep you logged in while using the portal. These are strictly necessary for the Service to function and are not used for advertising.
-              </p>
-              <p>
-                We may collect limited technical usage data (such as page views and feature interactions) to understand how the platform is used and to improve it. This data is aggregated and does not identify you individually. We do not use third-party advertising cookies or tracking pixels.
-              </p>
-            </Section>
-
-            <Section title="10. Data retention and destruction">
-              <p>
-                We retain personal information for as long as your account is active or as necessary to provide the Service, comply with legal obligations, resolve disputes, and enforce our agreements.
-              </p>
-              <p>
-                If you cancel your subscription, your data will be retained for a reasonable period (typically 90 days) to allow account recovery. After that period, your data may be deleted or de-identified, subject to any legal or regulatory record-keeping requirements that apply to your business records.
-              </p>
-              <p>
-                When personal information is no longer required, we take reasonable steps to destroy or permanently de-identify it.
-              </p>
-            </Section>
-
-            <Section title="11. Your rights — access, correction and complaints">
-              <p>Under the Privacy Act 1988 (Cth) and the APPs, you have the right to:</p>
-              <ul>
-                <li><strong>Access</strong> the personal information we hold about you.</li>
-                <li><strong>Correct</strong> personal information that is inaccurate, out of date, incomplete, irrelevant, or misleading.</li>
-                <li><strong>Complain</strong> about how we have handled your personal information.</li>
-              </ul>
-              <p>
-                To exercise any of these rights, contact us at <a href="mailto:support@iwillbuild.com" style={{
-                color: '#7c3aed'
-              }}>support@iwillbuild.com</a>. We will respond to access and correction requests within 30 days. In some circumstances we may be unable to provide access (for example, where doing so would unreasonably impact the privacy of another individual), and we will explain why.
-              </p>
-              <p>
-                If you are not satisfied with our response to a privacy complaint, you may lodge a complaint with the <strong style={{
-                color: '#f1f5f9'
-              }}>Office of the Australian Information Commissioner (OAIC)</strong>:
-              </p>
-              <ul>
-                <li>Website: <a href="https://www.oaic.gov.au" target="_blank" rel="noopener noreferrer" style={{
-                  color: '#7c3aed'
-                }}>www.oaic.gov.au</a></li>
-                <li>Phone: 1300 363 992</li>
-                <li>Post: GPO Box 5218, Sydney NSW 2001</li>
+                <li><strong className="text-foreground">Account and organisation information</strong> — name, email, phone, role, permissions, login and security records, organisation name, ABN or NZBN, address, branding, subscription and billing records.</li>
+                <li><strong className="text-foreground">Job and operations information</strong> — job names, site addresses, contacts, crew assignments, schedules, notes, forms, timesheets, estimates, invoices, SWMS, pre-starts, incident records, signatures and acknowledgements.</li>
+                <li><strong className="text-foreground">Photos, videos, files and documents</strong> — camera captures, uploads, watermarks, plan documents, attachments and connected-drive files where an authorised user enables an integration.</li>
+                <li><strong className="text-foreground">Fleet and location information</strong> — vehicle and plant records, maintenance, map positions, approximate location and precise GPS where a user enables a location-dependent feature.</li>
+                <li><strong className="text-foreground">Technical and usage information</strong> — IP address, device and browser type, operating system, app version, cookies, session data, sign-in history, audit logs, actions, diagnostics and crash reports.</li>
+                <li><strong className="text-foreground">Support and safeguard information</strong> — enquiries, support communications, scan-run metadata, approximate face-count signals, review status, reviewer identity and factual review notes.</li>
               </ul>
             </Section>
 
-            <Section title="12. Changes to this policy">
-              <p>
-                We may update this Privacy Policy from time to time to reflect changes to our practices, the Service, or applicable law. When we make material changes, we will update the "Last updated" date at the top of this page and, where appropriate, notify users by email or in-app notice.
-              </p>
-              <p>
-                Continued use of the Service after the updated policy is posted constitutes your acceptance of the changes. We encourage you to review this policy periodically.
-              </p>
+            <Section title="4. Sensitive information and information about other people">
+              <p>IWILLBUILD is not a health service and does not seek sensitive information for unrelated purposes. Construction safety and incident records may nevertheless contain injury details, health information, signatures or images of people. Customers should enter such information only where reasonably necessary and lawfully authorised.</p>
+              <p>The Image Safeguard Protocol is not intended to perform biometric identification or verification and does not create face templates to identify a person. A photograph and the fact that a face may appear can still be personal information and are handled accordingly.</p>
+              <p>If you provide another person's information, including a worker, client, supplier or person shown in a photo, you must have a lawful reason and provide any notice or obtain any permission required by law.</p>
             </Section>
 
-            <Section title="13. Contact us">
-              <p>For any privacy questions, access or correction requests, or complaints, please contact us:</p>
+            <Section title="5. How we collect information">
+              <ul>
+                <li>directly from you when you register, use a feature, upload content, enable a device permission or contact us;</li>
+                <li>from the organisation or administrator that invites you or enters information about a job, worker, client or supplier;</li>
+                <li>automatically from the website, apps, security systems and diagnostic tools;</li>
+                <li>from integrations that an authorised user connects; and</li>
+                <li>from service providers that process payments, deliver messages, host infrastructure or support the Service.</li>
+              </ul>
+              <p>For New Zealand users, where information is collected from someone other than the individual, we and the relevant organisation will take reasonable steps to provide the notification required by IPP 3A unless an exception applies.</p>
+            </Section>
+
+            <Section title="6. Why we use personal information">
+              <ul>
+                <li>create, administer and secure accounts and organisation workspaces;</li>
+                <li>provide jobs, forms, safety records, photos, fleet, scheduling, estimating, invoicing and connected services;</li>
+                <li>apply authorised watermarks and maintain audit histories;</li>
+                <li>provide support, investigate faults and communicate about the Service;</li>
+                <li>process subscriptions and maintain financial records;</li>
+                <li>detect and respond to misuse, fraud, security incidents and privacy risks;</li>
+                <li>operate AI-assisted features requested by authorised users;</li>
+                <li>improve reliability and features using aggregated or de-identified information where practical; and</li>
+                <li>comply with law and establish, exercise or defend legal rights.</li>
+              </ul>
+              <p>We do not sell personal information or use customer job records for third-party advertising.</p>
+            </Section>
+
+            <Section title="7. The IWILLBUILD Image Safeguard Protocol">
+              <p>Job photos stored in the Service may be selected for a periodic, bounded safeguard review initiated manually by an authorised IWILLBUILD platform owner. The present safeguard may use software to detect the apparent presence of a face and record a neutral privacy signal for possible human review.</p>
+              <p>The purpose is to support privacy awareness, acceptable use and responsible investigation. It is not continuous surveillance and we do not promise that every image is assessed.</p>
+              <ul>
+                <li>The software does not identify a person or create an identity profile.</li>
+                <li>It does not determine age, ethnicity, emotion, health, legality, appropriateness or criminal conduct.</li>
+                <li>A signal may be wrong. Authorised support personnel must review context before taking any action.</li>
+                <li>The scan does not automatically delete, quarantine or report an image, disable a user, or block ordinary capture.</li>
+                <li>A separate acknowledgement may appear immediately before images are emailed or shared.</li>
+              </ul>
+              <p>For a scan we may process the image temporarily, its internal asset reference, company and responsible-user identifiers where reliably known, timestamps, detector version, approximate face count, outcome and review record. Temporary working copies are deleted after processing. We retain safeguard records only as long as reasonably needed for security, accountability, dispute handling and legal obligations.</p>
+              <p>Where review identifies a credible concern, access is limited to authorised personnel. We may preserve records or disclose information where required or permitted by law, but the automated signal alone is not treated as proof and does not itself trigger a report to authorities.</p>
+            </Section>
+
+            <Section title="8. AI-assisted tools and automated decisions">
+              <p>Dazza AI and similar tools may help authorised users search, draft, extract, classify or summarise information. They operate within platform permissions and their output requires human review.</p>
+              <p>We do not use automated tools alone to hire, fire, discipline, approve credit, determine legal rights or make another decision that could significantly affect a person's rights or interests.</p>
+              <p>From 10 December 2026, additional Australian privacy-policy disclosures apply where a computer program uses personal information to make, or do something substantially and directly related to making, a decision reasonably expected to significantly affect a person's rights or interests. If IWILLBUILD introduces such a use, we will update this Policy and provide the required information before relying on it.</p>
+              <p>We do not use customer job photos, SWMS or field records to train public foundation models. Where a third-party AI provider delivers a feature, we seek terms that prevent it from using customer content to train its general models unless the customer has clearly agreed otherwise.</p>
+            </Section>
+
+            <Section title="9. Cookies, analytics and communications">
+              <p>We use cookies and similar technologies for login, preferences, security and service measurement. Blocking essential cookies may prevent login or other functions. We do not currently use customer records for advertising profiles.</p>
+              <p>We may send service, security, billing and outage messages while an account is active. Promotional messages are sent only where permitted and include an unsubscribe method.</p>
+            </Section>
+
+            <Section title="10. Who we disclose information to">
+              <p>We disclose personal information only as reasonably necessary to provide the Service, at an authorised user's direction, or as required or permitted by law. Recipients may include:</p>
+              <ul>
+                <li>authorised users and administrators within the relevant organisation;</li>
+                <li>hosting, cloud-storage, email, notification, diagnostics, support and security providers;</li>
+                <li>Stripe or another payment processor;</li>
+                <li>Xero, QuickBooks, Microsoft, Google, mapping, telematics or other integrations enabled by an authorised user;</li>
+                <li>AI subprocessors used to deliver a requested feature under appropriate restrictions;</li>
+                <li>professional advisers, insurers, auditors and prospective business purchasers subject to confidentiality; and</li>
+                <li>courts, regulators, police or other authorities where disclosure is required or permitted by law.</li>
+              </ul>
+              <p>We do not disclose personal information to unrelated third parties for their advertising.</p>
+            </Section>
+
+            <Section title="11. Overseas processing and disclosure">
+              <p>Some providers may store or access information outside Australia or New Zealand, including in the United States and other locations used by major cloud, accounting, mapping, app-store and AI providers. The exact locations can change with provider infrastructure and the features a customer enables.</p>
+              <p>For Australian information, we take reasonable steps required by APP 8 where it applies. For New Zealand information, we assess IPP 12 and seek comparable safeguards, use an eligible processing arrangement, or obtain informed authorisation where required. Measures may include provider due diligence, contractual protections, encryption, access restrictions and data minimisation.</p>
+            </Section>
+
+            <Section title="12. How we protect information">
+              <ul>
+                <li>encrypted connections for web and app traffic;</li>
+                <li>password and PIN hashing rather than plain-text storage;</li>
+                <li>role-based and organisation-isolated access controls;</li>
+                <li>restricted administrative and support access;</li>
+                <li>session controls, rate limits, audit and sign-in records;</li>
+                <li>upload validation and bounded handling of untrusted files;</li>
+                <li>least-privilege access to cloud storage;</li>
+                <li>security review, patching, testing and incident procedures; and</li>
+                <li>backups and recovery measures appropriate to the Service and business risk.</li>
+              </ul>
+              <p>No online service is completely secure. Users should use strong unique credentials, secure their devices and promptly report suspected unauthorised access to <a href="mailto:support@iwillbuild.com" className="text-primary hover:text-primary/80">support@iwillbuild.com</a>.</p>
+            </Section>
+
+            <Section title="13. Data quality, access and correction">
+              <p>Users can generally update their own profile. Organisation records are managed by authorised organisation users. You may request access to or correction of personal information we hold by emailing <a href="mailto:support@iwillbuild.com" className="text-primary hover:text-primary/80">support@iwillbuild.com</a>. We will verify identity and respond within a reasonable period and any applicable statutory timeframe.</p>
+              <p>Access may be limited where the law permits, including where disclosure would unreasonably affect another person's privacy. If we refuse a request, we will explain the reason unless prohibited from doing so.</p>
+            </Section>
+
+            <Section title="14. Retention, deletion and organisation records">
+              <p>We retain personal information for as long as reasonably needed to provide and secure the Service, meet contractual and legal obligations, resolve disputes and maintain appropriate audit records.</p>
+              <p>Construction, safety, financial and insurance records may need to be retained for years. Each subscribing organisation is responsible for selecting lawful retention periods for its records. After cancellation, we may provide a reasonable export or recovery period before deletion or de-identification, subject to legal holds, financial records, security evidence and backup cycles.</p>
+              <p>When information is no longer required, we take reasonable steps to delete or permanently de-identify it.</p>
+            </Section>
+
+            <Section title="15. Children">
+              <p>The Service is designed for construction organisations and is not directed to children. We do not knowingly allow a child under 16 to create an independent account. An organisation may hold lawful work, safety or contact records concerning a young worker or another child, but it must use appropriate authority, notice, permissions and safeguards.</p>
+              <p>If you believe information about a child has been included inappropriately, contact us promptly so the organisation and IWILLBUILD can assess and restrict or remove it where appropriate.</p>
+            </Section>
+
+            <Section title="16. Data breaches">
+              <p>We maintain procedures for assessing and responding to suspected privacy and security incidents. Where a breach is likely to cause serious harm and notification is legally required, we will notify affected people and the relevant regulator, including the OAIC in Australia or the Office of the Privacy Commissioner in New Zealand. New Zealand notifications are made as soon as practicable; regulator guidance identifies 72 hours as the expected timeframe for serious breaches.</p>
+            </Section>
+
+            <Section title="17. Complaints">
+              <ol>
+                <li>Contact <a href="mailto:support@iwillbuild.com" className="text-primary hover:text-primary/80">support@iwillbuild.com</a> with the issue and the outcome you seek. We will investigate and respond within 30 days.</li>
+                <li>If you are in Australia and remain dissatisfied, you may contact the <strong className="text-foreground">Office of the Australian Information Commissioner (OAIC)</strong> at <a href="https://www.oaic.gov.au" target="_blank" rel="noopener noreferrer" className="text-primary hover:text-primary/80">www.oaic.gov.au</a> or 1300 363 992.</li>
+                <li>If you are in New Zealand and remain dissatisfied, you may contact the <strong className="text-foreground">Office of the Privacy Commissioner</strong> at <a href="https://www.privacy.org.nz" target="_blank" rel="noopener noreferrer" className="text-primary hover:text-primary/80">www.privacy.org.nz</a> or 0800 803 909.</li>
+              </ol>
+            </Section>
+
+            <Section title="18. Changes to this Policy">
+              <p>We may update this Policy when the Service, law or providers change. We will identify the version and effective date at the top of this page. Material changes will be notified by email or in-product notice where appropriate, and renewed acknowledgement will be requested where the nature of the change makes that appropriate.</p>
+            </Section>
+
+            <Section title="19. Contact">
               <p>
-                <strong style={{
-                color: '#f1f5f9'
-              }}>IWILLBUILD</strong><br />
+                <strong className="text-foreground">IWILLBUILD</strong><br />
                 Queensland, Australia<br />
                 ABN 89 791 350 823<br />
-                <a href="mailto:support@iwillbuild.com" style={{
-                color: '#7c3aed'
-              }}>support@iwillbuild.com</a>
+                <a href="mailto:support@iwillbuild.com" className="text-primary hover:text-primary/80">support@iwillbuild.com</a><br />
+                <a href="https://www.iwillbuild.com" className="text-primary hover:text-primary/80">www.iwillbuild.com</a>
               </p>
-              <p>We aim to respond to all privacy enquiries within 5 business days.</p>
+              <p>We may need to verify identity before discussing or releasing personal information.</p>
             </Section>
 
           </div>
         </main>
 
-        {/* ── Footer ── */}
-        <footer style={{
-        borderTop: '1px solid #1e293b',
-        padding: '24px',
-        textAlign: 'center'
-      }}>
-          <div style={{
-          display: 'flex',
-          justifyContent: 'center',
-          gap: 24,
-          flexWrap: 'wrap',
-          marginBottom: 12
-        }}>
-            <Link to="/" style={{
-            color: '#64748b',
-            textDecoration: 'none',
-            fontSize: 13
-          }} className="hover:text-white transition-colors">Home</Link>
-            <Link to="/privacy" style={{
-            color: '#7c3aed',
-            textDecoration: 'none',
-            fontSize: 13
-          }}>Privacy Policy</Link>
-            <Link to="/terms" style={{
-            color: '#64748b',
-            textDecoration: 'none',
-            fontSize: 13
-          }} className="hover:text-white transition-colors">Terms of Use</Link>
-            <Link to="/login" style={{
-            color: '#64748b',
-            textDecoration: 'none',
-            fontSize: 13
-          }} className="hover:text-white transition-colors">Sign In</Link>
-          </div>
-          <p style={{
-          color: '#475569',
-          fontSize: 12,
-          margin: 0
-        }}>© {new Date().getFullYear()} IWILLBUILD · ABN 89 791 350 823 · Queensland, Australia</p>
-        </footer>
-
+        <PolicyFooter active="Privacy Policy" />
       </div>
-    </>;
+    </>
+  );
 }
 
-// ── Reusable section wrapper ──────────────────────────────────────────────────
-function Section({
-  title,
-  children
-}: {
-  title: string;
-  children: React.ReactNode;
-}) {
-  return <section>
-      <h2 style={{
-      fontSize: 18,
-      fontWeight: 700,
-      color: '#f1f5f9',
-      margin: '0 0 14px',
-      paddingBottom: 10,
-      borderBottom: '1px solid #1e293b'
-    }}>
+function Section({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <section>
+      <h2 className="text-lg font-bold text-foreground mb-3 pb-2.5 border-b border-border">
         {title}
       </h2>
-      <div style={{
-      color: '#94a3b8',
-      fontSize: 15,
-      lineHeight: 1.75,
-      display: 'flex',
-      flexDirection: 'column',
-      gap: 10
-    }}>
+      <div className="text-muted-foreground text-sm leading-relaxed flex flex-col gap-2.5">
         {children}
       </div>
-    </section>;
+    </section>
+  );
 }

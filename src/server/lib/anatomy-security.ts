@@ -268,7 +268,7 @@ export async function scanArchive(
       continue;
     }
 
-    // Strip GitHub archive top-level prefix (e.g. "IWILLBUILD_Portal-main/")
+    // Strip GitHub archive top-level prefix (e.g. "IWIllBUIlD_Portal-main/")
     const firstSlash = relPath.indexOf('/');
     if (firstSlash > 0) {
       relPath = relPath.slice(firstSlash + 1);

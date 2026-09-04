@@ -9,7 +9,7 @@ export default function TakeoffPadPage() {
   return (
     <div className="portal-page">
       <Helmet>
-        <title>Take-off Pad — IWILLBUILD</title>
+        <title>Take-off Pad — IWIllBUIlD</title>
         <meta name="description" content="Voice and manual quantity take-off pad for construction estimating." />
         <meta name="robots" content="noindex" />
         <link rel="canonical" href="https://iwillbuild.com/takeoff-pad" />
@@ -22,7 +22,7 @@ export default function TakeoffPadPage() {
       <div className="portal-content">
         {/* Mobile back button — hidden on desktop where sidebar handles navigation */}
         <button
-          onClick={() => navigate('/?page=2')}
+          onClick={() => goBack(navigate, '/estimating')}
           className="lg:hidden flex items-center gap-2 text-sm font-semibold text-muted-foreground hover:text-foreground mb-4 -mt-1 transition-colors"
           aria-label="Back"
         >

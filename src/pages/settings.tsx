@@ -3,6 +3,7 @@ import { useSearchParams, useNavigate } from "react-router";
 import { Helmet } from '@dr.pogodin/react-helmet';
 import { Building2, Bell, Calculator, Database, ChevronRight, Layers, Megaphone, FileText, Plug, Receipt, User, Truck, Home, ShieldCheck } from 'lucide-react';
 import { usePermissions } from '@/lib/usePermissions';
+import { goBack } from '@/lib/navigation';
 import CompanyStructureTab from '@/components/settings/CompanyStructureTab';
 import DashboardBannerTab from '@/components/settings/DashboardBannerTab';
 import NotificationsTab from '@/components/settings/NotificationsTab';
@@ -100,18 +101,18 @@ export default function SettingsPage() {
       <DesktopTopBar />
       <DesktopDock />
       <Helmet>
-        <title>Settings — IWILLBUILD Portal</title>
-        <meta name="description" content="Configure company profile, users, permissions and data settings for the IWILLBUILD portal." />
+        <title>Settings — IWIllBUIlD Portal</title>
+        <meta name="description" content="Configure company profile, users, permissions and data settings for the IWIllBUIlD portal." />
         <link rel="canonical" href="https://iwillbuild.com/settings" />
         <meta name="robots" content="noindex" />
-        <meta property="og:title" content="Settings — IWILLBUILD Portal" />
-        <meta property="og:description" content="Configure company profile, users, permissions and data settings for the IWILLBUILD portal." />
+        <meta property="og:title" content="Settings — IWIllBUIlD Portal" />
+        <meta property="og:description" content="Configure company profile, users, permissions and data settings for the IWIllBUIlD portal." />
         <meta property="og:type" content="website" />
         <meta property="og:url" content="https://iwillbuild.com/settings" />
         <meta property="og:image" content="https://iwillbuild.com/airo-assets/images/pages/home/og-image" />
         <meta name="twitter:card" content="summary_large_image" />
-        <meta name="twitter:title" content="Settings — IWILLBUILD Portal" />
-        <meta name="twitter:description" content="Configure company profile, users, permissions and data settings for the IWILLBUILD portal." />
+        <meta name="twitter:title" content="Settings — IWIllBUIlD Portal" />
+        <meta name="twitter:description" content="Configure company profile, users, permissions and data settings for the IWIllBUIlD portal." />
         <meta name="twitter:image" content="https://iwillbuild.com/airo-assets/images/pages/home/og-image" />
       </Helmet>
 
@@ -119,13 +120,13 @@ export default function SettingsPage() {
       <header className="bg-white border-b border-gray-100 px-4 py-3 flex items-center gap-3 shrink-0" style={{
       boxShadow: '0 1px 0 rgba(0,0,0,0.05)'
     }}>
-        <button onClick={() => navigate('/home')} className="flex items-center justify-center w-9 h-9 rounded-lg bg-violet-500 text-white hover:bg-violet-700 active:bg-violet-800 transition-colors touch-manipulation shadow-sm shrink-0" title="Dashboard">
+        <button onClick={() => goBack(navigate, '/home')} className="flex items-center justify-center w-9 h-9 rounded-lg bg-violet-500 text-white hover:bg-violet-700 active:bg-violet-800 transition-colors touch-manipulation shadow-sm shrink-0" title="Dashboard">
           <Home size={18} />
         </button>
         <div className="flex-1 flex flex-col items-center justify-center min-w-0">
           <h1 className="text-gray-900 font-bold text-sm leading-tight">Settings</h1>
           <div className="flex items-center gap-1 text-xs text-gray-400 leading-tight">
-            <button onClick={() => navigate('/home')} className="hover:text-violet-600 transition-colors">Home</button>
+            <button onClick={() => goBack(navigate, '/home')} className="hover:text-violet-600 transition-colors">Home</button>
             <span>/</span>
             <span className="text-gray-500 font-medium">Settings</span>
           </div>

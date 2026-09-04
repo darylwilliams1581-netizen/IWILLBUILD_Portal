@@ -63,14 +63,17 @@ export default function DesktopOnly({
   const navigate = useNavigate();
 
   // Track viewport width for web-browser narrow-window detection.
-  // On native we skip the listener — isNative() is stable for the app lifetime.
-  const [narrowViewport, setNarrowViewport] = useState(() => isMobileViewport());
+  // IMPORTANT: initialise to false (matching the server) so hydrateRoot sees
+  // the same tree the server rendered. The real viewport width is read in the
+  // first useEffect (post-hydration) to avoid React #418 on mobile devices
+  // where window.innerWidth < MOBILE_BREAKPOINT is true at hydration time.
+  const [narrowViewport, setNarrowViewport] = useState(false);
   useEffect(() => {
+    // Set the real value after hydration
+    setNarrowViewport(isMobileViewport());
     if (native) return; // native detection is sufficient; no need to listen
     const handler = () => setNarrowViewport(isMobileViewport());
-    window.addEventListener('resize', handler, {
-      passive: true
-    });
+    window.addEventListener('resize', handler, { passive: true });
     return () => window.removeEventListener('resize', handler);
   }, [native]);
   const blocked = native || narrowViewport;
@@ -79,7 +82,7 @@ export default function DesktopOnly({
   }
   return <div className="fixed inset-0 flex flex-col items-center justify-center gap-6 px-8 text-center bg-background">
       {/* Back button — top-left */}
-      <button onClick={() => navigate(-1)} className="absolute top-4 left-4 flex items-center gap-1.5 text-sm font-medium text-muted-foreground hover:text-foreground active:scale-95 transition-all px-2 py-1.5 rounded-lg hover:bg-muted" aria-label="Go back">
+      <button onClick={() => window.history.length > 1 ? navigate(-1) : navigate('/home')} className="absolute top-4 left-4 flex items-center gap-1.5 text-sm font-medium text-muted-foreground hover:text-foreground active:scale-95 transition-all px-2 py-1.5 rounded-lg hover:bg-muted" aria-label="Go back">
         <ArrowLeft size={16} />
         Back
       </button>
@@ -101,14 +104,14 @@ export default function DesktopOnly({
           {pageName} is desktop only
         </h1>
         <p className="text-muted-foreground text-sm leading-relaxed">
-          Open IWILLBUILD in a desktop browser to access this area.
+          Open IWIllBUIlD in a desktop browser to access this area.
         </p>
       </div>
 
       {/* Login link */}
       <a href="https://iwillbuild.com/login" target="_blank" rel="noopener noreferrer" className="flex items-center justify-center gap-2.5 bg-primary hover:bg-violet-700 active:bg-violet-800 text-white font-semibold text-base rounded-2xl px-8 py-4 max-w-xs w-full transition-colors shadow-lg">
         <Monitor size={20} />
-        Open iwillbuild.com
+        Open IWIllBUIlD.com
       </a>
     </div>;
 }

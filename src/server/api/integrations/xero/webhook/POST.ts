@@ -32,7 +32,7 @@ interface XeroWebhookPayload {
   entropy: string;
 }
 
-/** Map Xero invoice status → IWILLBUILD status */
+/** Map Xero invoice status → IWIllBUIlD status */
 function mapXeroStatus(xeroStatus: string): string | null {
   switch (xeroStatus.toUpperCase()) {
     case 'PAID': return 'paid';

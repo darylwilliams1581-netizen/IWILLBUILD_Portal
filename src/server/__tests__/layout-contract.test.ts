@@ -39,27 +39,27 @@ describe('globals.css — portal layout classes', () => {
   it('.lg-portal applies sidebar left offset at lg+ via --iwb-sidebar-w', async () => {
     const css = await readSrc('src/styles/globals.css');
     expect(css).toContain('padding-left: var(--iwb-sidebar-w');
-    expect(css).toContain('padding-top: 56px');
-    // Must be inside a min-width: 1024px media query
+    // Sidebar left offset is inside the 1024px+ block (desktop only — not tablet)
     const lgBlock = css.match(/@media \(min-width: 1024px\)[^}]*\{[^@]*\.lg-portal[^}]*\}/s);
     expect(lgBlock).not.toBeNull();
+    // Top padding uses safe-area-aware calc
+    expect(css).toContain('safe-area-inset-top');
   });
 
-  it('.portal-content applies sidebar left offset at md+ (tablet nav fix)', async () => {
+  it('.portal-content applies sidebar left offset at lg+ only (not tablet)', async () => {
     const css = await readSrc('src/styles/globals.css');
-    // Find the md+ portal-content block that contains the sidebar offset
-    // Use a regex that matches the specific block with iwb-sidebar-w
-    const mdPortalContentMatch = css.match(
-      /@media \(min-width: 768px\)\s*\{\s*\.portal-content\s*\{([^}]*)\}/s
+    // The desktop portal-content block must contain the sidebar offset.
+    // We verify by checking the CSS contains the expected rule combination.
+    expect(css).toContain('var(--iwb-sidebar-w');
+    // The sidebar offset must appear inside a 1024px+ media query
+    expect(css).toMatch(/@media \(min-width: 1024px\)[^}]*\{[^}]*\.portal-content[^}]*iwb-sidebar-w/s);
+    // The tablet block (768–1023px) must NOT contain the sidebar offset
+    const tabletBlock = css.match(
+      /@media \(min-width: 768px\) and \(max-width: 1023px\)\s*\{([\s\S]*?)\}\s*\n/
     );
-    expect(mdPortalContentMatch).not.toBeNull();
-    const block = mdPortalContentMatch![1];
-    // Must include sidebar offset
-    expect(block).toContain('var(--iwb-sidebar-w');
-    // Must include top padding for topbar+dock
-    expect(block).toContain('padding-top: 112px');
-    // Must include box-sizing: border-box so padding doesn't cause overflow
-    expect(block).toContain('box-sizing: border-box');
+    if (tabletBlock) {
+      expect(tabletBlock[1]).not.toContain('iwb-sidebar-w');
+    }
   });
 
   it('.portal-content has min-width: 0 to prevent flex overflow', async () => {
@@ -104,10 +104,12 @@ describe('PortalSidebar — CSS variable sync', () => {
     expect(topBarRenders).toBe(1);
   });
 
-  it('desktop sidebar is fixed positioned with top: 56 (below topbar)', async () => {
+  it('desktop sidebar is fixed positioned with safe-area-aware top offset', async () => {
     const src = await readSrc('src/components/PortalSidebar.tsx');
     expect(src).toContain('position: \'fixed\'');
-    expect(src).toContain('top: 56');
+    // Top uses TOPBAR_HEIGHT_CSS (safe-area-aware), not hardcoded 56
+    expect(src).toContain('top: TOPBAR_HEIGHT_CSS');
+    expect(src).not.toContain('top: 56');
   });
 });
 

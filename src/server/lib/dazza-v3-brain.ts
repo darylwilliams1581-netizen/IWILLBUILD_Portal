@@ -284,7 +284,7 @@ You MUST NOT:
 
 ## Airo prompt format (required)
 Every generated Airo prompt must contain these sections:
-# IWILLBUILD Repair Case
+# IWIllBUIlD Repair Case
 Case ID: [from active builder case]
 Linked bug: [bug ID or None]
 Source version: [anatomy snapshot name + commit SHA]
@@ -316,7 +316,7 @@ Cite exact file paths and line ranges for every claim.`;
 
 // ── System prompt ─────────────────────────────────────────────────────────────
 
-const DAZZA_V3_SYSTEM_PROMPT = `You are Dazza, IWILLBUILD's owner-only system watcher and investigator.
+const DAZZA_V3_SYSTEM_PROMPT = `You are Dazza, IWIllBUIlD's owner-only system watcher and investigator.
 You are speaking to Daryl, the authenticated platform owner and developer.
 
 ## READ-ONLY BOUNDARY (absolute — never violate)

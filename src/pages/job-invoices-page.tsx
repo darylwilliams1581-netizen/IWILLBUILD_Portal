@@ -27,14 +27,14 @@ export default function JobInvoicesPage() {
   }, [jobBasic]);
 
   function handleChangeJob() {
-    navigate('/?picker=invoices');
+    navigate('/home?picker=invoices');
   }
 
   return (
     <div className="portal-page">
       <Helmet>
-        <title>{fullJob ? `Invoices — ${fullJob.name}` : 'Invoices'} — IWILLBUILD</title>
-        <meta name="description" content="View and manage invoices for this job in IWILLBUILD." />
+        <title>{fullJob ? `Invoices — ${fullJob.name}` : 'Invoices'} — IWIllBUIlD</title>
+        <meta name="description" content="View and manage invoices for this job in IWIllBUIlD." />
         <meta name="robots" content="noindex" />
         {fullJob && <link rel="canonical" href={`https://iwillbuild.com/jobs/${fullJob.id}/invoices`} />}
       </Helmet>
@@ -59,7 +59,7 @@ export default function JobInvoicesPage() {
             featureLabel={FEATURE.label}
             jobName={fullJob.name}
             jobNumber={fullJob.jobNumber}
-            backTo="/"
+            backTo="/home"
             onChangeJob={handleChangeJob}
           >
             <div className="p-4">

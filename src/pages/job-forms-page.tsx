@@ -110,12 +110,12 @@ export default function JobFormsPage() {
   const title = job ? `${job.name} — Forms` : 'Job Forms';
 
   function handleChangeJob() {
-    navigate('/?picker=forms');
+    navigate('/home?picker=forms');
   }
 
   return <div className="portal-page">
       <Helmet>
-        <title>{title} — IWILLBUILD</title>
+        <title>{title} — IWIllBUIlD</title>
         <meta name="description" content="View and manage form submissions for this job." />
         <link rel="canonical" href={`https://iwillbuild.com/jobs/${id}/forms`} />
         <meta name="robots" content="noindex" />
@@ -128,7 +128,7 @@ export default function JobFormsPage() {
           featureLabel="Forms"
           jobName={job?.name ?? 'Job'}
           jobNumber={job?.jobNumber}
-          backTo="/"
+          backTo="/home"
           onChangeJob={handleChangeJob}
           desktopActions={
             <div className="hidden md:flex items-center gap-1.5">

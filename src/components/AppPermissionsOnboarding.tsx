@@ -61,7 +61,7 @@ const STEPS: Step[] = [
     title: 'Location access',
     why: 'Required for GPS tracking on jobs',
     detail:
-      'IWILLBUILD uses your location to log site arrivals, track fleet vehicles, and auto-fill job addresses. Your location is only shared with your company.',
+      'IWIllBUIlD uses your location to log site arrivals, track fleet vehicles, and auto-fill job addresses. Your location is only shared with your company.',
     buttonLabel: 'Enable location',
   },
   {

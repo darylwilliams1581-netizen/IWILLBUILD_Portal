@@ -441,16 +441,16 @@ function SecureShareViewer({
   const isMaxed = link?.maxUses !== null && link?.maxUses !== undefined && (link?.useCount ?? 0) >= link.maxUses;
   return <>
       <Helmet>
-        <title>{link ? `${link.title} — IWILLBUILD` : 'Secure Share — IWILLBUILD'}</title>
+        <title>{link ? `${link.title} — IWIllBUIlD` : 'Secure Share — IWIllBUIlD'}</title>
         <meta name="robots" content="noindex, nofollow" />
       </Helmet>
       <div className="min-h-screen bg-slate-50">
-        <header className="bg-white border-b border-slate-200 px-4 py-3 flex items-center gap-3 sticky top-0 z-10">
+        <header className="bg-white border-b border-slate-200 px-4 py-3 flex items-center gap-3 sticky top-0 z-10 safe-top">
           <div className="flex items-center gap-2">
             <div className="w-7 h-7 bg-primary rounded-lg flex items-center justify-center">
               <Link2 size={14} className="text-white" />
             </div>
-            <span className="font-bold text-slate-800 text-sm">IWILLBUILD</span>
+            <span className="font-bold text-slate-800 text-sm">IWIllBUIlD</span>
           </div>
           {link && <>
               <span className="text-slate-300">|</span>
@@ -530,7 +530,7 @@ function SecureShareViewer({
                     </div>
                     <div>
                       <p className="text-sm font-semibold text-slate-800">{link.title}</p>
-                      <p className="text-xs text-slate-400">Shared securely via IWILLBUILD</p>
+                      <p className="text-xs text-slate-400">Shared securely via IWIllBUIlD</p>
                     </div>
                   </div>
 
@@ -553,7 +553,7 @@ function SecureShareViewer({
                 </div>}
 
               <p className="text-center text-xs text-slate-400">
-                Shared securely via IWILLBUILD · {new Date(link.createdAt).toLocaleDateString('en-AU')}
+                Shared securely via IWIllBUIlD · {new Date(link.createdAt).toLocaleDateString('en-AU')}
               </p>
             </div>}
         </main>
@@ -637,20 +637,20 @@ export default function SharePage() {
   };
   return <>
       <Helmet>
-        <title>{doc ? `${doc.title} — IWILLBUILD` : 'Shared Document — IWILLBUILD'}</title>
-        <meta name="description" content="View a shared document from IWILLBUILD." />
+        <title>{doc ? `${doc.title} — IWIllBUIlD` : 'Shared Document — IWIllBUIlD'}</title>
+        <meta name="description" content="View a shared document from IWIllBUIlD." />
         <link rel="canonical" href={`${typeof window !== 'undefined' ? window.location.origin : ''}/share/${token ?? ''}`} />
         <meta name="robots" content="noindex, nofollow" />
       </Helmet>
 
       <div className="min-h-screen bg-slate-50">
         {/* Header */}
-        <header className="bg-white border-b border-slate-200 px-4 py-3 flex items-center gap-3 sticky top-0 z-10">
+        <header className="bg-white border-b border-slate-200 px-4 py-3 flex items-center gap-3 sticky top-0 z-10 safe-top">
           <div className="flex items-center gap-2">
             <div className="w-7 h-7 bg-primary rounded-lg flex items-center justify-center">
               <FileText size={14} className="text-white" />
             </div>
-            <span className="font-bold text-slate-800 text-sm">IWILLBUILD</span>
+            <span className="font-bold text-slate-800 text-sm">IWIllBUIlD</span>
           </div>
           {doc && <>
               <span className="text-slate-300">|</span>

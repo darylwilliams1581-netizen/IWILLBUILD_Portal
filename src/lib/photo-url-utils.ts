@@ -3,16 +3,16 @@
  * Prevents HTML login-redirect pages from being embedded as images.
  */
 
-/** Pattern that matches the app's authenticated file endpoint */
-const FILE_API_PATTERN = /^\/api\/files\/\d+\/[a-z]+(\?.*)?$/;
+import { isFileApiUrl } from './string-scanners.js';
 
 /**
  * Returns true only if the URL is a valid app file API path.
  * Rejects raw JSON strings, HTML paths, and other non-file values.
+ *
+ * Delegates to the shared linear scanner in string-scanners.ts — no regex.
  */
 export function isValidFileApiUrl(url: unknown): url is string {
-  if (!url || typeof url !== 'string') return false;
-  return FILE_API_PATTERN.test(url.trim());
+  return isFileApiUrl(url);
 }
 
 /**

@@ -1,0 +1,34 @@
+{
+  "links": [
+    {
+      "to": "/",
+      "label": "Home",
+      "id": "Fx0Vn98ExPdU6aV6PAcRz"
+    },
+    {
+      "to": "/terms",
+      "label": "Terms of Use",
+      "id": "DP3Dw9a2QbO1uTvpI9Daw"
+    },
+    {
+      "to": "/privacy",
+      "label": "Privacy Policy",
+      "id": "XS27GgIg96npsWU-39FGa"
+    },
+    {
+      "to": "/fair-use",
+      "label": "Fair Use Policy",
+      "id": "sZGzIyk-csQDZv0JOrEXr"
+    },
+    {
+      "to": "/system-policy",
+      "label": "System Policy",
+      "id": "3XjWzMTs3nIqYMwE-MvKS"
+    },
+    {
+      "to": "/login",
+      "label": "Sign In",
+      "id": "TgBPC7FE57Ktfm9Ef_r4Z"
+    }
+  ]
+}

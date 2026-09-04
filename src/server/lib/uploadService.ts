@@ -1,7 +1,7 @@
 /**
  * uploadService.ts
  * ─────────────────────────────────────────────────────────────────────────────
- * Canonical upload service for all IWILLBUILD media destinations.
+ * Canonical upload service for all IWIllBUIlD media destinations.
  *
  * Responsibilities:
  *  - Authenticated company ownership check
@@ -235,10 +235,6 @@ export function classifyFileType(mime: string): string {
 /** Convert ISO 8601 or any date string to MySQL DATETIME format */
 export function toMysqlDatetime(dt: string | null | undefined): string | null {
   if (!dt) return null;
-  // A value already in MySQL DATETIME format is a timezone-free database
-  // value. Parsing it as a local Date and serialising to UTC shifts the time
-  // (for example by ten hours in Brisbane), so preserve it verbatim.
-  if (/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/.test(dt)) return dt;
   try {
     const d = new Date(dt);
     if (isNaN(d.getTime())) return null;

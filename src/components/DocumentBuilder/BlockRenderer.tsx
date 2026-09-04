@@ -5,7 +5,7 @@
  * Accepts optional logicState, fillValues, and onFillChange for fill mode.
  */
 
-import type { DocumentBlock, BlockLogicState } from './types';
+import type { DocumentBlock, BlockLogicState, PdfPageBlock } from './types';
 import { useDocumentStore } from './useDocumentStore';
 import { DEFAULT_BLOCK_STATE } from './useLogicEngine';
 import HeadingBlockView from './blocks/HeadingBlock';
@@ -23,6 +23,12 @@ import TableBlockView from './blocks/TableBlock';
 import ImageBlockView from './blocks/ImageBlock';
 import FieldBlockView from './blocks/FieldBlock';
 import SystemFieldBlockView from './blocks/SystemFieldBlock';
+import PdfPageBlockViewReal from './blocks/PdfPageBlock';
+// Keep the old placeholder import for the type — the real renderer replaces it below
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+type _PdfPageBlockUnused = PdfPageBlock;
+
+// ── PDF Page Block view is now in blocks/PdfPageBlock.tsx ────────────────────
 
 export type FillValues = Record<string, string | string[] | boolean | undefined>;
 
@@ -47,7 +53,7 @@ export function BlockRenderer({
   fillValues = {},
   onFillChange,
 }: Props) {
-  const { mode } = useDocumentStore();
+  const { mode, templateId } = useDocumentStore();
 
   const blockStyle: React.CSSProperties = {
     backgroundColor: block.backgroundColor ?? undefined,
@@ -98,6 +104,7 @@ export function BlockRenderer({
         />
       );
       case 'system_field':   return <SystemFieldBlockView block={effectiveBlock} />;
+      case 'pdf_page':       return <PdfPageBlockViewReal block={effectiveBlock} templateId={templateId ?? undefined} />;
       default:               return <div className="text-xs text-slate-400 p-2">Unknown block type</div>;
     }
   })();

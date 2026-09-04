@@ -18,7 +18,7 @@ import { getSecret } from '#airo/secrets';
 
 export const ALLOWED_REPO = {
   owner:      'darylwilliams1581-netizen',
-  repo:       'IWILLBUILD_Portal',
+  repo:       'IWIllBUIlD_Portal',
   defaultBranch: 'main',
 } as const;
 
@@ -58,7 +58,7 @@ function authHeaders(token: string): Record<string, string> {
     'Authorization': `Bearer ${token}`,
     'Accept':        'application/vnd.github+json',
     'X-GitHub-Api-Version': '2022-11-28',
-    'User-Agent':    'IWILLBUILD-Dazza-Anatomy/1.0',
+    'User-Agent':    'IWIllBUIlD-Dazza-Anatomy/1.0',
   };
 }
 

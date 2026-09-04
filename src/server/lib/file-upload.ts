@@ -82,10 +82,38 @@ export interface ParseMultipartResult {
  * @param opts.maxFiles      Max number of files (default: 1)
  * @param opts.fileField     Expected file field name (default: any)
  */
+/**
+ * Pre-parsed upload escape hatch.
+ * When the import-auto controller has already parsed the multipart body and
+ * detected the file type, it attaches this to the request so downstream
+ * handlers skip busboy entirely. This avoids double-parsing the stream.
+ */
+export interface PreParsedUpload {
+  files: ParsedFile[];
+  fields: Record<string, string>;
+}
+
+declare module 'express-serve-static-core' {
+  interface Request {
+    _preParsed?: PreParsedUpload;
+  }
+}
+
 export function parseMultipartForm(
   req: Request,
-  opts: { maxFileSize?: number; maxFiles?: number; fileField?: string } = {},
+  opts: { maxFileSize?: number; maxFiles?: number; fileField?: string; allowedFields?: string[] } = {},
 ): Promise<ParseMultipartResult> {
+  // ── Escape hatch: pre-parsed by import-auto controller ──────────────────────
+  if ((req as Request & { _preParsed?: PreParsedUpload })._preParsed) {
+    const pre = (req as Request & { _preParsed?: PreParsedUpload })._preParsed!;
+    return Promise.resolve({
+      file:       pre.files[0] ?? null,
+      files:      pre.files,
+      fields:     pre.fields,
+      limitError: null,
+    });
+  }
+
   const maxFileSize = opts.maxFileSize ?? MAX_FILE_SIZE;
   const maxFiles    = opts.maxFiles ?? 1;
 

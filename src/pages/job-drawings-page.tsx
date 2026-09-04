@@ -34,13 +34,13 @@ export default function JobDrawingsPage() {
   }, [jobId]);
 
   function handleChangeJob() {
-    navigate('/?picker=drawings');
+    navigate('/home?picker=drawings');
   }
 
   return (
     <div className="portal-page">
       <Helmet>
-        <title>{job ? `Drawings — ${job.name}` : 'Drawings'} — IWILLBUILD</title>
+        <title>{job ? `Drawings — ${job.name}` : 'Drawings'} — IWIllBUIlD</title>
         <meta name="description" content="View and manage drawings for this job." />
         <link rel="canonical" href={`https://iwillbuild.com/jobs/${jobId}/drawings`} />
         <meta name="robots" content="noindex" />
@@ -59,7 +59,7 @@ export default function JobDrawingsPage() {
             featureLabel="Drawings"
             jobName={job?.name ?? 'Job'}
             jobNumber={job?.job_number ?? job?.jobNumber}
-            backTo="/"
+            backTo="/home"
             onChangeJob={handleChangeJob}
           >
             <div className="flex-1 overflow-auto pb-16 md:pb-0">

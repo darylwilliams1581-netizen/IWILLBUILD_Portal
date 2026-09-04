@@ -60,7 +60,7 @@ async function runEvidenceReview(
     `[${i + 1}] ${String(r.version_label)} (${String(r.review_status)}): ${String(r.likely_cause ?? '').slice(0, 200)}`
   ).join('\n');
 
-  const systemPrompt = `You are Dazza, the senior AI investigator for the IWILLBUILD construction management platform.
+  const systemPrompt = `You are Dazza, the senior AI investigator for the IWIllBUIlD construction management platform.
 You are conducting a follow-up review after new evidence has been added to a bug case.
 Never overwrite previous findings — only add new insights based on the new evidence.
 Return valid JSON only.`;

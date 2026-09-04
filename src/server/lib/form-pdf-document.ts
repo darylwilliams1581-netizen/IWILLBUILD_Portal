@@ -28,10 +28,9 @@ import {
   getDownloadBuffer,
 } from '../storage/storage-service.js';
 
-// ── Re-export the helpers that send-email also needs ─────────────────────────
+import { isFileApiUrl } from '../../lib/string-scanners.js';
 
-/** Pattern matching the app's authenticated file endpoint */
-const FILE_URL_RE = /^\/api\/files\/\d+\/[a-z]+(\?.*)?$/;
+// ── Re-export the helpers that send-email also needs ─────────────────────────
 
 export function answerUrls(value: unknown): string[] {
   if (!value) return [];
@@ -50,7 +49,7 @@ export function answerUrls(value: unknown): string[] {
   }
   const seen = new Set<string>();
   return urls.filter((u) => {
-    if (!u || !FILE_URL_RE.test(u)) return false;
+    if (!u || !isFileApiUrl(u)) return false;
     if (seen.has(u)) return false;
     seen.add(u);
     return true;
@@ -178,7 +177,7 @@ export async function buildFormPdfDocument(
   const [companyRows] = await db.execute(sql`
     SELECT name FROM companies WHERE id = ${companyId} LIMIT 1
   `) as unknown as [Array<{ name?: string }>, unknown];
-  const companyName = String(companyRows?.[0]?.name ?? 'IWILLBUILD');
+  const companyName = String(companyRows?.[0]?.name ?? 'IWIllBUIlD');
 
   // ── PDF settings ────────────────────────────────────────────────────────────
   let footerText = '';

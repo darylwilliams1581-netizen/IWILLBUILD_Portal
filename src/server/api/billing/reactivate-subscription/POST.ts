@@ -1,8 +1,15 @@
 /**
  * POST /api/billing/reactivate-subscription
  * Reactivates a subscription that was set to cancel at period end.
- * Sets cancel_at_period_end = false on the Stripe subscription.
- * Restores company.subscription_status to 'active'.
+ *
+ * STRICT ORDERING — Stripe first, DB only on success:
+ *   1. Verify the company has a Stripe subscription ID (error if missing).
+ *   2. Call Stripe: subscriptions.update({ cancel_at_period_end: false }).
+ *   3. Only on Stripe success: restore subscription_status = 'active', cancel_at_period_end = 0.
+ *
+ * If Stripe fails at step 2, the DB is NOT touched.
+ * Idempotent: if already active (not cancel_pending), returns success without hitting Stripe.
+ *
  * Auth required. Owner/Admin only.
  */
 import type { Request, Response } from 'express';
@@ -34,27 +41,70 @@ export default async function handler(req: Request, res: Response) {
 
     const company = await db.query.companies.findFirst({ where: eq(companies.id, profile.companyId) });
     if (!company) return res.status(404).json({ error: 'Company not found.' });
+
+    // ── Require an unambiguous Stripe subscription ────────────────────────────
     if (!company.stripeSubscriptionId) {
-      return res.status(400).json({ error: 'No subscription found for this company.' });
+      return res.status(422).json({
+        error: 'billing_link_missing',
+        message:
+          'We could not find a Stripe subscription linked to your account. ' +
+          'Please contact support@iwillbuild.com and we will resolve this for you.',
+        billingUrl: '/billing',
+      });
+    }
+
+    // ── Idempotency: already active, nothing to do ────────────────────────────
+    if (
+      company.subscriptionStatus === 'active' &&
+      !company.cancelAtPeriodEnd
+    ) {
+      return res.json({
+        ok: true,
+        alreadyActive: true,
+        message: 'Your subscription is already active.',
+      });
     }
 
     const stripe = await getStripe();
 
-    // Remove the cancellation — subscription continues as normal
-    await stripe.subscriptions.update(company.stripeSubscriptionId, {
-      cancel_at_period_end: false,
-    });
+    // ── Step 1: Call Stripe — remove the pending cancellation ─────────────────
+    // DB is NOT touched until Stripe confirms.
+    let subscription;
+    try {
+      subscription = await stripe.subscriptions.update(company.stripeSubscriptionId, {
+        cancel_at_period_end: false,
+      });
+    } catch (stripeErr: unknown) {
+      const msg = stripeErr instanceof Error ? stripeErr.message : String(stripeErr);
+      console.error('billing/reactivate-subscription: Stripe error:', stripeErr);
+      return res.status(502).json({
+        error: 'stripe_error',
+        message: `Stripe could not process the reactivation: ${msg}. Your subscription has not been changed.`,
+      });
+    }
 
-    // Restore active status
+    // Stripe confirmed — use Stripe's authoritative period end
+    const periodEnd = subscription.current_period_end
+      ? new Date(subscription.current_period_end * 1000)
+      : null;
+
+    // ── Step 2: Write to DB only after Stripe success ─────────────────────────
     await db.execute(sql`
       UPDATE companies
-      SET subscription_status = 'active', cancel_at_period_end = 0
+      SET
+        subscription_status = 'active',
+        cancel_at_period_end = 0,
+        current_period_end = ${periodEnd ? periodEnd.toISOString().slice(0, 19).replace('T', ' ') : null}
       WHERE id = ${company.id}
     `);
 
-    res.json({ ok: true, message: 'Your subscription has been reactivated successfully.' });
+    return res.json({
+      ok: true,
+      message: 'Your subscription has been reactivated successfully.',
+      currentPeriodEnd: periodEnd?.toISOString() ?? null,
+    });
   } catch (error) {
     console.error('billing/reactivate-subscription error:', error);
-    res.status(500).json({ error: String(error) });
+    return res.status(500).json({ error: String(error) });
   }
 }

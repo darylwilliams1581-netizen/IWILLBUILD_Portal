@@ -9,8 +9,11 @@ import { useParams, useNavigate, useSearchParams } from "react-router";
 import JobContextTab from '@/components/JobContextTab';
 import CustomerSelector from '@/components/CustomerSelector';
 import { usePermissions } from '@/lib/usePermissions';
+import { goBack } from '@/lib/navigation';
 import { fetchInvoice, createInvoice, updateInvoice, deleteInvoice, duplicateInvoice, markInvoiceSent, recordPayment, voidInvoice, fmtMoney, STATUS_LABELS, STATUS_COLORS, type Invoice, type InvoiceLine, type InvoiceStatus } from '@/lib/invoices-api';
+import { goBack } from '@/lib/navigation';
 import type { Customer } from '@/lib/customers-api';
+import { goBack } from '@/lib/navigation';
 import InvoicePreviewModal from '@/components/InvoicePreviewModal';
 
 // ── Line item row ─────────────────────────────────────────────────────────────
@@ -694,15 +697,15 @@ export default function InvoiceBuilderPage() {
   return <div className="min-h-screen bg-gray-50 flex flex-col lg-portal">
       <PortalSidebar />
       <Helmet>
-        <title>{isNew ? 'New Invoice' : `Invoice ${invoiceNumber}`} — IWILLBUILD Portal</title>
+        <title>{isNew ? 'New Invoice' : `Invoice ${invoiceNumber}`} — IWIllBUIlD Portal</title>
         <meta name="description" content={isNew ? 'Create a new invoice.' : `Edit invoice ${invoiceNumber}.`} />
         <link rel="canonical" href={`https://iwillbuild.com/invoices/${isNew ? 'new' : id}`} />
         <meta name="robots" content="noindex" />
       </Helmet>
 
       {/* Standalone top bar */}
-      <div className="sticky top-0 z-30 bg-white border-b border-gray-200 px-4 py-3 flex items-center gap-3">
-        <button onClick={() => navigate('/home')} className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors">
+      <div className="sticky top-0 z-30 bg-white border-b border-gray-200 px-4 py-3 flex items-center gap-3 safe-top">
+        <button onClick={() => goBack(navigate, '/estimating')} className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors">
           <ArrowLeft size={16} />
           <span>Home</span>
         </button>

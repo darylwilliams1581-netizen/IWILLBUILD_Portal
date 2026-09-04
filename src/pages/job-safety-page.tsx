@@ -19,14 +19,14 @@ export default function JobSafetyPage() {
   const { jobId, job, loading, error } = useJobForFeature();
 
   function handleChangeJob() {
-    navigate('/?picker=safety');
+    navigate('/home?picker=safety');
   }
 
   return (
     <div className="portal-page">
       <Helmet>
-        <title>{job ? `Safety — ${job.name}` : 'Safety'} — IWILLBUILD</title>
-        <meta name="description" content="Manage safety records and SWMS for this job in IWILLBUILD." />
+        <title>{job ? `Safety — ${job.name}` : 'Safety'} — IWIllBUIlD</title>
+        <meta name="description" content="Manage safety records and SWMS for this job in IWIllBUIlD." />
         <meta name="robots" content="noindex" />
         {job && <link rel="canonical" href={`https://iwillbuild.com/jobs/${job.id}/safety`} />}
       </Helmet>
@@ -51,7 +51,7 @@ export default function JobSafetyPage() {
             featureLabel={FEATURE.label}
             jobName={job.name}
             jobNumber={job.jobNumber}
-            backTo="/"
+            backTo="/home"
             onChangeJob={handleChangeJob}
           >
             <div className="p-4">

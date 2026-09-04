@@ -19,14 +19,14 @@ export default function JobPurchaseOrdersPage() {
   const { jobId, job, loading, error } = useJobForFeature();
 
   function handleChangeJob() {
-    navigate('/?picker=purchase-orders');
+    navigate('/home?picker=purchase-orders');
   }
 
   return (
     <div className="portal-page">
       <Helmet>
-        <title>{job ? `Purchase Orders — ${job.name}` : 'Purchase Orders'} — IWILLBUILD</title>
-        <meta name="description" content="Manage purchase orders for this job in IWILLBUILD." />
+        <title>{job ? `Purchase Orders — ${job.name}` : 'Purchase Orders'} — IWIllBUIlD</title>
+        <meta name="description" content="Manage purchase orders for this job in IWIllBUIlD." />
         <meta name="robots" content="noindex" />
         {job && <link rel="canonical" href={`https://iwillbuild.com/jobs/${job.id}/purchase-orders`} />}
       </Helmet>
@@ -51,7 +51,7 @@ export default function JobPurchaseOrdersPage() {
             featureLabel={FEATURE.label}
             jobName={job.name}
             jobNumber={job.jobNumber}
-            backTo="/"
+            backTo="/home"
             onChangeJob={handleChangeJob}
           >
             <div className="p-4">

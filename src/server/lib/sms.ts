@@ -1,7 +1,7 @@
 /**
  * SMS sending via Twilio.
  * Only active when TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, and TWILIO_PHONE_NUMBER
- * are all set. Returns false if SMS is not configured.
+ * are all set.
  *
  * Secret: TWILIO_PHONE_NUMBER (E.164 format, e.g. +61400000000)
  */
@@ -15,14 +15,22 @@ export function isSmsConfigured(): boolean {
   );
 }
 
+/** Structured result returned by sendSms — callers must check ok before using. */
+export interface SmsSendResult {
+  ok: boolean;
+  /** Twilio error code when ok is false, e.g. 21608 for compliance/unverified-number. */
+  twilioCode: number | null;
+}
+
 /**
  * Send an SMS message via Twilio REST API.
- * Returns true on success, false on failure.
+ * Returns a structured result so callers can distinguish Twilio error codes
+ * (e.g. 21608 = compliance profile required) from generic failures.
  */
-export async function sendSms(to: string, body: string): Promise<boolean> {
+export async function sendSms(to: string, body: string): Promise<SmsSendResult> {
   if (!isSmsConfigured()) {
     console.warn('[sms] SMS not configured — skipping send');
-    return false;
+    return { ok: false, twilioCode: null };
   }
 
   const accountSid = getSecret('TWILIO_ACCOUNT_SID')!;
@@ -45,13 +53,38 @@ export async function sendSms(to: string, body: string): Promise<boolean> {
 
     if (!response.ok) {
       const text = await response.text();
-      console.error('[sms] Twilio error:', response.status, text);
-      return false;
+      // Extract safe fields only — code and message, never phone/credentials
+      let safeCode: number | null = null;
+      let safeMessage: string | null = null;
+      try {
+        const parsed = JSON.parse(text) as Record<string, unknown>;
+        safeCode    = typeof parsed.code    === 'number' ? parsed.code    : null;
+        safeMessage = typeof parsed.message === 'string' ? parsed.message.slice(0, 200) : null;
+      } catch { /* not JSON */ }
+      console.error(JSON.stringify({
+        event: 'sms.twilio_error',
+        httpStatus: response.status,
+        twilioCode: safeCode,
+        twilioMessage: safeMessage,
+        ts: Date.now(),
+      }));
+      return { ok: false, twilioCode: safeCode };
     }
 
-    return true;
+    // Log message SID on success (safe — not a secret)
+    try {
+      const json = await response.clone().json() as Record<string, unknown>;
+      console.info(JSON.stringify({
+        event: 'sms.twilio_success',
+        messageSid: json.sid ?? null,
+        status: json.status ?? null,
+        ts: Date.now(),
+      }));
+    } catch { /* non-critical */ }
+
+    return { ok: true, twilioCode: null };
   } catch (err) {
     console.error('[sms] Send failed:', err);
-    return false;
+    return { ok: false, twilioCode: null };
   }
 }

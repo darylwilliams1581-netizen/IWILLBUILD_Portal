@@ -19,14 +19,14 @@ export default function JobTasksPage() {
   const { jobId, job, loading, error } = useJobForFeature();
 
   function handleChangeJob() {
-    navigate('/?picker=tasks');
+    navigate('/home?picker=tasks');
   }
 
   return (
     <div className="portal-page">
       <Helmet>
-        <title>{job ? `Tasks — ${job.name}` : 'Tasks'} — IWILLBUILD</title>
-        <meta name="description" content="Manage tasks and to-dos for this job in IWILLBUILD." />
+        <title>{job ? `Tasks — ${job.name}` : 'Tasks'} — IWIllBUIlD</title>
+        <meta name="description" content="Manage tasks and to-dos for this job in IWIllBUIlD." />
         <meta name="robots" content="noindex" />
         {job && <link rel="canonical" href={`https://iwillbuild.com/jobs/${job.id}/tasks`} />}
       </Helmet>
@@ -51,7 +51,7 @@ export default function JobTasksPage() {
             featureLabel={FEATURE.label}
             jobName={job.name}
             jobNumber={job.jobNumber}
-            backTo="/"
+            backTo="/home"
             onChangeJob={handleChangeJob}
           >
             <div className="p-4">

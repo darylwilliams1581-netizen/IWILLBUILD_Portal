@@ -140,6 +140,7 @@ export default function CameraFab() {
   async function handlePhotoFile(file: File) {
     const job = pendingJobRef.current;
     if (!job) return;
+
     setSheetState('uploading');
     setUploadError(null);
     try {

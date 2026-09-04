@@ -22,7 +22,7 @@ export default function PlanManagerDrawingPage() {
   }, [drawingId, navigate]);
   return <>
       <Helmet>
-        <title>Plan Manager — IWILLBUILD</title>
+        <title>Plan Manager — IWIllBUIlD</title>
         <meta name="description" content="View and annotate a drawing in Plan Manager." />
         <link rel="canonical" href={`https://iwillbuild.com/plan-manager/${drawingId}`} />
         <meta name="robots" content="noindex, nofollow" />

@@ -1,34 +1,49 @@
 /**
  * ShareToLibraryModal
  * ─────────────────────────────────────────────────────────────────────────────
- * Platform owner ONLY — publishes content to the Global Library.
- * Regular company users cannot see or use this modal.
+ * Platform owner ONLY — publishes or updates content in the Global Library.
+ *
+ * On open it checks whether this template is already in the library
+ * (via GET /api/library/check-published?ref=<sourceType>:<templateId>).
+ * If it is, the form pre-fills with the existing metadata and the button
+ * reads "Update in Library". If not, it reads "Publish to Library".
+ *
+ * Submitting always calls the appropriate publish endpoint which now does
+ * INSERT … ON DUPLICATE KEY UPDATE — so it's safe to call multiple times.
  *
  * Props:
- *   templateId      — the source record id to publish
+ *   templateId      — source record id
  *   templateName    — pre-fills the title field
- *   isPlatformOwner — must be true; caller should not render this for regular users
- *   sourceType      — 'document' (default) | 'swms' — determines which API endpoint is called
+ *   isPlatformOwner — must be true; caller should not render for regular users
+ *   sourceType      — 'document' (default) | 'swms' | 'form'
  *   onClose         — called when the modal should close
  */
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
 import {
   X, Library, CheckCircle, AlertCircle, Loader2, Globe,
-  ChevronDown,
+  ChevronDown, RefreshCw,
 } from 'lucide-react';
 
 interface Props {
   templateId: number;
   templateName: string;
   isPlatformOwner?: boolean;
-  /** Which API to call:
-   *  'document' (default) → POST /api/document-templates/:id/publish-to-library
-   *  'swms'               → POST /api/safety/swms/:id/publish-to-library
-   *  'form'               → POST /api/form-templates/:id/publish-to-library */
   sourceType?: 'document' | 'swms' | 'form';
   onClose: () => void;
+}
+
+interface ExistingItem {
+  id: number;
+  title: string;
+  type: string;
+  category: string | null;
+  discipline: string | null;
+  summary: string | null;
+  version: string;
+  tags: string | null;
+  updated_at: string;
 }
 
 const LIBRARY_TYPES = [
@@ -57,16 +72,44 @@ const DISCIPLINES = [
 ];
 
 type Status = 'idle' | 'loading' | 'success' | 'error';
+type CheckStatus = 'checking' | 'new' | 'existing';
 
 export default function ShareToLibraryModal({
   templateId, templateName, isPlatformOwner = false,
   sourceType = 'document', onClose,
 }: Props) {
-  // Guard: only platform owners should ever see this modal
   if (!isPlatformOwner) return null;
 
   const defaultType = sourceType === 'swms' ? 'swms' : 'form';
 
+  // ── Existing-item check ───────────────────────────────────────────────────
+  const [checkStatus, setCheckStatus] = useState<CheckStatus>('checking');
+  const [existing,    setExisting]    = useState<ExistingItem | null>(null);
+
+  useEffect(() => {
+    const ref = `${sourceType}:${templateId}`;
+    fetch(`/api/library/check-published?ref=${encodeURIComponent(ref)}`, { credentials: 'include' })
+      .then(r => r.json())
+      .then((data: { exists: boolean; item?: ExistingItem }) => {
+        if (data.exists && data.item) {
+          setExisting(data.item);
+          setTitle(data.item.title);
+          setType(data.item.type || defaultType);
+          setCategory(data.item.category ?? '');
+          setDiscipline(data.item.discipline ?? '');
+          setSummary(data.item.summary ?? '');
+          setVersion(data.item.version ?? '1.0');
+          setTags(data.item.tags ?? '');
+          setCheckStatus('existing');
+        } else {
+          setCheckStatus('new');
+        }
+      })
+      .catch(() => setCheckStatus('new'));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [templateId, sourceType]);
+
+  // ── Form state ────────────────────────────────────────────────────────────
   const [title,      setTitle]      = useState(templateName);
   const [type,       setType]       = useState(defaultType);
   const [category,   setCategory]   = useState('');
@@ -77,13 +120,14 @@ export default function ShareToLibraryModal({
   const [status,     setStatus]     = useState<Status>('idle');
   const [errorMsg,   setErrorMsg]   = useState('');
   const [resultId,   setResultId]   = useState<number | null>(null);
+  const [wasUpdated, setWasUpdated] = useState(false);
 
   const inp = 'w-full bg-white border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary/60 transition-colors placeholder-slate-400';
   const sel = `${inp} appearance-none cursor-pointer`;
 
   function buildUrl() {
-    if (sourceType === 'swms') return `/api/safety/swms/${templateId}/publish-to-library`;
-    if (sourceType === 'form') return `/api/form-templates/${templateId}/publish-to-library`;
+    if (sourceType === 'swms')     return `/api/safety/swms/${templateId}/publish-to-library`;
+    if (sourceType === 'form')     return `/api/form-templates/${templateId}/publish-to-library`;
     return `/api/document-templates/${templateId}/publish-to-library`;
   }
 
@@ -97,7 +141,7 @@ export default function ShareToLibraryModal({
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
         body: JSON.stringify({
-          title: title.trim(),
+          title:      title.trim(),
           type,
           category:   category.trim()   || undefined,
           discipline: discipline.trim() || undefined,
@@ -106,15 +150,23 @@ export default function ShareToLibraryModal({
           tags:       tags.trim()       || undefined,
         }),
       });
-      const data = await res.json() as { ok?: boolean; libraryItemId?: number; error?: string };
+      const data = await res.json() as {
+        ok?: boolean; libraryItemId?: number; updated?: boolean; error?: string;
+      };
       if (!res.ok || data.error) throw new Error(data.error ?? 'Publish failed');
       setResultId(data.libraryItemId ?? null);
+      setWasUpdated(data.updated ?? false);
       setStatus('success');
     } catch (err) {
       setErrorMsg(err instanceof Error ? err.message : 'Publish failed');
       setStatus('error');
     }
   }
+
+  const isExisting   = checkStatus === 'existing';
+  const isChecking   = checkStatus === 'checking';
+  const actionLabel  = isExisting ? 'Update in Library' : 'Publish to Library';
+  const successTitle = wasUpdated ? 'Library Updated!' : 'Published to Global Library!';
 
   return (
     <motion.div
@@ -131,30 +183,39 @@ export default function ShareToLibraryModal({
         transition={{ duration: 0.18, ease: 'easeOut' }}
         className="bg-white rounded-2xl shadow-2xl w-full max-w-lg flex flex-col overflow-hidden max-h-[90vh]"
       >
-        {/* Header */}
+        {/* ── Header ─────────────────────────────────────────────────────── */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100">
           <div className="flex items-center gap-3">
             <div className="w-9 h-9 rounded-xl bg-violet-50 border border-violet-200 flex items-center justify-center flex-shrink-0">
-              <Library size={16} className="text-primary" />
+              {isExisting ? <RefreshCw size={16} className="text-primary" /> : <Library size={16} className="text-primary" />}
             </div>
             <div>
-              <p className="text-sm font-bold text-slate-800">Publish to Global Library</p>
-              <p className="text-xs text-slate-400">Published immediately — visible to all companies</p>
+              <p className="text-sm font-bold text-slate-800">
+                {isChecking ? 'Checking library…' : actionLabel}
+              </p>
+              <p className="text-xs text-slate-400">
+                {isExisting
+                  ? 'This template is already in the library — updating it'
+                  : 'Published immediately — visible to all companies'}
+              </p>
             </div>
           </div>
-          <button onClick={onClose} className="w-7 h-7 flex items-center justify-center rounded-lg text-slate-300 hover:text-slate-500 hover:bg-slate-100 transition-colors">
+          <button
+            onClick={onClose}
+            className="w-7 h-7 flex items-center justify-center rounded-lg text-slate-300 hover:text-slate-500 hover:bg-slate-100 transition-colors"
+          >
             <X size={16} />
           </button>
         </div>
 
-        {/* Body */}
+        {/* ── Body ───────────────────────────────────────────────────────── */}
         {status === 'success' ? (
           <div className="p-8 flex flex-col items-center gap-4 text-center overflow-y-auto">
             <div className="w-16 h-16 rounded-2xl flex items-center justify-center bg-emerald-50 border border-emerald-200">
               <CheckCircle size={32} className="text-emerald-500" />
             </div>
             <div>
-              <p className="text-base font-bold text-slate-800 mb-1">Published to Global Library!</p>
+              <p className="text-base font-bold text-slate-800 mb-1">{successTitle}</p>
               <p className="text-sm text-slate-500 max-w-xs">
                 <strong>{title}</strong> is now live and available to all companies.
               </p>
@@ -164,28 +225,49 @@ export default function ShareToLibraryModal({
                 View in library →
               </a>
             )}
-            <button onClick={onClose} className="mt-1 px-8 py-2.5 rounded-xl bg-primary text-white text-sm font-semibold hover:bg-violet-700 transition-colors">
+            <button
+              onClick={onClose}
+              className="mt-1 px-8 py-2.5 rounded-xl bg-primary text-white text-sm font-semibold hover:bg-violet-700 transition-colors"
+            >
               Done
             </button>
           </div>
+        ) : isChecking ? (
+          <div className="p-12 flex flex-col items-center gap-3 text-slate-400">
+            <Loader2 size={24} className="animate-spin" />
+            <p className="text-sm">Checking library status…</p>
+          </div>
         ) : (
           <div className="p-6 flex flex-col gap-4 overflow-y-auto">
-            {/* Owner badge */}
-            <div className="flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl border bg-emerald-50 border-emerald-200 text-emerald-700 text-xs font-medium">
-              <Globe size={13} />
-              As platform owner, this will be published immediately and visible to all companies.
-            </div>
+
+            {/* Status badge */}
+            {isExisting ? (
+              <div className="flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl border bg-amber-50 border-amber-200 text-amber-700 text-xs font-medium">
+                <RefreshCw size={13} />
+                Already in the library — submitting will overwrite the existing entry with the latest template content.
+              </div>
+            ) : (
+              <div className="flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl border bg-emerald-50 border-emerald-200 text-emerald-700 text-xs font-medium">
+                <Globe size={13} />
+                As platform owner, this will be published immediately and visible to all companies.
+              </div>
+            )}
 
             {/* Title */}
             <div>
               <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">
                 Title <span className="text-red-400">*</span>
               </label>
-              <input value={title} onChange={(e) => setTitle(e.target.value)} className={inp} placeholder="e.g. Electrical Safety SWMS" />
+              <input
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                className={inp}
+                placeholder="e.g. Electrical Safety SWMS"
+              />
             </div>
 
             {/* Type + Category */}
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
                 <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Type</label>
                 <div className="relative">
@@ -208,7 +290,7 @@ export default function ShareToLibraryModal({
             </div>
 
             {/* Discipline + Version */}
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
                 <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Industry / Discipline</label>
                 <div className="relative">
@@ -221,14 +303,26 @@ export default function ShareToLibraryModal({
               </div>
               <div>
                 <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Version</label>
-                <input value={version} onChange={(e) => setVersion(e.target.value)} className={inp} placeholder="1.0" />
+                <input
+                  value={version}
+                  onChange={(e) => setVersion(e.target.value)}
+                  className={inp}
+                  placeholder="1.0"
+                />
               </div>
             </div>
 
             {/* Tags */}
             <div>
-              <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Tags <span className="font-normal text-slate-400">(comma-separated)</span></label>
-              <input value={tags} onChange={(e) => setTags(e.target.value)} className={inp} placeholder="e.g. electrical, high-voltage, safety" />
+              <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">
+                Tags <span className="font-normal text-slate-400">(comma-separated)</span>
+              </label>
+              <input
+                value={tags}
+                onChange={(e) => setTags(e.target.value)}
+                className={inp}
+                placeholder="e.g. electrical, high-voltage, safety"
+              />
             </div>
 
             {/* Summary */}
@@ -236,7 +330,13 @@ export default function ShareToLibraryModal({
               <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">
                 Summary <span className="font-normal text-slate-400">(optional)</span>
               </label>
-              <textarea value={summary} onChange={(e) => setSummary(e.target.value)} rows={3} className={`${inp} resize-none`} placeholder="Briefly describe what this document covers…" />
+              <textarea
+                value={summary}
+                onChange={(e) => setSummary(e.target.value)}
+                rows={3}
+                className={`${inp} resize-none`}
+                placeholder="Briefly describe what this document covers…"
+              />
             </div>
 
             {/* Error */}
@@ -249,7 +349,10 @@ export default function ShareToLibraryModal({
 
             {/* Actions */}
             <div className="flex gap-2.5 pt-1">
-              <button onClick={onClose} className="flex-1 py-2.5 rounded-xl border border-slate-200 text-slate-600 text-sm font-semibold hover:bg-slate-50 transition-colors">
+              <button
+                onClick={onClose}
+                className="flex-1 py-2.5 rounded-xl border border-slate-200 text-slate-600 text-sm font-semibold hover:bg-slate-50 transition-colors"
+              >
                 Cancel
               </button>
               <button
@@ -258,7 +361,9 @@ export default function ShareToLibraryModal({
                 className="flex-1 py-2.5 rounded-xl bg-primary text-white text-sm font-semibold hover:bg-violet-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
               >
                 {status === 'loading' ? (
-                  <><Loader2 size={13} className="animate-spin" />Publishing…</>
+                  <><Loader2 size={13} className="animate-spin" />{isExisting ? 'Updating…' : 'Publishing…'}</>
+                ) : isExisting ? (
+                  <><RefreshCw size={13} />Update in Library</>
                 ) : (
                   <><Globe size={13} />Publish to Global Library</>
                 )}

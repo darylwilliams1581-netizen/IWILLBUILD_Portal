@@ -16,6 +16,8 @@ import { companyFiles, profiles } from '../../../../db/schema.js';
 import { eq, sql } from 'drizzle-orm';
 import { getAuth } from '../../../../../lib/auth/auth.js';
 import { saveFile, BUCKET_COMPANY_FILES } from '../../../../storage/storage-service.js';
+import { randomUUID } from 'node:crypto';
+import { buildObjectKey } from '../../../../storage/r2Config.js';
 import type { ResultSetHeader } from 'mysql2';
 
 export default async function handler(req: Request, res: Response) {
@@ -52,11 +54,19 @@ export default async function handler(req: Request, res: Response) {
 
     // Save as new file
     const markedUpName = `${drawing.title.replace(/[^a-zA-Z0-9_-]/g, '_')}_markup_${Date.now()}.pdf`;
+    const storageKey = buildObjectKey({
+      logicalNamespace: 'company-files',
+      companyId: profile.companyId,
+      category: 'drawings',
+      uuid: randomUUID(),
+      originalName: markedUpName,
+    });
     const saved = await saveFile({
       buffer,
       originalName: markedUpName,
       mimeType: 'application/pdf',
       bucket: BUCKET_COMPANY_FILES,
+      storageKey,
     });
 
     // Insert company_files record for the marked-up copy

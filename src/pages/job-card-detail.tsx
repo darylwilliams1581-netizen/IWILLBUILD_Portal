@@ -1214,7 +1214,7 @@ export default function JobCardDetailPage() {
       <DesktopTopBar />
       <DesktopDock />
       <Helmet>
-        <title>{card.card_number} — Job Card — IWILLBUILD</title>
+        <title>{card.card_number} — Job Card — IWIllBUIlD</title>
         <meta name="description" content={`Job Card ${card.card_number} — ${card.work_description.slice(0, 120)}`} />
         <meta name="robots" content="noindex" />
         <link rel="canonical" href={`https://iwillbuild.com/job-cards/${card.id}`} />

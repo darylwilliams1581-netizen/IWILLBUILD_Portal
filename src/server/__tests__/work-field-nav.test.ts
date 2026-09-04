@@ -3,7 +3,7 @@
  * ─────────────────────────────────────────────────────────────────────────────
  * @seo-exempt — test file, not a route page
  *
- * Comprehensive tests for the final IWILLBUILD navigation model:
+ * Comprehensive tests for the final IWIllBUIlD navigation model:
  *
  *   Path A — Inside an open Job (job-detail.tsx section dropdown)
  *   Path B — Work & Field launcher → Job picker → standalone page
@@ -203,12 +203,12 @@ describe('Work & Field redirect page — backward compat', () => {
     expect(launcherSrc).toContain('getFeatureByLauncherSlug');
   });
 
-  it('redirects /work-field to / (home screen)', () => {
-    expect(launcherSrc).toContain("navigate('/', { replace: true })");
+  it('redirects /work-field to /home (home screen)', () => {
+    expect(launcherSrc).toContain("navigate('/home', { replace: true })");
   });
 
-  it('redirects /work-field/:slug to /?picker=<key>', () => {
-    expect(launcherSrc).toContain('navigate(`/?picker=${feature.key}`');
+  it('redirects /work-field/:slug to /home?picker=<key>', () => {
+    expect(launcherSrc).toContain('navigate(`/home?picker=${feature.key}`');
   });
 
   it('is marked noindex', () => {
@@ -329,9 +329,11 @@ describe('Routes — standalone feature routes registered', () => {
 // ── 5. Tablet navigation gap fix ─────────────────────────────────────────────
 
 describe('Tablet navigation gap — breakpoint fix', () => {
-  it('desktop sidebar uses md: breakpoint (not lg:)', () => {
-    expect(sidebarSrc).toContain('hidden md:flex flex-col');
-    expect(sidebarSrc).not.toContain('hidden lg:flex flex-col');
+  it('desktop sidebar uses lg: breakpoint (hidden lg:flex) — not md:', () => {
+    // Sidebar is hidden on tablet (md), only visible on desktop (lg+).
+    // This prevents the sidebar + dock from appearing simultaneously on iPad.
+    expect(sidebarSrc).toContain('hidden lg:flex flex-col');
+    expect(sidebarSrc).not.toContain('hidden md:flex flex-col');
   });
 
   it('mobile drawer backdrop uses md:hidden (not lg:hidden)', () => {
@@ -344,7 +346,7 @@ describe('Tablet navigation gap — breakpoint fix', () => {
     expect(sidebarSrc).not.toContain('z-50 lg:hidden');
   });
 
-  it('DesktopTopBar uses hidden md:flex (not hidden lg:flex)', () => {
+  it('DesktopTopBar uses hidden md:flex (visible on tablet and desktop)', () => {
     const topBarSrc = src('src/components/DesktopTopBar.tsx');
     expect(topBarSrc).toContain('hidden md:flex');
     expect(topBarSrc).not.toContain('hidden lg:flex');
@@ -358,9 +360,9 @@ describe('homeIcons.ts — no /work-field hrefs', () => {
     expect(homeIconsSrc).not.toMatch(/href: '\/work-field/);
   });
 
-  it('timesheet icon now routes to /timesheets (Manage page, not comingSoon)', () => {
-    expect(homeIconsSrc).toContain("href: '/timesheets'");
-    expect(homeIconsSrc).not.toContain("href: '/finance?financeTab=timesheets'");
+  it('timesheet icon now routes to /finance?financeTab=timesheets (Finance shell)', () => {
+    expect(homeIconsSrc).toContain("href: '/finance?financeTab=timesheets'");
+    expect(homeIconsSrc).not.toContain("href: '/timesheets'");
   });
 
   it('Work & Field icon is NOT in FIELD_ICON_DEFS (removed)', () => {
@@ -520,40 +522,40 @@ describe('useJobForFeature — shared data hook', () => {
 
 // ── 11. Change Job navigates to /?picker=<key> ───────────────────────────────
 
-describe('Change Job — navigates to /?picker=<key>', () => {
-  it('job-tasks-page navigates to /?picker=tasks on Change Job', () => {
+describe('Change Job — navigates to /home?picker=<key>', () => {
+  it('job-tasks-page navigates to /home?picker=tasks on Change Job', () => {
     const tasksSrc = src('src/pages/job-tasks-page.tsx');
-    expect(tasksSrc).toContain("navigate('/?picker=tasks')");
+    expect(tasksSrc).toContain("navigate('/home?picker=tasks')");
   });
 
-  it('job-attendance-page navigates to /?picker=attendance on Change Job', () => {
+  it('job-attendance-page navigates to /home?picker=attendance on Change Job', () => {
     const attSrc = src('src/pages/job-attendance-page.tsx');
-    expect(attSrc).toContain("navigate('/?picker=attendance')");
+    expect(attSrc).toContain("navigate('/home?picker=attendance')");
   });
 
-  it('job-files-page navigates to /?picker=files on Change Job', () => {
+  it('job-files-page navigates to /home?picker=files on Change Job', () => {
     const filesSrc = src('src/pages/job-files-page.tsx');
-    expect(filesSrc).toContain("navigate('/?picker=files')");
+    expect(filesSrc).toContain("navigate('/home?picker=files')");
   });
 
-  it('job-estimates-page navigates to /?picker=estimates on Change Job', () => {
+  it('job-estimates-page navigates to /home?picker=estimates on Change Job', () => {
     const estSrc = src('src/pages/job-estimates-page.tsx');
-    expect(estSrc).toContain("navigate('/?picker=estimates')");
+    expect(estSrc).toContain("navigate('/home?picker=estimates')");
   });
 
-  it('job-purchase-orders-page navigates to /?picker=purchase-orders on Change Job', () => {
+  it('job-purchase-orders-page navigates to /home?picker=purchase-orders on Change Job', () => {
     const poSrc = src('src/pages/job-purchase-orders-page.tsx');
-    expect(poSrc).toContain("navigate('/?picker=purchase-orders')");
+    expect(poSrc).toContain("navigate('/home?picker=purchase-orders')");
   });
 
-  it('job-invoices-page navigates to /?picker=invoices on Change Job', () => {
+  it('job-invoices-page navigates to /home?picker=invoices on Change Job', () => {
     const invSrc = src('src/pages/job-invoices-page.tsx');
-    expect(invSrc).toContain("navigate('/?picker=invoices')");
+    expect(invSrc).toContain("navigate('/home?picker=invoices')");
   });
 
-  it('job-safety-page navigates to /?picker=safety on Change Job', () => {
+  it('job-safety-page navigates to /home?picker=safety on Change Job', () => {
     const safSrc = src('src/pages/job-safety-page.tsx');
-    expect(safSrc).toContain("navigate('/?picker=safety')");
+    expect(safSrc).toContain("navigate('/home?picker=safety')");
   });
 });
 
@@ -565,9 +567,9 @@ describe('Timesheets — not in job picker launcher', () => {
     expect(registrySrc).not.toContain("key: 'timesheet'");
   });
 
-  it('Timesheets routes to /timesheets (live Manage page entry, not comingSoon)', () => {
-    expect(homeIconsSrc).toContain("href: '/timesheets'");
-    expect(homeIconsSrc).not.toContain("href: '/finance?financeTab=timesheets'");
+  it('Timesheets routes to /finance?financeTab=timesheets (Finance shell, not comingSoon)', () => {
+    expect(homeIconsSrc).toContain("href: '/finance?financeTab=timesheets'");
+    expect(homeIconsSrc).not.toContain("href: '/timesheets'");
   });
 
   it('Timesheets is NOT in the Work & Field redirect page', () => {
@@ -583,7 +585,7 @@ describe('PWA fixes', () => {
     expect(manifest.start_url).toBe('/home');
   });
 
-  it('manifest theme_color is IWILLBUILD purple #7C3AED', () => {
+  it('manifest theme_color is IWIllBUIlD purple #7C3AED', () => {
     const manifest = JSON.parse(manifestSrc);
     expect(manifest.theme_color.toLowerCase()).toBe('#7c3aed');
   });

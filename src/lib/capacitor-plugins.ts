@@ -61,10 +61,33 @@ function getCapBridge(): CapBridge | undefined {
   return (window as unknown as { Capacitor?: CapBridge }).Capacitor;
 }
 
-function getPlugin<T>(name: string): T | null {
+/**
+ * Retrieve a plugin from the Capacitor bridge and validate that its required
+ * methods are callable before returning it.
+ *
+ * WHY: On some Capacitor / TestFlight builds the native bridge registers a
+ * plugin stub in window.Capacitor.Plugins BEFORE the bridge is fully
+ * initialised. The stub object is truthy but its methods are undefined or
+ * non-callable at that point. Calling e.g. App.addListener() on a stub throws
+ * "p.addListener is not a function" and crashes the React render tree.
+ *
+ * Passing requiredMethods lets each accessor declare which methods must be
+ * callable. If any are missing the function returns null so callers skip the
+ * plugin gracefully — the same as "plugin not registered".
+ */
+function getPlugin<T>(name: string, requiredMethods?: (keyof T)[]): T | null {
   if (!isNative()) return null;
   const plugin = getCapBridge()?.Plugins?.[name];
-  return (plugin as T) ?? null;
+  if (!plugin) return null;
+  if (requiredMethods) {
+    for (const method of requiredMethods) {
+      if (typeof (plugin as Record<string, unknown>)[method as string] !== 'function') {
+        // Bridge stub not yet fully initialised — treat as unavailable
+        return null;
+      }
+    }
+  }
+  return plugin as T;
 }
 
 // ── Plugin type interfaces ────────────────────────────────────────────────────
@@ -121,6 +144,7 @@ interface FilesystemPlugin {
     encoding?: string;
     recursive?: boolean;
   }) => Promise<{ uri: string }>;
+  readFile: (opts: { path: string; directory?: string; encoding?: string }) => Promise<{ data: string }>;
   deleteFile: (opts: { path: string; directory: string }) => Promise<void>;
   mkdir: (opts: { path: string; directory: string; recursive?: boolean }) => Promise<void>;
 }
@@ -156,47 +180,49 @@ const StatusBarStyle = { Dark: 'DARK', Light: 'LIGHT', Default: 'DEFAULT' } as c
 // ── Plugin accessors ──────────────────────────────────────────────────────────
 
 export function getNativeGeo(): GeolocationPlugin | null {
-  return getPlugin<GeolocationPlugin>('Geolocation');
+  return getPlugin<GeolocationPlugin>('Geolocation', ['getCurrentPosition', 'watchPosition']);
 }
 
 export function getHapticsPlugin(): { Haptics: HapticsPlugin; ImpactStyle: typeof ImpactStyle; NotificationType: typeof NotificationType } | null {
-  const Haptics = getPlugin<HapticsPlugin>('Haptics');
+  const Haptics = getPlugin<HapticsPlugin>('Haptics', ['impact', 'notification']);
   if (!Haptics) return null;
   return { Haptics, ImpactStyle, NotificationType };
 }
 
 export function getStatusBarPlugin(): { StatusBar: StatusBarPlugin; Style: typeof StatusBarStyle } | null {
-  const StatusBar = getPlugin<StatusBarPlugin>('StatusBar');
+  const StatusBar = getPlugin<StatusBarPlugin>('StatusBar', ['setStyle']);
   if (!StatusBar) return null;
   return { StatusBar, Style: StatusBarStyle };
 }
 
 export function getSplashScreenPlugin(): SplashScreenPlugin | null {
-  return getPlugin<SplashScreenPlugin>('SplashScreen');
+  return getPlugin<SplashScreenPlugin>('SplashScreen', ['hide']);
 }
 
 export function getNetworkPlugin(): NetworkPlugin | null {
-  return getPlugin<NetworkPlugin>('Network');
+  return getPlugin<NetworkPlugin>('Network', ['getStatus', 'addListener']);
 }
 
 export function getPushNotificationsPlugin(): PushNotificationsPlugin | null {
-  return getPlugin<PushNotificationsPlugin>('PushNotifications');
+  return getPlugin<PushNotificationsPlugin>('PushNotifications', ['requestPermissions', 'register', 'addListener']);
 }
 
 export function getAppPlugin(): AppPlugin | null {
-  return getPlugin<AppPlugin>('App');
+  // addListener is the critical method — if it's not callable the bridge stub
+  // is not yet initialised and we must not call it (causes the TestFlight crash).
+  return getPlugin<AppPlugin>('App', ['addListener']);
 }
 
 export function getCameraPlugin(): CameraPlugin | null {
-  return getPlugin<CameraPlugin>('Camera');
+  return getPlugin<CameraPlugin>('Camera', ['getPhoto', 'checkPermissions', 'requestPermissions']);
 }
 
 export function getFilesystemPlugin(): FilesystemPlugin | null {
-  return getPlugin<FilesystemPlugin>('Filesystem');
+  return getPlugin<FilesystemPlugin>('Filesystem', ['writeFile', 'readFile']);
 }
 
 export function getSharePlugin(): SharePlugin | null {
-  return getPlugin<SharePlugin>('Share');
+  return getPlugin<SharePlugin>('Share', ['share']);
 }
 
 /** Directory constants matching Capacitor Filesystem Directory enum values */

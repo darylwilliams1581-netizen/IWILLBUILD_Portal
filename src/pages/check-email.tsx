@@ -38,27 +38,27 @@ export default function CheckEmailPage() {
   }
   return <>
       <Helmet>
-        <title>Check Your Email — IWILLBUILD Portal</title>
-        <meta name="description" content="Verify your email address to activate your IWILLBUILD Portal account." />
+        <title>Check Your Email — IWIllBUIlD Portal</title>
+        <meta name="description" content="Verify your email address to activate your IWIllBUIlD Portal account." />
         <meta name="robots" content="noindex, nofollow" />
         <link rel="canonical" href="https://iwillbuild.com/check-email" />
         <meta name="robots" content="noindex, nofollow" />
-        <meta property="og:title" content="Check Your Email — IWILLBUILD Portal" />
-        <meta property="og:description" content="Verify your email address to activate your IWILLBUILD Portal account." />
+        <meta property="og:title" content="Check Your Email — IWIllBUIlD Portal" />
+        <meta property="og:description" content="Verify your email address to activate your IWIllBUIlD Portal account." />
         <meta property="og:type" content="website" />
         <meta property="og:url" content="https://iwillbuild.com/check-email" />
         <meta property="og:image" content="https://iwillbuild.com/airo-assets/images/pages/home/og-image" />
         <meta name="twitter:card" content="summary_large_image" />
-        <meta name="twitter:title" content="Check Your Email — IWILLBUILD Portal" />
-        <meta name="twitter:description" content="Verify your email address to activate your IWILLBUILD Portal account." />
+        <meta name="twitter:title" content="Check Your Email — IWIllBUIlD Portal" />
+        <meta name="twitter:description" content="Verify your email address to activate your IWIllBUIlD Portal account." />
         <meta name="twitter:image" content="https://iwillbuild.com/airo-assets/images/pages/home/og-image" />
         <script type="application/ld+json">{JSON.stringify({
           '@context': 'https://schema.org',
           '@type': 'WebPage',
           '@id': 'https://iwillbuild.com/check-email#webpage',
-          name: 'Check Your Email — IWILLBUILD Portal',
+          name: 'Check Your Email — IWIllBUIlD Portal',
           url: 'https://iwillbuild.com/check-email',
-          description: 'Verify your email address to activate your IWILLBUILD Portal account.',
+          description: 'Verify your email address to activate your IWIllBUIlD Portal account.',
           isPartOf: {
             '@id': 'https://iwillbuild.com/#website'
           }
@@ -82,7 +82,7 @@ export default function CheckEmailPage() {
               <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
                 <span className="text-white font-bold text-sm">IW</span>
               </div>
-              <span className="text-white font-bold text-lg tracking-tight">IWILLBUILD</span>
+              <span className="text-white font-bold text-lg tracking-tight">IWIllBUIlD</span>
             </div>
           </div>
 

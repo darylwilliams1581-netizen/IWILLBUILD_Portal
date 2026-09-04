@@ -1,11 +1,10 @@
 import { useState, useEffect, useRef } from 'react';
 import { Helmet } from '@dr.pogodin/react-helmet';
 import { AnimatePresence } from 'motion/react';
-import { ShieldAlert, ShieldCheck, FileText, AlertTriangle, Plus, Search, Loader2, Check, Download, Trash2, Copy, BookOpen, Library, Image, AlertCircle, Calendar, Building2, ChevronDown, Wand2, FileDown, Package, Printer, Share2, Pencil, Eye } from 'lucide-react';
+import { ShieldAlert, ShieldCheck, FileText, AlertTriangle, Plus, Search, Loader2, Check, Download, Trash2, Copy, BookOpen, Image, AlertCircle, Calendar, Building2, ChevronDown, Wand2, FileDown, Package, Printer, Share2, Pencil, Eye, ArrowLeft } from 'lucide-react';
 import ShareLinkModal from '@/components/ShareLinkModal';
-import ShareToLibraryModal from '@/components/studio/ShareToLibraryModal';
 import { usePermissions } from '@/lib/usePermissions';
-import SafetyPosterGenerator from '@/components/SafetyPosterGenerator';
+import { goBack } from '@/lib/navigation';
 import PosterPreviewModal from '@/components/safety-posters/PosterPreviewModal';
 import SwmsBodyBuilder from '@/components/safety/SwmsBodyBuilder';
 import PlanFormModal from '@/components/safety/PlanFormModal';
@@ -14,10 +13,16 @@ import WHS_PlanBuilder from '@/components/safety/WHS_PlanBuilder';
 import UploadDocModal from '@/components/safety/UploadDocModal';
 import NewDocModal from '@/components/safety/NewDocModal';
 import { type SwmsTemplate, type SafetyPlan, type SafetyDocument, type SafetyPoster, type GeneratedPoster, POLICY_TYPES, POSTER_TYPES, fmtBytes, fmtDate, statusBadge } from '@/components/safety/safety-types';
+import { useNavigate as _useNavigate } from 'react-router';
+import SafetyContent from '@/components/safety/SafetyContent';
+import DesktopTopBar from '@/components/DesktopTopBar';
+import DesktopDock from '@/components/DesktopDock';
+import PortalSidebar from '@/components/PortalSidebar';
 
 // ── SWMS Library Tab ──────────────────────────────────────────────────────────
 
 export function SwmsLibraryTab() {
+  const navigate = _useNavigate();
   const [swmsList, setSwmsList] = useState<SwmsTemplate[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -29,10 +34,6 @@ export function SwmsLibraryTab() {
   const [seedMsg, setSeedMsg] = useState('');
   const [printing, setPrinting] = useState<SwmsTemplate | null>(null);
   const [shareTarget, setShareTarget] = useState<{
-    id: number;
-    title: string;
-  } | null>(null);
-  const [publishTarget, setPublishTarget] = useState<{
     id: number;
     title: string;
   } | null>(null);
@@ -179,7 +180,7 @@ export function SwmsLibraryTab() {
           setEditing(null);
           setShowModal(true);
         }} className="flex items-center gap-2 bg-primary hover:bg-violet-700 text-white text-sm font-bold px-4 py-2 rounded-lg transition-colors">
-            <Plus size={15} /><span className="hidden sm:inline">New SWMS</span>
+            <Plus size={15} /><span className="hidden sm:inline">SWMS Builder Widget</span>
           </button>
         </div>
       </div>
@@ -249,12 +250,6 @@ export function SwmsLibraryTab() {
           })} className="p-1.5 rounded-lg text-slate-400 hover:text-primary hover:bg-violet-50 transition-colors" title="Share link">
                   <Share2 size={14} />
                 </button>
-                {isPlatformOwner && <button onClick={() => setPublishTarget({
-            id: s.id,
-            title: s.title
-          })} className="p-1.5 rounded-lg text-slate-400 hover:text-violet-600 hover:bg-violet-50 transition-colors" title="Share to Global Library">
-                    <Library size={14} />
-                  </button>}
                 <button onClick={() => setPrinting(s)} className="p-1.5 rounded-lg text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition-colors" title="Print / PDF">
                   <Printer size={14} />
                 </button>
@@ -285,17 +280,21 @@ export function SwmsLibraryTab() {
         setSwmsList(prev => editing ? prev.map(x => x.id === s.id ? s : x) : [s, ...prev]);
         setShowModal(false);
         setEditing(null);
+      }} onGenerateStudio={(docId) => {
+        setShowModal(false);
+        setEditing(null);
+        navigate(`/studio/builder/${docId}`);
       }} />}
         {printing && <SwmsPrintModal swms={printing} onClose={() => setPrinting(null)} />}
       </AnimatePresence>
       {shareTarget && <ShareLinkModal open={!!shareTarget} onClose={() => setShareTarget(null)} targetType="swms" targetId={String(shareTarget.id)} title={shareTarget.title} />}
-      {publishTarget && isPlatformOwner && <ShareToLibraryModal templateId={publishTarget.id} templateName={publishTarget.title} isPlatformOwner={true} sourceType="swms" onClose={() => setPublishTarget(null)} />}
     </div>;
 }
 
 // ── Safety Plans Tab ──────────────────────────────────────────────────────────
 
 export function SafetyPlansTab() {
+  const navigate = _useNavigate();
   const [plans, setPlans] = useState<SafetyPlan[]>([]);
   const [jobs, setJobs] = useState<Array<{
     id: number;
@@ -413,7 +412,7 @@ export function SafetyPlansTab() {
             <span className="hidden sm:inline">Load Templates</span>
           </button>
           <button onClick={openNewBuilder} className="flex items-center gap-2 bg-primary hover:bg-violet-700 text-white text-sm font-bold px-4 py-2 rounded-lg transition-colors">
-            <Plus size={15} /><span className="hidden sm:inline">New WHS Plan</span>
+            <Plus size={15} /><span className="hidden sm:inline">Safety Plan Widget</span>
           </button>
         </div>
       </div>
@@ -438,7 +437,7 @@ export function SafetyPlansTab() {
           <p className="text-sm text-slate-400 mb-5 max-w-xs">Create a full WHS Management Plan using the builder.</p>
           <div className="flex items-center gap-3 flex-wrap justify-center">
             <button onClick={openNewBuilder} className="flex items-center gap-2 bg-primary hover:bg-violet-700 text-white text-sm font-bold px-5 py-2.5 rounded-lg transition-colors">
-              <Plus size={15} />New WHS Plan
+              <Plus size={15} />Safety Plan Widget
             </button>
           </div>
         </div>}
@@ -500,6 +499,12 @@ export function SafetyPlansTab() {
         setBuilderPlanTitle(undefined);
       }} onSaved={(_id, _title) => {
         refreshPlans();
+      }} onGenerateStudio={(docId) => {
+        setShowBuilder(false);
+        setBuilderInitial(null);
+        setBuilderPlanId(null);
+        setBuilderPlanTitle(undefined);
+        navigate(`/studio/builder/${docId}`);
       }} />}
       </AnimatePresence>
 
@@ -525,10 +530,6 @@ export function PoliciesTab() {
   const [showUpload, setShowUpload] = useState(false);
   const [showNewDoc, setShowNewDoc] = useState(false);
   const [deleting, setDeleting] = useState<number | null>(null);
-  const [policyPublishTarget, setPolicyPublishTarget] = useState<{
-    id: number;
-    title: string;
-  } | null>(null);
   const {
     isPlatformOwner: isPolicyOwner
   } = usePermissions();
@@ -591,12 +592,6 @@ export function PoliciesTab() {
                 <a href={`/api/safety/documents/${d.id}/download`} className="p-1.5 rounded-lg text-slate-400 hover:text-primary hover:bg-violet-50 transition-colors" title="Download">
                   <Download size={14} />
                 </a>
-                {isPolicyOwner && <button onClick={() => setPolicyPublishTarget({
-            id: d.id,
-            title: d.title
-          })} className="p-1.5 rounded-lg text-slate-400 hover:text-violet-600 hover:bg-violet-50 transition-colors" title="Share to Global Library">
-                    <Library size={14} />
-                  </button>}
                 <button onClick={() => handleDelete(d.id)} disabled={deleting === d.id} className="p-1.5 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 transition-colors" title="Delete">
                   {deleting === d.id ? <Loader2 size={14} className="animate-spin" /> : <Trash2 size={14} />}
                 </button>
@@ -618,7 +613,6 @@ export function PoliciesTab() {
         }} />}
       </AnimatePresence>
 
-      {policyPublishTarget && isPolicyOwner && <ShareToLibraryModal templateId={policyPublishTarget.id} templateName={policyPublishTarget.title} isPlatformOwner={true} onClose={() => setPolicyPublishTarget(null)} />}
     </div>;
 }
 
@@ -900,12 +894,6 @@ export function SafetyDashboardTab() {
 }
 
 // ── /safety standalone page ───────────────────────────────────────────────────
-import { useNavigate as _useNavigate } from "react-router";
-import { ArrowLeft } from 'lucide-react';
-import SafetyContent from '@/components/safety/SafetyContent';
-import DesktopTopBar from '@/components/DesktopTopBar';
-import DesktopDock from '@/components/DesktopDock';
-import PortalSidebar from '@/components/PortalSidebar';
 export default function SafetyPage() {
   const navigate = _useNavigate();
   return <div className="flex flex-col flex-1 min-h-0 lg-portal">
@@ -913,7 +901,7 @@ export default function SafetyPage() {
       <DesktopTopBar />
       <DesktopDock />
       <Helmet>
-        <title>Safety — IWILLBUILD</title>
+        <title>Safety — IWIllBUIlD</title>
         <meta name="description" content="Manage SWMS, safety plans, policies and compliance documents for your trades business." />
         <link rel="canonical" href="https://iwillbuild.com/safety" />
         <meta name="robots" content="noindex" />
@@ -921,7 +909,7 @@ export default function SafetyPage() {
 
       {/* Header — matches fleet/jobs pattern */}
       <header className="sticky top-0 z-30 h-12 bg-white border-b border-border flex items-center px-4 shrink-0 gap-2 safe-top">
-        <button onClick={() => navigate('/?page=2')} className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors shrink-0" aria-label="Back to Home">
+        <button onClick={() => goBack(navigate, '/home')} className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors shrink-0" aria-label="Back to Home">
           <ArrowLeft size={16} />
           <span className="hidden sm:inline">Home</span>
         </button>

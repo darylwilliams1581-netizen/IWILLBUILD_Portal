@@ -113,7 +113,7 @@ export default function WorkJobPickerPage() {
   return (
     <div className="portal-page">
       <Helmet>
-        <title>{config.label} — IWILLBUILD</title>
+        <title>{config.label} — IWIllBUIlD</title>
         <meta name="description" content={`Select a job to open ${config.label}`} />
         <link rel="canonical" href={`https://iwillbuild.com/work/${tab}`} />
         <meta name="robots" content="noindex" />

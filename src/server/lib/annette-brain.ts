@@ -43,7 +43,7 @@ import type { DazzaContext } from './dazza-context.js';
 
 export type AnswerSource =
   | 'local_tool'       // pure maths / GST / calculator — no DB, no OpenAI
-  | 'portal_data'      // IWILLBUILD DB lookup
+  | 'portal_data'      // IWIllBUIlD DB lookup
   | 'brain_entry'      // approved company brain entry
   | 'openai'           // OpenAI reasoning
   | 'portal+openai'    // combined: portal data + OpenAI reasoning
@@ -181,8 +181,8 @@ function isPreFormattedAnswer(s: string): boolean {
 // Used when we need to pass the data content (not the headers) to formatDazzaAnswer.
 
 function extractPortalDataContent(s: string): string {
-  // Remove the "📋 From IWILLBUILD data:\n" prefix if present
-  const withoutHeader = s.replace(/^📋 From IWILLBUILD data:\n/, '');
+  // Remove the "📋 From IWIllBUIlD data:\n" prefix if present
+  const withoutHeader = s.replace(/^📋 From IWIllBUIlD data:\n/, '');
   // Take only the content before the first section separator (📦 or 📊 or 💡 or ⚠️)
   const sectionBreak = withoutHeader.search(/\n\n(?:📦|📊|💡|⚠️)/);
   return sectionBreak >= 0 ? withoutHeader.slice(0, sectionBreak).trim() : withoutHeader.trim();
@@ -191,9 +191,9 @@ function extractPortalDataContent(s: string): string {
 export function formatDazzaAnswer(answer: DazzaAnswer): string {
   const sections: string[] = [];
 
-  // 1. From IWILLBUILD data
+  // 1. From IWIllBUIlD data
   if (answer.portalDataSection) {
-    sections.push(`📋 From IWILLBUILD data:\n${answer.portalDataSection}`);
+    sections.push(`📋 From IWIllBUIlD data:\n${answer.portalDataSection}`);
   }
 
   // 2. AI reasoning
@@ -207,7 +207,7 @@ export function formatDazzaAnswer(answer: DazzaAnswer): string {
 
   // 3. Source modules — label depends on what was actually used
   //
-  //  • Portal data loaded AND AI reasoning used  → "IWILLBUILD data + AI reasoning\n<modules>"
+  //  • Portal data loaded AND AI reasoning used  → "IWIllBUIlD data + AI reasoning\n<modules>"
   //  • Portal data loaded, no AI reasoning       → list modules only
   //  • No portal data, pure AI reasoning         → "No portal data used — AI reasoning only."
   //
@@ -232,7 +232,7 @@ export function formatDazzaAnswer(answer: DazzaAnswer): string {
     const moduleNames = answer.modulesUsed
       .filter((m) => m !== 'Settings' && m !== 'Company')
       .join(', ');
-    sourceLabel = `IWILLBUILD data + AI reasoning\n${moduleNames || answer.modulesUsed.join(', ')}`;
+    sourceLabel = `IWIllBUIlD data + AI reasoning\n${moduleNames || answer.modulesUsed.join(', ')}`;
   } else if (hasRealPortalData || hasPortalSection) {
     // Portal data only
     const moduleNames = answer.modulesUsed
@@ -480,7 +480,7 @@ function parseOpenAIResponse(reply: string): ParsedOpenAIResponse {
   const result: ParsedOpenAIResponse = { rawReply: reply };
 
   const sectionPatterns: Array<{ key: keyof ParsedOpenAIResponse; prefix: string }> = [
-    { key: 'portalDataSection',  prefix: '📋 From IWILLBUILD data:' },
+    { key: 'portalDataSection',  prefix: '📋 From IWIllBUIlD data:' },
     { key: 'aiReasoningSection', prefix: '🧠 AI reasoning:' },
     { key: 'sourceModules',      prefix: '📦 Source modules:' },
     { key: 'confidence',         prefix: '📊 Confidence:' },
@@ -900,7 +900,7 @@ export async function processDazzaQuestion(
 
     if (internalHasData && openaiSaysNone) {
       conflictDetected = true;
-      conflictDetail = 'OpenAI suggested no data exists, but IWILLBUILD portal data was found. Portal data is used as the authoritative source.';
+      conflictDetail = 'OpenAI suggested no data exists, but IWIllBUIlD portal data was found. Portal data is used as the authoritative source.';
     }
   }
 
@@ -979,7 +979,7 @@ export async function processDazzaQuestion(
 
   // If OpenAI returned a fully-formed structured reply, use it directly
   // (it already has all sections formatted correctly)
-  const openaiHasStructure = openaiReply.includes('📋 From IWILLBUILD data:') ||
+  const openaiHasStructure = openaiReply.includes('📋 From IWIllBUIlD data:') ||
     openaiReply.includes('🧠 AI reasoning:') ||
     openaiReply.includes('📦 Source modules:');
 
@@ -1015,7 +1015,7 @@ export async function processDazzaQuestion(
         const moduleNames = modulesUsed
           .filter((m) => m !== 'Settings' && m !== 'Company')
           .join(', ');
-        correctSourceLabel = `IWILLBUILD data + AI reasoning\n${moduleNames || modulesUsed.join(', ')}`;
+        correctSourceLabel = `IWIllBUIlD data + AI reasoning\n${moduleNames || modulesUsed.join(', ')}`;
       } else if (hasRealPortalDataInReply || hasPortalSectionInReply) {
         const moduleNames = modulesUsed
           .filter((m) => m !== 'Settings' && m !== 'Company')

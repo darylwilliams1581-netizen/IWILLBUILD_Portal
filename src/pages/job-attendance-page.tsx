@@ -19,14 +19,14 @@ export default function JobAttendancePage() {
   const { jobId, job, loading, error } = useJobForFeature();
 
   function handleChangeJob() {
-    navigate('/?picker=attendance');
+    navigate('/home?picker=attendance');
   }
 
   return (
     <div className="portal-page">
       <Helmet>
-        <title>{job ? `Attendance — ${job.name}` : 'Attendance'} — IWILLBUILD</title>
-        <meta name="description" content="Track attendance and sign-on/off for this job in IWILLBUILD." />
+        <title>{job ? `Attendance — ${job.name}` : 'Attendance'} — IWIllBUIlD</title>
+        <meta name="description" content="Track attendance and sign-on/off for this job in IWIllBUIlD." />
         <meta name="robots" content="noindex" />
         {job && <link rel="canonical" href={`https://iwillbuild.com/jobs/${job.id}/attendance`} />}
       </Helmet>
@@ -51,7 +51,7 @@ export default function JobAttendancePage() {
             featureLabel={FEATURE.label}
             jobName={job.name}
             jobNumber={job.jobNumber}
-            backTo="/"
+            backTo="/home"
             onChangeJob={handleChangeJob}
           >
             <div className="p-4">

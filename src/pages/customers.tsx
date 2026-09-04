@@ -476,17 +476,17 @@ export default function CustomersPage() {
   }
   return <div className="portal-page">
       <Helmet>
-        <title>Contacts — IWILLBUILD Portal</title>
+        <title>Contacts — IWIllBUIlD Portal</title>
         <meta name="description" content="Manage your contacts register — customers, suppliers, contractors and linked jobs." />
         <link rel="canonical" href="https://iwillbuild.com/customers" />
         <meta name="robots" content="noindex" />
-        <meta property="og:title" content="Contacts — IWILLBUILD Portal" />
+        <meta property="og:title" content="Contacts — IWIllBUIlD Portal" />
         <meta property="og:description" content="Manage your contacts register — customers, suppliers, contractors and linked jobs." />
         <meta property="og:type" content="website" />
         <meta property="og:url" content="https://iwillbuild.com/customers" />
         <meta property="og:image" content="https://iwillbuild.com/airo-assets/images/pages/home/og-image" />
         <meta name="twitter:card" content="summary_large_image" />
-        <meta name="twitter:title" content="Contacts — IWILLBUILD Portal" />
+        <meta name="twitter:title" content="Contacts — IWIllBUIlD Portal" />
         <meta name="twitter:description" content="Manage your contacts register — customers, suppliers, contractors and linked jobs." />
         <meta name="twitter:image" content="https://iwillbuild.com/airo-assets/images/pages/home/og-image" />
       </Helmet>

@@ -5,6 +5,7 @@ import { eq } from 'drizzle-orm';
 import { getAuth } from '../../../../lib/auth/auth.js';
 import { deleteFile } from '../../../storage/storage-service.js';
 import { revokeSharesForSource } from '../../../lib/share-lifecycle.js';
+import { recordStorageDeletion } from '../../../lib/storageAudit.js';
 
 const BUCKET = 'company-files';
 
@@ -36,11 +37,30 @@ export default async function handler(req: Request, res: Response) {
     });
 
     await db.delete(companyFiles).where(eq(companyFiles.id, fileId));
-    await deleteFile(record.storedName, BUCKET);
+
+    let deleteSuccess = true;
+    let errorCategory: string | undefined;
+    try {
+      await deleteFile(record.storedName, BUCKET);
+    } catch (err) {
+      deleteSuccess = false;
+      errorCategory = err instanceof Error ? err.constructor.name : 'UnknownError';
+      console.warn('[files DELETE] storage deleteFile failed:', errorCategory);
+    }
+
+    // Audit event — actor, company, category, key, outcome; no URLs or credentials
+    await recordStorageDeletion({
+      actorUserId: session.user.id,
+      companyId:   profile.companyId,
+      category:    BUCKET,
+      storageKey:  record.storedName,
+      success:     deleteSuccess,
+      errorCategory,
+    });
 
     res.json({ ok: true });
   } catch (err) {
-    console.error(err);
+    console.error('[files DELETE]', err instanceof Error ? err.constructor.name : err);
     res.status(500).json({ error: 'Failed to delete file' });
   }
 }

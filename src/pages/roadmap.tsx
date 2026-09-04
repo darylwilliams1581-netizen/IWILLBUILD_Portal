@@ -1,5 +1,5 @@
 /**
- * /roadmap  — IWILLBUILD Portal Product Roadmap
+ * /roadmap  — IWIllBUIlD Portal Product Roadmap
  * Internal-only page (noindex). Accessible from Owner Console / Developer Console.
  */
 import { roadmap } from 'virtual:content';
@@ -141,7 +141,7 @@ const EPICS: Epic[] = [
   // ── PHASE 1 ──────────────────────────────────────────────────────────────
   {
     id: 'p1-studio',
-    title: 'Epic 1 — IWILLBUILD Studio',
+    title: 'Epic 1 — IWIllBUIlD Studio',
     icon: Layers,
     color: 'orange',
     phase: 'Phase 1',
@@ -1289,21 +1289,21 @@ export default function RoadmapPage() {
   return (
     <div className="min-h-screen bg-slate-50">
       <Helmet>
-        <title>Product Roadmap — IWILLBUILD Portal</title>
-        <meta name="description" content="Internal product roadmap for the IWILLBUILD Portal — epics, stories, release gates and sprint priorities." />
+        <title>Product Roadmap — IWIllBUIlD Portal</title>
+        <meta name="description" content="Internal product roadmap for the IWIllBUIlD Portal — epics, stories, release gates and sprint priorities." />
         <link rel="canonical" href="https://iwillbuild.com/roadmap" />
         <meta name="robots" content="noindex, nofollow" />
       </Helmet>
 
       {/* ── Header ── */}
-      <div className="bg-white border-b border-border sticky top-0 z-20">
+      <div className="bg-white border-b border-border sticky top-0 z-20 safe-top">
         <div className="max-w-5xl mx-auto px-4 md:px-6 py-4 flex items-center justify-between gap-4">
           <div className="flex items-center gap-3">
             <div className="p-2 rounded-xl bg-violet-100">
               <Rocket size={18} className="text-primary" />
             </div>
             <div>
-              <h1 className="font-heading font-bold text-base text-foreground leading-none">IWILLBUILD Portal — Product Roadmap</h1>
+              <h1 className="font-heading font-bold text-base text-foreground leading-none">IWIllBUIlD Portal — Product Roadmap</h1>
               <p className="text-xs text-muted-foreground mt-0.5">Internal · Updated July 2026</p>
             </div>
           </div>
@@ -1439,7 +1439,7 @@ export default function RoadmapPage() {
         </section>
 
         <p className="text-center text-[11px] text-muted-foreground pb-4">
-          IWILLBUILD Portal — Internal Roadmap · Not for distribution · {new Date().toLocaleDateString('en-AU', { day: 'numeric', month: 'long', year: 'numeric' })}
+          IWIllBUIlD Portal — Internal Roadmap · Not for distribution · {new Date().toLocaleDateString('en-AU', { day: 'numeric', month: 'long', year: 'numeric' })}
         </p>
       </div>
     </div>

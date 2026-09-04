@@ -10,6 +10,7 @@ import { Helmet } from '@dr.pogodin/react-helmet';
 import PortalSidebar from '@/components/PortalSidebar';
 import { Zap, Plus, Search, X, ChevronRight, RefreshCw, CheckCircle2, Clock, AlertCircle, Receipt, ArrowRightLeft, Camera, ChevronLeft, ArrowLeft } from 'lucide-react';
 import { usePermissions } from '@/lib/usePermissions';
+import { goBack } from '@/lib/navigation';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 interface JobCard {
@@ -352,7 +353,7 @@ export default function JobCardsPage() {
   return <div className="flex-1 bg-[#f5f6f8] flex flex-col lg-portal">
       <PortalSidebar />
       <Helmet>
-        <title>Job Cards — IWILLBUILD</title>
+        <title>Job Cards — IWIllBUIlD</title>
         <meta name="description" content="Job Card register — reactive and call-out work records." />
         <meta name="robots" content="noindex" />
         <link rel="canonical" href="https://iwillbuild.com/job-cards" />
@@ -362,7 +363,7 @@ export default function JobCardsPage() {
         {/* ── Mobile header ── */}
         <header className="md:hidden h-14 bg-white border-b border-gray-200 flex items-center justify-between px-4 shrink-0 sticky top-0 z-30 safe-top">
           <div className="flex items-center gap-2">
-            <button onClick={() => navigate('/home')} className="p-1.5 -ml-1 rounded text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors" aria-label="Back">
+            <button onClick={() => goBack(navigate, '/home')} className="p-1.5 -ml-1 rounded text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors" aria-label="Back">
               <ArrowLeft size={18} />
             </button>
             <Zap size={16} className="text-yellow-500 shrink-0" />
@@ -376,7 +377,7 @@ export default function JobCardsPage() {
 
         {/* ── Desktop page header ── */}
         <header className="op-page-header hidden md:flex sticky top-0 z-30">
-          <button onClick={() => navigate('/home')} className="p-1 -ml-0.5 rounded text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors shrink-0" aria-label="Back">
+          <button onClick={() => goBack(navigate, '/home')} className="p-1 -ml-0.5 rounded text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors shrink-0" aria-label="Back">
             <ArrowLeft size={15} />
           </button>
           <Zap size={14} className="text-yellow-500 shrink-0" />

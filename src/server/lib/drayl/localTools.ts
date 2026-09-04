@@ -266,7 +266,7 @@ export function tryContextLocalTool(message: string, context: DazzaContext): Daz
         context,
         answer: count === 0
           ? `No jobs found for ${cn} yet.`
-          : `There ${count === 1 ? 'is' : 'are'} **${count}** job${count === 1 ? '' : 's'} in IWILLBUILD for ${cn}.`,
+          : `There ${count === 1 ? 'is' : 'are'} **${count}** job${count === 1 ? '' : 's'} in IWIllBUIlD for ${cn}.`,
         sources: ['Jobs'],
       }),
       mode: 'context',
@@ -286,7 +286,7 @@ export function tryContextLocalTool(message: string, context: DazzaContext): Daz
         context,
         answer: count === 0
           ? `No fleet assets found for ${cn} yet.`
-          : `There ${count === 1 ? 'is' : 'are'} **${count}** fleet asset${count === 1 ? '' : 's'} in IWILLBUILD for ${cn}.`,
+          : `There ${count === 1 ? 'is' : 'are'} **${count}** fleet asset${count === 1 ? '' : 's'} in IWIllBUIlD for ${cn}.`,
         sources: ['Fleet'],
       }),
       mode: 'context',
@@ -306,7 +306,7 @@ export function tryContextLocalTool(message: string, context: DazzaContext): Daz
         context,
         answer: count === 0
           ? `No open to-dos found for ${cn}.`
-          : `There ${count === 1 ? 'is' : 'are'} **${count}** open to-do${count === 1 ? '' : 's'} in IWILLBUILD for ${cn}.`,
+          : `There ${count === 1 ? 'is' : 'are'} **${count}** open to-do${count === 1 ? '' : 's'} in IWIllBUIlD for ${cn}.`,
         sources: ['JobTodos'],
       }),
       mode: 'context',

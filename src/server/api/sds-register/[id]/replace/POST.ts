@@ -21,6 +21,7 @@ import { getPlanLimits, getCompanyPlan } from '../../../../lib/plan-limits.js';
 import { uploadMedia } from '../../../../lib/uploadService.js';
 import type { CompatibilityContext } from '../../../../lib/uploadService.js';
 import type { ResultSetHeader } from 'mysql2';
+import { buildObjectKey } from '../../../../storage/r2Config.js';
 import { randomUUID } from 'node:crypto';
 
 const PDF_MIME = 'application/pdf';
@@ -76,7 +77,13 @@ export default async function handler(req: Request, res: Response) {
     const { title, notes } = parsed.fields as { title?: string; notes?: string; };
     const existingTitle = existing['title'] as string;
     const displayTitle = (title?.trim() || existingTitle).slice(0, 255);
-    const storageKey = `sds/${randomUUID()}.pdf`;
+    const storageKey = buildObjectKey({
+      logicalNamespace: 'company-files',
+      companyId: profile.companyId,
+      category: 'sds-register',
+      uuid: randomUUID(),
+      originalName: file.originalname || 'sds.pdf',
+    });
 
     let newId = 0;
 

@@ -113,6 +113,26 @@
       opacity: 1;
     }
   }
+
+  /* ── Collapsible open/close animations (Radix Collapsible) ─────────────────
+     Used by the Administration section on the Manage page.
+     Radix sets --radix-collapsible-content-height on the Content element.
+  */
+  @keyframes collapsible-down {
+    from { height: 0; opacity: 0.6; }
+    to   { height: var(--radix-collapsible-content-height); opacity: 1; }
+  }
+  @keyframes collapsible-up {
+    from { height: var(--radix-collapsible-content-height); opacity: 1; }
+    to   { height: 0; opacity: 0.6; }
+  }
+
+  .animate-collapsible-down {
+    animation: collapsible-down 200ms cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  .animate-collapsible-up {
+    animation: collapsible-up 200ms cubic-bezier(0.4, 0, 0.2, 1);
+  }
 }
 
 /* ── Global box-sizing reset ─────────────────────────────────────────────────
@@ -442,10 +462,22 @@ textarea {
   }
 }
 
-/* Desktop: reserve space at the top for the fixed TopBar (56px) + two-row dock (~90px). */
-@media (min-width: 768px) {
+/* Tablet (md, 768–1023px): TopBar + Dock are fixed above content.
+   TopBar height = 56px + safe-area-inset-top.
+   Dock height ≈ 56px (5px top pad + icons ~34px + 6px bottom pad + 1px border).
+   No sidebar at tablet — sidebar is hidden, drawer only.
+   Total top clearance = 56 + 56 + safe-area = 112px + safe-area. */
+@media (min-width: 768px) and (max-width: 1023px) {
   .portal-main {
-    padding-top: 112px;
+    padding-top: calc(112px + env(safe-area-inset-top, 0px));
+  }
+}
+
+/* Desktop (lg, 1024px+): TopBar only above content (no Dock — sidebar handles nav).
+   Total top clearance = 56px + safe-area. */
+@media (min-width: 1024px) {
+  .portal-main {
+    padding-top: calc(56px + env(safe-area-inset-top, 0px));
   }
 }
 
@@ -457,10 +489,20 @@ textarea {
   padding: 0.75rem 0.75rem; /* tighter on mobile */
 }
 
-@media (min-width: 768px) {
+@media (min-width: 768px) and (max-width: 1023px) {
+  /* Tablet: TopBar + Dock above, no sidebar rail — no left offset needed. */
   .portal-content {
     padding: 1.5rem;
-    padding-top: 112px;
+    padding-top: calc(112px + env(safe-area-inset-top, 0px));
+    box-sizing: border-box;
+  }
+}
+
+@media (min-width: 1024px) {
+  /* Desktop: TopBar above, sidebar rail on the left. */
+  .portal-content {
+    padding: 1.5rem;
+    padding-top: calc(56px + env(safe-area-inset-top, 0px));
     /* Offset the fixed left sidebar — width is kept in sync by PortalSidebar */
     padding-left: calc(var(--iwb-sidebar-w, 240px) + 1.5rem);
     transition: padding-left 0.2s ease;
@@ -755,17 +797,41 @@ textarea {
     visibility: hidden !important;
   }
 
+  /* 1b. Reset the BlockCanvas scroll/shell ancestors so they don't clip the
+         flowing page. The scroll wrapper, centering div, and sizing shell all
+         need to be transparent pass-throughs at print time. */
+  [data-print-scroll],
+  [data-print-center],
+  [data-print-shell] {
+    display: block !important;
+    position: static !important;
+    width: auto !important;
+    min-width: 0 !important;
+    max-width: none !important;
+    height: auto !important;
+    min-height: 0 !important;
+    max-height: none !important;
+    overflow: visible !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    flex: none !important;
+    transform: none !important;
+    background: transparent !important;
+  }
+
   /* 2. Show only the document page and all its descendants */
   .studio-doc-page,
   .studio-doc-page * {
     visibility: visible !important;
   }
 
-  /* 3. Position the page at the top-left of the print area */
+  /* 3. Position the page so it flows naturally across print pages */
   .studio-doc-page {
-    position: fixed !important;
-    top: 0 !important;
-    left: 0 !important;
+    /* Must be static/relative so the browser can paginate across multiple pages.
+       fixed/absolute would clip content to one viewport height. */
+    position: static !important;
+    top: auto !important;
+    left: auto !important;
     width: 100% !important;
     height: auto !important;
     min-height: 0 !important;
@@ -805,6 +871,27 @@ textarea {
     color: #0f172a !important;
   }
 
+  /* 4c. Contextual formatting — preserve inline styles applied by the
+     FloatingFormatToolbar and TableCellContextMenu at print time.
+     Inline styles have higher specificity than class rules, so these
+     declarations are only needed to prevent any blanket reset from
+     stripping them. We explicitly allow the safe CSS properties. */
+  .studio-doc-page span[style],
+  .studio-doc-page p[style],
+  .studio-doc-page div[style],
+  .studio-doc-page td[style],
+  .studio-doc-page th[style] {
+    /* Inline styles are preserved automatically — this rule exists to
+       document intent and prevent future blanket resets from removing them. */
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  /* Ensure text colour and highlight applied via execCommand survive print */
+  .studio-doc-page font[color] {
+    color: attr(color) !important;
+  }
+
   /* 5. Page breaks */
   .studio-page-break {
     break-after: page !important;
@@ -841,7 +928,39 @@ textarea {
     /* orientation is set dynamically via JS before print — see handlePrint */
   }
 
-  /* 8. Field Docs print view — hide everything except the print overlay */
+  /* 8. PDF page blocks — hide canvas (unreliable in print), show pre-rendered image */
+  .pdf-page-block canvas {
+    display: none !important;
+    visibility: hidden !important;
+  }
+  .pdf-page-block .pdf-print-image {
+    display: block !important;
+    visibility: visible !important;
+    width: 100% !important;
+    height: auto !important;
+    max-width: 100% !important;
+    /* Each imported PDF page starts on its own print page */
+    break-before: page !important;
+    page-break-before: always !important;
+    /* Prevent cropping */
+    object-fit: contain !important;
+    /* No double margins — the block itself has no extra padding */
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+  /* First PDF page in a sequence doesn't need a forced break before it */
+  .pdf-page-block[data-page-index="0"] .pdf-print-image {
+    break-before: auto !important;
+    page-break-before: auto !important;
+  }
+  /* Loading/error states are editor-only — never print */
+  .pdf-page-block [role="status"],
+  .pdf-page-block [role="alert"] {
+    display: none !important;
+    visibility: hidden !important;
+  }
+
+  /* 9. Field Docs print view — hide everything except the print overlay */
   .field-docs-print-view {
     position: fixed !important;
     inset: 0 !important;
@@ -1280,9 +1399,30 @@ textarea {
    Mobile/tablet: no offset — sidebar is a drawer, not a fixed rail.
    Desktop (lg+): top 56px + left = sidebar width.
 */
+/*
+   .lg-portal — applied to the outermost content div of every authenticated
+   desktop page. Offsets content below the fixed topbar and to the right of
+   the fixed sidebar.
+
+   Tablet (md, 768–1023px): TopBar + Dock above, no sidebar rail.
+     top offset = 56px topbar + 56px dock + safe-area-inset-top.
+   Desktop (lg, 1024px+): TopBar above, sidebar rail on the left.
+     top offset = 56px topbar + safe-area-inset-top.
+     left offset = sidebar width.
+*/
+@media (min-width: 768px) and (max-width: 1023px) {
+  .lg-portal {
+    padding-top: calc(112px + env(safe-area-inset-top, 0px)) !important;
+    min-width: 0;
+    max-width: 100vw;
+    overflow-x: hidden;
+    box-sizing: border-box;
+  }
+}
+
 @media (min-width: 1024px) {
   .lg-portal {
-    padding-top: 56px !important;
+    padding-top: calc(56px + env(safe-area-inset-top, 0px)) !important;
     padding-left: var(--iwb-sidebar-w, 240px) !important;
     transition: padding-left 0.2s ease;
     min-width: 0;

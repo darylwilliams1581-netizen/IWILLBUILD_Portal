@@ -54,8 +54,8 @@ export default function SubscribePage() {
   const native = isNative();
   return <>
       <Helmet>
-        <title>Subscribe — IWILLBUILD</title>
-        <meta name="description" content="Choose a plan and start your 30-day free trial of IWILLBUILD construction management software." />
+        <title>Subscribe — IWIllBUIlD</title>
+        <meta name="description" content="Choose a plan and start your 14-day free trial of IWIllBUIlD construction management software." />
         <link rel="canonical" href="https://iwillbuild.com/subscribe" />
         <meta name="robots" content="noindex,nofollow" />
       </Helmet>
@@ -73,7 +73,7 @@ export default function SubscribePage() {
             <div className="w-8 h-8 rounded-xl bg-primary flex items-center justify-center shrink-0">
               <span className="text-white font-black text-xs">IW</span>
             </div>
-            <span className="font-bold text-white text-sm">IWILLBUILD</span>
+            <span className="font-bold text-white text-sm">IWIllBUIlD</span>
           </div>
         </div>
 
@@ -83,7 +83,7 @@ export default function SubscribePage() {
             Start your free trial
           </h1>
           <p className="text-sm text-white/50 mt-2 leading-relaxed">
-            30 days free. No credit card required.
+            14 days free. No credit card required.
             <br />
             Cancel any time.
           </p>
@@ -142,7 +142,7 @@ export default function SubscribePage() {
         paddingBottom: native ? 'max(env(safe-area-inset-bottom), 32px)' : undefined
       }}>
           <p className="text-white/30 text-xs">
-            All plans include a 30-day free trial. No credit card required.
+            All plans include a 14-day free trial. No credit card required.
           </p>
           <p className="text-white/30 text-xs">
             Already have an account?{' '}

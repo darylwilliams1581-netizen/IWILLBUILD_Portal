@@ -20,7 +20,7 @@
 import { randomUUID, createHmac, createHash } from 'node:crypto';
 import { Readable } from 'node:stream';
 import type { StorageProvider, SaveFileInput, SaveFileResult, GetFileResult } from './types.js';
-import { getSecret } from '#airo/secrets';
+import { loadR2Config, redactStorageUrl } from '../r2Config.js';
 
 // ── AWS SDK lazy imports — ONLY used for GET/DELETE/signed URLs, never for PUT ──
 // These are intentionally NOT imported at module scope so Vite SSR does not
@@ -44,53 +44,67 @@ let _client: any | null = null;
 async function getClient() {
   if (_client) return _client;
 
-  const accountId = getSecret('R2_ACCOUNT_ID') || process.env.R2_ACCOUNT_ID;
-  const accessKeyId = getSecret('R2_ACCESS_KEY_ID') || process.env.R2_ACCESS_KEY_ID;
-  const secretAccessKey = getSecret('R2_SECRET_ACCESS_KEY') || process.env.R2_SECRET_ACCESS_KEY;
-
-  if (!accountId || !accessKeyId || !secretAccessKey) {
-    throw new Error(
-      '[r2Provider] Missing R2 credentials. Set R2_ACCOUNT_ID, R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY in Secrets.'
-    );
-  }
+  const cfg = loadR2Config(); // throws with sanitized error if any secret is absent
 
   const { S3Client } = await getS3Lazy();
-  _client = new S3Client({
+  // Do NOT cache yet — only cache after successful construction.
+  // This ensures credential rotation (CP10B) takes effect on the next call
+  // rather than being stuck with a stale singleton.
+  const client = new S3Client({
     region: 'auto',
-    endpoint: `https://${accountId}.r2.cloudflarestorage.com`,
-    credentials: { accessKeyId, secretAccessKey },
+    endpoint: `https://${cfg.accountId}.r2.cloudflarestorage.com`,
+    credentials: { accessKeyId: cfg.accessKeyId, secretAccessKey: cfg.secretAccessKey },
     forcePathStyle: false, // virtual-hosted style — required by R2
+    requestHandler: {
+      requestTimeout: 30_000, // 30 s per SDK request
+    },
   });
+  _client = client;
 
   return _client;
 }
 
 function getBucket(): string {
-  const bucket = getSecret('R2_BUCKET') || process.env.R2_BUCKET;
-  if (!bucket) throw new Error('[r2Provider] R2_BUCKET env var is not set.');
-  return bucket;
+  const cfg = loadR2Config();
+  return cfg.physicalBucket;
 }
 
-function getAccountId(): string {
-  const id = getSecret('R2_ACCOUNT_ID') || process.env.R2_ACCOUNT_ID;
-  if (!id) throw new Error('[r2Provider] R2_ACCOUNT_ID env var is not set.');
-  return id;
+/**
+ * Resets the S3 client singleton so the next call to getClient() re-reads
+ * credentials from secrets. Call this after a credential rotation (e.g. CP10B)
+ * or after receiving an auth error from R2 (InvalidAccessKeyId, AccessDenied).
+ */
+export function resetR2Client(): void {
+  _client = null;
 }
 
-function getAccessKey(): string {
-  const k = getSecret('R2_ACCESS_KEY_ID') || process.env.R2_ACCESS_KEY_ID;
-  if (!k) throw new Error('[r2Provider] R2_ACCESS_KEY_ID env var is not set.');
-  return k;
-}
-
-function getSecretKey(): string {
-  const k = getSecret('R2_SECRET_ACCESS_KEY') || process.env.R2_SECRET_ACCESS_KEY;
-  if (!k) throw new Error('[r2Provider] R2_SECRET_ACCESS_KEY env var is not set.');
-  return k;
-}
-
-/** Object key stored in the DB — includes the logical bucket as a prefix */
+/**
+ * Resolve the final R2 object key from a (bucket, storageKey) pair.
+ *
+ * CP10A3 — KEY COMPOSITION RULE
+ * ─────────────────────────────
+ * New-format keys (built by buildObjectKey) already include the logical
+ * namespace as their first segment:
+ *   job-photos/companies/42/job-photos/uuid/photo.jpg
+ *
+ * Legacy keys do NOT start with a known namespace:
+ *   uuid.jpg                          (old job photo)
+ *   42/uuid.jpg                       (old company file)
+ *   sds/uuid.pdf                      (old SDS)
+ *   electrical-tests/uuid.jpg         (old electrical test)
+ *   dazza-sources/userId/uuid-name    (dazza — already prefixed)
+ *
+ * Rule: if storageKey already starts with "{bucket}/", the bucket prefix is
+ * already present — do NOT prepend it again.  Otherwise prepend bucket.
+ *
+ * This prevents the double-prefix bug:
+ *   WRONG:  job-photos/job-photos/companies/42/.../photo.jpg
+ *   RIGHT:  job-photos/companies/42/.../photo.jpg
+ */
 function objectKey(bucket: string, storageKey: string): string {
+  // New-format: storageKey starts with the namespace — use as-is
+  if (storageKey.startsWith(`${bucket}/`)) return storageKey;
+  // Legacy: prepend the bucket as a namespace prefix
   return `${bucket}/${storageKey}`;
 }
 
@@ -211,15 +225,18 @@ async function putObjectDirect(opts: {
     fetchHeaders[k] = v;
   }
 
-  console.log(`[r2Provider] PUT ${url} size=${body.length} contentType=${contentType}`);
+  // Log path only — never log the full URL (contains accountId in the host)
+  console.log(`[r2Provider] PUT /${encodedKey} size=${body.length} contentType=${contentType}`);
 
+  // Node 18+ fetch accepts Uint8Array as BodyInit; Buffer is a Uint8Array subclass
+  // so this transmits identical bytes without requiring a type suppression comment.
   const response = await fetch(url, {
     method: 'PUT',
     headers: fetchHeaders,
-    body,
-    // @ts-expect-error — Node 18+ fetch accepts Buffer as body
+    body: body as Uint8Array,
     duplex: 'half',
-  });
+    signal: AbortSignal.timeout(60_000), // 60 s upload timeout
+  } as RequestInit & { duplex: string });
 
   if (!response.ok) {
     const text = await response.text().catch(() => '');
@@ -234,10 +251,7 @@ export const r2Provider: StorageProvider = {
   supportsSignedUrls: true,
 
   async saveFile(input: SaveFileInput): Promise<SaveFileResult> {
-    const accountId    = getAccountId();
-    const accessKeyId  = getAccessKey();
-    const secretKey    = getSecretKey();
-    const r2Bucket     = getBucket();
+    const cfg = loadR2Config(); // fails closed if any secret is absent
 
     const ext        = extFromMime(input.mimeType);
     const storageKey = input.storageKey ?? `${randomUUID()}.${ext}`;
@@ -246,26 +260,31 @@ export const r2Provider: StorageProvider = {
     // Ensure a true Node.js Buffer regardless of what Jimp / busboy returns
     const body = Buffer.isBuffer(input.buffer) ? input.buffer : Buffer.from(input.buffer);
 
+    // Use `attachment` disposition for documents; `inline` only for images
+    const isImage = input.mimeType.startsWith('image/');
+    const disposition = isImage
+      ? `inline; filename="${encodeURIComponent(input.originalName)}"`
+      : `attachment; filename="${encodeURIComponent(input.originalName)}"`;
+
     await putObjectDirect({
-      accountId,
-      accessKeyId,
-      secretAccessKey: secretKey,
-      r2Bucket,
+      accountId:       cfg.accountId,
+      accessKeyId:     cfg.accessKeyId,
+      secretAccessKey: cfg.secretAccessKey,
+      r2Bucket:        cfg.physicalBucket,
       key,
       body,
       contentType: input.mimeType,
-      contentDisposition: `inline; filename="${encodeURIComponent(input.originalName)}"`,
+      contentDisposition: disposition,
       metadata: {
         originalName: input.originalName,
         bucket: input.bucket,
       },
     });
 
-    const publicBase = (getSecret('R2_PUBLIC_URL') || process.env.R2_PUBLIC_URL)?.replace(/\/$/, '');
     let publicUrl: string;
 
-    if (publicBase) {
-      publicUrl = `${publicBase}/${key}`;
+    if (cfg.publicUrl) {
+      publicUrl = `${cfg.publicUrl}/${key}`;
     } else {
       // Fall back to a signed URL via the SDK (GET — no hash middleware issue)
       const client = await getClient();
@@ -273,7 +292,7 @@ export const r2Provider: StorageProvider = {
       const { getSignedUrl: awsGetSignedUrl } = await getPresignerLazy();
       publicUrl = await awsGetSignedUrl(
         client,
-        new GetObjectCommand({ Bucket: r2Bucket, Key: key }),
+        new GetObjectCommand({ Bucket: cfg.physicalBucket, Key: key }),
         { expiresIn: 3600 },
       );
     }
@@ -298,7 +317,7 @@ export const r2Provider: StorageProvider = {
     }));
 
     if (!response.Body) {
-      throw new Error(`[r2Provider] Empty body for key: ${key}`);
+      throw new Error(`[r2Provider] Empty body for key: ${redactStorageUrl(`https://bucket.host/${key}`)}`);
     }
 
     const stream = response.Body as unknown as Readable;
@@ -320,28 +339,179 @@ export const r2Provider: StorageProvider = {
         Bucket: r2Bucket,
         Key: objectKey(bucket, storageKey),
       }));
-    } catch {
-      // Best-effort — already gone is fine
+    } catch (err: unknown) {
+      // Log error category only — never log the key or credentials
+      const category = err instanceof Error ? err.constructor.name : 'UnknownError';
+      console.warn(`[r2Provider] deleteFile best-effort failed: category=${category}`);
     }
   },
 
   async getSignedUrl(storageKey: string, bucket: string, expiresInSeconds = 3600): Promise<string> {
+    const cfg = loadR2Config();
+    if (cfg.publicUrl) return `${cfg.publicUrl}/${objectKey(bucket, storageKey)}`;
+
     const client = await getClient();
     const { GetObjectCommand } = await getS3Lazy();
     const { getSignedUrl: awsGetSignedUrl } = await getPresignerLazy();
-    const r2Bucket = getBucket();
     const key = objectKey(bucket, storageKey);
-
-    const publicBase = (getSecret('R2_PUBLIC_URL') || process.env.R2_PUBLIC_URL)?.replace(/\/$/, '');
-    if (publicBase) return `${publicBase}/${key}`;
 
     return awsGetSignedUrl(
       client,
-      new GetObjectCommand({ Bucket: r2Bucket, Key: key }),
+      new GetObjectCommand({ Bucket: cfg.physicalBucket, Key: key }),
       { expiresIn: expiresInSeconds },
     );
   },
 };
+
+// ── Scan-scoped read/list methods (CP12B3 — Image Safeguard scanner) ──────────
+//
+// These are the ONLY R2 operations available to the scanner.
+// They are intentionally narrow:
+//   - scanGetObject:    GetObjectCommand only — no writes.
+//   - scanListObjects:  ListObjectsV2Command only — no writes.
+//
+// Both reuse the existing getClient() singleton (same credentials, same config).
+// No PutObject, DeleteObject, CopyObject, CreateMultipartUpload, or signed URLs.
+//
+// The caller (r2ImageFetcher / r2Scanner) is responsible for:
+//   - Enforcing SCAN_PREFIX before calling scanGetObject.
+//   - Enforcing MAX_BATCH_SIZE before calling scanListObjects.
+//   - Validating magic bytes and structure on the returned buffer.
+
+export interface ScanGetObjectResult {
+  /** Validated image buffer — never exceeds maxBytes. */
+  buffer: Buffer;
+  /** Content-Length from R2 response (0 if absent). */
+  contentLength: number;
+}
+
+/**
+ * Fetches a single R2 object for scanning.
+ *
+ * SECURITY:
+ *  - GetObjectCommand only — no writes.
+ *  - Caller MUST have validated the key against SCAN_PREFIX before calling.
+ *  - Returns raw bytes only — no key, no signed URL, no credentials.
+ *  - Enforces maxBytes to prevent buffer exhaustion.
+ *
+ * @throws on R2 error or if the object exceeds maxBytes.
+ */
+export async function scanGetObject(
+  key: string,
+  maxBytes: number,
+): Promise<ScanGetObjectResult> {
+  const client = await getClient();
+  const { GetObjectCommand } = await getS3Lazy();
+  const r2Bucket = getBucket();
+
+  const response = await client.send(new GetObjectCommand({
+    Bucket: r2Bucket,
+    Key: key,
+  }));
+
+  const contentLength = response.ContentLength ?? 0;
+  if (contentLength > maxBytes) {
+    throw Object.assign(new Error('oversized'), { code: 'oversized' });
+  }
+
+  if (!response.Body) {
+    throw new Error('empty_body');
+  }
+
+  const stream = response.Body as unknown as Readable;
+  const chunks: Buffer[] = [];
+  let totalBytes = 0;
+
+  await new Promise<void>((resolve, reject) => {
+    stream.on('data', (chunk: Buffer) => {
+      totalBytes += chunk.length;
+      if (totalBytes > maxBytes) {
+        stream.destroy();
+        reject(Object.assign(new Error('oversized'), { code: 'oversized' }));
+        return;
+      }
+      chunks.push(chunk);
+    });
+    stream.on('end', resolve);
+    stream.on('error', reject);
+  });
+
+  return {
+    buffer: Buffer.concat(chunks),
+    contentLength,
+  };
+}
+
+export interface ScanListEntry {
+  key: string;
+  lastModified: Date | null;
+}
+
+/**
+ * Lists R2 objects under a prefix for scanning.
+ *
+ * SECURITY:
+ *  - ListObjectsV2Command only — no writes.
+ *  - Prefix is supplied by the caller and MUST be the hardcoded SCAN_PREFIX.
+ *  - Returns only key + lastModified — no signed URLs, no credentials.
+ *  - Stops after maxKeys total entries across all pages.
+ *
+ * @throws on R2 error.
+ */
+export async function scanListObjects(
+  prefix: string,
+  maxKeys: number,
+): Promise<ScanListEntry[]> {
+  const client = await getClient();
+  const { ListObjectsV2Command } = await getS3Lazy();
+  const r2Bucket = getBucket();
+
+  const entries: ScanListEntry[] = [];
+  let continuationToken: string | undefined;
+
+  do {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    let response: any;
+    try {
+      response = await client.send(new ListObjectsV2Command({
+        Bucket: r2Bucket,
+        Prefix: prefix,
+        MaxKeys: Math.min(1000, maxKeys - entries.length + 1000), // over-fetch per page, cap total below
+        ContinuationToken: continuationToken,
+      }));
+    } catch (listErr: unknown) {
+      // On auth errors, reset the singleton so the next scan re-reads credentials.
+      const errName = listErr instanceof Error ? listErr.name : '';
+      const errMsg  = listErr instanceof Error ? listErr.message : String(listErr);
+      const isAuthError =
+        errName === 'InvalidAccessKeyId' ||
+        errName === 'AccessDenied' ||
+        errName === 'SignatureDoesNotMatch' ||
+        /InvalidAccessKeyId|AccessDenied|SignatureDoesNotMatch/i.test(errMsg);
+      if (isAuthError) {
+        resetR2Client();
+        console.error('[r2Provider] scanListObjects auth error — client reset for next call:', errName);
+      } else {
+        console.error('[r2Provider] scanListObjects error:', errName, errMsg.slice(0, 200));
+      }
+      throw listErr;
+    }
+
+    const contents: Array<{ Key?: string; LastModified?: Date }> = response.Contents ?? [];
+    for (const obj of contents) {
+      if (!obj.Key) continue;
+      entries.push({
+        key: obj.Key,
+        lastModified: obj.LastModified ? new Date(obj.LastModified) : null,
+      });
+      if (entries.length >= maxKeys) break;
+    }
+
+    continuationToken = response.IsTruncated ? response.NextContinuationToken : undefined;
+  } while (continuationToken && entries.length < maxKeys);
+
+  return entries;
+}
 
 // ── Health check (used by the config API) ─────────────────────────────────────
 
@@ -351,13 +521,13 @@ export const r2Provider: StorageProvider = {
  */
 export async function testR2Connection(): Promise<{ ok: boolean; error?: string }> {
   try {
-    const client = await getClient();
+    const client = await getClient(); // uses loadR2Config() — fails closed
     const { HeadObjectCommand } = await getS3Lazy();
-    const r2Bucket = getBucket();
+    const cfg = loadR2Config();
 
     try {
       await client.send(new HeadObjectCommand({
-        Bucket: r2Bucket,
+        Bucket: cfg.physicalBucket,
         Key: '__iwillbuild_connection_test__',
       }));
     } catch (err: unknown) {
@@ -371,7 +541,12 @@ export async function testR2Connection(): Promise<{ ok: boolean; error?: string 
 
     return { ok: true };
   } catch (err: unknown) {
-    const msg = err instanceof Error ? err.message : String(err);
-    return { ok: false, error: msg };
+    // Return a sanitized error category — never raw message (may contain credentials)
+    const category = err instanceof Error ? err.constructor.name : 'UnknownError';
+    const isConfig = err instanceof Error && err.message.includes('r2Config');
+    return {
+      ok: false,
+      error: isConfig ? 'missing_credentials' : `connectivity_error:${category}`,
+    };
   }
 }

@@ -220,7 +220,7 @@ export default function AppPermissionsTab() {
           description="Used when you upload photos from your library, or when the camera saves a backup copy to your camera roll."
           status={perms.photos}
           showSettingsLink
-          limitedNote="You've allowed access to selected photos only (iOS Limited Access). The photo picker still works, but you can only see the photos you explicitly allowed. To allow all photos, open iPhone Settings → IWILLBUILD → Photos → All Photos."
+          limitedNote="You've allowed access to selected photos only (iOS Limited Access). The photo picker still works, but you can only see the photos you explicitly allowed. To allow all photos, open iPhone Settings → IWIllBUIlD → Photos → All Photos."
         />
 
         <PermRow
@@ -260,7 +260,7 @@ export default function AppPermissionsTab() {
         <div className="bg-slate-50 rounded-xl border border-slate-200 px-4 py-3">
           <p className="text-xs text-slate-500 leading-relaxed">
             <span className="font-semibold text-slate-600">Changed your mind?</span>{' '}
-            Open iPhone Settings → IWILLBUILD to update any permission at any time.
+            Open iPhone Settings → IWIllBUIlD to update any permission at any time.
           </p>
         </div>
       )}

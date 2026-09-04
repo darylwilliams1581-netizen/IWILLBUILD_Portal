@@ -19,14 +19,14 @@ export default function JobFilesPage() {
   const { jobId, job, loading, error } = useJobForFeature();
 
   function handleChangeJob() {
-    navigate('/?picker=files');
+    navigate('/home?picker=files');
   }
 
   return (
     <div className="portal-page">
       <Helmet>
-        <title>{job ? `Files — ${job.name}` : 'Files'} — IWILLBUILD</title>
-        <meta name="description" content="Manage documents and files for this job in IWILLBUILD." />
+        <title>{job ? `Files — ${job.name}` : 'Files'} — IWIllBUIlD</title>
+        <meta name="description" content="Manage documents and files for this job in IWIllBUIlD." />
         <meta name="robots" content="noindex" />
         {job && <link rel="canonical" href={`https://iwillbuild.com/jobs/${job.id}/files`} />}
       </Helmet>
@@ -51,7 +51,7 @@ export default function JobFilesPage() {
             featureLabel={FEATURE.label}
             jobName={job.name}
             jobNumber={job.jobNumber}
-            backTo="/"
+            backTo="/home"
             onChangeJob={handleChangeJob}
           >
             <div className="p-4">

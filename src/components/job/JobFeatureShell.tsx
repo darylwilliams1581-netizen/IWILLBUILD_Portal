@@ -80,7 +80,7 @@ export default function JobFeatureShell({
 
   // Derive a display back label for the header
   const backLabel = isSafeBackPath(backTo)
-    ? backTo === '/' ? 'Home' : 'Back'
+    ? (backTo === '/' || backTo === '/home') ? 'Home' : 'Back'
     : 'Back';
 
   return (

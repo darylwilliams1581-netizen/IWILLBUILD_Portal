@@ -20,6 +20,23 @@
 // Default export — satisfies `import X from 'pkg'`
 export default {};
 
+// ── jsdom ─────────────────────────────────────────────────────────────────────
+// jsdom is NOT stubbed during the SSR build — the real jsdom is bundled into
+// server.bundle.mjs so sanitiseHtmlServer works in production. This stub is
+// only reached if client-side code somehow imports jsdom (which it must not).
+// It throws a clear error rather than silently returning unsanitised content
+// (fail-closed per security policy).
+export class JSDOM {
+  constructor() {
+    throw new Error(
+      '[JSDOM stub] jsdom is a server-only module. ' +
+      'It must not be imported in browser or client-side code. ' +
+      'If you see this error, a server-only import has leaked into the client bundle.',
+    );
+  }
+  window = { document: null, Node: null };
+}
+
 // ── react-pdf / pdfjs-dist ────────────────────────────────────────────────
 export const Document = null;
 export const Page = null;

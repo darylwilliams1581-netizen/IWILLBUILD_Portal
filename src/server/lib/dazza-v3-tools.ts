@@ -454,6 +454,9 @@ export const V3_TOOL_DEFINITIONS = [
     },
   },
 ] as const;
+// Note: v3_image_safeguard_status, v3_image_safeguard_trigger_run, and
+// v3_image_safeguard_run_detail have been removed. The in-app scanner is
+// decommissioned. Backend scans run in a separate Cloudflare service.
 
 export type V3ToolName = typeof V3_TOOL_DEFINITIONS[number]['function']['name'];
 
@@ -534,6 +537,7 @@ async function executeV3ToolInner(
     case 'find_database_definition': return toolFindDatabaseDefinition(args);
     case 'get_anatomy_manifest':    return toolGetAnatomyManifest(args);
     case 'compare_anatomy_snapshots': return toolCompareAnatomySnapshots(args);
+    // CP12B image safeguard tools removed — in-app scanner decommissioned
     default:
       return err(`Unknown tool: ${name}`);
   }
@@ -1308,3 +1312,8 @@ async function toolCompareAnatomySnapshots(args: Record<string, unknown>): Promi
     note: 'Comparison based on file SHA-256 checksums from indexed content.',
   });
 }
+
+// ── CP12B tool implementations removed ───────────────────────────────────────
+// toolImageSafeguardStatus, toolImageSafeguardTriggerRun, and
+// toolImageSafeguardRunDetail have been removed. The in-app scanner is
+// decommissioned. Backend scans run in a separate Cloudflare service.

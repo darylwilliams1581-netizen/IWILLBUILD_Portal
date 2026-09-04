@@ -19,6 +19,7 @@ import type {
   LogicRule,
   LogicRuleValidation,
   DocumentKind,
+  AppliedWidgetMeta,
 } from './types';
 import { DEFAULT_PAGE_LAYOUT, DEFAULT_THEME, DEFAULT_DOC_KIND_SETTINGS } from './types';
 
@@ -52,6 +53,11 @@ interface DocumentStore {
   sourceJobId: number | null;
   pageLayout: PageLayout;
   theme: DocumentTheme;
+  /**
+   * Metadata for widgets applied via the Apply Widget panel.
+   * Stored inside builder_json so no schema change is needed.
+   */
+  appliedWidgets: AppliedWidgetMeta[];
 
   // ── Doc/Form kind settings ─────────────────────────────────────────────────
   docKind: DocumentKind;
@@ -82,6 +88,8 @@ interface DocumentStore {
   setTheme: (theme: Partial<DocumentTheme>) => void;
   setDocKind: (kind: DocumentKind) => void;
   setKindSettings: (patch: Partial<Pick<DocumentStore, 'requiresAcknowledgement' | 'acknowledgementLabel' | 'acknowledgementText' | 'submitLabel' | 'requiresSignature'>>) => void;
+  /** Record that a widget was applied (or updated). Upserts by widgetId. */
+  recordWidgetApplied: (meta: AppliedWidgetMeta) => void;
 
   // ── Actions: mode ─────────────────────────────────────────────────────────
   setMode: (mode: BuilderMode) => void;
@@ -134,6 +142,7 @@ export const useDocumentStore = create<DocumentStore>((set, get) => ({
   sourceJobId: null,
   pageLayout: DEFAULT_PAGE_LAYOUT,
   theme: DEFAULT_THEME,
+  appliedWidgets: [],
   // Doc/Form kind defaults
   docKind: DEFAULT_DOC_KIND_SETTINGS.docKind,
   requiresAcknowledgement: DEFAULT_DOC_KIND_SETTINGS.requiresAcknowledgement,
@@ -154,7 +163,11 @@ export const useDocumentStore = create<DocumentStore>((set, get) => ({
 
   setTemplateName: (name) => set({ templateName: name, isDirty: true }),
   setTemplateType: (type) => set({ templateType: type, isDirty: true }),
-  setPageLayout: (layout) =>
+
+  recordWidgetApplied: (meta) => set((s) => {
+    const existing = s.appliedWidgets.filter((w) => w.widgetId !== meta.widgetId);
+    return { appliedWidgets: [...existing, meta], isDirty: true };
+  }),  setPageLayout: (layout) =>
     set((s) => ({ pageLayout: { ...s.pageLayout, ...layout }, isDirty: true })),
   setTheme: (theme) =>
     set((s) => ({ theme: { ...s.theme, ...theme }, isDirty: true })),
@@ -404,6 +417,7 @@ export const useDocumentStore = create<DocumentStore>((set, get) => ({
       sourceJobId: template.sourceJobId ?? null,
       pageLayout: template.pageLayout ?? DEFAULT_PAGE_LAYOUT,
       theme: template.theme ?? DEFAULT_THEME,
+      appliedWidgets: template.appliedWidgets ?? [],
       blocks: template.blocks ?? [],
       logicRules: template.logicRules ?? [],
       // Kind settings — fall back to defaults if not stored yet
@@ -427,6 +441,7 @@ export const useDocumentStore = create<DocumentStore>((set, get) => ({
       templateName: name,
       templateType: type ?? 'document',
       sourceJobId: null,
+      appliedWidgets: [],
       pageLayout: DEFAULT_PAGE_LAYOUT,
       theme: DEFAULT_THEME,
       blocks: [],
@@ -461,6 +476,7 @@ export const useDocumentStore = create<DocumentStore>((set, get) => ({
       systemFields: extractSystemFieldKeys(s.blocks),
       sourceAttachments: [],
       isActive: true,
+      appliedWidgets: s.appliedWidgets,
       // Kind settings
       docKind: s.docKind,
       requiresAcknowledgement: s.requiresAcknowledgement,

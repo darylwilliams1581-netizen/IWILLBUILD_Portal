@@ -17,6 +17,7 @@ import { DelayModal, type DelayEntry } from '@/components/job/JobDelays';
 import MobileOverflowMenu from '@/components/MobileOverflowMenu';
 import JobPickerSheet from '@/components/JobPickerSheet';
 import { cn } from '@/lib/utils';
+import { goBack } from '@/lib/navigation';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -962,7 +963,7 @@ export default function JobSitePrestartPage() {
             }, {
               label: 'Home',
               icon: <ChevronLeft size={15} />,
-              onSelect: () => navigate('/home'),
+              onSelect: () => goBack(navigate, '/home'),
               dividerAbove: true
             }]} />
               </div>}

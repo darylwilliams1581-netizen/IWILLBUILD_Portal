@@ -174,9 +174,9 @@ export function wholeJobZipFilename(job: JobMeta, date: string): string {
   return `${num}${name}_Photos_${date}.zip`;
 }
 
-/** Mixed-selection ZIP filename: IWILLBUILD_Lens_Photos_2026-08-17.zip */
+/** Mixed-selection ZIP filename: IWIllBUIlD_Lens_Photos_2026-08-17.zip */
 export function lensSelectionZipFilename(date: string): string {
-  return `IWILLBUILD_Lens_Photos_${date}.zip`;
+  return `IWIllBUIlD_Lens_Photos_${date}.zip`;
 }
 
 /** ISO date string YYYY-MM-DD in local time (server uses UTC; close enough) */

@@ -5,13 +5,13 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useSearchParams } from "react-router";
 import { Helmet } from '@dr.pogodin/react-helmet';
-import { Layers, Plus, Lock, Copy, Share2, Pencil, PlayCircle, ChevronDown, AlertTriangle, Trash2, X, ShieldCheck, ArrowLeft, FileUp, Library } from 'lucide-react';
+import { Layers, Plus, Lock, Copy, Share2, Pencil, PlayCircle, ChevronDown, AlertTriangle, Trash2, X, ShieldCheck, ArrowLeft, FileUp } from 'lucide-react';
 import DocxImporter from '@/components/DocumentBuilder/DocxImporter';
 import type { DocumentBlock } from '@/components/DocumentBuilder/types';
 import { toast } from 'sonner';
-import ShareLibraryTab from '@/components/studio/ShareLibraryTab';
 import { AnimatePresence } from 'motion/react';
 import { usePermissions } from '@/lib/usePermissions';
+import { goBack } from '@/lib/navigation';
 import DesktopTopBar from '@/components/DesktopTopBar';
 import DesktopDock from '@/components/DesktopDock';
 import PortalSidebar from '@/components/PortalSidebar';
@@ -50,10 +50,6 @@ const STUDIO_TABS = [{
   id: 'safety',
   label: 'Safety',
   icon: ShieldCheck
-}, {
-  id: 'share',
-  label: 'Share',
-  icon: Library
 }] as const;
 type StudioTabId = typeof STUDIO_TABS[number]['id'];
 
@@ -105,8 +101,7 @@ export default function StudioPage() {
 
   // Read tab from ?tab= query param so direct links and sidebar work
   const tabParam = searchParams.get('tab');
-  // Share tab only visible to platform owners (developers)
-  const validTabs: StudioTabId[] = isPlatformOwner ? ['safety', 'share'] : ['safety'];
+  const validTabs: StudioTabId[] = ['safety'];
   const [activeTab, setActiveTab] = useState<StudioTabId>(validTabs.includes(tabParam as StudioTabId) ? tabParam as StudioTabId : 'safety');
   function switchTab(id: StudioTabId) {
     setActiveTab(id);
@@ -197,15 +192,15 @@ export default function StudioPage() {
       <DesktopTopBar />
       <DesktopDock />
       <Helmet>
-        <title>Studio — IWILLBUILD</title>
-        <meta name="description" content="IWILLBUILD Studio — build quotes, contracts, safety documents and more." />
+        <title>Studio — IWIllBUIlD</title>
+        <meta name="description" content="IWIllBUIlD Studio — build quotes, contracts, safety documents and more." />
         <link rel="canonical" href="https://iwillbuild.com/studio" />
         <meta name="robots" content="noindex" />
       </Helmet>
 
       {/* ── Sticky header — matches fleet/jobs pattern ── */}
       <header className="sticky top-0 z-30 h-12 bg-white border-b border-border flex items-center px-4 shrink-0 gap-2 safe-top">
-        <button onClick={() => navigate('/home')} className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors shrink-0" aria-label="Back to Home">
+        <button onClick={() => goBack(navigate, '/studio')} className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors shrink-0" aria-label="Back to Home">
           <ArrowLeft size={16} />
           <span className="hidden sm:inline">Home</span>
         </button>
@@ -229,9 +224,7 @@ export default function StudioPage() {
       {/* ── Tab bar ── */}
       <div className="flex-shrink-0 bg-white border-b border-slate-200 px-4 md:px-6 overflow-x-auto">
         <div className="flex gap-0.5 py-2 min-w-max">
-          {STUDIO_TABS.filter(({
-          id
-        }) => id !== 'share' || isPlatformOwner).map(({
+          {STUDIO_TABS.map(({
           id,
           label,
           icon: Icon
@@ -246,16 +239,26 @@ export default function StudioPage() {
       {/* ── Tab content ── */}
       <div className={`flex-1 min-h-0 overflow-hidden`}>
         {activeTab === 'safety' && <SafetyContent />}
-        {activeTab === 'share' && <ShareLibraryTab isPlatformOwner={isPlatformOwner} />}
       </div>
 
       {/* ── Import DOCX/PDF modal ── */}
-      {showImporter && importTemplateId !== null && <DocxImporter templateId={importTemplateId} hasExistingBlocks={false} onClose={() => {
-      setShowImporter(false);
-      setImportTemplateId(null);
-    }} onImported={(blocks, name) => {
-      setShowImporter(false);
-      void handleStudioImported(blocks, name, importTemplateId);
-    }} onSaveFirst={async () => importTemplateId} />}
+      {showImporter && importTemplateId !== null && <DocxImporter
+        templateId={importTemplateId}
+        hasExistingBlocks={false}
+        onClose={() => {
+          setShowImporter(false);
+          setImportTemplateId(null);
+        }}
+        onImported={(blocks, name) => {
+          setShowImporter(false);
+          void handleStudioImported(blocks, name, importTemplateId);
+        }}
+        onOpenInStudio={(result) => {
+          setShowImporter(false);
+          setImportTemplateId(null);
+          navigate(`/studio/builder/${result.id}`);
+        }}
+        onSaveFirst={async () => importTemplateId}
+      />}
     </div>;
 }

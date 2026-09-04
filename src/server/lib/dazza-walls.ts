@@ -381,13 +381,13 @@ export function wall5_checkMissingData(
   const q = question.toLowerCase();
 
   if (/\bjob\b|jobs/.test(q) && ctx.permissions.canJobs && (ctx.jobs?.length ?? 0) === 0) {
-    return `📋 From IWILLBUILD data:\nNo jobs found for **${ctx.companyName}** yet.\n\n📦 Source modules:\nJobs (empty)\n\n📊 Confidence:\nHigh — no records exist.`;
+    return `📋 From IWIllBUIlD data:\nNo jobs found for **${ctx.companyName}** yet.\n\n📦 Source modules:\nJobs (empty)\n\n📊 Confidence:\nHigh — no records exist.`;
   }
   if (/\bfleet\b|vehicle|asset/.test(q) && ctx.permissions.canFleet && (ctx.fleet?.length ?? 0) === 0) {
-    return `📋 From IWILLBUILD data:\nNo fleet assets found for **${ctx.companyName}** yet.\n\n📦 Source modules:\nFleet (empty)\n\n📊 Confidence:\nHigh — no records exist.`;
+    return `📋 From IWIllBUIlD data:\nNo fleet assets found for **${ctx.companyName}** yet.\n\n📦 Source modules:\nFleet (empty)\n\n📊 Confidence:\nHigh — no records exist.`;
   }
   if (/estimate|quote/.test(q) && ctx.permissions.canEstimating && (ctx.estimates?.length ?? 0) === 0) {
-    return `📋 From IWILLBUILD data:\nNo estimates found for **${ctx.companyName}** yet.\n\n📦 Source modules:\nEstimates (empty)\n\n📊 Confidence:\nHigh — no records exist.`;
+    return `📋 From IWIllBUIlD data:\nNo estimates found for **${ctx.companyName}** yet.\n\n📦 Source modules:\nEstimates (empty)\n\n📊 Confidence:\nHigh — no records exist.`;
   }
 
   return null;
@@ -621,7 +621,7 @@ export function wall9_annetteScope(question: string): WallResult {
         message:
           `Annette is an analysis tool — she can identify issues and recommend fixes, ` +
           `but cannot directly create, edit, delete, or sync records. ` +
-          `To act on Annette's recommendations, use the relevant module in IWILLBUILD ` +
+          `To act on Annette's recommendations, use the relevant module in IWIllBUIlD ` +
           `(Jobs, Invoices, Estimates, etc.) and confirm the action there.`,
       };
     }

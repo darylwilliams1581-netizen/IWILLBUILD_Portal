@@ -56,13 +56,13 @@ export default function JobDelaysPage() {
   };
 
   function handleChangeJob() {
-    navigate('/?picker=delays');
+    navigate('/home?picker=delays');
   }
 
   return (
     <div className="portal-page">
       <Helmet>
-        <title>{job ? `Delays — ${job.name}` : 'Job Delays'} — IWILLBUILD</title>
+        <title>{job ? `Delays — ${job.name}` : 'Job Delays'} — IWIllBUIlD</title>
         <meta name="description" content="View and manage delay entries for this job." />
         <meta name="robots" content="noindex" />
         {id && <link rel="canonical" href={`https://iwillbuild.com/jobs/${id}/delays`} />}
@@ -81,7 +81,7 @@ export default function JobDelaysPage() {
             featureLabel="Delays"
             jobName={job?.name ?? 'Job'}
             jobNumber={job?.jobNumber}
-            backTo="/"
+            backTo="/home"
             onChangeJob={handleChangeJob}
           >
             <div className="p-4 pb-6 max-w-3xl mx-auto w-full">

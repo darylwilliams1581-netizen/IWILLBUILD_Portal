@@ -21,6 +21,7 @@ import { uploadMedia } from '../../lib/uploadService.js';
 import type { CompatibilityContext } from '../../lib/uploadService.js';
 import type { ResultSetHeader } from 'mysql2';
 import { randomUUID } from 'node:crypto';
+import { buildObjectKey } from '../../storage/r2Config.js';
 
 const PDF_MIME = 'application/pdf';
 
@@ -70,7 +71,13 @@ export default async function handler(req: Request, res: Response) {
     };
 
     const displayTitle = (title?.trim() || file.originalname.replace(/\.pdf$/i, '')).slice(0, 255);
-    const storageKey = `sds/${randomUUID()}.pdf`;
+    const storageKey = buildObjectKey({
+      logicalNamespace: 'company-files',
+      companyId: profile.companyId,
+      category: 'sds-register',
+      uuid: randomUUID(),
+      originalName: file.originalname || 'sds.pdf',
+    });
 
     let insertedId = 0;
 

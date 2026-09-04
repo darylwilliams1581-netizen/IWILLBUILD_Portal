@@ -25,3 +25,18 @@ declare module 'virtual:format-overrides' {
   const bundle: FormatOverrideBundle
   export default bundle
 }
+
+declare module 'mammoth' {
+  interface MammothResult {
+    value: string;
+    messages: Array<{ type: string; message: string }>;
+  }
+  interface MammothOptions {
+    buffer?: Buffer;
+    path?: string;
+  }
+  function extractRawText(options: MammothOptions): Promise<MammothResult>;
+  function convertToHtml(options: MammothOptions): Promise<MammothResult>;
+  export { extractRawText, convertToHtml };
+  export default { extractRawText, convertToHtml };
+}

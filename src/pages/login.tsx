@@ -1,12 +1,12 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Helmet } from '@dr.pogodin/react-helmet';
 import { Link, useNavigate, useLocation } from "react-router";
 import { Eye, EyeOff, ArrowRight, Lock, Mail, AlertCircle, Smartphone, KeyRound, MailWarning, RefreshCw, Users, CheckCircle2, ShieldCheck, ExternalLink, MessageSquare } from 'lucide-react';
-import { signIn, useSession } from '@/lib/auth/auth-client';
+import { useSession, authClient, signIn, consumeTwoFactorRedirect } from '@/lib/auth/auth-client';
 import { InputOTP, InputOTPGroup, InputOTPSlot } from '@/components/ui/input-otp';
 import ForcedPasswordChangeModal from '@/components/auth/ForcedPasswordChangeModal';
-import { stampSessionExpiry } from '@/lib/auth/session-timeout';
+
 import { isNativeApp, WEB_PORTAL_URL, openExternalUrl } from '@/lib/native-routing';
 
 // ── Safe auth logger ──────────────────────────────────────────────────────────
@@ -53,11 +53,18 @@ export default function LoginPage() {
 
   // 2FA challenge state
   const [needs2FA, setNeeds2FA] = useState(false);
+  // In-memory challenge token for SMS 2FA login flow (never persisted to storage)
+  const smsChallengeTokenRef = useRef<string | null>(null);
   const [tfa2Method, setTfa2Method] = useState<'totp' | 'sms' | null>(null);
   const [tfaToken, setTfaToken] = useState('');
   const [tfaLoading, setTfaLoading] = useState(false);
   const [smsMaskedPhone, setSmsMaskedPhone] = useState('');
   const [smsResendState, setSmsResendState] = useState<'idle' | 'sending' | 'sent'>('idle');
+  // Backup-code mode — separate input so the user can switch without clearing the TOTP field
+  const [useBackupCode, setUseBackupCode] = useState(false);
+  const [backupCodeInput, setBackupCodeInput] = useState('');
+  // Guard against duplicate submissions (InputOTP auto-submits on 6th digit)
+  const submittingRef = useRef(false);
 
   // Unverified email state — shown instead of generic error
   const [unverified, setUnverified] = useState(false);
@@ -190,16 +197,107 @@ export default function LoginPage() {
       emailDomain: email.split('@')[1] ?? 'unknown'
     });
     try {
-      const result = await signIn.email({
-        email,
-        password
-      });
-      if (result.error) {
-        const msg = result.error.message || '';
-        authLog('error', {
-          errorMsg: msg.slice(0, 120),
-          status: result.error.status
-        });
+      // Use the BetterAuth SDK signIn.email() so the official twoFactor plugin
+      // can intercept the response. The twoFactorClient plugin's onTwoFactorRedirect
+      // callback fires when the server returns twoFactorRedirect:true, storing the
+      // redirect context in the module-level handoff variable for us to read below.
+      // signIn.email — the smsChallengeCapture fetchPlugin in auth-client.tsx
+      // captures smsChallengeToken from context.data before the twoFactorClient
+      // plugin fires, so consumeTwoFactorRedirect() returns it alongside methods.
+      const result = await signIn.email({ email, password });
+
+      // The BetterAuth SDK returns { data, error }. When the server intercept
+      // fires (SMS 2FA), the body is { twoFactorRedirect:true, twoFactorMethods,
+      // smsChallengeToken }. The SDK treats HTTP 200 as success so data contains
+      // the full body. We also check result itself (cast) as a belt-and-braces
+      // fallback in case a future SDK version reshapes the return.
+      const rawData = (result?.data ?? result) as Record<string, unknown> | undefined | null;
+      const rawDataSafe = rawData && typeof rawData === 'object' ? rawData : null;
+
+      // Stash the challenge token from the raw response — this is the most
+      // reliable path because it doesn't depend on the fetchPlugin hook order.
+      if (!smsChallengeTokenRef.current) {
+        const smsToken = rawDataSafe?.smsChallengeToken as string | undefined;
+        if (smsToken) smsChallengeTokenRef.current = smsToken;
+      }
+
+      // Primary path: consumeTwoFactorRedirect() returns the context set by the
+      // smsChallengeCapture + twoFactorClient fetchPlugins in auth-client.tsx.
+      // Fallback: read twoFactorRedirect directly from the raw response body.
+      const twoFaRedirect = consumeTwoFactorRedirect() ?? (() => {
+        if (rawDataSafe?.twoFactorRedirect === true) {
+          const methods = (rawDataSafe.twoFactorMethods as string[] | undefined) ?? [];
+          return { needs2FA: true as const, methods };
+        }
+        return null;
+      })();
+
+      // Diagnostic — safe fields only, no credentials
+      console.info(JSON.stringify({
+        event: 'login.2fa.trace',
+        hasRawData: !!rawDataSafe,
+        rawDataKeys: rawDataSafe ? Object.keys(rawDataSafe) : [],
+        rawTwoFactorRedirect: rawDataSafe?.twoFactorRedirect,
+        rawTwoFactorMethods: rawDataSafe?.twoFactorMethods,
+        hasSmsTokenInRaw: !!(rawDataSafe?.smsChallengeToken),
+        twoFaRedirectNull: twoFaRedirect === null,
+        twoFaRedirectMethods: twoFaRedirect?.methods ?? null,
+        tokenInRef: !!smsChallengeTokenRef.current,
+        ts: Date.now(),
+      }));
+
+      // Extract smsChallengeToken from the redirect context (primary path)
+      if (twoFaRedirect && 'smsChallengeToken' in twoFaRedirect) {
+        const t = (twoFaRedirect as { smsChallengeToken?: string }).smsChallengeToken;
+        if (t) smsChallengeTokenRef.current = t;
+      }
+      // Belt-and-braces: also pull directly from raw body if ref still empty
+      if (!smsChallengeTokenRef.current) {
+        const t = rawDataSafe?.smsChallengeToken as string | undefined;
+        if (t) smsChallengeTokenRef.current = t;
+      }
+
+      if (twoFaRedirect) {
+        const methods = twoFaRedirect.methods ?? [];
+        // Determine method: prefer totp if available, else sms
+        const method: 'totp' | 'sms' = methods.includes('totp') ? 'totp' : 'sms';
+        authLog('2fa_required', { method, methods });
+        setLoading(false);
+        setTfa2Method(method);
+        if (method === 'sms') {
+          setSmsMaskedPhone('');
+          setSmsResendState('sending');
+          try {
+            const sendRes = await fetch('/api/me/2fa/sms/send', {
+              method: 'POST',
+              credentials: 'include',
+              headers: smsChallengeTokenRef.current
+                ? { 'X-SMS-Challenge-Token': smsChallengeTokenRef.current }
+                : {},
+            });
+            const sendData = (await sendRes.json()) as { ok?: boolean; maskedPhone?: string; error?: string; errorCode?: string };
+            if (sendData.maskedPhone) setSmsMaskedPhone(sendData.maskedPhone);
+            if (!sendRes.ok || !sendData.ok) {
+              // 21608 compliance error — show friendly message, leave resend available
+              setSmsResendState('idle');
+              setError(sendData.error ?? 'Failed to send SMS. Please try again.');
+            } else {
+              setSmsResendState('sent');
+              // Reset after 30 s so the user can resend if the code doesn't arrive
+              setTimeout(() => setSmsResendState('idle'), 30_000);
+            }
+          } catch {
+            setSmsResendState('idle');
+          }
+        }
+        setNeeds2FA(true);
+        return;
+      }
+
+      // ── Standard error handling ────────────────────────────────────────────
+      if (result?.error) {
+        const msg = result.error.message ?? '';
+        authLog('error', { errorMsg: msg.slice(0, 120) });
         if (isVerificationError(msg)) {
           setUnverified(true);
         } else {
@@ -208,64 +306,25 @@ export default function LoginPage() {
         setLoading(false);
         return;
       }
-      // Login succeeded — check if the user is unverified
-      const userData = result.data?.user as {
-        emailVerified?: boolean;
-        id?: string;
-      } | undefined;
-      const dataAny = result.data as Record<string, unknown> | undefined;
-      authLog('success', {
-        emailVerified: userData?.emailVerified,
-        userId: userData?.id
-      });
+
+      // ── Login succeeded ────────────────────────────────────────────────────
+      const userData = result?.data?.user as { emailVerified?: boolean; id?: string } | undefined;
+      authLog('success', { emailVerified: userData?.emailVerified, userId: userData?.id });
+
       if (userData && userData.emailVerified === false) {
         setUnverified(true);
         setLoading(false);
         return;
       }
-      // Check if forced password change is required
-      if (dataAny?.mustChangePassword) {
+
+      // Check if forced password change is required (server injects mustChangePassword)
+      const rawBody = result?.data as Record<string, unknown> | undefined;
+      if (rawBody?.mustChangePassword) {
         setLoading(false);
         setMustChangePassword(true);
         return;
       }
-      // ── Stamp session expiry (14h / 06:00 AEST cutoff) ───────────────────
-      stampSessionExpiry();
-      // Check if 2FA is required
-      const tfaRes = await fetch('/api/me/2fa/status', {
-        credentials: 'include'
-      });
-      const tfaData = (await tfaRes.json()) as {
-        enabled?: boolean;
-        method?: 'totp' | 'sms' | null;
-        maskedPhone?: string;
-      };
-      if (tfaData.enabled) {
-        setLoading(false);
-        setTfa2Method(tfaData.method ?? 'totp');
-        if (tfaData.method === 'sms') {
-          // Trigger SMS send immediately
-          setSmsMaskedPhone(tfaData.maskedPhone ?? '');
-          setSmsResendState('sending');
-          try {
-            const sendRes = await fetch('/api/me/2fa/sms/send', {
-              method: 'POST',
-              credentials: 'include'
-            });
-            const sendData = (await sendRes.json()) as {
-              ok?: boolean;
-              maskedPhone?: string;
-              error?: string;
-            };
-            if (sendData.maskedPhone) setSmsMaskedPhone(sendData.maskedPhone);
-            setSmsResendState('sent');
-          } catch {
-            setSmsResendState('idle');
-          }
-        }
-        setNeeds2FA(true);
-        return;
-      }
+
       // Prefer ?from= query param (set by session-expiry hard redirect) over
       // React Router location state (set by ProtectedRoute soft redirect).
       const params = new URLSearchParams(location.search);
@@ -341,49 +400,119 @@ export default function LoginPage() {
       setLoading(false);
     }
   }
-  async function handle2FA(e: React.FormEvent) {
-    e.preventDefault();
-    if (tfaToken.length !== 6) {
-      setError('Enter the 6-digit code.');
-      return;
-    }
-    setError('');
-    setTfaLoading(true);
-    try {
-      const endpoint = tfa2Method === 'sms' ? '/api/me/2fa/sms/verify' : '/api/me/2fa/verify';
-      const res = await fetch(endpoint, {
+  // ── Extracted async verification — called only from handle2FA ───────────────
+  async function verifyTwoFactorCode(code: string): Promise<void> {
+    if (tfa2Method === 'sms') {
+      console.info(JSON.stringify({ event: 'login.2fa.fetch_start', method: 'sms', hasToken: !!smsChallengeTokenRef.current, ts: Date.now() }));
+      const res = await fetch('/api/me/2fa/sms/verify', {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
+          ...(smsChallengeTokenRef.current
+            ? { 'X-SMS-Challenge-Token': smsChallengeTokenRef.current }
+            : {}),
         },
         credentials: 'include',
-        body: JSON.stringify({
-          token: tfaToken,
-          code: tfaToken
-        })
+        body: JSON.stringify({ code }),
       });
-      const d = (await res.json()) as {
-        ok?: boolean;
-        error?: string;
-      };
+      console.info(JSON.stringify({ event: 'login.2fa.fetch_response', status: res.status, ts: Date.now() }));
+      const d = (await res.json()) as { ok?: boolean; error?: string };
       if (!res.ok || !d.ok) {
+        setTfaToken('');
         setError(d.error ?? 'Invalid code. Please try again.');
         return;
       }
-      const rawFrom2fa = (location.state as {
-        from?: {
-          pathname: string;
-        };
-      })?.from?.pathname || '/home';
-      const SAFE_BLOCKLIST_2FA = ['/login', '/signup', '/verify', '/forgot', '/reset', '/check-email'];
-      const from2fa = isNativeApp ? '/home' : rawFrom2fa.startsWith('/') && !SAFE_BLOCKLIST_2FA.some(b => rawFrom2fa.startsWith(b)) ? rawFrom2fa : '/home';
-      navigate(from2fa, {
-        replace: true
-      });
+      console.info(JSON.stringify({ event: 'login.2fa.verify_success', method: 'sms', ts: Date.now() }));
+      const rawFrom = (location.state as { from?: { pathname: string } })?.from?.pathname || '/home';
+      const BLOCKLIST = ['/login', '/signup', '/verify', '/forgot', '/reset', '/check-email'];
+      const dest = isNativeApp
+        ? '/home'
+        : rawFrom.startsWith('/') && !BLOCKLIST.some(b => rawFrom.startsWith(b))
+          ? rawFrom
+          : '/home';
+      console.info(JSON.stringify({ event: 'login.2fa.redirect', dest, native: isNativeApp, ts: Date.now() }));
+      if (isNativeApp) {
+        navigate(dest, { replace: true });
+      } else {
+        window.location.replace(dest);
+      }
+      return;
+    }
+
+    // TOTP path
+    console.info(JSON.stringify({ event: 'login.2fa.fetch_start', method: 'totp', ts: Date.now() }));
+    const result = await authClient.twoFactor.verifyTotp({ code });
+    console.info(JSON.stringify({ event: 'login.2fa.fetch_response', hasError: !!result?.error, ts: Date.now() }));
+    if (result?.error) {
+      setError(result.error.message ?? 'Invalid code. Please try again.');
+      return;
+    }
+    console.info(JSON.stringify({ event: 'login.2fa.verify_success', method: 'totp', ts: Date.now() }));
+    const rawFrom2fa = (location.state as { from?: { pathname: string } })?.from?.pathname || '/home';
+    const BLOCKLIST_TOTP = ['/login', '/signup', '/verify', '/forgot', '/reset', '/check-email'];
+    const dest2fa = isNativeApp
+      ? '/home'
+      : rawFrom2fa.startsWith('/') && !BLOCKLIST_TOTP.some(b => rawFrom2fa.startsWith(b))
+        ? rawFrom2fa
+        : '/home';
+    console.info(JSON.stringify({ event: 'login.2fa.redirect', dest: dest2fa, native: isNativeApp, ts: Date.now() }));
+    navigate(dest2fa, { replace: true });
+  }
+
+  async function handle2FA(e: React.FormEvent) {
+    e.preventDefault();
+
+    // ── Backup-code path ───────────────────────────────────────────────────
+    if (useBackupCode) {
+      const code = backupCodeInput.trim();
+      if (!code) { setError('Enter your backup code.'); return; }
+      setError('');
+      setTfaLoading(true);
+      try {
+        const result = await authClient.twoFactor.verifyBackupCode({ code });
+        if (result?.error) {
+          setError(result.error.message ?? 'Invalid backup code. Please try again.');
+          return;
+        }
+        const rawFrom2faBackup = (location.state as { from?: { pathname: string } })?.from?.pathname || '/home';
+        const SAFE_BLOCKLIST_BACKUP = ['/login', '/signup', '/verify', '/forgot', '/reset', '/check-email'];
+        const from2faBackup = isNativeApp ? '/home' : rawFrom2faBackup.startsWith('/') && !SAFE_BLOCKLIST_BACKUP.some(b => rawFrom2faBackup.startsWith(b)) ? rawFrom2faBackup : '/home';
+        navigate(from2faBackup, { replace: true });
+      } catch {
+        setError('Something went wrong. Please try again.');
+      } finally {
+        setTfaLoading(false);
+      }
+      return;
+    }
+
+    // ── TOTP / SMS path ────────────────────────────────────────────────────
+    const code = tfaToken;
+    console.info(JSON.stringify({ event: 'login.2fa.submit_entered', codeLen: code.length, ts: Date.now() }));
+
+    if (code.length !== 6) {
+      setError('Enter the 6-digit code.');
+      return;
+    }
+
+    // Prevent duplicate submissions — InputOTP can fire both onComplete and form submit
+    if (submittingRef.current) {
+      console.info(JSON.stringify({ event: 'login.2fa.duplicate_blocked', ts: Date.now() }));
+      return;
+    }
+    submittingRef.current = true;
+
+    console.info(JSON.stringify({ event: 'login.2fa.token_state', hasToken: !!smsChallengeTokenRef.current, method: tfa2Method, ts: Date.now() }));
+
+    setError('');
+    setTfaLoading(true);
+    try {
+      await verifyTwoFactorCode(code);
     } catch {
       setError('Something went wrong. Please try again.');
     } finally {
       setTfaLoading(false);
+      submittingRef.current = false;
     }
   }
   async function handleSmsResend() {
@@ -392,16 +521,26 @@ export default function LoginPage() {
     try {
       const res = await fetch('/api/me/2fa/sms/send', {
         method: 'POST',
-        credentials: 'include'
+        credentials: 'include',
+        headers: smsChallengeTokenRef.current
+          ? { 'X-SMS-Challenge-Token': smsChallengeTokenRef.current }
+          : {},
       });
       const d = (await res.json()) as {
         ok?: boolean;
         maskedPhone?: string;
         error?: string;
+        errorCode?: string;
       };
       if (d.maskedPhone) setSmsMaskedPhone(d.maskedPhone);
-      setSmsResendState('sent');
-      setTimeout(() => setSmsResendState('idle'), 30_000);
+      if (!res.ok || !d.ok) {
+        // Leave resend available so the user can retry once compliance is resolved
+        setSmsResendState('idle');
+        setError(d.error ?? 'Failed to resend. Please try again.');
+      } else {
+        setSmsResendState('sent');
+        setTimeout(() => setSmsResendState('idle'), 30_000);
+      }
     } catch {
       setSmsResendState('idle');
       setError('Failed to resend. Please try again.');
@@ -409,12 +548,12 @@ export default function LoginPage() {
   }
   return <div className="relative min-h-screen flex items-center justify-center overflow-y-auto bg-[#0F1117] py-8">
       <Helmet>
-        <title>Sign In — IWILLBUILD Portal</title>
-        <meta name="description" content="Sign in to the IWILLBUILD portal to manage jobs, crews, fleet, safety and more." />
+        <title>Sign In — IWIllBUIlD Portal</title>
+        <meta name="description" content="Sign in to the IWIllBUIlD portal to manage jobs, crews, fleet, safety and more." />
         <meta name="robots" content="noindex, nofollow" />
         <link rel="canonical" href="https://iwillbuild.com/login" />
         <meta name="robots" content="noindex" />
-        <meta property="og:title" content="Sign In — IWILLBUILD Portal" />
+        <meta property="og:title" content="Sign In — IWIllBUIlD Portal" />
         <meta property="og:description" content="Sign in to manage your construction jobs, fleet, safety docs and team." />
         <meta property="og:type" content="website" />
         <meta property="og:url" content="https://iwillbuild.com/login" />
@@ -466,7 +605,7 @@ export default function LoginPage() {
           {/* Header */}
           <div className="px-8 pt-8 pb-6 border-b border-white/10">
             <div className="flex items-center justify-center mb-6">
-              <img src="/assets/logo.png" alt="IWILLBUILD" className="h-12 w-auto object-contain" />
+              <img src="/assets/logo.png" alt="IWIllBUIlD" className="h-12 w-auto object-contain" />
             </div>
             <h1 className="font-heading font-bold text-xl text-white text-center">
               Portal Sign In
@@ -481,7 +620,7 @@ export default function LoginPage() {
               <ShieldCheck size={16} className="text-violet-400 mt-0.5 shrink-0" />
               <div>
                 <p className="text-violet-300 text-sm font-semibold">Session expired — please sign in again</p>
-                <p className="text-violet-400/70 text-xs mt-0.5">Your session reached its daily security limit.</p>
+                <p className="text-violet-400/70 text-xs mt-0.5">Your session has expired — please sign in again.</p>
               </div>
             </div>}
 
@@ -520,7 +659,11 @@ export default function LoginPage() {
                 </div>
                 <h2 className="text-white font-bold text-base">Two-Factor Authentication</h2>
                 <p className="text-white/40 text-xs mt-1 text-center">
-                  {tfa2Method === 'sms' ? smsMaskedPhone ? `We sent a code to ${smsMaskedPhone}` : 'We sent a 6-digit code to your phone.' : 'Enter the 6-digit code from your authenticator app.'}
+                  {useBackupCode
+                    ? 'Enter one of your saved backup codes.'
+                    : tfa2Method === 'sms'
+                      ? smsMaskedPhone ? `We sent a code to ${smsMaskedPhone}` : 'We sent a 6-digit code to your phone.'
+                      : 'Enter the 6-digit code from your authenticator app.'}
                 </p>
               </div>
 
@@ -529,29 +672,81 @@ export default function LoginPage() {
                 </div>}
 
               <form onSubmit={handle2FA} className="flex flex-col items-center gap-5">
-                <InputOTP maxLength={6} value={tfaToken} onChange={setTfaToken} autoFocus>
-                  <InputOTPGroup>
-                    <InputOTPSlot index={0} />
-                    <InputOTPSlot index={1} />
-                    <InputOTPSlot index={2} />
-                    <InputOTPSlot index={3} />
-                    <InputOTPSlot index={4} />
-                    <InputOTPSlot index={5} />
-                  </InputOTPGroup>
-                </InputOTP>
+                {useBackupCode ? (
+                  /* ── Backup code input ── */
+                  <input
+                    type="text"
+                    value={backupCodeInput}
+                    onChange={e => setBackupCodeInput(e.target.value)}
+                    placeholder="xxxxx-xxxxx"
+                    autoFocus
+                    autoComplete="off"
+                    spellCheck={false}
+                    className="w-full bg-white/5 border border-white/15 rounded-lg px-4 py-3 text-white text-sm font-mono text-center tracking-widest placeholder:text-white/20 focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary/60"
+                  />
+                ) : (
+                  /* ── TOTP / SMS OTP input ── */
+                  <InputOTP
+                    maxLength={6}
+                    value={tfaToken}
+                    onChange={setTfaToken}
+                    autoFocus
+                    onKeyDown={(e: React.KeyboardEvent) => {
+                      // Prevent InputOTP from triggering a native form submission
+                      // on Enter — let the form's onSubmit handle it instead.
+                      if (e.key === 'Enter') {
+                        e.preventDefault();
+                        if (tfaToken.length === 6 && !submittingRef.current) {
+                          void handle2FA(e as unknown as React.FormEvent);
+                        }
+                      }
+                    }}
+                  >
+                    <InputOTPGroup>
+                      <InputOTPSlot index={0} className="text-white border-white/20 bg-white/5" />
+                      <InputOTPSlot index={1} className="text-white border-white/20 bg-white/5" />
+                      <InputOTPSlot index={2} className="text-white border-white/20 bg-white/5" />
+                      <InputOTPSlot index={3} className="text-white border-white/20 bg-white/5" />
+                      <InputOTPSlot index={4} className="text-white border-white/20 bg-white/5" />
+                      <InputOTPSlot index={5} className="text-white border-white/20 bg-white/5" />
+                    </InputOTPGroup>
+                  </InputOTP>
+                )}
 
-                <button type="submit" disabled={tfaLoading || tfaToken.length !== 6} className="w-full flex items-center justify-center gap-2 bg-primary hover:bg-violet-700 text-white font-bold py-3 rounded-lg transition-colors disabled:opacity-50">
-                  {tfaLoading ? <><span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />Verifying…</> : <><ShieldCheck size={15} />Verify Code</>}
+                <button
+                  type="submit"
+                  disabled={tfaLoading || (useBackupCode ? !backupCodeInput.trim() : tfaToken.length !== 6)}
+                  className="w-full flex items-center justify-center gap-2 bg-primary hover:bg-violet-700 text-white font-bold py-3 rounded-lg transition-colors disabled:opacity-50"
+                >
+                  {tfaLoading ? <><span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />Verifying…</> : <><ShieldCheck size={15} />{useBackupCode ? 'Use Backup Code' : 'Verify Code'}</>}
                 </button>
 
                 {/* Resend button for SMS */}
-                {tfa2Method === 'sms' && <button type="button" onClick={() => void handleSmsResend()} disabled={smsResendState === 'sending' || smsResendState === 'sent'} className="flex items-center gap-1.5 text-xs text-white/40 hover:text-white/60 disabled:opacity-50 transition-colors">
-                    {smsResendState === 'sending' ? <><span className="w-3 h-3 border border-white/30 border-t-white/60 rounded-full animate-spin" />Sending…</> : smsResendState === 'sent' ? <><CheckCircle2 size={12} className="text-green-400" />Code sent</> : <><RefreshCw size={12} />Resend code</>}
+                {tfa2Method === 'sms' && !useBackupCode && <button type="button" onClick={() => void handleSmsResend()} disabled={smsResendState === 'sending' || smsResendState === 'sent'} className="flex items-center gap-1.5 text-xs text-white/40 hover:text-white/60 disabled:opacity-50 transition-colors">
+                    {smsResendState === 'sending' ? <><span className="w-3 h-3 border border-white/30 border-t-white/60 rounded-full animate-spin" />Sending…</> : smsResendState === 'sent' ? <><CheckCircle2 size={12} className="text-green-400" />Code sent — resend available in 30s</> : <><RefreshCw size={12} />Resend code</>}
                   </button>}
+
+                {/* Backup code toggle — only shown for TOTP (not SMS) */}
+                {tfa2Method !== 'sms' && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setUseBackupCode(v => !v);
+                      setError('');
+                      setBackupCodeInput('');
+                      setTfaToken('');
+                    }}
+                    className="text-xs text-white/40 hover:text-white/60 transition-colors"
+                  >
+                    {useBackupCode ? '← Use authenticator app instead' : 'Use a backup code instead'}
+                  </button>
+                )}
 
                 <button type="button" onClick={() => {
               setNeeds2FA(false);
               setTfaToken('');
+              setBackupCodeInput('');
+              setUseBackupCode(false);
               setError('');
               setTfa2Method(null);
             }} className="text-xs text-white/30 hover:text-white/50 transition-colors">

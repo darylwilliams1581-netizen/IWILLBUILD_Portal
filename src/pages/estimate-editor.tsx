@@ -11,6 +11,7 @@ import { fetchEstimate, updateEstimate, createEstimate, getEstimateStatusStyle, 
 import { fetchJob, type Job } from '@/lib/jobs-api';
 import CsvImportModal from '@/components/CsvImportModal';
 import { LIMITS } from '@/lib/limits';
+import { goBack } from '@/lib/navigation';
 import { CostGuidePicker, RecipePicker, type CostItem, type Recipe } from '@/components/estimate/EstimatePickerModals';
 
 // ── Local helpers ─────────────────────────────────────────────────────────────
@@ -238,7 +239,7 @@ export default function EstimateEditorPage() {
       navigate(`/jobs/${est.jobId}/quotes`);
     } else {
       // No estimate loaded — go back in history, or fall back to jobs list
-      navigate(-1);
+      goBack(navigate, '/estimating');
     }
   }
   function updateEstimateField<K extends keyof Estimate>(key: K, value: Estimate[K]) {
@@ -458,8 +459,8 @@ export default function EstimateEditorPage() {
   return <div className="flex-1 bg-gray-50 flex flex-col lg-portal">
       <PortalSidebar />
       <Helmet>
-        <title>{estimate ? `${estimate.title} — Estimate — IWILLBUILD` : 'Estimate — IWILLBUILD'}</title>
-        <meta name="description" content={estimate ? `Estimate: ${estimate.title}` : 'Estimate editor — IWILLBUILD Portal'} />
+        <title>{estimate ? `${estimate.title} — Estimate — IWIllBUIlD` : 'Estimate — IWIllBUIlD'}</title>
+        <meta name="description" content={estimate ? `Estimate: ${estimate.title}` : 'Estimate editor — IWIllBUIlD Portal'} />
         <link rel="canonical" href={`https://iwillbuild.com/estimates/${id}`} />
         <meta name="robots" content="noindex" />
       </Helmet>

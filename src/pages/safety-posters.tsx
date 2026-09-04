@@ -14,8 +14,8 @@ export default function SafetyPostersPage() {
   const navigate = useNavigate();
   return <div className="flex flex-col flex-1 min-h-0">
       <Helmet>
-        <title>Safety Posters — IWILLBUILD</title>
-        <meta name="description" content="IWILLBUILD safety posters — generate and print job-linked safety posters." />
+        <title>Safety Posters — IWIllBUIlD</title>
+        <meta name="description" content="IWIllBUIlD safety posters — generate and print job-linked safety posters." />
         <link rel="canonical" href="https://iwillbuild.com/safety/posters" />
         <meta name="robots" content="noindex" />
       </Helmet>
@@ -26,7 +26,7 @@ export default function SafetyPostersPage() {
 
       {/* Mobile header */}
       <header className="md:hidden sticky top-0 z-30 h-12 bg-white border-b border-border flex items-center px-4 shrink-0 gap-2 safe-top">
-        <button onClick={() => navigate('/?page=2')} className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors shrink-0" aria-label="Back to Home">
+        <button onClick={() => goBack(navigate, '/home')} className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors shrink-0" aria-label="Back to Home">
           <ArrowLeft size={16} />
           <span className="hidden sm:inline">Home</span>
         </button>

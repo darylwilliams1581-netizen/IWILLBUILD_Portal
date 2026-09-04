@@ -65,8 +65,8 @@ export default function VerifyEmailPage() {
   }, [token, uid, navigate]);
   return <>
       <Helmet>
-        <title>Verify Email — IWILLBUILD Portal</title>
-        <meta name="description" content="Verify your email address to activate your IWILLBUILD Portal account." />
+        <title>Verify Email — IWIllBUIlD Portal</title>
+        <meta name="description" content="Verify your email address to activate your IWIllBUIlD Portal account." />
         <meta name="robots" content="noindex, nofollow" />
         <link rel="canonical" href="https://iwillbuild.com/verify-email" />
         <meta name="robots" content="noindex" />
@@ -89,7 +89,7 @@ export default function VerifyEmailPage() {
               <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
                 <span className="text-white font-bold text-sm">IW</span>
               </div>
-              <span className="text-white font-bold text-lg tracking-tight">IWILLBUILD</span>
+              <span className="text-white font-bold text-lg tracking-tight">IWIllBUIlD</span>
             </div>
           </div>
 

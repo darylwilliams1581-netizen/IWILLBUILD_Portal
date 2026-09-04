@@ -57,10 +57,11 @@ export default async function handler(req: Request, res: Response) {
     const targetUser = userRows?.[0];
     if (!targetUser) return res.status(404).json({ error: 'User not found.' });
 
-    // Generate and hash temp password
+    // Generate and hash temp password using BetterAuth's scrypt format
+    // so the stored hash is verifiable by BetterAuth at login time.
     const tempPassword = generateTempPassword();
-    const { hash } = await import('bcryptjs');
-    const hashedPassword = await hash(tempPassword, 12);
+    const { hashPassword } = await import('better-auth/crypto');
+    const hashedPassword = await hashPassword(tempPassword);
 
     // Update password in account table
     await db.execute(sql`

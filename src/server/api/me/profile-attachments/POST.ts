@@ -17,6 +17,7 @@ import { getAuth } from '../../../../lib/auth/auth.js';
 import { parseMultipartForm } from '../../../lib/file-upload.js';
 import { uploadMedia, normaliseMime } from '../../../lib/uploadService.js';
 import { randomUUID } from 'node:crypto';
+import { buildObjectKey } from '../../../storage/r2Config.js';
 
 const MAX_ATTACHMENTS = 5;
 const MAX_SIZE_BYTES   = 10 * 1024 * 1024;
@@ -74,11 +75,13 @@ export default async function handler(req: Request, res: Response) {
     normaliseMime(file);
 
     const id = randomUUID();
-    const safeFilename = file.originalname.replace(/[^a-zA-Z0-9._\-]/g, '_').slice(0, 200);
-    const ext = safeFilename.includes('.') ? safeFilename.split('.').pop() ?? 'bin' : 'bin';
-    const storageKey = `${session.user.id}/${id}-${safeFilename}.${ext === safeFilename ? 'bin' : ''}`.replace(/\.$/, '');
-    // Use a clean key: userId/uuid-safeFilename
-    const cleanKey = `${session.user.id}/${id}-${safeFilename}`;
+    const storageKey = buildObjectKey({
+      logicalNamespace: 'profile-attachments',
+      companyId: profile.companyId,
+      category: 'profile-attachments',
+      uuid: id,
+      originalName: file.originalname,
+    });
     const clientId = (req.headers['x-client-id'] as string | undefined)?.trim() || null;
 
     const result = await uploadMedia({
@@ -86,7 +89,7 @@ export default async function handler(req: Request, res: Response) {
       companyId: profile.companyId,
       userId: session.user.id,
       bucket: BUCKET,
-      storageKey: cleanKey,
+      storageKey,
       destinationType: 'profile_attachment',
       destinationId: null,
       fieldKey: session.user.id,
@@ -97,7 +100,7 @@ export default async function handler(req: Request, res: Response) {
 
     const newAttachment: Attachment = {
       id,
-      filename: safeFilename,
+      filename: file.originalname.replace(/[^a-zA-Z0-9._\-]/g, '_').slice(0, 200),
       url: result.url,
       size: result.sizeBytes,
       uploadedAt: new Date().toISOString(),

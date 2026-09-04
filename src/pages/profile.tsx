@@ -7,6 +7,7 @@ import { useNavigate } from "react-router";
 import { Helmet } from '@dr.pogodin/react-helmet';
 import { ArrowLeft, Save, Loader2, CheckCircle2, AlertCircle, FileText, Phone, User, Paperclip, Trash2, Download, ShieldAlert, Upload, Lock, Eye, EyeOff, KeyRound, Smartphone, X } from 'lucide-react';
 import { useMe } from '@/lib/usePermissions';
+import { goBack } from '@/lib/navigation';
 import { useUploadQueue } from '@/hooks/useUploadQueue';
 import SecurityTab from '@/components/settings/SecurityTab';
 import InstallAppTab from '@/components/settings/InstallAppTab';
@@ -288,7 +289,7 @@ export default function ProfilePage() {
       <DesktopTopBar />
       <DesktopDock />
       <Helmet>
-        <title>My Profile — IWILLBUILD Portal</title>
+        <title>My Profile — IWIllBUIlD Portal</title>
         <meta name="description" content="Manage your profile, licences, emergency contact and security settings." />
         <link rel="canonical" href="https://iwillbuild.com/profile" />
         <meta name="robots" content="noindex" />
@@ -297,7 +298,7 @@ export default function ProfilePage() {
 
       {/* Sticky top bar */}
       <div className="sticky top-0 z-30 bg-white border-b border-gray-200 px-4 py-3 flex items-center gap-3 safe-top">
-        <button onClick={() => navigate('/?page=2')} className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors">
+        <button onClick={() => goBack(navigate, '/home')} className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors">
           <ArrowLeft size={16} />
           <span>Home</span>
         </button>
@@ -526,7 +527,7 @@ export default function ProfilePage() {
               </div>
               <div className="flex-1">
                 <h2 className="font-bold text-slate-900 text-base leading-tight">Install App</h2>
-                <p className="text-xs text-slate-400 mt-0.5">Add IWILLBUILD to your home screen</p>
+                <p className="text-xs text-slate-400 mt-0.5">Add IWIllBUIlD to your home screen</p>
               </div>
               <button onClick={() => setInstallOpen(false)} className="w-8 h-8 rounded-lg flex items-center justify-center text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition-colors" aria-label="Close">
                 <X size={16} />

@@ -229,7 +229,7 @@ const plans = [{
   period: '/ month + GST',
   users: '1 user',
   popular: false,
-  features: ['1 user', 'Projects & job files', 'Forms & templates', 'Estimates', 'Photos & files', 'Fleet basics', 'Safety basics', 'Email support', '30-day free trial'],
+  features: ['1 user', 'Projects & job files', 'Forms & templates', 'Estimates', 'Photos & files', 'Fleet basics', 'Safety basics', 'Email support', '14-day free trial'],
   cta: 'Start Solo Trial',
   ctaStyle: 'outline'
 }, {
@@ -239,7 +239,7 @@ const plans = [{
   period: '/ month + GST',
   users: 'Up to 5 users',
   popular: true,
-  features: ['Up to 5 users', 'Projects & job files', 'Forms & templates', 'Estimates', 'Photos & files', 'Fleet & prestarts', 'Safety library', 'Scheduler', 'Team permissions', 'Priority support', '30-day free trial'],
+  features: ['Up to 5 users', 'Projects & job files', 'Forms & templates', 'Estimates', 'Photos & files', 'Fleet & prestarts', 'Safety library', 'Scheduler', 'Team permissions', 'Priority support', '14-day free trial'],
   cta: 'Start Team Trial',
   ctaStyle: 'primary'
 }, {
@@ -249,7 +249,7 @@ const plans = [{
   period: '/ month + GST',
   users: 'Up to 10 users',
   popular: false,
-  features: ['Up to 10 users', 'Everything in Team', 'Advanced permissions', 'Safety plans & SWMS library', 'Job Ledger / job cost tracking', 'Secure file storage', 'Owner & admin reporting', '30-day free trial'],
+  features: ['Up to 10 users', 'Everything in Team', 'Advanced permissions', 'Safety plans & SWMS library', 'Job Ledger / job cost tracking', 'Secure file storage', 'Owner & admin reporting', '14-day free trial'],
   cta: 'Start Business Trial',
   ctaStyle: 'outline'
 }, {
@@ -288,12 +288,12 @@ function PortalMockup() {
         <span style={{ width: 10, height: 10, borderRadius: '50%', backgroundColor: '#f59e0b', display: 'inline-block' }} />
         <span style={{ width: 10, height: 10, borderRadius: '50%', backgroundColor: '#22c55e', display: 'inline-block' }} />
         <span style={{ flex: 1, backgroundColor: '#334155', borderRadius: 4, height: 16, marginLeft: 8 }} />
-        <span style={{ fontSize: 10, color: '#475569', fontWeight: 600 }}>iwillbuild.com/home</span>
+        <span style={{ fontSize: 10, color: '#475569', fontWeight: 600 }}>IWILLBUILD.com/home</span>
       </div>
       {/* Screenshot */}
       <img
         src="/airo-assets/images/pages/home/mockup-desktop"
-        alt="IWILLBUILD office portal dashboard"
+        alt="IWIllBUIlD office portal dashboard"
         style={{ width: '100%', display: 'block' }}
         loading="eager"
       />
@@ -329,7 +329,7 @@ function PhoneMockup() {
       {/* Screenshot */}
       <img
         src="/airo-assets/images/pages/home/mockup-mobile"
-        alt="IWILLBUILD mobile field app"
+        alt="IWIllBUIlD mobile field app"
         style={{ width: '100%', display: 'block' }}
         loading="eager"
       />
@@ -340,20 +340,20 @@ function PhoneMockup() {
 // ── Main component ────────────────────────────────────────────────────────────
 export default function HomePage() {
   const site = 'https://iwillbuild.com';
-  const title = 'IWILLBUILD | Construction Job Management — Jobs, Forms, Fleet, Safety & Files';
-  const description = 'IWILLBUILD manages the work — jobs, estimates, forms, photos, fleet, safety, invoicing and files — in one clean construction portal. Accounting integrations sync approved invoices to Xero and QuickBooks. 30-day free trial.';
+  const title = 'IWIllBUIlD | Construction Job Management — Jobs, Forms, Fleet, Safety & Files';
+  const description = 'IWIllBUIlD manages the work — jobs, estimates, forms, photos, fleet, safety, invoicing and files — in one clean construction portal. Accounting integrations sync approved invoices to Xero and QuickBooks. 14-day free trial.';
   const ogDescription = 'Manage construction jobs, estimates, forms, photos, fleet, safety and files in one clean portal. Accounting integrations sync approved invoices to Xero and QuickBooks.';
   const jsonLd = {
     '@context': 'https://schema.org',
     '@graph': [{
       '@type': 'WebSite',
       '@id': `${site}/#website`,
-      name: 'IWILLBUILD',
+      name: 'IWIllBUIlD',
       url: `${site}/`
     }, {
       '@type': 'Organization',
       '@id': `${site}/#organization`,
-      name: 'IWILLBUILD',
+      name: 'IWIllBUIlD',
       url: `${site}/`,
       logo: {
         '@type': 'ImageObject',
@@ -363,11 +363,11 @@ export default function HomePage() {
     }, {
       '@type': 'SoftwareApplication',
       '@id': `${site}/#app`,
-      name: 'IWILLBUILD',
+      name: 'IWIllBUIlD',
       url: `${site}/`,
       applicationCategory: 'BusinessApplication',
       operatingSystem: 'Web',
-      description: 'IWILLBUILD manages the work — jobs, estimates, forms, photos, fleet, safety and files — in one clean construction portal. Accounting integrations help approved invoices and contacts flow into Xero, QuickBooks and MYOB.',
+      description: 'IWIllBUIlD manages the work — jobs, estimates, forms, photos, fleet, safety and files — in one clean construction portal. Accounting integrations help approved invoices and contacts flow into Xero, QuickBooks and MYOB.',
       keywords: 'field service management software, trades management app, job management software Australia, fleet management for tradies, safety forms software, construction job management, SWMS, site safety, QR attendance',
       publisher: {
         '@id': `${site}/#organization`
@@ -407,7 +407,7 @@ export default function HomePage() {
         '@id': `${site}/#organization`
       },
       datePublished: '2026-06-25',
-      dateModified: '2026-08-26'
+      dateModified: '2026-09-03'
     }]
   };
   return <>
@@ -423,7 +423,7 @@ export default function HomePage() {
         <meta property="og:image" content={`${site}/airo-assets/images/pages/home/og-image`} />
         <meta property="og:image:width" content="1200" />
         <meta property="og:image:height" content="630" />
-        <meta property="og:site_name" content="IWILLBUILD" />
+        <meta property="og:site_name" content="IWIllBUIlD" />
         {/* Twitter */}
         <meta name="twitter:card" content="summary_large_image" />
         <meta name="twitter:title" content={title} />
@@ -455,7 +455,7 @@ export default function HomePage() {
         `}</style>
       </Helmet>
 
-      {/* ── Topbar — IWILLBUILD branded header ────────────────────────────── */}
+      {/* ── Topbar — IWIllBUIlD branded header ────────────────────────────── */}
       <Header />
 
       <main suppressHydrationWarning>
@@ -504,7 +504,7 @@ export default function HomePage() {
                 fontSize: 13,
                 fontWeight: 700,
                 color: '#7c3aed'
-              }}>30-day free trial — no credit card needed</span>
+              }}>14-day free trial — no credit card needed</span>
             </div>
 
             {/* Headline — dual interface concept */}
@@ -601,7 +601,7 @@ export default function HomePage() {
                 fontSize: 16,
                 textDecoration: 'none'
               }}>
-                Start 30-day free trial
+                Start 14-day free trial
                 <ArrowRight size={16} />
               </Link>
               <Link to="/login" style={{
@@ -698,7 +698,7 @@ export default function HomePage() {
           alignItems: 'center',
           justifyContent: 'center'
         }}>
-          {['✓ Australian-built', '✓ No lock-in contracts', '✓ 30-day free trial', '✓ Your data stays yours', '✓ Cancel anytime'].map(t => <span key={t} style={{
+          {['✓ Australian-built', '✓ No lock-in contracts', '✓ 14-day free trial', '✓ Cancel anytime'].map(t => <span key={t} style={{
             fontSize: 13,
             fontWeight: 700,
             color: '#475569'
@@ -955,7 +955,7 @@ export default function HomePage() {
               textDecoration: 'none',
               boxShadow: '0 4px 18px rgba(249,115,22,.35)'
             }}>
-              Start your free 30-day trial
+              Start your free 14-day trial
               <ArrowRight size={16} />
             </Link>
             <p style={{
@@ -1058,7 +1058,7 @@ export default function HomePage() {
             margin: '0 0 40px',
             maxWidth: 600
           }}>
-            All plans include a 30-day free trial. No credit card required to start.
+            All plans include a 14-day free trial. No credit card required to start.
           </p>
 
           <div style={{
@@ -1205,7 +1205,7 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* ── Why IWILLBUILD ─────────────────────────────────────────────────── */}
+      {/* ── Why IWIllBUIlD ─────────────────────────────────────────────────── */}
       <section id="why" style={{
         backgroundColor: '#0f172a',
         borderTop: '1px solid #1e293b'
@@ -1267,7 +1267,7 @@ export default function HomePage() {
                 fontSize: 14,
                 textDecoration: 'none'
               }}>
-                Start your free 30-day trial
+                Start your free 14-day trial
                 <ArrowRight size={15} />
               </Link>
             </div>
@@ -1372,7 +1372,7 @@ export default function HomePage() {
               fontSize: 17,
               margin: '0 0 32px'
             }}>
-              Start your 30-day free trial today. No credit card. No setup fee. Cancel anytime.
+              Start your 14-day free trial today. No credit card. No setup fee. Cancel anytime.
             </p>
             <div style={{
               display: 'flex',
@@ -1393,7 +1393,7 @@ export default function HomePage() {
                 textDecoration: 'none',
                 boxShadow: '0 4px 18px rgba(249,115,22,.35)'
               }}>
-                Start 30-day free trial
+                Start 14-day free trial
                 <ArrowRight size={16} />
               </Link>
               <Link to="/login" style={{
@@ -1416,7 +1416,7 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* ── Footer — IWILLBUILD branded footer ────────────────────────────── */}
+      {/* ── Footer — IWIllBUIlD branded footer ────────────────────────────── */}
       <Footer />
 
       {/* Responsive styles */}

@@ -7,16 +7,20 @@ import { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useSearchParams } from "react-router";
 import { motion, AnimatePresence } from 'motion/react';
 import { Helmet } from '@dr.pogodin/react-helmet';
-import { Layers, Plus, Lock, Copy, Share2, Pencil, ChevronDown, Loader2, AlertTriangle, Search, Trash2, X, FileUp, Library, Inbox, ArrowLeft, User, Calendar, ChevronUp, Eye, FileText } from 'lucide-react';
+import { Layers, Plus, Lock, Copy, Share2, Pencil, ChevronDown, Loader2, AlertTriangle, Search, Trash2, X, Inbox, ArrowLeft, User, Calendar, ChevronUp, Eye, FileText, File, Library, Briefcase } from 'lucide-react';
 import GenerateJobReportModal from '@/components/studio/GenerateJobReportModal';
+import AttachToJobSheet from '@/components/studio/AttachToJobSheet';
 import DocxImporter from '@/components/DocumentBuilder/DocxImporter';
+import NewDocumentModal from '@/components/DocumentBuilder/NewDocumentModal';
+import SourceDocumentPanel from '@/components/DocumentBuilder/SourceDocumentPanel';
 import type { DocumentBlock } from '@/components/DocumentBuilder/types';
 import { toast } from 'sonner';
-import ShareToLibraryModal from '@/components/studio/ShareToLibraryModal';
 import { usePermissions } from '@/lib/usePermissions';
+import { goBack } from '@/lib/navigation';
 import DesktopTopBar from '@/components/DesktopTopBar';
 import DesktopDock from '@/components/DesktopDock';
 import PortalSidebar from '@/components/PortalSidebar';
+import DazzaBuilderAssistant from '@/components/DazzaBuilderAssistant';
 import { studio } from 'virtual:content';
 import { LibraryView as LibraryPage } from '../features/library/LibraryView';
 
@@ -32,6 +36,14 @@ export interface DocTemplate {
   updated_at: string;
   doc_kind: string | null;
   requires_acknowledgement: number | boolean | null;
+  /** Set when the document was generated from a Safety widget */
+  safety_category?: string | null;
+  source_widget_type?: string | null;
+  source_record_id?: number | null;
+  /** Phase 2: Word/PDF source document */
+  source_type?: string | null;
+  source_file_name?: string | null;
+  source_revision?: number | null;
 }
 interface DocSubmission {
   id: number;
@@ -118,23 +130,25 @@ function DocRow({
   index,
   onDelete,
   onShare,
-  showShareBtn
+  onShowSourcePanel,
 }: {
   doc: DocTemplate;
   index: number;
   onDelete: (id: number) => void;
   onShare: (id: number) => void;
-  showShareBtn?: boolean;
+  onShowSourcePanel?: (id: number, name: string, templateType?: string) => void;
 }) {
   const navigate = useNavigate();
   const [expanded, setExpanded] = useState(false);
   const [confirmDel, setConfirmDel] = useState(false);
   const [showJobPicker, setShowJobPicker] = useState(false);
+  const [showAttachSheet, setShowAttachSheet] = useState(false);
   const [jobNumberInput, setJobNumberInput] = useState('');
   const [jobPickerError, setJobPickerError] = useState('');
   const isActive = Boolean(doc.is_active);
   // Doc Studio is always doc kind — no form branching here
   const hasAcknowledgement = Boolean(doc.requires_acknowledgement);
+  const isSafetyDoc = doc.template_type === 'swms' || doc.template_type === 'safety_plan';
   function openBuilder() {
     navigate(`/studio/builder/${doc.id}`);
   }
@@ -204,15 +218,30 @@ function DocRow({
           {hasAcknowledgement && <span className="hidden md:inline-flex flex-shrink-0 text-[10px] font-semibold px-2 py-0.5 rounded-full border bg-emerald-50 text-emerald-700 border-emerald-200">
               Sign-On
             </span>}
-          {doc.source_docx_name && <span className="hidden lg:inline text-[10px] text-slate-400 truncate max-w-[160px]">{doc.source_docx_name}</span>}
+          {/* Word / PDF Source badge */}
+          {(doc.source_type === 'docx' || doc.source_type === 'pdf') && (
+            <button
+              onClick={(e) => { e.stopPropagation(); onShowSourcePanel?.(doc.id, doc.name, doc.template_type); }}
+              className={[
+                'hidden sm:inline-flex flex-shrink-0 items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full border transition-colors',
+                doc.source_type === 'pdf'
+                  ? 'bg-red-50 text-red-600 border-red-200 hover:bg-red-100'
+                  : 'bg-blue-50 text-blue-600 border-blue-200 hover:bg-blue-100',
+              ].join(' ')}
+              title={`${doc.source_type === 'pdf' ? 'PDF' : 'Word'} source — click to manage`}
+            >
+              {doc.source_type === 'pdf'
+                ? <File size={9} />
+                : <FileText size={9} />
+              }
+              {doc.source_type === 'pdf' ? 'PDF' : 'Word'}
+            </button>
+          )}
+          {doc.source_docx_name && !doc.source_type && <span className="hidden lg:inline text-[10px] text-slate-400 truncate max-w-[160px]">{doc.source_docx_name}</span>}
         </div>
         <div className="flex items-center gap-0.5 flex-shrink-0" onClick={e => e.stopPropagation()}>
           <ToolBtn icon={Copy} label="Duplicate" onClick={handleDuplicate} />
           <ToolBtn icon={Share2} label="Copy link" onClick={handleShare} />
-          {showShareBtn && <ToolBtn icon={Library} label="Share to Library" onClick={e => {
-          e.stopPropagation();
-          onShare(doc.id);
-        }} />}
           <ToolBtn icon={Pencil} label="Edit" onClick={e => {
           e.stopPropagation();
           openBuilder();
@@ -255,6 +284,28 @@ function DocRow({
             <button onClick={openUse} className="flex items-center gap-1.5 text-xs font-bold text-emerald-700 px-3 py-2 rounded-xl bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 transition-colors">
               <Eye size={11} /> Open / Review
             </button>
+            {isSafetyDoc && (
+              <button
+                onClick={(e) => { e.stopPropagation(); setShowAttachSheet(true); }}
+                className="flex items-center gap-1.5 text-xs font-bold text-violet-700 px-3 py-2 rounded-xl bg-violet-50 hover:bg-violet-100 border border-violet-200 transition-colors"
+              >
+                <Briefcase size={11} /> Attach to Job
+              </button>
+            )}
+            {(doc.source_type === 'docx' || doc.source_type === 'pdf') && (
+              <button
+                onClick={(e) => { e.stopPropagation(); onShowSourcePanel?.(doc.id, doc.name, doc.template_type); }}
+                className={[
+                  'flex items-center gap-1.5 text-xs font-bold px-3 py-2 rounded-xl border transition-colors',
+                  doc.source_type === 'pdf'
+                    ? 'text-red-700 bg-red-50 hover:bg-red-100 border-red-200'
+                    : 'text-blue-700 bg-blue-50 hover:bg-blue-100 border-blue-200',
+                ].join(' ')}
+              >
+                {doc.source_type === 'pdf' ? <File size={11} /> : <FileText size={11} />}
+                {doc.source_type === 'pdf' ? 'PDF Source' : 'Word Source'}
+              </button>
+            )}
           </div>
         </div>}
 
@@ -270,8 +321,7 @@ function DocRow({
 
       <AnimatePresence>
         {showJobPicker && <motion.div initial={{
-        opacity: 0
-      }} animate={{
+        opacity: 0      }} animate={{
         opacity: 1
       }} exit={{
         opacity: 0
@@ -322,6 +372,18 @@ function DocRow({
             </motion.div>
           </motion.div>}
       </AnimatePresence>
+
+      {/* Attach to Job sheet — SWMS and Safety Plan only */}
+      {showAttachSheet && (
+        <AttachToJobSheet
+          open={showAttachSheet}
+          studioDocId={doc.id}
+          docTitle={doc.name}
+          templateType={doc.template_type ?? ''}
+          onClose={() => setShowAttachSheet(false)}
+          onAttached={() => { setShowAttachSheet(false); }}
+        />
+      )}
     </motion.div>;
 }
 
@@ -527,12 +589,14 @@ export default function StudioDocumentsPage() {
   const [error, setError] = useState('');
   const [search, setSearch] = useState('');
   const [typeFilter, setTypeFilter] = useState('All');
-  const [shareDocId, setShareDocId] = useState<number | null>(null);
-  const shareDoc = templates.find(t => t.id === shareDocId);
 
   // ── Import state ─────────────────────────────────────────────────────────────
   const [showImporter, setShowImporter] = useState(false);
   const [importTemplateId, setImportTemplateId] = useState<number | null>(null);
+  // ── New Document modal ────────────────────────────────────────────────────────
+  const [showNewDocModal, setShowNewDocModal] = useState(false);
+  // ── Source Document panel ─────────────────────────────────────────────────────
+  const [sourcePanel, setSourcePanel] = useState<{ id: number; name: string; templateType?: string } | null>(null);
   const load = useCallback(async () => {
     setLoading(true);
     setError('');
@@ -613,7 +677,12 @@ export default function StudioDocumentsPage() {
     }
   }, [navigate]);
   const filtered = templates.filter(t => {
-    const matchType = typeFilter === 'All' || t.template_type === typeFilter;
+    const isSafetyFilter = typeFilter === 'SWMS' || typeFilter === 'WHS Plan';
+    const matchType = typeFilter === 'All'
+      ? true
+      : isSafetyFilter
+        ? t.safety_category === typeFilter
+        : t.template_type === typeFilter;
     const matchSearch = !search || t.name.toLowerCase().includes(search.toLowerCase());
     return matchType && matchSearch;
   });
@@ -623,29 +692,25 @@ export default function StudioDocumentsPage() {
       <DesktopTopBar />
       <DesktopDock />
       <Helmet>
-        <title>Documents — IWILLBUILD</title>
-        <meta name="description" content="IWILLBUILD document templates — build, use and manage your company documents." />
+        <title>Documents — IWIllBUIlD</title>
+        <meta name="description" content="IWIllBUIlD document templates — build, use and manage your company documents." />
         <link rel="canonical" href="https://iwillbuild.com/studio/documents" />
         <meta name="robots" content="noindex" />
       </Helmet>
 
       {/* Header */}
       <header className="sticky top-0 z-30 h-12 bg-white border-b border-border flex items-center px-4 shrink-0 gap-2 safe-top">
-        <button onClick={() => navigate('/?page=2')} className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors shrink-0" aria-label="Back to Home">
+        <button onClick={() => goBack(navigate, '/studio')} className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors shrink-0" aria-label="Back to Home">
           <ArrowLeft size={16} /><span className="hidden sm:inline">Home</span>
         </button>
         <span className="text-gray-300">|</span>
         <Layers size={17} className="text-primary shrink-0" />
         <h1 className="font-heading font-bold text-base truncate flex-1">Documents</h1>
-        {pageTab === 'documents' && <div className="flex items-center gap-2 shrink-0">            <button onClick={() => void handleOpenImporter()} className="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-sm font-semibold transition-colors">
-              <FileUp size={14} /><span className="hidden sm:inline">Import</span>
-            </button>
-            <button onClick={() => navigate('/studio/builder/new')} className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-violet-500 hover:bg-violet-700 text-white text-sm font-semibold transition-colors">
-              <Plus size={15} /><span className="hidden sm:inline">New document</span>
-            </button>
-          </div>}
         {pageTab === 'reports' && <button onClick={() => setShowReportModal(true)} className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-violet-500 hover:bg-violet-700 text-white text-sm font-semibold transition-colors shrink-0">
             <FileText size={14} /><span className="hidden sm:inline">Generate Job Report</span>
+          </button>}
+        {pageTab === 'documents' && <button onClick={() => setShowNewDocModal(true)} className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-violet-500 hover:bg-violet-700 text-white text-sm font-semibold transition-colors shrink-0">
+            <Plus size={14} /><span className="hidden sm:inline">New document</span>
           </button>}
       </header>
 
@@ -689,6 +754,10 @@ export default function StudioDocumentsPage() {
                 {studio.ALL_TYPES.map(t => <button key={t} onClick={() => setTypeFilter(t)} className={['flex-shrink-0 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all duration-150', typeFilter === t ? 'bg-violet-500 text-white' : 'bg-slate-100 text-slate-500 hover:text-slate-700 hover:bg-slate-200'].join(' ')}>
                     {t === 'All' ? 'All' : TYPE_LABELS[t] ?? t}
                   </button>)}
+                <div className="w-px h-4 bg-slate-200 mx-1 flex-shrink-0" />
+                {(['SWMS', 'WHS Plan'] as const).map(cat => <button key={cat} onClick={() => setTypeFilter(cat)} className={['flex-shrink-0 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all duration-150', typeFilter === cat ? 'bg-emerald-600 text-white' : 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100'].join(' ')}>
+                    {cat}
+                  </button>)}
               </div>
             </div>
 
@@ -717,7 +786,7 @@ export default function StudioDocumentsPage() {
                   <p className="text-xs text-slate-400 mt-1">
                     {templates.length === 0 ? 'Click "New document" to create your first template' : 'Try a different search or filter'}
                   </p>
-                  {templates.length === 0 && <button onClick={() => navigate('/studio/builder/new')} className="mt-4 flex items-center gap-2 px-4 py-2 bg-violet-500 hover:bg-violet-700 text-white text-sm font-semibold rounded-lg transition-colors">
+                  {templates.length === 0 && <button onClick={() => setShowNewDocModal(true)} className="mt-4 flex items-center gap-2 px-4 py-2 bg-violet-500 hover:bg-violet-700 text-white text-sm font-semibold rounded-lg transition-colors">
                       <Plus size={14} />New document
                     </button>}
                 </div> : <motion.div variants={{
@@ -727,7 +796,7 @@ export default function StudioDocumentsPage() {
               }
             }
           }} initial="hidden" animate="visible" className="flex flex-col gap-2">
-                  {filtered.map((doc, i) => <DocRow key={doc.id} doc={doc} index={i} onDelete={handleDelete} onShare={id => setShareDocId(id)} showShareBtn={isPlatformOwner} />)}
+                  {filtered.map((doc, i) => <DocRow key={doc.id} doc={doc} index={i} onDelete={handleDelete} onShare={() => {}} onShowSourcePanel={(id, name, ttype) => setSourcePanel({ id, name, templateType: ttype })} />)}
                 </motion.div>}
             </div>
           </>}
@@ -741,21 +810,72 @@ export default function StudioDocumentsPage() {
         {pageTab === 'reports' && <JobReportsTab onGenerate={() => setShowReportModal(true)} templates={templates} />}
       </div>
 
-      {/* Share to Library modal */}
-      <AnimatePresence>
-        {shareDocId && shareDoc && <ShareToLibraryModal templateId={shareDocId} templateName={shareDoc.name} isPlatformOwner={isPlatformOwner} onClose={() => setShareDocId(null)} />}
-      </AnimatePresence>
+      {/* Import modal (legacy — used from within builder ribbon) */}
+      {showImporter && importTemplateId !== null && <DocxImporter
+        templateId={importTemplateId}
+        hasExistingBlocks={false}
+        onClose={() => {
+          setShowImporter(false);
+          setImportTemplateId(null);
+        }}
+        onImported={(blocks, name) => {
+          setShowImporter(false);
+          void handleStudioImported(blocks, name, importTemplateId);
+        }}
+        onOpenInStudio={(result) => {
+          setShowImporter(false);
+          setImportTemplateId(null);
+          navigate(`/studio/builder/${result.id}`);
+        }}
+        onSaveFirst={async () => importTemplateId}
+      />}
 
-      {/* Import modal */}
-      {showImporter && importTemplateId !== null && <DocxImporter templateId={importTemplateId} hasExistingBlocks={false} onClose={() => {
-      setShowImporter(false);
-      setImportTemplateId(null);
-    }} onImported={(blocks, name) => {
-      setShowImporter(false);
-      void handleStudioImported(blocks, name, importTemplateId);
-    }} onSaveFirst={async () => importTemplateId} />}
+      {/* New Document modal */}
+      {showNewDocModal && (
+        <NewDocumentModal
+          onClose={() => setShowNewDocModal(false)}
+          onOpenLibrary={() => {
+            setShowNewDocModal(false);
+            switchTab('library');
+          }}
+          onSaved={(id, name, sourceType) => {
+            // Refresh the list so the new doc appears with the Word/PDF Source badge
+            void load();
+            // Open the SourceDocumentPanel for the new document
+            setSourcePanel({ id, name, templateType: sourceType === 'pdf' ? 'pdf' : 'docx' });
+          }}
+        />
+      )}
+
+      {/* Source Document panel */}
+      {sourcePanel && (
+        <SourceDocumentPanel
+          templateId={sourcePanel.id}
+          templateName={sourcePanel.name}
+          templateType={sourcePanel.templateType}
+          isPlatformOwner={isPlatformOwner}
+          onClose={() => setSourcePanel(null)}
+        />
+      )}
 
       {/* Generate Job Report modal */}
       {showReportModal && <GenerateJobReportModal onClose={() => setShowReportModal(false)} />}
+
+      {/* Dazza Builder Assistant — floating on the documents list */}
+      <DazzaBuilderAssistant
+        builderContext={{
+          builderType: 'document',
+          templateId: null,
+          templateName: 'Documents',
+          templateType: 'list',
+          currentVersion: 0,
+          schemaSummary: 'Viewing the documents list — no template open.',
+          selectedId: null,
+          hasUnsavedChanges: false,
+          validationErrors: [],
+          isPreviewMode: false,
+        }}
+        onApplied={() => { void load(); }}
+      />
     </div>;
 }

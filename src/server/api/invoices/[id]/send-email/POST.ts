@@ -23,7 +23,7 @@ import { sendEmail } from '../../../../email.js';
 const MAX_SUBJECT = 200;
 const MAX_MESSAGE = 4000;
 const EMAIL_ATTACHMENT_LIMIT = 2 * 1024 * 1024;
-const SYSTEM_FOOTER = 'This email was sent automatically from IWILLBUILD. Please do not reply.';
+const SYSTEM_FOOTER = 'This email was sent automatically from IWIllBUIlD. Please do not reply.';
 
 function isValidEmail(addr: string): boolean {
   return /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(addr.trim());
@@ -198,7 +198,7 @@ export default async function handler(req: Request, res: Response) {
     // ── Build email body ───────────────────────────────────────────────────────
     const fullText = `${message}\n\n—\n${SYSTEM_FOOTER}`;
     const escapedMessage = escapeHtml(message).replace(/\n/g, '<br>');
-    const companyName = String(company.name ?? 'IWILLBUILD');
+    const companyName = String(company.name ?? 'IWIllBUIlD');
     const invNum = inv.invoice_number ? String(inv.invoice_number) : `#${id}`;
 
     const html = `<!doctype html><html><body style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:#1e293b">

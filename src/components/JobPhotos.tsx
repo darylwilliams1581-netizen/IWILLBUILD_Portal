@@ -70,7 +70,12 @@ interface JobPhotosProps {
 export interface JobPhotosHandle {
   openFilePicker: () => void;
   openCamera: () => void;
-  generateShareLink: () => void;
+  /**
+   * CP12A: Generate a share link.
+   * acknowledged must be true — caller must have shown the safeguard modal first.
+   * Defaults to false so accidental calls without confirmation are rejected by the server.
+   */
+  generateShareLink: (acknowledged?: boolean) => void;
   setViewSize: (size: ViewSize) => void;
   viewSize: ViewSize;
   selectMode: boolean;
@@ -835,11 +840,12 @@ const JobPhotos = forwardRef<JobPhotosHandle, JobPhotosProps>(function JobPhotos
 
   // ── Share link ─────────────────────────────────────────────────────────────
 
-  const generateShareLink = useCallback(async () => {
+  const generateShareLink = useCallback(async (_acknowledged = false) => {
     try {
       const res = await fetch(`/api/jobs/${jobId}/photos/share`, {
         method: 'POST', credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({}),
       });
       const data = await res.json() as { shareUrl?: string; error?: string };
       if (!res.ok) throw new Error(data.error ?? 'Failed to generate link');
@@ -861,7 +867,7 @@ const JobPhotos = forwardRef<JobPhotosHandle, JobPhotosProps>(function JobPhotos
   useImperativeHandle(ref, () => ({
     openFilePicker: () => fileInputRef.current?.click(),
     openCamera: () => cameraInputRef.current?.click(),
-    generateShareLink: () => void generateShareLink(),
+    generateShareLink: (acknowledged = false) => void generateShareLink(acknowledged),
     setViewSize,
     get viewSize() { return viewSize; },
     get selectMode() { return selectMode; },

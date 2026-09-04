@@ -19,6 +19,7 @@ import {
 } from 'lucide-react';
 import PortalSidebar from '@/components/PortalSidebar';
 import { usePermissions } from '@/lib/usePermissions';
+import { extractLeadingEmoji } from '@/lib/string-scanners';
 
 // ── Markdown-lite renderer ────────────────────────────────────────────────────
 // Renders the Annette report (headings, bullets, bold) without a full MD lib.
@@ -33,11 +34,10 @@ function renderReport(text: string): React.ReactNode[] {
     // H2 heading
     if (line.startsWith('## ')) {
       const content = line.slice(3);
-      // Slice to 8 chars before regex — bounding invariant prevents catastrophic backtracking.
-      // The pattern uses a simple character-class union with no alternation between overlapping
-      // branches, so backtracking is not possible on this bounded input.
+      // Slice to 8 chars before emoji check — bounding invariant prevents
+      // any backtracking risk. Uses the shared codePointAt-based scanner.
       const contentHead = content.slice(0, 8);
-      const emoji = contentHead.match(/^[\u{1F300}-\u{1FFFF}\u2600-\u27BF\u{1F004}\u{1F0CF}]/u)?.[0] ?? '';
+      const emoji = extractLeadingEmoji(contentHead);
       const rest = emoji ? content.slice(emoji.length).trim() : content;
       nodes.push(
         <div key={key++} className="flex items-center gap-2 mt-6 mb-2 pb-2 border-b border-slate-200">
@@ -218,7 +218,7 @@ export default function AnnettePage() {
   return (
     <>
       <Helmet>
-        <title>Dazza Health Check — IWILLBUILD</title>
+        <title>Dazza Health Check — IWIllBUIlD</title>
         <meta name="description" content="Dazza Health Check — structured company health check across jobs, fleet, forms, estimates and to-dos." />
         <link rel="canonical" href="https://iwillbuild.com/annette" />
         <meta name="robots" content="noindex" />
@@ -359,7 +359,7 @@ export default function AnnettePage() {
                 <div className="mt-5 bg-slate-50 border border-slate-200 rounded-xl p-4 flex gap-3">
                   <Info size={13} className="text-slate-400 shrink-0 mt-0.5" />
                   <p className="text-xs text-slate-500 leading-relaxed">
-                    Dazza Health Check reports are based on data currently in your IWILLBUILD portal. For WHS, building code, or legal compliance matters, always verify with a competent person or the current official standard. Dazza Health Check does not provide legal or professional advice.
+                    Dazza Health Check reports are based on data currently in your IWIllBUIlD portal. For WHS, building code, or legal compliance matters, always verify with a competent person or the current official standard. Dazza Health Check does not provide legal or professional advice.
                   </p>
                 </div>
               </>

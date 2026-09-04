@@ -181,8 +181,8 @@ export default function VerifyRequiredPage() {
   return (
     <>
       <Helmet>
-        <title>Verify Your Account — IWILLBUILD Portal</title>
-        <meta name="description" content="Please verify your account to access IWILLBUILD Portal." />
+        <title>Verify Your Account — IWIllBUIlD Portal</title>
+        <meta name="description" content="Please verify your account to access IWIllBUIlD Portal." />
         <meta name="robots" content="noindex, nofollow" />
         <link rel="canonical" href="https://iwillbuild.com/verify-required" />
         <meta name="robots" content="noindex" />
@@ -206,7 +206,7 @@ export default function VerifyRequiredPage() {
           <div className="text-center mb-6">
             <img
               src="/airo-assets/images/logo/horizontal"
-              alt="IWILLBUILD"
+              alt="IWIllBUIlD"
               className="h-10 w-auto object-contain mx-auto"
             />
           </div>
@@ -396,7 +396,7 @@ export default function VerifyRequiredPage() {
                   <div className="flex items-center gap-2">
                     <Mail size={12} />
                     <a href="mailto:support@iwillbuild.com" className="text-primary hover:text-violet-400 transition-colors">
-                      Contact IWILLBUILD support
+                      Contact IWIllBUIlD support
                     </a>
                   </div>
                 </div>

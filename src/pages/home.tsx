@@ -4,7 +4,7 @@
  * dark text — iOS-style feel, not dark like the drive app.
  */
 
-import { useState, useEffect, useRef, type ComponentType, type ReactNode, type ChangeEvent } from 'react';
+import { useState, useEffect, useRef, useCallback, type ComponentType, type ReactNode, type ChangeEvent } from 'react';
 import { useNavigate } from "react-router";
 import { motion, AnimatePresence } from 'motion/react';
 import { Helmet } from '@dr.pogodin/react-helmet';
@@ -20,7 +20,9 @@ import StartDrivingModal from '@/components/fleet/StartDrivingModal';
 import NotificationList from '@/components/NotificationList';
 import MyTasksPanel from '@/components/notes/MyTasksPanel';
 import PagedHomeScreen from '@/components/home/PagedHomeScreen';
+
 import AppPermissionsOnboarding, { hasCompletedOnboarding } from '@/components/AppPermissionsOnboarding';
+import TermsAcceptanceGate, { hasAcceptedTerms } from '@/components/TermsAcceptanceGate';
 import { isNative } from '@/lib/capacitor-plugins';
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -1313,11 +1315,7 @@ function SignInOutSheet({
         credentials: 'include'
       });
       if (res.status === 401) {
-        // Session expired or not authenticated — clear stale expiry so next
-        // request goes through cleanly after re-login
-        try {
-          localStorage.removeItem('iwb_session_expires_at');
-        } catch {/* ignore */}
+        // Session expired or not authenticated
         setError('Session expired — please sign in again to continue.');
         return;
       }
@@ -1355,9 +1353,6 @@ function SignInOutSheet({
         })
       });
       if (res.status === 401) {
-        try {
-          localStorage.removeItem('iwb_session_expires_at');
-        } catch {/* ignore */}
         setError('Session expired — please close this and sign in again.');
         return;
       }
@@ -1396,9 +1391,6 @@ function SignInOutSheet({
         body: JSON.stringify({})
       });
       if (res.status === 401) {
-        try {
-          localStorage.removeItem('iwb_session_expires_at');
-        } catch {/* ignore */}
         setError('Session expired — please close this and sign in again.');
         return;
       }
@@ -1860,18 +1852,26 @@ export default function HomeScreen() {
   const {
     session
   } = useSession();
+  const email = session?.user?.email ?? me?.user?.email ?? '';
 
-  // ── Native permissions onboarding ─────────────────────────────────────────
-  // Show once after first login on a native device (iOS / Android).
-  // Delayed by 1.5s to ensure the Capacitor bridge is fully initialised before
-  // any permission plugin calls are made — avoids the "spinning forever" bug
-  // where requestPermissions() hangs because the bridge isn't ready yet.
+  // ── Terms acceptance gate — shown once on first use (web + native) ───────────
+  // Dev account (support@iwillbuild.com) always sees the gate regardless of localStorage.
+  // Initialise conservatively (false = hidden) then re-evaluate once session resolves.
+  const [showTermsGate, setShowTermsGate] = useState(false);
+  useEffect(() => {
+    if (!email && loading) return; // session still loading — wait
+    setShowTermsGate(!hasAcceptedTerms(email));
+  }, [email, loading]);
+
+  // Show permissions onboarding AFTER terms are accepted (native only)
   const [showPermOnboarding, setShowPermOnboarding] = useState(false);
   useEffect(() => {
     if (!isNative() || hasCompletedOnboarding()) return;
+    // Only start the timer once terms have been accepted
+    if (showTermsGate) return;
     const t = setTimeout(() => setShowPermOnboarding(true), 1500);
     return () => clearTimeout(t);
-  }, []);
+  }, [showTermsGate]);
 
   // ── Home icon permissions ──────────────────────────────────────────────────
   const [iconPermissions, setIconPermissions] = useState<string[] | null>(null);
@@ -1921,29 +1921,14 @@ export default function HomeScreen() {
   const activeStatus = useActiveStatus(activeStatusKey);
   const name = session?.user?.name ?? me?.user?.name ?? '';
   const firstName = name.split(' ')[0] || 'there';
-  const [localClock, setLocalClock] = useState({
-    greeting: 'Welcome',
-    dateStr: ''
+  const hour = new Date().getHours();
+  const greeting = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening';
+  const dateStr = new Date().toLocaleDateString('en-AU', {
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long'
   });
-  useEffect(() => {
-    const updateClock = () => {
-      const now = new Date();
-      const hour = now.getHours();
-      setLocalClock({
-        greeting: hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening',
-        dateStr: now.toLocaleDateString('en-AU', {
-          weekday: 'long',
-          day: 'numeric',
-          month: 'long'
-        })
-      });
-    };
-    updateClock();
-    const timer = window.setInterval(updateClock, 60_000);
-    return () => window.clearInterval(timer);
-  }, []);
-  const { greeting, dateStr } = localClock;
-  function handleNavigate(href: string) {
+  const handleNavigate = useCallback(function handleNavigate(href: string) {
     if (href === '?panel=notes') {
       setNotesOpen(true);
       return;
@@ -2006,7 +1991,8 @@ export default function HomeScreen() {
       return;
     }
     navigate(href);
-  }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [navigate]);
   if (loading) {
     return <div className="flex-1 flex items-center justify-center min-h-0" style={{
       background: '#edf0f5'
@@ -2015,10 +2001,18 @@ export default function HomeScreen() {
       </div>;
   }
   return <>
-      {/* Permissions onboarding — shown once on native after first login */}
+      {/* Terms & Acceptable Use gate — shown once on first use (web + native) */}
+      {showTermsGate && (
+        <TermsAcceptanceGate
+          onAccepted={() => setShowTermsGate(false)}
+          userEmail={email}
+        />
+      )}
+
+      {/* Permissions onboarding — shown once on native after terms accepted */}
       {showPermOnboarding && <AppPermissionsOnboarding onDone={() => setShowPermOnboarding(false)} />}
 
-      <div className="flex-1 flex flex-col relative overflow-hidden min-h-0" style={{
+      <div className="flex-1 flex flex-col relative overflow-hidden min-h-0 w-full max-w-full min-w-0" style={{
       background: '#edf0f5'
     }}>
       {/* Very subtle noise texture — reduced opacity so it doesn't compete with tile colours */}
@@ -2055,42 +2049,12 @@ export default function HomeScreen() {
       {/* All content above the overlay */}
       <div className="relative z-10 flex flex-col flex-1 min-h-0">
       <Helmet>
-        <title>Home — IWILLBUILD</title>
-        <meta name="description" content="IWILLBUILD field launcher — quick access to camera, drive, forms, job costs and more." />
+        <title>Home — IWIllBUIlD</title>
+        <meta name="description" content="IWIllBUIlD field launcher — quick access to camera, drive, forms, job costs and more." />
         <meta name="robots" content="noindex" />
         <link rel="canonical" href="https://iwillbuild.com/home" />
       </Helmet>
-      <h1 className="sr-only">IWILLBUILD Home</h1>
-
-      {/* ── Top bar ── */}
-      <div className="px-4 pb-3" style={{
-          paddingTop: 'calc(env(safe-area-inset-top) + 14px)',
-          background: 'linear-gradient(150deg, #0d1117 0%, #161d2e 55%, #1a1208 100%)',
-          boxShadow: '0 1px 0 rgba(255,255,255,0.04), 0 8px 28px rgba(0,0,0,0.35)'
-        }}>
-        {/* Row 1: local date */}
-        <div className="flex items-center mb-2.5">
-          {dateStr ? <span className="text-white/70 text-[11px] font-semibold tracking-[0.06em] uppercase px-2.5 py-1 rounded-full bg-white/10 border border-white/15">{dateStr}</span> : <span />}
-        </div>
-        {/* Row 2: greeting — large, bold, personal */}
-        <div className="flex items-end justify-between gap-3">
-          <div className="min-w-0">
-            <p className="text-white/50 text-[11px] font-medium leading-tight mb-0.5">{greeting}</p>
-            <p className="font-extrabold text-[22px] leading-tight tracking-[-0.03em] truncate" style={{
-                background: 'linear-gradient(100deg, #ffffff 0%, #c4b5fd 55%, #fb923c 100%)',
-                WebkitBackgroundClip: 'text',
-                WebkitTextFillColor: 'transparent',
-                backgroundClip: 'text'
-              }}>
-              {firstName}
-            </p>
-          </div>
-          {/* System logo badge — display only */}
-          <div className="w-16 h-16 rounded-2xl flex items-center justify-center shrink-0 mb-0.5 overflow-hidden">
-            <img src="/airo-assets/images/logo/primary" alt="IWILLBUILD" className="w-full h-full object-contain" />
-          </div>
-        </div>
-      </div>
+      <h1 className="sr-only">IWIllBUIlD Home</h1>
 
       {/* ── Active status sub-header ── */}
       <AnimatePresence>
@@ -2105,7 +2069,7 @@ export default function HomeScreen() {
 
       {/* ── Paged home screen (Dashboard / Field / Manage) ── */}
       {/* PagedHomeScreen handles its own scroll per page and the page dots */}
-      <PagedHomeScreen iconPermissions={iconPermissions} role={role ?? ''} isSolo={isSolo} isPlatformOwner={isPlatformOwner} userId={session?.user?.id ?? me?.user?.id ?? ''} onNavigate={handleNavigate} />
+      <PagedHomeScreen iconPermissions={iconPermissions} role={role ?? ''} isSolo={isSolo} isPlatformOwner={isPlatformOwner} userId={session?.user?.id ?? me?.user?.id ?? ''} onNavigate={handleNavigate} firstName={firstName} greeting={greeting} dateStr={dateStr} />
 
       {/* ── Sheets ── */}
 

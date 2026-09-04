@@ -1,6 +1,6 @@
 /**
  * POST /api/integrations/xero/sync-invoice/:invoiceId
- * Pushes an IWILLBUILD invoice to Xero as an ACCREC Invoice.
+ * Pushes an IWIllBUIlD invoice to Xero as an ACCREC Invoice.
  * - Creates a Xero Contact for the customer if not already synced.
  * - Creates or updates the Xero Invoice.
  * - Stores the Xero InvoiceID back on the local invoice row.
@@ -27,7 +27,7 @@ interface XeroContactResponse {
   Contacts?: Array<{ ContactID: string; Name: string }>;
 }
 
-/** Map IWILLBUILD status → Xero Invoice status */
+/** Map IWIllBUIlD status → Xero Invoice status */
 function mapStatus(status: string): string {
   switch (status) {
     case 'draft': return 'DRAFT';

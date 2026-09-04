@@ -140,15 +140,15 @@ function PhoneVerificationSection() {
         </p>
         <form onSubmit={handleSavePhone} className="flex flex-col gap-3">
           <label className={labelClass}><span className="flex items-center gap-1"><Phone size={11} /> Mobile Number</span></label>
-          <div className="flex flex-col sm:flex-row gap-2">
-            <div className="flex-1 min-w-0">
+          <div className="flex gap-2">
+            <div className="flex-1">
               <PhoneInput
                 value={editPhone}
                 onChange={setEditPhone}
                 disabled={savingPhone}
               />
             </div>
-            <button type="submit" disabled={savingPhone || !editPhone || editPhone === savedPhone} className="flex w-full sm:w-auto items-center justify-center gap-1.5 bg-slate-800 hover:bg-slate-700 text-white text-sm font-semibold px-4 py-2.5 rounded-lg transition-colors disabled:opacity-40 disabled:cursor-not-allowed shrink-0">
+            <button type="submit" disabled={savingPhone || !editPhone || editPhone === savedPhone} className="flex items-center gap-1.5 bg-slate-800 hover:bg-slate-700 text-white text-sm font-semibold px-4 py-2.5 rounded-lg transition-colors disabled:opacity-40 disabled:cursor-not-allowed shrink-0">
               {savingPhone ? <Loader2 size={13} className="animate-spin" /> : <Save size={13} />}Save
             </button>
           </div>
@@ -275,6 +275,7 @@ export default function MyAccountTab() {
     if (!file) return;
     if (attachments.length >= 5) { setUploadError('Maximum 5 attachments allowed.'); return; }
     setUploadError(''); setUploading(true);
+
     const fd = new FormData();
     fd.append('file', file);
     try {
@@ -656,3 +657,4 @@ export default function MyAccountTab() {
     </div>
   );
 }
+

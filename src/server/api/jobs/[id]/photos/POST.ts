@@ -17,6 +17,7 @@ import { eq, and, count, sql } from 'drizzle-orm';
 import { getAuth } from '../../../../../lib/auth/auth.js';
 import { getPlanLimits, getCompanyPlan, checkLimit } from '../../../../lib/plan-limits.js';
 import { randomUUID } from 'node:crypto';
+import { buildObjectKey } from '../../../../storage/r2Config.js';
 import { parseMultipartForm } from '../../../../lib/file-upload.js';
 import {
   compressImageIfNeeded,
@@ -25,7 +26,6 @@ import {
   getImageDimensions,
 } from '../../../../storage/storage-service.js';
 import { uploadMedia, normaliseMime } from '../../../../lib/uploadService.js';
-import type { CompatibilityContext } from '../../../../lib/uploadService.js';
 
 const PHOTO_BUCKET = 'job-photos';
 const MAX_PHOTOS_PER_JOB = 200;
@@ -125,7 +125,14 @@ export default async function handler(req: Request, res: Response) {
       }
 
       const ext = outMime === 'image/png' ? 'png' : 'jpg';
-      const storageKey = `${randomUUID()}.${ext}`;
+      const uuid = randomUUID();
+      const storageKey = buildObjectKey({
+        logicalNamespace: 'job-photos',
+        companyId: profile.companyId,
+        category: 'job-photos',
+        uuid,
+        originalName: `${uuid}.${ext}`,
+      });
 
       // Get dimensions (non-blocking, best-effort)
       let imgWidth: number | null = null;
@@ -184,10 +191,10 @@ export default async function handler(req: Request, res: Response) {
 
           const { saveFile } = await import('../../../../storage/storage-service.js');
           if (thumb && thumbKey) {
-            await saveFile({ buffer: thumb.buffer, originalName: `thumb_${file.originalname}`, mimeType: thumb.mimeType, bucket: PHOTO_BUCKET, storageKey: thumbKey });
+            await saveFile({ buffer: thumb.buffer, originalName: `thumb_${file.originalname}`, mimeType: thumb.mimeType, bucket: PHOTO_BUCKET, storageKey: thumbKey, skipValidation: true });
           }
           if (preview && previewKey) {
-            await saveFile({ buffer: preview.buffer, originalName: `preview_${file.originalname}`, mimeType: preview.mimeType, bucket: PHOTO_BUCKET, storageKey: previewKey });
+            await saveFile({ buffer: preview.buffer, originalName: `preview_${file.originalname}`, mimeType: preview.mimeType, bucket: PHOTO_BUCKET, storageKey: previewKey, skipValidation: true });
           }
           await db.execute(sql`
             UPDATE job_photos SET

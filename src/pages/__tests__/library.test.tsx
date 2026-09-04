@@ -3,7 +3,7 @@
  * ─────────────────────────────────────────────────────────────────────────────
  * Route-level tests for src/pages/library.tsx.
  * @seo-exempt — test file, not a route page
- * title: Library Tests | IWILLBUILD
+ * title: Library Tests | IWIllBUIlD
  * description: Route-level tests for the library redirect page and named exports.
  * canonical: /library
  * h1: Library Tests
@@ -67,7 +67,7 @@ function _LibraryTestSeoMeta() {
   return (
     <>
       <Helmet>
-        <title>Library Tests | IWILLBUILD</title>
+        <title>Library Tests | IWIllBUIlD</title>
         <meta name="description" content="Route-level tests for the library redirect page and named exports." />
         <link rel="canonical" href="https://iwillbuild.com/library" />
       </Helmet>
@@ -208,13 +208,14 @@ describe('Consumer import contract — feature directory', () => {
     ).not.toThrow();
   });
 
-  it('LibraryView renders Browse and Installed tabs', () => {
+  it('LibraryView renders the search input (Browse-only, no tab bar)', () => {
     render(
       <MemoryRouter>
         <LibraryView />
       </MemoryRouter>,
     );
-    expect(screen.getByRole('button', { name: /browse/i })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /installed/i })).toBeInTheDocument();
+    // LibraryView is Browse-only — no Installed tab button
+    expect(screen.queryByRole('button', { name: /installed/i })).not.toBeInTheDocument();
+    expect(screen.getByPlaceholderText(/search title, summary, tags/i)).toBeInTheDocument();
   });
 });

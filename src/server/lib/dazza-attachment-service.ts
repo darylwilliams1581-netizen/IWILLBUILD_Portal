@@ -41,6 +41,7 @@ import { db } from '../db/client.js';
 import { sql } from 'drizzle-orm';
 import { randomUUID, createHash } from 'node:crypto';
 import { saveFile, getDownloadBuffer } from '../storage/storage-service.js';
+import mammoth from 'mammoth';
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -52,6 +53,9 @@ export const DAZZA_ATTACHMENT_ALLOWED_MIMES: ReadonlySet<string> = new Set([
   'text/markdown',
   'application/json',
   'text/x-markdown',
+  // .docx
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  'application/msword',
 ]);
 
 /** Stage 1 accepted extensions */
@@ -59,6 +63,7 @@ export const DAZZA_ATTACHMENT_ALLOWED_EXTS: ReadonlySet<string> = new Set([
   'txt',
   'md',
   'json',
+  'docx',
 ]);
 
 /** Max file size: 10 MiB */
@@ -147,7 +152,7 @@ export function validateAttachmentFile(file: {
     return {
       ok: false,
       code: 'unsupported_extension',
-      error: `"${sanitiseFilename(file.originalname)}" is not supported. Stage 1 accepts: .txt, .md, .json only. ZIP, HTML, images, PDFs and executables are not accepted.`,
+      error: `"${sanitiseFilename(file.originalname)}" is not supported. Accepted: .txt, .md, .json, .docx. ZIP, HTML, images, PDFs and executables are not accepted.`,
     };
   }
 
@@ -162,7 +167,9 @@ export function validateAttachmentFile(file: {
     // .json: some browsers report application/octet-stream or empty string
     (ext === 'json' && (file.mimetype === 'application/octet-stream' || file.mimetype === '')) ||
     // .txt: empty string fallback
-    (ext === 'txt'  && file.mimetype === '');
+    (ext === 'txt'  && file.mimetype === '') ||
+    // .docx: some systems report application/octet-stream or application/zip
+    (ext === 'docx' && (file.mimetype === 'application/octet-stream' || file.mimetype === 'application/zip' || file.mimetype === ''));
 
   if (!mimeOk) {
     return {
@@ -182,31 +189,34 @@ export function validateAttachmentFile(file: {
   }
 
   // UTF-8 check + NUL byte rejection
-  let textContent: string;
-  try {
-    textContent = file.buffer.toString('utf8');
-    if (textContent.includes('\0')) {
-      return {
-        ok: false,
-        code: 'nul_bytes',
-        error: `"${sanitiseFilename(file.originalname)}" contains NUL bytes and cannot be accepted.`,
-      };
-    }
-    // Verify it round-trips cleanly as UTF-8
-    const reEncoded = Buffer.from(textContent, 'utf8');
-    if (reEncoded.length !== file.buffer.length) {
+  // Skip for .docx — they are binary ZIP containers; mammoth handles extraction
+  let textContent = '';
+  if (ext !== 'docx') {
+    try {
+      textContent = file.buffer.toString('utf8');
+      if (textContent.includes('\0')) {
+        return {
+          ok: false,
+          code: 'nul_bytes',
+          error: `"${sanitiseFilename(file.originalname)}" contains NUL bytes and cannot be accepted.`,
+        };
+      }
+      // Verify it round-trips cleanly as UTF-8
+      const reEncoded = Buffer.from(textContent, 'utf8');
+      if (reEncoded.length !== file.buffer.length) {
+        return {
+          ok: false,
+          code: 'invalid_utf8',
+          error: `"${sanitiseFilename(file.originalname)}" is not valid UTF-8.`,
+        };
+      }
+    } catch {
       return {
         ok: false,
         code: 'invalid_utf8',
         error: `"${sanitiseFilename(file.originalname)}" is not valid UTF-8.`,
       };
     }
-  } catch {
-    return {
-      ok: false,
-      code: 'invalid_utf8',
-      error: `"${sanitiseFilename(file.originalname)}" is not valid UTF-8.`,
-    };
   }
 
   // JSON-specific structural validation
@@ -464,7 +474,27 @@ export async function extractBoundedExcerpt(
   let lineEnd = 1;
   let jsonPath: string | null = null;
 
-  if (ext === 'json') {
+  if (ext === 'docx') {
+    // Word document: extract plain text via mammoth
+    try {
+      const result = await mammoth.extractRawText({ buffer: rawBuffer });
+      const fullText = result.value.trim();
+      const charBudget = Math.min(remainingChars, 8000);
+      const lines = fullText.split('\n');
+      let budget = charBudget;
+      const selectedLines: string[] = [];
+      for (const line of lines) {
+        if (budget <= 0) break;
+        selectedLines.push(line);
+        budget -= line.length + 1;
+      }
+      extractedText = selectedLines.join('\n');
+      lineStart = 1;
+      lineEnd = selectedLines.length;
+    } catch {
+      return null; // Corrupt or unreadable .docx
+    }
+  } else if (ext === 'json') {
     // JSON: stringify a bounded slice of the parsed structure
     try {
       const parsed = JSON.parse(text);

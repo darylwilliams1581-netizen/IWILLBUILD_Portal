@@ -22,7 +22,7 @@ export default function AssetManagerDetailPage() {
   }, [assetId, navigate]);
   return <>
       <Helmet>
-        <title>Asset Manager — IWILLBUILD</title>
+        <title>Asset Manager — IWIllBUIlD</title>
         <meta name="description" content="View and manage an asset record in Asset Manager." />
         <link rel="canonical" href={`https://iwillbuild.com/studio/asset-manager/${assetId}`} />
         <meta name="robots" content="noindex, nofollow" />

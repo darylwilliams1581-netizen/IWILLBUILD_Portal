@@ -679,7 +679,7 @@ function PrintView({
   }
   return <div className="fixed inset-0 z-50 bg-white overflow-y-auto print:static print:overflow-visible field-docs-print-view">
       {/* Screen-only toolbar */}
-      <div className="print:hidden sticky top-0 z-10 bg-white border-b border-slate-200 px-4 py-3 flex items-center justify-between gap-3">
+      <div className="print:hidden sticky top-0 z-10 bg-white border-b border-slate-200 px-4 py-3 flex items-center justify-between gap-3 safe-top">
         <div className="flex items-center gap-2">
           <div className="w-7 h-7 bg-teal-100 rounded-lg flex items-center justify-center">
             <Printer size={14} className="text-teal-600" />
@@ -966,7 +966,7 @@ export default function JobFieldDocsPage() {
   // ── Always render the docs shell; picker overlays when no job selected ──
   return <div className="flex flex-col h-full lg-portal">
       <Helmet>
-        <title>Field Docs | IWILLBUILD</title>
+        <title>Field Docs | IWIllBUIlD</title>
         <meta name="description" content="View, review and sign on to job documents in the field." />
         <link rel="canonical" href="https://iwillbuild.com/job-docs" />
         <meta name="robots" content="noindex, nofollow" />
@@ -976,7 +976,7 @@ export default function JobFieldDocsPage() {
       <DesktopDock />
 
       {/* Job picker sheet — open when no job selected */}
-      <JobPickerSheet open={!selectedJob} onClose={() => navigate('/home')} title="Field Docs" subtitle="Select a job to view its documents" iconBg="bg-teal-100" iconFg="text-teal-600" Icon={FileCheck} onSelect={job => {
+      <JobPickerSheet open={!selectedJob} onClose={() => goBack(navigate, '/home')} title="Field Docs" subtitle="Select a job to view its documents" iconBg="bg-teal-100" iconFg="text-teal-600" Icon={FileCheck} onSelect={job => {
       setSelectedJob({
         id: job.id,
         name: job.name,
@@ -999,10 +999,10 @@ export default function JobFieldDocsPage() {
       {/* ── Top bar (matches forms layout) ── */}
       <div className="bg-white border-b border-gray-100 flex items-center gap-3 shrink-0 sticky top-0 z-10" style={{
         boxShadow: '0 1px 0 rgba(0,0,0,0.05)',
-        paddingTop: 'max(env(safe-area-inset-top), 0px)'
+        paddingTop: 'max(env(safe-area-inset-top), 12px)'
       }}>
         <div className="flex items-center gap-3 w-full px-4 py-3">
-          <button onClick={() => navigate('/home')} className="hidden md:flex w-9 h-9 rounded-xl bg-gray-100 items-center justify-center text-gray-600 hover:bg-gray-200 transition-colors shrink-0">
+          <button onClick={() => goBack(navigate, '/home')} className="hidden md:flex w-9 h-9 rounded-xl bg-gray-100 items-center justify-center text-gray-600 hover:bg-gray-200 transition-colors shrink-0">
             <ArrowLeft size={18} />
           </button>
           <div className="flex-1 flex flex-col items-center justify-center min-w-0 px-2">
@@ -1119,7 +1119,7 @@ export default function JobFieldDocsPage() {
         paddingBottom: 'env(safe-area-inset-bottom)'
       }}>
         <div className="flex items-center gap-2 px-3 py-2">
-          <button onClick={() => navigate('/home')} aria-label="Home" className="w-10 h-10 rounded-xl bg-gray-100 flex items-center justify-center text-gray-600 active:bg-gray-200 transition-colors touch-manipulation shrink-0">
+          <button onClick={() => goBack(navigate, '/home')} aria-label="Home" className="w-10 h-10 rounded-xl bg-gray-100 flex items-center justify-center text-gray-600 active:bg-gray-200 transition-colors touch-manipulation shrink-0">
             <ArrowLeft size={16} />
           </button>
           <div className="flex-1 min-w-0">

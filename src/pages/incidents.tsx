@@ -191,7 +191,7 @@ export default function IncidentsPage() {
       <DesktopTopBar />
       <DesktopDock />
       <Helmet>
-        <title>Incident Register — IWILLBUILD</title>
+        <title>Incident Register — IWIllBUIlD</title>
         <meta name="description" content="Company incident register — injuries, near misses, property damage, and safety events." />
         <link rel="canonical" href="https://iwillbuild.com/incidents" />
         <meta name="robots" content="noindex, nofollow" />
@@ -202,7 +202,7 @@ export default function IncidentsPage() {
         <div className="bg-red-700 text-white px-4 safe-top pb-3">
           {/* Breadcrumb row */}
           <div className="flex items-center gap-1.5 text-xs text-red-300 mb-2 pt-1">
-            <button type="button" onClick={() => navigate('/?page=2')} className="flex items-center gap-1 hover:text-white transition-colors">
+            <button type="button" onClick={() => goBack(navigate, '/home')} className="flex items-center gap-1 hover:text-white transition-colors">
               <Home size={11} /> Home
             </button>
             <ChevronRight size={10} className="text-red-400" />

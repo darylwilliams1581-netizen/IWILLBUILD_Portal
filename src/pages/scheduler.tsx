@@ -5,6 +5,7 @@ import { motion } from 'motion/react';
 import { CalendarDays, List, BarChart2, Search, ChevronRight, ChevronLeft, ExternalLink, Loader2, AlertCircle, Clock, User, MapPin, Calendar, Users, GripVertical, CheckCircle2, AlertTriangle, Truck, ArrowLeft, Home } from 'lucide-react';
 import PortalSidebar from '@/components/PortalSidebar';
 import { getStatusStyle, JOB_STATUSES } from '@/lib/jobs-api';
+import { goBack } from '@/lib/navigation';
 import AssetSchedulerView from '@/components/scheduler/AssetSchedulerView';
 import TasksSchedulerView from '@/components/scheduler/TasksSchedulerView';
 
@@ -1372,17 +1373,17 @@ export default function SchedulerPage() {
   const visibleCount = view === 'timeline' || view === 'crew' ? filtered.filter(j => overlapsWindow(j, windowStart, windowEnd)).length : filtered.length;
   return <div className="portal-page">
       <Helmet>
-        <title>Scheduler — IWILLBUILD</title>
+        <title>Scheduler — IWIllBUIlD</title>
         <meta name="description" content="View and manage job schedules, timelines and upcoming work." />
         <link rel="canonical" href="https://iwillbuild.com/scheduler" />
         <meta name="robots" content="noindex" />
-        <meta property="og:title" content="Scheduler — IWILLBUILD" />
+        <meta property="og:title" content="Scheduler — IWIllBUIlD" />
         <meta property="og:description" content="View and manage job schedules, timelines and upcoming work." />
         <meta property="og:type" content="website" />
         <meta property="og:url" content="https://iwillbuild.com/scheduler" />
         <meta property="og:image" content="https://iwillbuild.com/airo-assets/images/pages/home/og-image" />
         <meta name="twitter:card" content="summary_large_image" />
-        <meta name="twitter:title" content="Scheduler — IWILLBUILD" />
+        <meta name="twitter:title" content="Scheduler — IWIllBUIlD" />
         <meta name="twitter:description" content="View and manage job schedules, timelines and upcoming work." />
         <meta name="twitter:image" content="https://iwillbuild.com/airo-assets/images/pages/home/og-image" />
       </Helmet>
@@ -1497,7 +1498,7 @@ export default function SchedulerPage() {
 
           {/* Period navigation */}
           {view !== 'table' && <div className="flex items-center gap-1 ml-auto">
-              <button onClick={() => navigate(-1)} className="p-1 rounded hover:bg-gray-100 text-gray-500 hover:text-gray-700 transition-colors" title="Previous period">
+              <button onClick={() => goBack(navigate, '/home')} className="p-1 rounded hover:bg-gray-100 text-gray-500 hover:text-gray-700 transition-colors" title="Previous period">
                 <ChevronLeft size={13} />
               </button>
               <span className="text-xs font-semibold text-gray-700 min-w-[130px] text-center px-1">{windowLabel}</span>

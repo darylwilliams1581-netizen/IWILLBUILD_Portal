@@ -10,6 +10,7 @@ import { CreditCard, CheckCircle2, AlertTriangle, Clock, Zap, Users, User, Crown
 import { motion, AnimatePresence } from 'motion/react';
 import { useNavigate } from "react-router";
 import { usePermissions } from '@/lib/usePermissions';
+import { goBack } from '@/lib/navigation';
 import DesktopTopBar from '@/components/DesktopTopBar';
 import DesktopDock from '@/components/DesktopDock';
 import PortalSidebar from '@/components/PortalSidebar';
@@ -158,12 +159,14 @@ function CancelConfirmModal({
   periodEnd,
   onConfirm,
   onClose,
-  loading
+  loading,
+  error: modalError
 }: {
   periodEnd: string | null;
   onConfirm: (reason: string | null, comment: string | null) => void;
   onClose: () => void;
   loading: boolean;
+  error?: string;
 }) {
   const REASONS = ['Too expensive', 'Not using it enough', 'Missing features', 'Too hard to use', 'Changed business / no longer needed', 'Moving to another system', 'Technical issues', 'Prefer not to say', 'Other'] as const;
   const [selectedReason, setSelectedReason] = useState<string | null>(null);
@@ -206,7 +209,7 @@ function CancelConfirmModal({
         {/* Feedback question */}
         <div className="mb-4">
           <p className="text-sm font-semibold text-slate-700 mb-3">
-            Why are you leaving IWILLBUILD?{' '}
+            Why are you leaving IWIllBUIlD?{' '}
             <span className="font-normal text-slate-400">(optional)</span>
           </p>
           <div className="flex flex-col gap-2">
@@ -237,6 +240,9 @@ function CancelConfirmModal({
             Continue to cancel
           </button>
         </div>
+        {modalError && (
+          <p className="mt-3 text-sm text-red-600 text-center">{modalError}</p>
+        )}
       </motion.div>
     </div>;
 }
@@ -333,6 +339,7 @@ export default function BillingPage() {
   const [checkoutLoading, setCheckoutLoading] = useState<string | null>(null);
   const [portalLoading, setPortalLoading] = useState(false);
   const [cancelLoading, setCancelLoading] = useState(false);
+  const [cancelError, setCancelError] = useState('');
   const [reactivateLoading, setReactivateLoading] = useState(false);
   const [upgradeLoading, setUpgradeLoading] = useState(false);
   const [showCancelModal, setShowCancelModal] = useState(false);
@@ -457,6 +464,7 @@ export default function BillingPage() {
   }
   async function handleCancelConfirm(reason: string | null, comment: string | null) {
     setCancelLoading(true);
+    setCancelError('');
     setError('');
     try {
       // Save feedback first (fire-and-forget — don't block cancellation on failure)
@@ -488,14 +496,15 @@ export default function BillingPage() {
         currentPeriodEnd?: string;
       };
       if (!res.ok) {
-        setError(data.error ?? 'Could not cancel subscription. Please try again.');
+        setCancelError(data.error ?? 'Could not cancel subscription. Please try again.');
         return;
       }
       setActionMsg(data.message ?? 'Subscription set to cancel at period end.');
       setShowCancelModal(false);
+      setCancelError('');
       await fetchStatus();
     } catch {
-      setError('Something went wrong. Please try again.');
+      setCancelError('Something went wrong. Please try again.');
     } finally {
       setCancelLoading(false);
     }
@@ -539,25 +548,25 @@ export default function BillingPage() {
       <DesktopTopBar />
       <DesktopDock />
       <Helmet>
-        <title>Subscription — IWILLBUILD Portal</title>
-        <meta name="description" content="Manage your IWILLBUILD subscription plan, trial status, and billing details." />
+        <title>Subscription — IWIllBUIlD Portal</title>
+        <meta name="description" content="Manage your IWIllBUIlD subscription plan, trial status, and billing details." />
         <link rel="canonical" href="https://iwillbuild.com/billing" />
         <meta name="robots" content="noindex" />
-        <meta property="og:title" content="Subscription — IWILLBUILD Portal" />
-        <meta property="og:description" content="Manage your IWILLBUILD subscription plan, trial status, and billing details." />
+        <meta property="og:title" content="Subscription — IWIllBUIlD Portal" />
+        <meta property="og:description" content="Manage your IWIllBUIlD subscription plan, trial status, and billing details." />
         <meta property="og:type" content="website" />
         <meta property="og:url" content="https://iwillbuild.com/billing" />
         <meta property="og:image" content="https://iwillbuild.com/airo-assets/images/pages/home/og-image" />
         <meta name="twitter:card" content="summary_large_image" />
-        <meta name="twitter:title" content="Subscription — IWILLBUILD Portal" />
-        <meta name="twitter:description" content="Manage your IWILLBUILD subscription plan, trial status, and billing details." />
+        <meta name="twitter:title" content="Subscription — IWIllBUIlD Portal" />
+        <meta name="twitter:description" content="Manage your IWIllBUIlD subscription plan, trial status, and billing details." />
         <meta name="twitter:image" content="https://iwillbuild.com/airo-assets/images/pages/home/og-image" />
       </Helmet>
 
       {/* Sticky top bar */}
       <header className="h-16 bg-white border-b border-border flex items-center px-4 md:px-6 shrink-0 sticky top-0 z-30 safe-top">
         <div className="flex items-center gap-3">
-          <button onClick={() => navigate('/?page=2')} className="p-2 -ml-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors" aria-label="Back to Home">
+          <button onClick={() => goBack(navigate, '/home')} className="p-2 -ml-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors" aria-label="Back to Home">
             <ArrowLeft size={20} />
           </button>
           <CreditCard size={18} className="text-primary shrink-0" />
@@ -755,7 +764,7 @@ export default function BillingPage() {
                 </button>
 
                 {/* Cancel — only show if active and not already cancelling */}
-                {isActive && !isCancelPending && <button onClick={() => setShowCancelModal(true)} className="flex items-center gap-2 border border-red-200 text-red-600 hover:bg-red-50 text-sm font-bold px-4 py-2.5 rounded-xl transition-colors">
+                {isActive && !isCancelPending && <button onClick={() => { setCancelError(''); setShowCancelModal(true); }} className="flex items-center gap-2 border border-red-200 text-red-600 hover:bg-red-50 text-sm font-bold px-4 py-2.5 rounded-xl transition-colors">
                     <Ban size={14} />
                     Cancel Subscription
                   </button>}
@@ -876,7 +885,7 @@ export default function BillingPage() {
 
       {/* Cancel confirmation modal */}
       <AnimatePresence>
-        {showCancelModal && <CancelConfirmModal periodEnd={subInfo?.currentPeriodEnd ?? null} onConfirm={handleCancelConfirm} onClose={() => setShowCancelModal(false)} loading={cancelLoading} />}
+        {showCancelModal && <CancelConfirmModal periodEnd={subInfo?.currentPeriodEnd ?? null} onConfirm={handleCancelConfirm} onClose={() => { setShowCancelModal(false); setCancelError(''); }} loading={cancelLoading} error={cancelError} />}
       </AnimatePresence>
 
       {/* Upgrade / downgrade confirmation modal */}

@@ -12,15 +12,15 @@ export default function StudioFormsPage() {
       <DesktopTopBar />
       <DesktopDock />
       <Helmet>
-        <title>Forms — IWILLBUILD</title>
-        <meta name="description" content="IWILLBUILD form templates — build and complete field forms." />
+        <title>Forms — IWIllBUIlD</title>
+        <meta name="description" content="IWIllBUIlD form templates — build and complete field forms." />
         <link rel="canonical" href="https://iwillbuild.com/studio/forms" />
         <meta name="robots" content="noindex" />
       </Helmet>
 
       {/* Header */}
       <header className="sticky top-0 z-30 h-12 bg-white border-b border-border flex items-center px-4 shrink-0 gap-2 safe-top">
-        <button onClick={() => navigate('/?page=2')} className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors shrink-0" aria-label="Back to Home">
+        <button onClick={() => goBack(navigate, '/studio')} className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors shrink-0" aria-label="Back to Home">
           <ArrowLeft size={16} />
           <span className="hidden sm:inline">Home</span>
         </button>

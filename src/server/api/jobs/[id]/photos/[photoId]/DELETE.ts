@@ -4,6 +4,7 @@ import { jobPhotos, profiles, jobs } from '../../../../../db/schema.js';
 import { eq, and } from 'drizzle-orm';
 import { getAuth } from '../../../../../../lib/auth/auth.js';
 import { deleteFile } from '../../../../../storage/storage-service.js';
+import { recordStorageDeletion } from '../../../../../lib/storageAudit.js';
 
 const PHOTO_BUCKET = 'job-photos';
 
@@ -52,11 +53,29 @@ export default async function handler(req: Request, res: Response) {
 
     // Delete from DB first, then storage (best-effort)
     await db.delete(jobPhotos).where(eq(jobPhotos.id, photoId));
-    await deleteFile(photo.filename, PHOTO_BUCKET);
+
+    let deleteSuccess = true;
+    let errorCategory: string | undefined;
+    try {
+      await deleteFile(photo.filename, PHOTO_BUCKET);
+    } catch (err) {
+      deleteSuccess = false;
+      errorCategory = err instanceof Error ? err.constructor.name : 'UnknownError';
+      console.warn('[photos DELETE] storage deleteFile failed:', errorCategory);
+    }
+
+    await recordStorageDeletion({
+      actorUserId: session.user.id,
+      companyId:   profile.companyId,
+      category:    PHOTO_BUCKET,
+      storageKey:  photo.filename,
+      success:     deleteSuccess,
+      errorCategory,
+    });
 
     res.json({ ok: true });
   } catch (error) {
-    console.error('DELETE /api/jobs/:id/photos/:photoId error:', error);
+    console.error('DELETE /api/jobs/:id/photos/:photoId error:', error instanceof Error ? error.constructor.name : error);
     res.status(500).json({ error: 'Failed to delete photo' });
   }
 }

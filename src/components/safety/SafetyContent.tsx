@@ -6,11 +6,13 @@
  * Visible tab order (spec):
  *   1. Documents          — JobSwmsTab (job-issued SWMS documents)
  *   2. Submissions        — SwmsSubmissionsTab (company sign-off register)
- *   3. SWMS               — SwmsLibraryTab + merged header actions
- *   4. Safety Plans       — SafetyPlansTab
- *   5. Policies & Docs    — PoliciesTab + App Doc template list
- *   6. Doc Submissions    — SubmissionsTab (document template submissions)
- *   7. Policy Library     — LibraryView (embedded, safety-filtered)
+ *   3. Policies & Docs    — PoliciesTab + App Doc template list
+ *   4. Doc Submissions    — SubmissionsTab (document template submissions)
+ *   5. Policy Library     — LibraryView (embedded, safety-filtered)
+ *
+ * Removed (moved to Studio → Apply Widget):
+ *   SWMS               — SwmsLibraryTab  (master doc creation now in Studio)
+ *   Safety Plans       — SafetyPlansTab  (master doc creation now in Studio)
  *
  * Hidden (preserved, not deleted):
  *   Dashboard — SafetyDashboardTab (component intact, not rendered in tab strip)
@@ -25,13 +27,11 @@ import { useEffect, useRef, useState, useCallback } from 'react';
 import { useSearchParams, useNavigate } from 'react-router';
 import { motion } from 'motion/react';
 import {
-  FileText, ClipboardCheck, HardHat, ClipboardList, BookOpen, Library, Inbox, Plus, FileUp, Layers,
+  FileText, ClipboardCheck, BookOpen, Library, Inbox, Plus, FileUp, Layers,
 } from 'lucide-react';
 
 // Tab components from safety.tsx (unchanged behaviour)
 import {
-  SwmsLibraryTab,
-  SafetyPlansTab,
   PoliciesTab,
 } from '@/pages/safety';
 
@@ -46,8 +46,6 @@ import { SubmissionsTab, type DocTemplate } from '../../pages/studio-documents';
 const TABS = [
   { id: 'documents',       label: 'Documents',       icon: FileText       },
   { id: 'submissions',     label: 'Submissions',      icon: ClipboardCheck },
-  { id: 'swms',            label: 'SWMS',             icon: HardHat        },
-  { id: 'plans',           label: 'Safety Plans',     icon: ClipboardList  },
   { id: 'policies',        label: 'Policies & Docs',  icon: BookOpen       },
   { id: 'doc-submissions', label: 'Doc Submissions',  icon: Inbox          },
   { id: 'library',         label: 'Policy Library',   icon: Library        },
@@ -64,7 +62,16 @@ export default function SafetyContent() {
   const navigate = useNavigate();
 
   // Read the safetyTab param; fall back to default.
+  // Old tabs 'swms' and 'plans' are no longer in the tab strip — redirect them
+  // to Studio so users land in the right place.
   const rawTab = searchParams.get('safetyTab');
+
+  useEffect(() => {
+    if (rawTab === 'swms' || rawTab === 'plans') {
+      navigate('/studio/documents', { replace: true });
+    }
+  }, [rawTab, navigate]);
+
   const activeTab: TabId =
     TABS.some((t) => t.id === rawTab) ? (rawTab as TabId) : DEFAULT_TAB;
 
@@ -143,8 +150,6 @@ export default function SafetyContent() {
         >
           {activeTab === 'documents'       && <JobSwmsTab initialJobId={initialJobId} />}
           {activeTab === 'submissions'     && <SwmsSubmissionsTab />}
-          {activeTab === 'swms'            && <SwmsLibraryTab />}
-          {activeTab === 'plans'           && <SafetyPlansTab />}
           {activeTab === 'policies'        && (
             <>
               {/* App Doc template list — the document building tool */}

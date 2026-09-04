@@ -39,13 +39,16 @@ export default async function handler(req: Request, res: Response) {
   const builderJson = swms.swms_body ?? '{"blocks":[]}';
 
   try {
+    const sourceRef = `swms:${id}`;
     const [result] = await db.execute(sql.raw(
       `INSERT INTO library_items (
+         source_template_ref,
          title, type, category, discipline, summary, tags, builder_json,
          status, visibility, version,
          install_count, download_count, rating_sum, rating_count,
          created_at, updated_at
        ) VALUES (
+         '${safe(sourceRef)}',
          '${safe(title)}', 'swms',
          ${category   ? `'${safe(category)}'`   : 'NULL'},
          ${discipline ? `'${safe(discipline)}'` : 'NULL'},
@@ -54,11 +57,29 @@ export default async function handler(req: Request, res: Response) {
          '${safe(builderJson)}',
          'active', 'public', '${safe(version)}',
          0, 0, 0, 0, NOW(), NOW()
-       )`
+       )
+       ON DUPLICATE KEY UPDATE
+         title        = VALUES(title),
+         category     = VALUES(category),
+         discipline   = VALUES(discipline),
+         summary      = VALUES(summary),
+         tags         = VALUES(tags),
+         builder_json = VALUES(builder_json),
+         version      = VALUES(version),
+         status       = 'active',
+         visibility   = 'public',
+         updated_at   = NOW()`
     )) as unknown as [{ insertId: number }, unknown];
 
-    const libraryItemId = (result as unknown as { insertId: number }).insertId;
-    return res.json({ ok: true, libraryItemId });
+    let libraryItemId = (result as unknown as { insertId: number }).insertId;
+    if (!libraryItemId) {
+      const [refRows] = await db.execute(sql.raw(
+        `SELECT id FROM library_items WHERE source_template_ref = '${safe(sourceRef)}' LIMIT 1`
+      )) as unknown as [Array<{ id: number }>, unknown];
+      libraryItemId = refRows?.[0]?.id ?? 0;
+    }
+
+    return res.json({ ok: true, libraryItemId, updated: !(result as unknown as { insertId: number }).insertId });
   } catch (err) {
     console.error('SWMS publish-to-library error:', err);
     return res.status(500).json({ error: 'Failed to publish to library' });

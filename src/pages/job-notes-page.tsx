@@ -57,13 +57,13 @@ export default function JobNotesPage() {
   };
 
   function handleChangeJob() {
-    navigate('/?picker=notes');
+    navigate('/home?picker=notes');
   }
 
   return (
     <div className="portal-page">
       <Helmet>
-        <title>{job ? `Notes — ${job.name}` : 'Job Notes'} — IWILLBUILD</title>
+        <title>{job ? `Notes — ${job.name}` : 'Job Notes'} — IWIllBUIlD</title>
         <meta name="description" content="View and manage notes and tasks for this job." />
         <meta name="robots" content="noindex" />
         {id && <link rel="canonical" href={`https://iwillbuild.com/jobs/${id}/notes`} />}
@@ -82,7 +82,7 @@ export default function JobNotesPage() {
             featureLabel="Notes"
             jobName={job?.name ?? 'Job'}
             jobNumber={job?.jobNumber}
-            backTo="/"
+            backTo="/home"
             onChangeJob={handleChangeJob}
           >
             <div className="p-4 pb-24 md:pb-6 max-w-3xl mx-auto w-full">

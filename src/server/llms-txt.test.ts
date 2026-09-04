@@ -156,7 +156,7 @@ describe("llmsTxtHandler", () => {
 	it("serves a well-formed file with the right headers on a customer host", () => {
 		const { res, calls } = mockRes();
 		llmsTxtHandler(reqFor("acme.com"), res);
-		// H1 is either the seeded business name (e.g. "IWILLBUILD") or falls back
+		// H1 is either the seeded business name (e.g. "IWIllBUIlD") or falls back
 		// to the request hostname when siteMeta.name is empty. The regex accepts
 		// both so this test stays green regardless of the seeded state.
 		expect(calls.status).toBeUndefined(); // no explicit status => Express 200
@@ -165,7 +165,7 @@ describe("llmsTxtHandler", () => {
 			"public, max-age=60, must-revalidate",
 		);
 		expect(calls.headers["Vary"]).toBe("Host");
-		expect(calls.body!.split("\n")[0]).toMatch(/^# (IWILLBUILD|acme\.com)/);
+		expect(calls.body!.split("\n")[0]).toMatch(/^# (IWIllBUIlD|acme\.com)/);
 		expect(calls.body).toContain("## Pages");
 		expect(calls.body).toContain("- [Home](https://acme.com/)");
 	});

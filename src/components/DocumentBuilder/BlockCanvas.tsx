@@ -6,13 +6,14 @@
  * In fill/preview mode, applies the logic engine to show/hide blocks.
  */
 
-import { useRef, useState, useMemo, useEffect } from 'react';
+import { useRef, useState, useMemo, useEffect, useLayoutEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Plus, Zap } from 'lucide-react';
 import { useDocumentStore } from './useDocumentStore';
 import { BlockRenderer } from './BlockRenderer';
 import { useLogicEngine, DEFAULT_BLOCK_STATE } from './useLogicEngine';
 import type { DocumentBlock } from './types';
+import FloatingFormatToolbar from './formatting/FloatingFormatToolbar';
 
 // A4 dimensions at 96dpi: 794 × 1123px — portrait minH = width * 1.414
 const PAGE_WIDTHS: Record<string, number> = {
@@ -36,7 +37,48 @@ export default function BlockCanvas({ zoom = 100 }: { zoom?: number }) {
   const [dragOverId, setDragOverId] = useState<string | null>(null);
   const dragRef = useRef<string | null>(null);
   const pageRef = useRef<HTMLDivElement>(null);
+  const scrollRef = useRef<HTMLDivElement>(null);
   const [actualPageH, setActualPageH] = useState(0);
+
+  // ── Scroll-position guard ──────────────────────────────────────────────────
+  // Restores scrollTop after a React commit that changed blocks/selection, but
+  // ONLY when a contentEditable inside the canvas is currently focused.
+  //
+  // Rationale: the previous fix captured scrollTop before every render and
+  // restored it unconditionally. That fought legitimate keyboard scrolling
+  // (arrow keys, Page Down) when the user was navigating the canvas without
+  // a focused cell. The narrowed guard below only activates when an editable
+  // cell is focused — the only time a re-render can cause an unwanted jump.
+  const savedScrollTop = useRef<number>(0);
+
+  useLayoutEffect(() => {
+    const scroll = scrollRef.current;
+    if (!scroll) return;
+    // Only capture/restore when a contentEditable inside the canvas is focused.
+    // document.activeElement is synchronously available in useLayoutEffect.
+    const active = document.activeElement;
+    const isEditableFocused =
+      active instanceof HTMLElement &&
+      active.isContentEditable &&
+      scroll.contains(active);
+    if (!isEditableFocused) return;
+
+    // Capture before this commit's paint
+    const before = savedScrollTop.current;
+    // Restore if the commit moved the scroll container
+    if (Math.abs(scroll.scrollTop - before) > 2) {
+      scroll.scrollTop = before;
+    }
+  }, [blocks, selection]);
+
+  // Continuously track scrollTop so savedScrollTop is always current
+  useEffect(() => {
+    const scroll = scrollRef.current;
+    if (!scroll) return;
+    const onScroll = () => { savedScrollTop.current = scroll.scrollTop; };
+    scroll.addEventListener('scroll', onScroll, { passive: true });
+    return () => scroll.removeEventListener('scroll', onScroll);
+  }, []);
 
   // Track actual rendered page height so the sizing shell stays accurate
   useEffect(() => {
@@ -74,7 +116,9 @@ export default function BlockCanvas({ zoom = 100 }: { zoom?: number }) {
   const canvasStyle: React.CSSProperties = {
     width: canvasWidth,
     minHeight: isLandscape ? pageWidth : Math.round(pageWidth * 1.414),
-    backgroundColor: theme.backgroundColor,
+    // backgroundColor intentionally omitted — page paper is always white via bg-white class.
+    // theme.backgroundColor must not override the page surface; theme colours apply to
+    // headings, accents, and individual blocks only.
     paddingLeft: margin.x,
     paddingRight: margin.x,
     paddingTop: margin.y,
@@ -137,14 +181,14 @@ export default function BlockCanvas({ zoom = 100 }: { zoom?: number }) {
 
   if (blocks.length === 0 && mode === 'edit') {
     return (
-      <div className="flex-1 min-h-0 overflow-auto bg-slate-100" onClick={deselect}>
+      <div ref={scrollRef} className="flex-1 min-h-0 overflow-auto bg-slate-100" onClick={deselect}>
         <div className="flex justify-center py-10 px-4">
           {/* Sizing shell — gives scroll container the correct scaled dimensions */}
           <div style={{ width: scaledW, minHeight: scaledH, position: 'relative', flexShrink: 0 }}>
             <div
               ref={pageRef}
               data-doc-page
-              className="studio-doc-page shadow-xl rounded-sm absolute top-0 left-0 origin-top-left"
+              className="studio-doc-page bg-white shadow-xl rounded-sm absolute top-0 left-0 origin-top-left"
               style={{ ...canvasStyle, transform: `scale(${scale})`, transition: 'transform 0.15s ease' }}
               onClick={deselect}
             >
@@ -168,18 +212,20 @@ export default function BlockCanvas({ zoom = 100 }: { zoom?: number }) {
 
   return (
     <div
+      ref={scrollRef}
+      data-print-scroll
       className="flex-1 min-h-0 overflow-auto bg-slate-100"
       onClick={(e) => {
         if (e.target === e.currentTarget) deselect();
       }}
     >
-      <div className="flex justify-center py-10 px-4">
+      <div data-print-center className="flex justify-center py-10 px-4">
         {/* Sizing shell — gives scroll container the correct scaled dimensions */}
-        <div style={{ width: scaledW, minHeight: scaledH, position: 'relative', flexShrink: 0 }}>
+        <div data-print-shell style={{ width: scaledW, minHeight: scaledH, position: 'relative', flexShrink: 0 }}>
         <div
           ref={pageRef}
           data-doc-page
-          className="studio-doc-page shadow-xl rounded-sm absolute top-0 left-0 origin-top-left"
+          className="studio-doc-page bg-white shadow-xl rounded-sm absolute top-0 left-0 origin-top-left"
           style={{ ...canvasStyle, transform: `scale(${scale})`, transition: 'transform 0.15s ease' }}
           onClick={(e) => {
             if (e.target === e.currentTarget) deselect();
@@ -198,7 +244,6 @@ export default function BlockCanvas({ zoom = 100 }: { zoom?: number }) {
             return (
               <motion.div
                 key={block.id}
-                layout
                 initial={{ opacity: 0, y: 8 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, scale: 0.97 }}
@@ -243,20 +288,29 @@ export default function BlockCanvas({ zoom = 100 }: { zoom?: number }) {
                   </div>
                 )}
 
-                {/* Block controls (edit mode only — always visible) */}
+                {/* Block controls — horizontal row, top-aligned.
+                    Bug fix: the old layout used flex-col + top-1/2 -translate-y-1/2,
+                    which centred the 3×24px button column (72px total) on the
+                    block's height. On single-line blocks (~24–32px tall) all three
+                    buttons overflowed and stacked on top of each other.
+                    Fix: flex-row + top-0 — the strip is always 24px tall and
+                    never overflows regardless of block height. */}
                 {mode === 'edit' && (
-                  <div className="studio-no-print absolute -left-8 top-1/2 -translate-y-1/2 flex flex-col gap-0.5 z-20">
+                  <div className="studio-no-print absolute -left-20 top-0 flex flex-row gap-0.5 z-20">
                     <button
+                      type="button"
                       onClick={(e) => { e.stopPropagation(); moveBlock(block.id, 'up'); }}
                       className="w-6 h-6 rounded bg-white border border-slate-200 shadow-sm flex items-center justify-center text-slate-400 hover:text-primary hover:border-primary transition-colors text-xs"
                       title="Move up"
                     >↑</button>
                     <button
+                      type="button"
                       onClick={(e) => { e.stopPropagation(); moveBlock(block.id, 'down'); }}
                       className="w-6 h-6 rounded bg-white border border-slate-200 shadow-sm flex items-center justify-center text-slate-400 hover:text-primary hover:border-primary transition-colors text-xs"
                       title="Move down"
                     >↓</button>
                     <button
+                      type="button"
                       onClick={(e) => { e.stopPropagation(); removeBlock(block.id); }}
                       className="w-6 h-6 rounded bg-white border border-slate-200 shadow-sm flex items-center justify-center text-slate-400 hover:text-red-500 hover:border-red-300 transition-colors text-xs"
                       title="Delete block"
@@ -264,10 +318,10 @@ export default function BlockCanvas({ zoom = 100 }: { zoom?: number }) {
                   </div>
                 )}
 
-                {/* Drag handle — always visible in edit mode */}
+                {/* Drag handle — top-aligned to match the controls */}
                 {mode === 'edit' && (
-                  <div className="studio-no-print absolute -right-7 top-1/2 -translate-y-1/2 flex z-20 cursor-grab active:cursor-grabbing">
-                    <div className="w-5 h-8 flex flex-col items-center justify-center gap-0.5">
+                  <div className="studio-no-print absolute -right-7 top-0 flex z-20 cursor-grab active:cursor-grabbing">
+                    <div className="w-5 h-6 flex flex-col items-center justify-center gap-0.5">
                       {[0,1,2].map((i) => (
                         <div key={i} className="w-3 h-0.5 bg-slate-300 rounded-full" />
                       ))}
@@ -318,6 +372,11 @@ export default function BlockCanvas({ zoom = 100 }: { zoom?: number }) {
       </div>{/* end page div */}
         </div>{/* end sizing shell */}
       </div>{/* end centering wrapper */}
+
+      {/* Floating format toolbar — activates on text selection inside the canvas */}
+      {mode === 'edit' && (
+        <FloatingFormatToolbar canvasRef={pageRef as React.RefObject<HTMLElement | null>} />
+      )}
     </div>
   );
 }

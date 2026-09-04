@@ -654,8 +654,9 @@ export default function IncidentDetailPage() {
       </div>;
   }
   return <>
+      {/* CP12A: Subtle safeguard notice rendered at page level (hidden, used by upload sections) */}
       <Helmet>
-        <title>{pageTitle} — IWILLBUILD</title>
+        <title>{pageTitle} — IWIllBUIlD</title>
         <meta name="description" content="Incident record detail and corrective actions." />
         <link rel="canonical" href={`https://iwillbuild.com/incidents/${id}`} />
         <meta name="robots" content="noindex, nofollow" />
@@ -667,7 +668,7 @@ export default function IncidentDetailPage() {
         <div className="bg-red-700 text-white px-4 safe-top pb-3 flex flex-col gap-0 min-w-0 overflow-x-clip">
           {/* Breadcrumb */}
           <div className="flex items-center gap-1.5 text-xs text-red-300 pt-1 mb-1.5 min-w-0 overflow-hidden">
-            <button type="button" onClick={() => navigate('/home')} className="flex items-center gap-1 hover:text-white transition-colors">
+            <button type="button" onClick={() => goBack(navigate, '/home')} className="flex items-center gap-1 hover:text-white transition-colors">
               <Home size={11} /> Home
             </button>
             <ChevronRight size={10} className="text-red-400" />
@@ -1000,6 +1001,7 @@ export default function IncidentDetailPage() {
                           Add
                         </button> : attachments.length > 0 ? <span className="bg-slate-100 text-slate-500 text-xs px-1.5 py-0.5 rounded-full">{attachments.length}</span> : undefined}>
                     <input ref={fileInputRef} type="file" accept="image/*,application/pdf" multiple className="hidden" onChange={attachQ.handleInputChange} />
+                    {!isClosed && null /* safeguard notice removed */}
                     {attachments.length === 0 && <div className={`border-2 border-dashed border-slate-200 rounded-xl p-6 text-center ${!isClosed ? 'cursor-pointer hover:border-red-300 hover:bg-red-50/30 transition-colors' : ''}`} onClick={() => !isClosed && fileInputRef.current?.click()}>
                         <Paperclip size={20} className="mx-auto text-slate-300 mb-2" />
                         <p className="text-xs text-slate-400">{isClosed ? 'No attachments' : 'Tap to add photos or PDFs'}</p>

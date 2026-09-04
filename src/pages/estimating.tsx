@@ -7,6 +7,7 @@ import BuildersCalc from '@/components/estimating/BuildersCalc';
 import TakeoffPad from '@/components/estimating/TakeoffPad';
 import CsvImportModal from '@/components/CsvImportModal';
 import { LIMITS } from '@/lib/limits';
+import { goBack } from '@/lib/navigation';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 interface CostItem {
@@ -783,17 +784,17 @@ export default function EstimatingPage() {
   }
   return <div className="portal-page">
       <Helmet>
-        <title>Estimating — IWILLBUILD Portal</title>
+        <title>Estimating — IWIllBUIlD Portal</title>
         <meta name="description" content="Build cost guides, recipe assemblies and scope lines for construction estimates. Generate PDF quotes for clients." />
         <link rel="canonical" href="https://iwillbuild.com/estimating" />
         <meta name="robots" content="noindex" />
-        <meta property="og:title" content="Estimating — IWILLBUILD Portal" />
+        <meta property="og:title" content="Estimating — IWIllBUIlD Portal" />
         <meta property="og:description" content="Build cost guides, recipe assemblies and scope lines for construction estimates. Generate PDF quotes for clients." />
         <meta property="og:type" content="website" />
         <meta property="og:url" content="https://iwillbuild.com/estimating" />
         <meta property="og:image" content="https://iwillbuild.com/airo-assets/images/pages/home/og-image" />
         <meta name="twitter:card" content="summary_large_image" />
-        <meta name="twitter:title" content="Estimating — IWILLBUILD Portal" />
+        <meta name="twitter:title" content="Estimating — IWIllBUIlD Portal" />
         <meta name="twitter:description" content="Build cost guides, recipe assemblies and scope lines for construction estimates. Generate PDF quotes for clients." />
         <meta name="twitter:image" content="https://iwillbuild.com/airo-assets/images/pages/home/og-image" />
       </Helmet>
@@ -801,7 +802,7 @@ export default function EstimatingPage() {
       <div className="portal-main">
         {/* Top bar */}
         <header className="h-16 bg-white border-b border-slate-200 flex items-center px-4 md:px-6 shrink-0 gap-3">
-          <button onClick={() => navigate('/?page=2')} className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors shrink-0" aria-label="Back to Home">
+          <button onClick={() => goBack(navigate, '/estimating')} className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors shrink-0" aria-label="Back to Home">
             <ArrowLeft size={16} />
           </button>
           <Calculator size={18} className="text-primary shrink-0" />

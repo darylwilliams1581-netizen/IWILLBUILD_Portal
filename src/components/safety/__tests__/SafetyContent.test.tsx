@@ -205,11 +205,10 @@ describe('Test 7 — The existing assignment workflow is reused', () => {
     expect(screen.getByTestId('tab-job-swms')).toBeInTheDocument();
   });
 
-  it('SWMS tab renders SwmsLibraryTab (templates), not a duplicate assignment modal', () => {
+  it('SWMS tab is no longer in the tab strip — master SWMS creation moved to Studio', () => {
     renderSafety();
-    fireEvent.click(screen.getByRole('tab', { name: /^SWMS$/i }));
-    expect(screen.getByTestId('tab-swms-library')).toBeInTheDocument();
-    expect(screen.queryByTestId('tab-job-swms')).not.toBeInTheDocument();
+    // The SWMS tab has been removed; clicking it is no longer possible
+    expect(screen.queryByRole('tab', { name: /^SWMS$/i })).toBeNull();
   });
 });
 
@@ -298,13 +297,17 @@ describe('Test 13 — Submissions remains separate', () => {
   });
 });
 
-// ── Test 14: SWMS opens on Templates ─────────────────────────────────────────
+// ── Test 14: SWMS and Safety Plans tabs removed — Studio is the entry point ───
 
-describe('Test 14 — SWMS opens on Templates (SwmsLibraryTab)', () => {
-  it('clicking SWMS shows the SwmsLibraryTab sentinel', () => {
+describe('Test 14 — SWMS and Safety Plans tabs removed from Safety', () => {
+  it('SWMS tab is not present in the tab strip', () => {
     renderSafety();
-    fireEvent.click(screen.getByRole('tab', { name: /^SWMS$/i }));
-    expect(screen.getByTestId('tab-swms-library')).toBeInTheDocument();
+    expect(screen.queryByRole('tab', { name: /^SWMS$/i })).toBeNull();
+  });
+
+  it('Safety Plans tab is not present in the tab strip', () => {
+    renderSafety();
+    expect(screen.queryByRole('tab', { name: /^Safety Plans$/i })).toBeNull();
   });
 });
 
@@ -321,10 +324,10 @@ describe('Test 15 — Posters remains standalone', () => {
     expect(screen.queryByRole('tab', { name: /^Dashboard$/i })).toBeNull();
   });
 
-  it('renders exactly 7 visible tabs in the required order', () => {
+  it('renders exactly 5 visible tabs in the required order', () => {
     renderSafety();
     const expected = [
-      'Documents', 'Submissions', 'SWMS', 'Safety Plans', 'Policies & Docs', 'Doc Submissions', 'Policy Library',
+      'Documents', 'Submissions', 'Policies & Docs', 'Doc Submissions', 'Policy Library',
     ];
     const buttons = screen.getAllByRole('tab');
     const labels = buttons.map((b) => b.textContent?.trim() ?? '');

@@ -21,6 +21,7 @@ import { Helmet } from '@dr.pogodin/react-helmet';
 import { AlertCircle, ArrowLeft, ArrowUpRight, Globe, ImageOff, Link2, Loader2, Pencil, Plus, Trash2, X } from 'lucide-react';
 import PortalErrorBoundary from '@/components/PortalErrorBoundary';
 import { usePermissions } from '@/lib/usePermissions';
+import { goBack } from '@/lib/navigation';
 import DesktopTopBar from '@/components/DesktopTopBar';
 import DesktopDock from '@/components/DesktopDock';
 import PortalSidebar from '@/components/PortalSidebar';
@@ -581,7 +582,7 @@ export default function QuickLinksPage() {
       <DesktopTopBar />
       <DesktopDock />
       <Helmet>
-        <title>Quick Links — IWILLBUILD Portal</title>
+        <title>Quick Links — IWIllBUIlD Portal</title>
         <meta name="description" content="Office launcher for external portals, tools, and systems." />
         <link rel="canonical" href="https://iwillbuild.com/quick-links" />
         <meta name="robots" content="noindex" />
@@ -593,7 +594,7 @@ export default function QuickLinksPage() {
           {/* ── Header ── */}
           <header className="sticky top-0 z-30 bg-white border-b border-border shrink-0 safe-top">
             <div className="flex items-center gap-2 px-4 h-12">
-              <button onClick={() => navigate('/?page=2')} className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors shrink-0" aria-label="Back to Home">
+              <button onClick={() => goBack(navigate, '/home')} className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors shrink-0" aria-label="Back to Home">
                 <ArrowLeft size={16} />
                 <span className="hidden sm:inline">Home</span>
               </button>

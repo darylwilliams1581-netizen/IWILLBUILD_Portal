@@ -131,6 +131,7 @@ export default function FormDocumentActionsModal({
     for (let i = 0; i < uint8.length; i++) {
       binary += String.fromCharCode(uint8[i]);
     }
+    // eslint-disable-next-line no-undef
     const base64 = btoa(binary);
 
     // Safe filename — strip special chars
@@ -209,6 +210,7 @@ export default function FormDocumentActionsModal({
         defaultMessage={`Please find the completed ${templateName} attached.`}
         job={emailJobContext}
         jobId={jobId}
+        submissionId={submissionId}
         onClose={onClose}
       />
     );
@@ -264,6 +266,7 @@ export default function FormDocumentActionsModal({
   // Bottom sheet on native, centred modal on web
   if (native) {
     return (
+      <>
       <AnimatePresence>
         <div className="fixed inset-0 z-50 flex flex-col justify-end">
           {/* Backdrop */}
@@ -333,11 +336,13 @@ export default function FormDocumentActionsModal({
           </motion.div>
         </div>
       </AnimatePresence>
+    </>
     );
   }
 
   // Desktop modal
   return (
+    <>
     <AnimatePresence>
       <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
         {/* Backdrop */}
@@ -399,5 +404,6 @@ export default function FormDocumentActionsModal({
         </motion.div>
       </div>
     </AnimatePresence>
+    </>
   );
 }

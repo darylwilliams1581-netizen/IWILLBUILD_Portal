@@ -700,7 +700,7 @@ export default function LensPage() {
   return <>
       <PortalSidebar />
       <Helmet>
-        <title>Lens — IWILLBUILD</title>
+        <title>Lens — IWIllBUIlD</title>
         <meta name="description" content="Company-wide photo gallery. Browse, search and filter all job photos." />
         <meta name="robots" content="noindex" />
         <link rel="canonical" href="https://iwillbuild.com/lens" />
@@ -748,14 +748,14 @@ export default function LensPage() {
       paddingRight: 'env(safe-area-inset-right)'
     }}>
         {/* ── Page header ─────────────────────────────────────────────────── */}
-        <div className="bg-white border-b border-slate-200 sticky top-0 lg:top-[116px] z-20">
+        <div className="bg-white border-b border-slate-200 sticky top-0 lg:top-[116px] z-20 safe-top">
           <div className="max-w-screen-2xl mx-auto px-3 py-2 flex flex-col gap-1.5">
 
             {/* ── Row 1: home + title + desktop actions ── */}
             <div className="flex items-center gap-2">
 
               {/* Home */}
-              <button onClick={() => navigate('/home')} className="p-2 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors shrink-0 min-w-[40px] min-h-[40px] flex items-center justify-center" aria-label="Go to dashboard">
+              <button onClick={() => goBack(navigate, '/home')} className="p-2 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors shrink-0 min-w-[40px] min-h-[40px] flex items-center justify-center" aria-label="Go to dashboard">
                 <Home size={18} />
               </button>
 

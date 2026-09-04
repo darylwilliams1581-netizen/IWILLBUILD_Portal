@@ -32,7 +32,7 @@ export default function LibraryRedirect() {
   return (
     <>
       <Helmet>
-        <title>Library — IWILLBUILD</title>
+        <title>Library — IWIllBUIlD</title>
         <meta
           name="description"
           content="Browse and install safety, compliance and document templates for your trades business."

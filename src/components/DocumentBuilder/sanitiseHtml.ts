@@ -1,8 +1,76 @@
 /**
  * Shared HTML sanitiser for DocumentBuilder blocks.
- * Strips script tags, event handlers, javascript: hrefs, and data: URIs
- * while preserving safe formatting markup.
+ *
+ * Strips script tags, event handlers, javascript: hrefs, data: URIs, and
+ * unsafe CSS properties while preserving safe formatting markup and the
+ * inline styles produced by the contextual formatting system.
+ *
+ * Safe CSS properties (allowlist):
+ *   font-size, font-weight, font-style, text-decoration, text-align,
+ *   vertical-align, color, background-color,
+ *   border, border-color, border-width, border-style,
+ *   border-top/right/bottom/left (and their -color/-width/-style variants),
+ *   padding, padding-*, margin, margin-*,
+ *   width, min-width, max-width, height, min-height, max-height,
+ *   white-space, word-break, overflow-wrap
+ *
+ * Unsafe patterns stripped from style values:
+ *   url(...), expression(...), javascript:, data:, vbscript:
  */
+
+// ── Safe CSS property prefix allowlist ───────────────────────────────────────
+
+const SAFE_CSS_PREFIXES = [
+  'font-size', 'font-weight', 'font-style', 'font-family',
+  'text-decoration', 'text-align', 'text-indent', 'text-transform',
+  'vertical-align',
+  'color', 'background-color',
+  'border', 'border-color', 'border-width', 'border-style',
+  'border-top', 'border-right', 'border-bottom', 'border-left',
+  'padding', 'margin',
+  'width', 'min-width', 'max-width',
+  'height', 'min-height', 'max-height',
+  'white-space', 'word-break', 'overflow-wrap',
+  'line-height', 'letter-spacing',
+];
+
+const UNSAFE_CSS_VALUE = /url\s*\(|expression\s*\(|javascript\s*:|data\s*:|vbscript\s*:/gi;
+
+/**
+ * Sanitise a raw CSS style string, keeping only safe properties and stripping
+ * unsafe value patterns. Returns a clean style string (may be empty).
+ */
+export function sanitiseCssStyle(raw: string): string {
+  if (!raw) return '';
+  // Parse individual declarations
+  const declarations = raw.split(';').map((d) => d.trim()).filter(Boolean);
+  const safe: string[] = [];
+  for (const decl of declarations) {
+    const colonIdx = decl.indexOf(':');
+    if (colonIdx < 0) continue;
+    const prop = decl.slice(0, colonIdx).trim().toLowerCase();
+    const val  = decl.slice(colonIdx + 1).trim();
+    // Check against allowlist
+    const allowed = SAFE_CSS_PREFIXES.some((prefix) => prop === prefix || prop.startsWith(prefix + '-'));
+    if (!allowed) continue;
+    // Strip unsafe value patterns
+    if (UNSAFE_CSS_VALUE.test(val)) continue;
+    safe.push(`${prop}: ${val}`);
+  }
+  return safe.join('; ');
+}
+
+// ── Tags whose text content must be dropped entirely (not just the tag) ───────
+// These elements are dangerous even as text nodes if re-parsed, and their
+// content is never legitimate document formatting.
+const DROP_WITH_CONTENT = new Set([
+  'script', 'style', 'noscript', 'template', 'iframe', 'frame', 'frameset',
+  'object', 'embed', 'applet', 'base', 'link', 'meta', 'title',
+  'svg', 'math',
+]);
+
+// ── HTML sanitiser ────────────────────────────────────────────────────────────
+
 export function sanitiseHtml(dirty: string): string {
   if (!dirty) return '';
   if (typeof window === 'undefined') {
@@ -17,16 +85,29 @@ export function sanitiseHtml(dirty: string): string {
     'a', 'blockquote', 'pre', 'code',
     'table', 'thead', 'tbody', 'tr', 'th', 'td',
     'hr', 'sup', 'sub',
+    'img',
   ]);
   const ALLOWED_ATTRS: Record<string, string[]> = {
-    a:    ['href', 'title', 'target', 'rel'],
-    span: ['style', 'class'],
-    div:  ['style', 'class'],
-    p:    ['style', 'class'],
-    td:   ['colspan', 'rowspan', 'style'],
-    th:   ['colspan', 'rowspan', 'style'],
+    a:      ['href', 'title', 'target', 'rel'],
+    span:   ['style', 'class', 'data-sys-field', 'contenteditable'],
+    div:    ['style', 'class'],
+    p:      ['style', 'class'],
+    table:  ['style', 'class'],
+    thead:  ['style', 'class'],
+    tbody:  ['style', 'class'],
+    tr:     ['style', 'class'],
+    td:     ['colspan', 'rowspan', 'style', 'class'],
+    th:     ['colspan', 'rowspan', 'style', 'class'],
+    // img: src must be a safe URL (same-origin relative or /api/ path — never external, javascript:, or data:)
+    img:    ['src', 'alt', 'width', 'height', 'style', 'class'],
   };
   const SAFE_HREF = /^(https?:|mailto:|#)/i;
+  // img src: allow same-origin relative paths and internal /api/ paths only.
+  // External https/http URLs are blocked to prevent remote tracking requests
+  // when another administrator opens a shared template.
+  // blob: is permitted only for temporary unsaved previews (client-only).
+  const SAFE_IMG_SRC = /^(\/|blob:)/i;
+  const UNSAFE_IMG_SRC = /^(javascript:|vbscript:|data:)/i;
 
   const doc = new DOMParser().parseFromString(dirty, 'text/html');
 
@@ -37,7 +118,13 @@ export function sanitiseHtml(dirty: string): string {
     const el = node as Element;
     const tag = el.tagName.toLowerCase();
 
+    // Drop dangerous elements AND their entire content — never preserve text
+    // from script, style, svg, etc. as text nodes.
+    if (DROP_WITH_CONTENT.has(tag)) return null;
+
     if (!ALLOWED_TAGS.has(tag)) {
+      // Unknown/disallowed tag — preserve child content (e.g. custom spans)
+      // but not the tag itself.
       const frag = document.createDocumentFragment();
       el.childNodes.forEach((child) => {
         const cleaned = clean(child);
@@ -52,9 +139,14 @@ export function sanitiseHtml(dirty: string): string {
       const val = el.getAttribute(attr);
       if (val === null) continue;
       if (attr === 'href' && !SAFE_HREF.test(val.trim())) continue;
+      if (attr === 'src') {
+        const trimmed = val.trim();
+        if (UNSAFE_IMG_SRC.test(trimmed)) continue;
+        if (!SAFE_IMG_SRC.test(trimmed) && !trimmed.startsWith('/api/')) continue;
+      }
       if (attr === 'style') {
-        const safeStyle = val.replace(/url\s*\(|expression\s*\(/gi, '');
-        safe.setAttribute('style', safeStyle);
+        const safeStyle = sanitiseCssStyle(val);
+        if (safeStyle) safe.setAttribute('style', safeStyle);
         continue;
       }
       safe.setAttribute(attr, val);

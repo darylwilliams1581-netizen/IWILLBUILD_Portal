@@ -375,9 +375,9 @@ export default function ExternalFormPage() {
   return <>
       <Helmet>
         <title>
-          {data ? `${data.submission.template_name} — ${data.submission.company_name}` : 'Form — IWILLBUILD'}
+          {data ? `${data.submission.template_name} — ${data.submission.company_name}` : 'Form — IWIllBUIlD'}
         </title>
-        <meta name="description" content="Complete and submit a form from IWILLBUILD." />
+        <meta name="description" content="Complete and submit a form from IWIllBUIlD." />
         <link rel="canonical" href={`${typeof window !== 'undefined' ? window.location.origin : ''}/external/form/${token ?? ''}`} />
         <meta name="robots" content="noindex, nofollow" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -385,12 +385,12 @@ export default function ExternalFormPage() {
 
       <div className="min-h-screen bg-slate-50">
         {/* Header */}
-        <header className="bg-white border-b border-slate-200 px-4 py-3 flex items-center gap-3 sticky top-0 z-10">
+        <header className="bg-white border-b border-slate-200 px-4 py-3 flex items-center gap-3 sticky top-0 z-10 safe-top">
           <div className="flex items-center gap-2">
             <div className="w-7 h-7 bg-primary rounded-lg flex items-center justify-center">
               <FileText size={14} className="text-white" />
             </div>
-            <span className="font-bold text-slate-800 text-sm">IWILLBUILD</span>
+            <span className="font-bold text-slate-800 text-sm">IWIllBUIlD</span>
           </div>
           {data && <>
               <span className="text-slate-300">|</span>

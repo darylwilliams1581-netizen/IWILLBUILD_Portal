@@ -267,7 +267,13 @@ function withTimeout<T>(promise: Promise<T>, ms: number, fallback: T): Promise<T
  * the official Capacitor docs for WKWebView and is guaranteed to return the
  * real registered plugin instance that the native bridge wired up.
  *
- * Returns null on web or if the plugin is not registered.
+ * Callable guard: on some Capacitor / TestFlight builds the Camera plugin stub
+ * is registered before the bridge is fully initialised — the object exists but
+ * its methods are not yet callable. We check getPhoto and checkPermissions are
+ * functions before returning the plugin, matching the guard in getPlugin() in
+ * capacitor-plugins.ts.
+ *
+ * Returns null on web or if the plugin is not registered / not yet ready.
  */
 function getNativeCameraPlugin(): NativeCameraPluginBridge | null {
   if (typeof window === 'undefined') return null;
@@ -280,7 +286,18 @@ function getNativeCameraPlugin(): NativeCameraPluginBridge | null {
     };
   }).Capacitor;
   if (!cap?.isNativePlatform?.()) return null;
-  return cap?.Plugins?.Camera ?? null;
+  const plugin = cap?.Plugins?.Camera ?? null;
+  if (!plugin) return null;
+  // Validate critical methods are callable before returning.
+  // A stub with non-callable methods would throw on first use.
+  if (
+    typeof plugin.getPhoto !== 'function' ||
+    typeof plugin.checkPermissions !== 'function' ||
+    typeof plugin.requestPermissions !== 'function'
+  ) {
+    return null;
+  }
+  return plugin;
 }
 
 interface NativeCameraPluginBridge {

@@ -65,7 +65,7 @@ const LAUNCHER_MODULES: LauncherModule[] = [
 },
 // Row 3 — Docs & content
 {
-  label: 'App Docs',
+  label: 'Studio',
   icon: FileText,
   href: '/studio/documents',
   color: '#0891b2',
@@ -278,7 +278,7 @@ export default function AppLauncher() {
         textTransform: 'uppercase',
         color: '#94a3b8'
       }}>
-          IWILLBUILD Portal
+          IWIllBUIlD Portal
         </p>
 
         {/* Search */}

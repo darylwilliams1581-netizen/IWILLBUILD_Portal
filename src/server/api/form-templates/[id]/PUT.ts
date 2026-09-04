@@ -40,6 +40,7 @@ export default async function handler(req: Request, res: Response) {
       onDashboard,
       onJobs,
       onFleet,
+      sharedInLibrary,
     } = req.body as Partial<{
       name: string;
       formType: string;
@@ -49,6 +50,7 @@ export default async function handler(req: Request, res: Response) {
       onDashboard: boolean;
       onJobs: boolean;
       onFleet: boolean;
+      sharedInLibrary: boolean;
     }>;
 
     const updates: Partial<typeof formTemplates.$inferInsert> = {};
@@ -60,6 +62,7 @@ export default async function handler(req: Request, res: Response) {
     if (onDashboard !== undefined) updates.onDashboard = onDashboard;
     if (onJobs !== undefined) updates.onJobs = onJobs;
     if (onFleet !== undefined) updates.onFleet = onFleet;
+    if (sharedInLibrary !== undefined) updates.sharedInLibrary = !!sharedInLibrary;
 
     if (Object.keys(updates).length === 0) {
       return res.json({ template: existing });

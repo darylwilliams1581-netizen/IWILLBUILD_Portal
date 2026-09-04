@@ -8,8 +8,7 @@ import { useState } from 'react';
 import {
   Type, AlignLeft, Heading, Minus, Space, FileText, Columns,
   AlertTriangle, ShieldCheck, Shield, Table, Image, Hash, Calendar,
-  ToggleLeft, CheckSquare, Circle, List, Camera, PenLine, MapPin,
-  SlidersHorizontal, Star, Upload, Zap, Briefcase, User, Building2,
+  List, Zap, Briefcase, User, Building2,
   Truck, ChevronDown, ChevronRight, FileUp, BarChart2, PanelLeftClose, PanelLeftOpen,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
@@ -41,6 +40,15 @@ const BLOCK_GROUPS: BlockGroup[] = [
           id: newId(), type: 'image',
           src: '/airo-assets/images/safety-badges/ppe-banner-strip',
           alt: 'PPE Required — Personal Protective Equipment',
+          size: 'full', align: 'center', preserveAspectRatio: true,
+        }),
+      },
+      {
+        type: 'image', label: 'Risk Matrix', icon: BarChart2, description: 'Risk Matrix reference — consequence, likelihood and degree of control',
+        factory: () => ({
+          id: newId(), type: 'image',
+          src: '/airo-assets/images/safety-badges/risk-matrix',
+          alt: 'Risk Matrix — consequence, likelihood and degree of control',
           size: 'full', align: 'center', preserveAspectRatio: true,
         }),
       },
@@ -196,28 +204,6 @@ const BLOCK_GROUPS: BlockGroup[] = [
     ],
   },
   {
-    label: 'Form Fields',
-    icon: CheckSquare,
-    blocks: [
-      { type: 'field_short_text',   label: 'Short Text',       icon: Type,             description: 'Single-line text input',   factory: () => ({ id: newId(), type: 'field', fieldType: 'short_text',   label: 'Short Text',   required: false }) },
-      { type: 'field_long_text',    label: 'Long Text',        icon: AlignLeft,        description: 'Multi-line text area',     factory: () => ({ id: newId(), type: 'field', fieldType: 'long_text',    label: 'Long Text',    required: false }) },
-      { type: 'field_rich_text',    label: 'Rich Text Response', icon: AlignLeft,      description: 'Formatted response field', factory: () => ({ id: newId(), type: 'field', fieldType: 'rich_text_response', label: 'Rich Text Response', required: false }) },
-      { type: 'field_number',       label: 'Number',           icon: Hash,             description: 'Numeric input',            factory: () => ({ id: newId(), type: 'field', fieldType: 'number',       label: 'Number',       required: false }) },
-      { type: 'field_date',         label: 'Date',             icon: Calendar,         description: 'Date picker',              factory: () => ({ id: newId(), type: 'field', fieldType: 'date',         label: 'Date',         required: false }) },
-      { type: 'field_datetime',     label: 'Date & Time',      icon: Calendar,         description: 'Date and time picker',     factory: () => ({ id: newId(), type: 'field', fieldType: 'datetime',     label: 'Date & Time',  required: false }) },
-      { type: 'field_yes_no',       label: 'Yes / No',         icon: ToggleLeft,       description: 'Yes/No toggle',            factory: () => ({ id: newId(), type: 'field', fieldType: 'yes_no',       label: 'Yes / No',     required: false }) },
-      { type: 'field_checkbox',     label: 'Checkbox',         icon: CheckSquare,      description: 'Single checkbox',          factory: () => ({ id: newId(), type: 'field', fieldType: 'checkbox',     label: 'Checkbox',     required: false }) },
-      { type: 'field_single_choice', label: 'Single Choice',  icon: Circle,           description: 'Radio button group',       factory: () => ({ id: newId(), type: 'field', fieldType: 'single_choice', label: 'Single Choice', required: false, options: ['Option 1', 'Option 2', 'Option 3'] }) },
-      { type: 'field_multi_select', label: 'Multi Select',     icon: List,             description: 'Multiple checkboxes',      factory: () => ({ id: newId(), type: 'field', fieldType: 'multi_select', label: 'Multi Select', required: false, options: ['Option 1', 'Option 2', 'Option 3'] }) },
-      { type: 'field_rating',       label: 'Rating',           icon: Star,             description: 'Star rating',              factory: () => ({ id: newId(), type: 'field', fieldType: 'rating',       label: 'Rating',       required: false }) },
-      { type: 'field_linear_scale', label: 'Linear Scale',     icon: SlidersHorizontal, description: 'Numeric scale',           factory: () => ({ id: newId(), type: 'field', fieldType: 'linear_scale', label: 'Linear Scale', required: false }) },
-      { type: 'field_signature',    label: 'Signature',        icon: PenLine,          description: 'Signature capture',        factory: () => ({ id: newId(), type: 'field', fieldType: 'signature',    label: 'Signature',    required: false }) },
-      { type: 'field_photo',        label: 'Photo / Media',    icon: Camera,           description: 'Photo upload',             factory: () => ({ id: newId(), type: 'field', fieldType: 'photo',        label: 'Photo',        required: false }) },
-      { type: 'field_file_upload',  label: 'File Upload',      icon: Upload,           description: 'File attachment',          factory: () => ({ id: newId(), type: 'field', fieldType: 'file_upload',  label: 'File Upload',  required: false }) },
-      { type: 'field_location',     label: 'Location / GPS',   icon: MapPin,           description: 'GPS location capture',     factory: () => ({ id: newId(), type: 'field', fieldType: 'location',     label: 'Location',     required: false }) },
-    ],
-  },
-  {
     label: 'Auto-fill Fields',
     icon: Zap,
     blocks: [
@@ -239,7 +225,7 @@ interface Props {
 
 export default function BlockLibrarySidebar({ onImportDocx, onImportBlocksJson, collapsed = false, onToggleCollapse }: Props) {
   const { addBlock, mode } = useDocumentStore();
-  const [openGroups, setOpenGroups] = useState<Set<string>>(new Set(['Text & Content', 'Layout & Media', 'Form Fields']));
+  const [openGroups, setOpenGroups] = useState<Set<string>>(new Set(['Text & Content', 'Layout & Media']));
   const [search, setSearch] = useState('');
 
   if (mode !== 'edit') return null;

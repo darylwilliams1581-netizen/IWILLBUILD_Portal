@@ -10,7 +10,6 @@ import { validateResetToken, consumeResetToken } from '../../../lib/password-res
 import { db } from '../../../db/client.js';
 import { user, account } from '../../../db/schema.js';
 import { eq } from 'drizzle-orm';
-import { getAuth } from '../../../../lib/auth/auth.js';
 import { logActivity, getIp, getUserAgent } from '../../../lib/activity-log.js';
 
 // Password validation helpers — split into explicit checks to avoid lookahead
@@ -51,13 +50,11 @@ export default async function handler(req: Request, res: Response) {
       return res.status(400).json({ error: 'This reset link is invalid or has expired. Please request a new one.' });
     }
 
-    // Use BetterAuth to set the new password (handles hashing)
-    const auth = getAuth();
-
-    // BetterAuth doesn't have a direct "admin set password" API, so we use
-    // the account table to update the password hash directly via bcryptjs
-    const { hash } = await import('bcryptjs');
-    const hashed = await hash(newPassword, 12);
+    // Hash the new password using BetterAuth's own scrypt implementation
+    // so the stored format is `salt:key` — exactly what BetterAuth's
+    // verifyPassword expects at login time.
+    const { hashPassword } = await import('better-auth/crypto');
+    const hashed = await hashPassword(newPassword);
 
     // Update the credential account for this user
     await db

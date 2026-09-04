@@ -34,7 +34,7 @@ export default function AssetManagerPage() {
   }, []);
   return <div className="portal-page">
       <Helmet>
-        <title>Equipment Manager — IWILLBUILD</title>
+        <title>Equipment Manager — IWIllBUIlD</title>
         <meta name="description" content="Manage equipment, tools, plant, safety gear and hire items." />
         <link rel="canonical" href="https://iwillbuild.com/studio/asset-manager" />
         <meta name="robots" content="noindex" />
@@ -48,7 +48,7 @@ export default function AssetManagerPage() {
             {/* Header */}
             <div className="flex-shrink-0 border-b border-slate-200 bg-white/80 backdrop-blur-sm px-4 md:px-6 py-4">
               <div className="flex items-center gap-3">
-                <button onClick={() => navigate('/home')} className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors shrink-0" aria-label="Back to Home">
+                <button onClick={() => goBack(navigate, '/home')} className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors shrink-0" aria-label="Back to Home">
                   <ArrowLeft size={16} />
                 </button>
                 <div className="w-9 h-9 rounded-lg bg-violet-500/10 border border-violet-600/20 flex items-center justify-center shrink-0">

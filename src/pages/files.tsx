@@ -8,6 +8,7 @@ import { Helmet } from '@dr.pogodin/react-helmet';
 import { FolderOpen, ArrowLeft } from 'lucide-react';
 import FilePanel from '@/components/FilePanel';
 import { fetchFiles, type CompanyFile, formatBytes } from '@/lib/files-api';
+import { goBack } from '@/lib/navigation';
 import { Skeleton } from '@/components/ui/skeleton';
 import PageError from '@/components/ui/PageError';
 import DesktopTopBar from '@/components/DesktopTopBar';
@@ -37,25 +38,25 @@ export default function FilesPage() {
       <DesktopTopBar />
       <DesktopDock />
       <Helmet>
-        <title>Files — IWILLBUILD Portal</title>
-        <meta name="description" content="Store and organise job files, plans and documents in the IWILLBUILD portal." />
+        <title>Files — IWIllBUIlD Portal</title>
+        <meta name="description" content="Store and organise job files, plans and documents in the IWIllBUIlD portal." />
         <link rel="canonical" href="https://iwillbuild.com/files" />
         <meta name="robots" content="noindex" />
-        <meta property="og:title" content="Files — IWILLBUILD Portal" />
-        <meta property="og:description" content="Store and organise job files, plans and documents in the IWILLBUILD portal." />
+        <meta property="og:title" content="Files — IWIllBUIlD Portal" />
+        <meta property="og:description" content="Store and organise job files, plans and documents in the IWIllBUIlD portal." />
         <meta property="og:type" content="website" />
         <meta property="og:url" content="https://iwillbuild.com/files" />
         <meta property="og:image" content="https://iwillbuild.com/airo-assets/images/pages/home/og-image" />
         <meta name="twitter:card" content="summary_large_image" />
-        <meta name="twitter:title" content="Files — IWILLBUILD Portal" />
-        <meta name="twitter:description" content="Store and organise job files, plans and documents in the IWILLBUILD portal." />
+        <meta name="twitter:title" content="Files — IWIllBUIlD Portal" />
+        <meta name="twitter:description" content="Store and organise job files, plans and documents in the IWIllBUIlD portal." />
         <meta name="twitter:image" content="https://iwillbuild.com/airo-assets/images/pages/home/og-image" />
       </Helmet>
 
       {/* Sticky top bar */}
       <header className="sticky top-0 z-30 h-14 md:h-16 bg-white border-b border-border flex items-center justify-between px-4 md:px-6 shrink-0 safe-top">
         <div className="flex items-center gap-3 min-w-0">
-          <button onClick={() => navigate('/home')} className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors shrink-0" aria-label="Back to Home">
+          <button onClick={() => goBack(navigate, '/home')} className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors shrink-0" aria-label="Back to Home">
             <ArrowLeft size={16} />
             <span className="hidden sm:inline">Home</span>
           </button>

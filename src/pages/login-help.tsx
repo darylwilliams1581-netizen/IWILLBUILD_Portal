@@ -37,7 +37,7 @@ const sections: HelpSection[] = [{
   color: 'text-blue-500',
   steps: [{
     heading: 'Check spam and junk folders',
-    body: 'Emails from IWILLBUILD may be filtered by your email provider. Search for "iwillbuild" in all folders.'
+    body: 'Emails from IWIllBUIlD may be filtered by your email provider. Search for "iwillbuild" in all folders.'
   }, {
     heading: 'Work email blocking messages?',
     body: 'Some corporate email systems (Microsoft 365, Google Workspace) block automated emails. Ask your IT team to whitelist noreply@iwillbuild.com, or use a personal email address.'
@@ -97,8 +97,8 @@ const sections: HelpSection[] = [{
 export default function LoginHelpPage() {
   return <div className="min-h-screen bg-slate-50">
       <Helmet>
-        <title>Login Help — IWILLBUILD Portal</title>
-        <meta name="description" content="Troubleshoot login issues with the IWILLBUILD portal. Reset your password, resend verification emails, and fix common browser problems." />
+        <title>Login Help — IWIllBUIlD Portal</title>
+        <meta name="description" content="Troubleshoot login issues with the IWIllBUIlD portal. Reset your password, resend verification emails, and fix common browser problems." />
         <link rel="canonical" href="https://iwillbuild.com/login-help" />
         <meta name="robots" content="noindex" />
       </Helmet>
@@ -182,7 +182,7 @@ export default function LoginHelpPage() {
             <p className="text-sm text-slate-600 mb-3">
               If you've tried everything above and still can't log in, contact our support team. Include your email address and a description of what's happening.
             </p>
-            <a href={`mailto:${SUPPORT_EMAIL}?subject=Login%20Help%20Request&body=Hi%20IWILLBUILD%20Support%2C%0A%0AI%20am%20having%20trouble%20logging%20in.%0A%0AEmail%3A%20%0AWhat%20I%20tried%3A%20%0AError%20message%20(if%20any)%3A%20`} className="inline-flex items-center gap-2 bg-amber-500 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-amber-600 transition-colors">
+            <a href={`mailto:${SUPPORT_EMAIL}?subject=Login%20Help%20Request&body=Hi%20IWIllBUIlD%20Support%2C%0A%0AI%20am%20having%20trouble%20logging%20in.%0A%0AEmail%3A%20%0AWhat%20I%20tried%3A%20%0AError%20message%20(if%20any)%3A%20`} className="inline-flex items-center gap-2 bg-amber-500 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-amber-600 transition-colors">
               <Mail size={14} />
               Email support
             </a>

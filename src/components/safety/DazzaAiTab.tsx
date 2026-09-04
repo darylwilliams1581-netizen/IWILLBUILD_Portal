@@ -233,7 +233,7 @@ export default function DazzaAiTab() {
               </div>
             ))}
           </div>
-          <p className="text-xs text-slate-400 mt-3">Go to SWMS Library &rarr; New SWMS to create each of these documents.</p>
+          <p className="text-xs text-slate-400 mt-3">Go to Studio → Apply Widget → SWMS Widget to create each of these documents.</p>
         </div>
       )}
 
@@ -254,7 +254,7 @@ export default function DazzaAiTab() {
               </div>
             ))}
           </div>
-          <p className="text-xs text-slate-400 mt-4">Go to SWMS Library &rarr; New SWMS and paste this content to create the document.</p>
+          <p className="text-xs text-slate-400 mt-4">Go to Studio → Apply Widget → SWMS Widget and paste this content to create the document.</p>
         </div>
       )}
 

@@ -188,7 +188,7 @@ export default function JobSignInPage() {
   const isSignIn = mode === 'signin';
   return <>
       <Helmet>
-        <title>{isSignIn ? 'Job Sign In' : 'Job Sign Out'} — IWILLBUILD</title>
+        <title>{isSignIn ? 'Job Sign In' : 'Job Sign Out'} — IWIllBUIlD</title>
         <meta name="description" content="Scan to sign in or sign out of a job site. Guests complete a check-in form." />
         <link rel="canonical" href={`https://iwillbuild.com/jobs/${jobId}/signin`} />
         <meta name="robots" content="noindex, nofollow" />

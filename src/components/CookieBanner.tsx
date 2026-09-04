@@ -31,8 +31,9 @@ function initTracking(): void {
   window.__SCC_INIT__ = true;
   window._signalsDataLayer = window._signalsDataLayer || [];
 
+  const appId: string | undefined = import.meta.env.SITE_ID;
   window._trfd = window._trfd || [];
-  window._trfd.push({ ap: 'airo-app-builder' });
+  window._trfd.push({ ap: 'airo-app-builder', ...(appId ? { websiteId: appId } : {}) });
 
   const h = location.hostname;
   const url = h === 'localhost' || h.includes('dev-airoapp')

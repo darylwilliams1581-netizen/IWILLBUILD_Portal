@@ -13,7 +13,7 @@
  *   cancelled          — subscription ended AND current_period_end has passed
  *                          → VIEW-ONLY
  *   past_due           — payment failed
- *                          → FULL ACCESS during 7-day grace period
+ *                          → FULL ACCESS during 30-day grace period
  *                          → VIEW-ONLY after grace period
  *   suspended          — manually suspended by platform developer → VIEW-ONLY
  *   no_company         — user has no company record
@@ -25,8 +25,9 @@
  *   active | trial | cancel_at_period_end | past_due (within grace)
  *   platform developer (platform_role === 'developer') — always bypasses
  *
- * PAST-DUE GRACE PERIOD: 7 days from past_due_since
+ * PAST-DUE GRACE PERIOD: 30 days from past_due_since
  *   If past_due_since is NULL, grace period starts from now (fail-open).
+ *   Notification emails: immediately on failure, again at 7-day warning mark.
  */
 
 import type { Request, Response, NextFunction } from 'express';
@@ -37,7 +38,7 @@ import { getAuth } from '../../lib/auth/auth.js';
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
-const PAST_DUE_GRACE_DAYS = 7;
+const PAST_DUE_GRACE_DAYS = 30;
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
 
 // ── Types ─────────────────────────────────────────────────────────────────────

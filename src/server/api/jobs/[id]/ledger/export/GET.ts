@@ -33,7 +33,7 @@ function num(v: unknown, dp = 2): string {
   return (parseFloat(String(v ?? 0)) || 0).toFixed(dp);
 }
 
-// ── Standard IWILLBUILD ledger CSV ──────────────────────────────────────────
+// ── Standard IWIllBUIlD ledger CSV ──────────────────────────────────────────
 function buildStandard(entries: LedgerRow[], jobNum: string, jobTitle: string): string {
   const header = row([
     'entry_id', 'date', 'job_id', 'job_number', 'job_title',

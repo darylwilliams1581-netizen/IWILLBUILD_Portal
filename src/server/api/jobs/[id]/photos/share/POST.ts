@@ -4,8 +4,6 @@
  * Returns { shareUrl, expiresAt }
  *
  * Strategy: DELETE any existing share for this job, then INSERT fresh.
- * This avoids relying on onDuplicateKeyUpdate for the job_id unique index
- * which may not exist on older DB instances.
  */
 import type { Request, Response } from 'express';
 import { db } from '../../../../../db/client.js';
@@ -35,12 +33,12 @@ export default async function handler(req: Request, res: Response) {
     });
     if (!job) return res.status(404).json({ error: 'Job not found' });
 
+    // ── Generate share link ───────────────────────────────────────────────────
     const raw = generateShareToken();
     const hash = hashToken(raw);
     const exp = expiresAt(90);
 
     // Delete any existing share for this job, then insert fresh.
-    // Safer than onDuplicateKeyUpdate which requires the job_id unique index.
     await db.delete(jobPhotoShares).where(
       and(
         eq(jobPhotoShares.jobId, jobId),

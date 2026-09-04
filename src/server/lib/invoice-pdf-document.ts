@@ -110,7 +110,7 @@ export async function buildInvoicePdfDocument(
     invoiceId,
     invoiceNumber: invNum,
     invoiceStatus: String(inv.status ?? 'draft'),
-    companyName: String(company.name ?? 'IWILLBUILD'),
+    companyName: String(company.name ?? 'IWIllBUIlD'),
     customerName: String(inv.customer_name ?? ''),
     customerEmail: String(inv.customer_email ?? ''),
     total: Number(inv.total ?? 0),

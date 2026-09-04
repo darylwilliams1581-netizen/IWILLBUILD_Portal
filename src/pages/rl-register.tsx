@@ -26,6 +26,7 @@ import {
   metresToMm, parseRL, isValidRL,
   type ToleranceResult,
 } from '@/lib/rl-calc';
+import { goBack } from '@/lib/navigation';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -181,7 +182,7 @@ export default function RlRegisterPage() {
   return (
     <>
       <Helmet>
-        <title>RL Register — IWILLBUILD</title>
+        <title>RL Register — IWIllBUIlD</title>
         <meta name="description" content="Job Site RL Register — record site levels and calculate rise/fall differences." />
         <link rel="canonical" href="https://iwillbuild.com/rl-register" />
         <meta name="robots" content="noindex,nofollow" />
@@ -189,9 +190,9 @@ export default function RlRegisterPage() {
 
       <main className="flex flex-col min-h-screen bg-background">
         {/* ── Header ── */}
-        <div className="sticky top-0 z-20 bg-background border-b border-border px-4 py-3 flex items-center gap-3">
+        <div className="sticky top-0 z-20 bg-background border-b border-border px-4 py-3 flex items-center gap-3 safe-top">
           <button
-            onClick={() => navigate('/?page=2')}
+            onClick={() => goBack(navigate, '/home')}
             className="flex items-center justify-center w-9 h-9 rounded-xl border border-border hover:bg-muted transition-colors shrink-0"
             aria-label="Back"
           >

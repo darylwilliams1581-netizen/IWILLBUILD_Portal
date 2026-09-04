@@ -20,7 +20,7 @@
  */
 
 import { useEffect, useRef } from 'react';
-import { isNative } from '@/lib/capacitor-plugins';
+import { isNative, getAppPlugin } from '@/lib/capacitor-plugins';
 
 interface AppLifecycleOptions {
   /** Called when the app returns to the foreground (or tab becomes visible) */
@@ -39,18 +39,6 @@ type AppPlugin = {
     handler: (state: { isActive: boolean }) => void,
   ) => Promise<{ remove: () => void }>;
 };
-
-function getNativeAppPlugin(): AppPlugin | null {
-  if (typeof window === 'undefined') return null;
-  const cap = (window as {
-    Capacitor?: {
-      isNativePlatform?: () => boolean;
-      Plugins?: { App?: AppPlugin };
-    };
-  }).Capacitor;
-  if (!cap?.isNativePlatform?.()) return null;
-  return cap?.Plugins?.App ?? null;
-}
 
 export function useAppLifecycle({
   onForeground,
@@ -74,7 +62,10 @@ export function useAppLifecycle({
 
     // ── Capacitor App state (native) ─────────────────────────────────────────
     if (isNative()) {
-      const AppPlugin = getNativeAppPlugin();
+      // getAppPlugin() validates that addListener is callable before returning —
+      // returns null if the bridge stub is not yet fully initialised (TestFlight
+      // cold-start race). Safe to call unconditionally.
+      const AppPlugin = getAppPlugin() as AppPlugin | null;
       if (AppPlugin) {
         void AppPlugin.addListener('appStateChange', (state) => {
           if (state.isActive) {

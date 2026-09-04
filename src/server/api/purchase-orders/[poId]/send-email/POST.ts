@@ -40,7 +40,7 @@ import {
 const MAX_SUBJECT = 200;
 const MAX_MESSAGE = 4000;
 const EMAIL_ATTACHMENT_LIMIT = 2 * 1024 * 1024;
-const SYSTEM_FOOTER = 'This email was sent automatically from IWILLBUILD. Please do not reply.';
+const SYSTEM_FOOTER = 'This email was sent automatically from IWIllBUIlD. Please do not reply.';
 const MAX_RECIPIENTS = 10;
 
 function isValidEmail(addr: string): boolean {
@@ -113,7 +113,7 @@ export default async function handler(req: Request, res: Response) {
     const [companyRows] = await db.execute(sql`
       SELECT name FROM companies WHERE id = ${profile.companyId} LIMIT 1
     `) as unknown as [Array<{ name?: string }>, unknown];
-    const companyName = String(companyRows?.[0]?.name ?? 'IWILLBUILD');
+    const companyName = String(companyRows?.[0]?.name ?? 'IWIllBUIlD');
 
     const auth = getAuth();
     const headers = new Headers();

@@ -23,14 +23,14 @@ export default function JobEstimatesPage() {
   const { jobId, job, loading, error } = useJobForFeature();
 
   function handleChangeJob() {
-    navigate('/?picker=estimates');
+    navigate('/home?picker=estimates');
   }
 
   return (
     <div className="portal-page">
       <Helmet>
-        <title>{job ? `Estimates — ${job.name}` : 'Estimates'} — IWILLBUILD</title>
-        <meta name="description" content="View and manage estimates for this job in IWILLBUILD." />
+        <title>{job ? `Estimates — ${job.name}` : 'Estimates'} — IWIllBUIlD</title>
+        <meta name="description" content="View and manage estimates for this job in IWIllBUIlD." />
         <meta name="robots" content="noindex" />
         {job && <link rel="canonical" href={`https://iwillbuild.com/jobs/${job.id}/quotes`} />}
       </Helmet>
@@ -55,7 +55,7 @@ export default function JobEstimatesPage() {
             featureLabel={FEATURE.label}
             jobName={job.name}
             jobNumber={job.jobNumber}
-            backTo="/"
+            backTo="/home"
             onChangeJob={handleChangeJob}
           >
             <div className="p-4">

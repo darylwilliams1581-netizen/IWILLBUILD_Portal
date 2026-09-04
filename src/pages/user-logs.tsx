@@ -748,7 +748,7 @@ export default function UserLogsPage() {
       <DesktopTopBar />
       <DesktopDock />
       <Helmet>
-        <title>User Logs — IWILLBUILD</title>
+        <title>User Logs — IWIllBUIlD</title>
         <meta name="description" content="View site sign-ins, vehicle usage, time entries and platform activity across your team." />
         <link rel="canonical" href="https://iwillbuild.com/user-logs" />
         <meta name="robots" content="noindex" />

@@ -41,11 +41,49 @@ function safeErr(e: unknown): string {
 
 /** Convert an ISO 8601 date string (e.g. "2026-08-13T10:23:45Z") to MySQL DATETIME
  *  format ("2026-08-13 10:23:45"). MySQL DATETIME columns reject the T/Z form in
- *  raw SQL string literals. */
+ *  raw SQL string literals.
+ *
+ *  Uses endsWith + explicit digit checks — no regex. */
 function toMysqlDatetime(iso: string): string {
   if (!iso) return '1970-01-01 00:00:00';
-  // Replace T with space and strip trailing Z or timezone offset
-  return iso.replace('T', ' ').replace(/(\.\d+)?Z$/, '').replace(/[+-]\d{2}:\d{2}$/, '').slice(0, 19);
+
+  // Replace T separator with space
+  let s = iso.replace('T', ' ');
+
+  // Strip trailing Z (with optional fractional seconds: .NNN)
+  // Pattern: optional dot + digits + Z at end
+  if (s.endsWith('Z')) {
+    s = s.slice(0, -1); // remove Z
+    // Remove optional fractional seconds (.NNN) before the Z position
+    const dotPos = s.lastIndexOf('.');
+    if (dotPos !== -1) {
+      // Verify everything after the dot is digits
+      let allDigits = true;
+      for (let i = dotPos + 1; i < s.length; i++) {
+        const c = s.charCodeAt(i);
+        if (c < 48 || c > 57) { allDigits = false; break; }
+      }
+      if (allDigits) s = s.slice(0, dotPos);
+    }
+  } else {
+    // Strip timezone offset +HH:MM or -HH:MM at end
+    // Format: sign + 2 digits + colon + 2 digits = 6 chars
+    if (s.length >= 6) {
+      const tail = s.slice(-6);
+      const sign = tail.charCodeAt(0);
+      if ((sign === 43 || sign === 45) && // '+' or '-'
+          tail.charCodeAt(1) >= 48 && tail.charCodeAt(1) <= 57 &&
+          tail.charCodeAt(2) >= 48 && tail.charCodeAt(2) <= 57 &&
+          tail.charCodeAt(3) === 58 && // ':'
+          tail.charCodeAt(4) >= 48 && tail.charCodeAt(4) <= 57 &&
+          tail.charCodeAt(5) >= 48 && tail.charCodeAt(5) <= 57) {
+        s = s.slice(0, -6);
+      }
+    }
+  }
+
+  // Clamp to 19 chars (YYYY-MM-DD HH:MM:SS)
+  return s.slice(0, 19);
 }
 
 export default async function handler(req: Request, res: Response) {

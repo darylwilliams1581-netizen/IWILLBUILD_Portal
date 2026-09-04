@@ -1,4 +1,4 @@
-// RootLayout.tsx — IWILLBUILD Portal
+// RootLayout.tsx — IWIllBUIlD Portal
 import { Helmet } from '@dr.pogodin/react-helmet';
 import { type ReactElement, type ReactNode, useEffect, useState } from 'react';
 import { ScrollRestoration, useLocation } from "react-router";
@@ -10,6 +10,7 @@ import PwaInstallPrompt from '@/components/PwaInstallPrompt';
 import { DocumentActionsProvider } from '@/lib/document-actions-context';
 import DocumentActionsWidget from '@/components/DocumentActionsWidget';
 import { useRef } from 'react';
+import { recordRouteChange } from '@/lib/diagnosticCapture';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 interface RootLayoutProps {
@@ -93,25 +94,46 @@ const DeferredMount = ClientOnly;
 export default function RootLayout({ children }: RootLayoutProps) {
   const location = useLocation();
 
+  // Route change tracking — placed here so it has router context on both
+  // client and server (server is a no-op since recordRouteChange is client-only).
+  useEffect(() => {
+    recordRouteChange(location.pathname);
+  }, [location.pathname]);
+
   return (
     <div suppressHydrationWarning className="h-full bg-background text-foreground flex flex-col">
       <Helmet>
-        <title>IWILLBUILD Portal</title>
-        <meta name="description" content="IWILLBUILD manages the work — jobs, estimates, forms, photos, fleet, safety and files — in one clean construction portal." />
+        <title>IWIllBUIlD Portal</title>
+        <meta name="description" content="IWIllBUIlD manages the work — jobs, estimates, forms, photos, fleet, safety and files — in one clean construction portal." />
       </Helmet>
       <ScrollRestoration />
-      <ActivePing />
-      <PortalBanners pathname={location.pathname} />
+      {/*
+        ActivePing, PortalBanners, and DocumentActionsWidget all use auth hooks
+        (useSession, usePermissions, useSubscriptionGate) that read cookies /
+        localStorage on the client but return empty on the server. Wrapping them
+        in ClientOnly means the server renders an empty placeholder div and the
+        client renders the same empty div during hydration — no mismatch.
+        After the first paint, ClientOnly swaps in the real children.
+      */}
+      <ClientOnly>
+        <ActivePing />
+        <PortalBanners pathname={location.pathname} />
+      </ClientOnly>
       <DeferredMount>
         <OfflineBanner />
         <PwaInstallPrompt />
       </DeferredMount>
       <DocumentActionsProvider>
-        <div suppressHydrationWarning className="flex-1 min-h-0 flex flex-col" style={{ overflowX: 'clip' }}>
+        {/* overflowX:'clip' replaced with overflow:'hidden' — 'clip' is not
+            supported on iOS Safari and causes the flex child to miscalculate
+            its own width, producing the left-clip bug on the home screen. */}
+        <div suppressHydrationWarning className="flex-1 min-h-0 flex flex-col overflow-hidden w-full min-w-0">
           {children}
         </div>
         {/* Global Document Actions floating widget — hidden on public/share pages */}
-        <DocumentActionsWidget />
+        <ClientOnly>
+          <DocumentActionsWidget />
+        </ClientOnly>
       </DocumentActionsProvider>
     </div>
   );
