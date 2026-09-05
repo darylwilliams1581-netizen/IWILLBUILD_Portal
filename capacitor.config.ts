@@ -40,8 +40,8 @@ import type { CapacitorConfig } from '@capacitor/cli';
 
 // ── SINGLE SOURCE OF TRUTH FOR BUILD NUMBER ───────────────────────────────────
 // Increment this before every App Store / TestFlight upload.
-// Current: 21 (server.url removed; RootLayout overflow:clip → overflow:hidden layout fix)
-const IOS_BUILD_NUMBER = 22;
+// Current: 23 (Appflow dependency-lock and signing rebuild)
+const IOS_BUILD_NUMBER = 23;
 
 const config: CapacitorConfig = {
   // Reverse-domain app identifier — must match your Apple/Google developer account
