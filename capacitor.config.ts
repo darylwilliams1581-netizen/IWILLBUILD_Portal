@@ -40,8 +40,8 @@ import type { CapacitorConfig } from '@capacitor/cli';
 
 // ── SINGLE SOURCE OF TRUTH FOR BUILD NUMBER ───────────────────────────────────
 // Increment this before every App Store / TestFlight upload.
-// Current: 24 (restore Xcode-compatible Capacitor storyboards)
-const IOS_BUILD_NUMBER = 24;
+// Current: 25 (restore complete iOS app icon catalog)
+const IOS_BUILD_NUMBER = 25;
 
 const config: CapacitorConfig = {
   // Reverse-domain app identifier — must match your Apple/Google developer account
