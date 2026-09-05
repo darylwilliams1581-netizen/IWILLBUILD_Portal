@@ -311,10 +311,27 @@ export const r2Provider: StorageProvider = {
     const r2Bucket = getBucket();
     const key = objectKey(bucket, storageKey);
 
-    const response = await client.send(new GetObjectCommand({
-      Bucket: r2Bucket,
-      Key: key,
-    }));
+    let response: Awaited<ReturnType<typeof client.send>>;
+    try {
+      response = await client.send(new GetObjectCommand({
+        Bucket: r2Bucket,
+        Key: key,
+      }));
+    } catch (err: unknown) {
+      // On auth errors, reset the singleton so the next call re-reads credentials.
+      const errName = err instanceof Error ? err.name : '';
+      const errMsg  = err instanceof Error ? err.message : String(err);
+      const isAuthError =
+        errName === 'InvalidAccessKeyId' ||
+        errName === 'AccessDenied' ||
+        errName === 'SignatureDoesNotMatch' ||
+        /InvalidAccessKeyId|AccessDenied|SignatureDoesNotMatch/i.test(errMsg);
+      if (isAuthError) {
+        resetR2Client();
+        console.error('[r2Provider] getDownloadStream auth error — client reset for next call:', errName);
+      }
+      throw err;
+    }
 
     if (!response.Body) {
       throw new Error(`[r2Provider] Empty body for key: ${redactStorageUrl(`https://bucket.host/${key}`)}`);
@@ -340,6 +357,18 @@ export const r2Provider: StorageProvider = {
         Key: objectKey(bucket, storageKey),
       }));
     } catch (err: unknown) {
+      // On auth errors, reset the singleton so the next call re-reads credentials.
+      const errName = err instanceof Error ? err.name : '';
+      const errMsg  = err instanceof Error ? err.message : String(err);
+      const isAuthError =
+        errName === 'InvalidAccessKeyId' ||
+        errName === 'AccessDenied' ||
+        errName === 'SignatureDoesNotMatch' ||
+        /InvalidAccessKeyId|AccessDenied|SignatureDoesNotMatch/i.test(errMsg);
+      if (isAuthError) {
+        resetR2Client();
+        console.error('[r2Provider] deleteFile auth error — client reset for next call:', errName);
+      }
       // Log error category only — never log the key or credentials
       const category = err instanceof Error ? err.constructor.name : 'UnknownError';
       console.warn(`[r2Provider] deleteFile best-effort failed: category=${category}`);
@@ -355,11 +384,26 @@ export const r2Provider: StorageProvider = {
     const { getSignedUrl: awsGetSignedUrl } = await getPresignerLazy();
     const key = objectKey(bucket, storageKey);
 
-    return awsGetSignedUrl(
-      client,
-      new GetObjectCommand({ Bucket: cfg.physicalBucket, Key: key }),
-      { expiresIn: expiresInSeconds },
-    );
+    try {
+      return await awsGetSignedUrl(
+        client,
+        new GetObjectCommand({ Bucket: cfg.physicalBucket, Key: key }),
+        { expiresIn: expiresInSeconds },
+      );
+    } catch (err: unknown) {
+      const errName = err instanceof Error ? err.name : '';
+      const errMsg  = err instanceof Error ? err.message : String(err);
+      const isAuthError =
+        errName === 'InvalidAccessKeyId' ||
+        errName === 'AccessDenied' ||
+        errName === 'SignatureDoesNotMatch' ||
+        /InvalidAccessKeyId|AccessDenied|SignatureDoesNotMatch/i.test(errMsg);
+      if (isAuthError) {
+        resetR2Client();
+        console.error('[r2Provider] getSignedUrl auth error — client reset for next call:', errName);
+      }
+      throw err;
+    }
   },
 };
 
