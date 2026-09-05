@@ -46,14 +46,18 @@
 	<key>UIViewControllerBasedStatusBarAppearance</key>
 	<true/>
 	<key>NSCameraUsageDescription</key>
-	<string>IWIllBUIlD uses your camera to capture job site photos and watermarked images.</string>
+	<string>IWIllBUIlD uses your camera to capture job photos, receipts, incidents, and site evidence for your work records.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
-	<string>IWIllBUIlD accesses your photo library to attach images to job cards and reports.</string>
+	<string>IWIllBUIlD uses your photo library so you can upload job photos, receipts, and site evidence.</string>
 	<key>NSPhotoLibraryAddUsageDescription</key>
 	<string>IWIllBUIlD saves captured photos to your photo library.</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
-	<string>IWIllBUIlD uses your location to display local weather on the dashboard, show your position on the live map, and record job site check-ins.</string>
+	<string>IWIllBUIlD uses your location for job travel, fleet tracking, and site attendance records.</string>
 	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
-	<string>IWIllBUIlD uses your location to track fleet vehicles, log job site attendance, and show your position on the live map.</string>
+	<string>IWIllBUIlD uses your location in the background to track active drive sessions for fleet management.</string>
+	<key>NSLocationAlwaysUsageDescription</key>
+	<string>IWIllBUIlD uses your location in the background to track active drive sessions for fleet management.</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>IWIllBUIlD uses the microphone for voice notes and dictation where enabled.</string>
 </dict>
 </plist>
