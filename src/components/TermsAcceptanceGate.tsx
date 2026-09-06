@@ -17,7 +17,7 @@
  * Decline: signs the user out and returns them to the login screen.
  */
 
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Shield, FileText, AlertTriangle, ChevronDown, ExternalLink, Cpu } from 'lucide-react';
 import { authClient } from '@/lib/auth/auth-client';
@@ -58,6 +58,32 @@ export default function TermsAcceptanceGate({ onAccepted, userEmail }: Props) {
   const [declining, setDeclining] = useState(false);
   const [accepted, setAccepted] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
+
+  // ── Lock body scroll while gate is open ──────────────────────────────────────
+  // On iOS WKWebView, if the underlying page content is taller than the viewport
+  // while a fixed overlay is shown, the browser records a scrollHeight larger
+  // than the viewport. Every page rendered after the gate dismisses then thinks
+  // it has extra scroll space — causing the "too big / floats" layout bug.
+  // Locking overflow:hidden on <html> and <body> prevents that measurement.
+  useEffect(() => {
+    if (accepted) return; // gate is exiting — release the lock
+    const html = document.documentElement;
+    const body = document.body;
+    const prevHtmlOverflow = html.style.overflow;
+    const prevBodyOverflow = body.style.overflow;
+    const prevHtmlHeight = html.style.height;
+    const prevBodyHeight = body.style.height;
+    html.style.overflow = 'hidden';
+    html.style.height = '100%';
+    body.style.overflow = 'hidden';
+    body.style.height = '100%';
+    return () => {
+      html.style.overflow = prevHtmlOverflow;
+      html.style.height = prevHtmlHeight;
+      body.style.overflow = prevBodyOverflow;
+      body.style.height = prevBodyHeight;
+    };
+  }, [accepted]);
 
   function handleScroll() {
     const el = scrollRef.current;
