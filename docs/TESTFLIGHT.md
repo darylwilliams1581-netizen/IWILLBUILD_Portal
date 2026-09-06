@@ -1,31 +1,43 @@
-# Same TestFlight slot — native replaces Capacitor
+# TestFlight with no Mac
 
-Apple app: **IWIllBUIlD**  
-App ID: `6793437566`  
-Bundle ID: `com.iwillbuild.portal`  
-Team: `L287H9J7L3`  
-This upload: **version 13, build 29** (Capacitor last was version 12, build 28)
+Apple app **IWIllBUIlD** (`6793437566`)  
+Bundle `com.iwillbuild.portal` · Team `L287H9J7L3`
 
-Testers keep the same TestFlight app. They get an update, not a second icon.
+GitHub Actions archives on a cloud Mac and uploads to the **same** TestFlight. You do this from the iPhone.
 
-## Stop the old pipeline first
+## 0. Appflow off
 
-In Appflow: turn **off** iOS auto-deploy / watch on `IWILLBUILD_Portal`.  
-If Appflow ships build 29+ of the Capacitor wrap, Apple will reject this native upload as a duplicate build, or testers will get the website wrap again.
+Turn off iOS auto-deploy in Appflow so it cannot fight this build.
 
-## On a Mac (once)
+## 1. Apple API key (Safari on the phone)
 
-1. Clone or pull https://github.com/darylwilliams1581-netizen/IWILLBUILD-iOS
-2. Open `IWILLBUILDField.xcodeproj`
-3. Signing: team `L287H9J7L3`, bundle `com.iwillbuild.portal`
-4. Select Any iOS Device (arm64)
-5. Product → Archive
-6. Distribute App → App Store Connect → Upload
-7. TestFlight → same app as always → build 29
+1. Open [App Store Connect → Users and Access → Integrations → App Store Connect API](https://appstoreconnect.apple.com/access/integrations/api)
+2. **Generate API Key** — role **Admin** (needs certificates)
+3. Copy **Issuer ID** (top of the page) and **Key ID**
+4. Download the `.p8` file (once). Open it in Files / a text app and copy the whole text  
+   (`-----BEGIN PRIVATE KEY-----` …)
 
-Do **not** open the portal `ios/` Xcode project for this.
+## 2. GitHub secrets (Safari on the phone)
 
-## After it lands
+Open  
+https://github.com/darylwilliams1581-netizen/IWILLBUILD_Portal/settings/secrets/actions  
 
-Install the TestFlight update on the phone.  
+**New repository secret** four times:
+
+| Name | Value |
+|---|---|
+| `ASC_KEY_ID` | the Key ID |
+| `ASC_ISSUER_ID` | the Issuer ID |
+| `ASC_KEY_CONTENT` | full `.p8` text |
+| `MATCH_PASSWORD` | a long passphrase you invent (signing locker) |
+
+## 3. Run the build
+
+1. https://github.com/darylwilliams1581-netizen/IWILLBUILD_Portal/actions/workflows/testflight.yml
+2. **Run workflow** → **Run**
+3. Wait ~15–20 min
+4. TestFlight app on the phone → IWIllBUIlD → new build (29 or higher)
+
 You should see Field jobs / camera / HazChat, not the website tiles.
+
+If the Action fails, screenshot the red log and send it here.

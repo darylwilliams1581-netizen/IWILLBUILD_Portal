@@ -11,3 +11,7 @@ xcuserdata/
 *.mobileprovision
 *.cer
 *.p12
+fastlane/report.xml
+fastlane/Preview.html
+vendor/
+.bundle/
