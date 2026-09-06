@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import GpsStatusBadge from './GpsStatusBadge';
 import type { LocationPermissionStatus, GpsStatusValue } from './GpsStatusBadge';
+import OsmFallbackMap from './OsmFallbackMap';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -524,6 +525,10 @@ export default function FleetLiveMap() {
   const [mapError,       setMapError]       = useState<string | null>(null);
   // Incrementing this triggers a fresh map-init attempt after a failure
   const [mapRetryKey,    setMapRetryKey]    = useState(0);
+  const [mapEngine,      setMapEngine]      = useState<'google' | 'osm' | null>(null);
+  const osmZoomInRef  = useRef<(() => void) | null>(null);
+  const osmZoomOutRef = useRef<(() => void) | null>(null);
+  const osmFitRef     = useRef<(() => void) | null>(null);
 
   // ── Derive map mode ─────────────────────────────────────────────────────────
   // withGps = sessions that have a coordinate AND a fresh GPS fix (≤7 min old)
@@ -616,6 +621,8 @@ export default function FleetLiveMap() {
           'Maps JavaScript API not enabled, billing not enabled, or API key referrer restriction. ' +
           'Check the browser console for details, then tap Retry.'
         );
+        setMapEngine('osm');
+        setMapReady(true);
       }
     }, 10_000);
 
@@ -627,6 +634,8 @@ export default function FleetLiveMap() {
         // Final auth-failure check — gm_authFailure may have fired during load
         if (window.__gmapsAuthError) {
           setMapError(window.__gmapsAuthError);
+          setMapEngine('osm');
+          setMapReady(true);
           return;
         }
 
@@ -641,6 +650,7 @@ export default function FleetLiveMap() {
         });
         infoWinRef.current = new window.google!.maps!.InfoWindow({});
         gMapRef.current = map;
+        setMapEngine('google');
 
         // Trigger a resize event so the map fills its container correctly.
         // This is critical when the map is mounted inside a panel that was not
@@ -653,7 +663,10 @@ export default function FleetLiveMap() {
         clearTimeout(initTimer);
         if (!disposed) {
           const msg = err instanceof Error ? err.message : 'Map failed to load';
+          console.warn('[FleetLiveMap] Google Maps unavailable — using OpenStreetMap.', msg);
           setMapError(msg);
+          setMapEngine('osm');
+          setMapReady(true);
         }
       });
 
@@ -912,9 +925,16 @@ export default function FleetLiveMap() {
   }, [fetchSessions]);
 
   // ── Zoom / fit controls ─────────────────────────────────────────────────────
-  function handleZoomIn()  { if (gMapRef.current) gMapRef.current.setZoom((gMapRef.current.getZoom() ?? DEFAULT_ZOOM) + 1); }
-  function handleZoomOut() { if (gMapRef.current) gMapRef.current.setZoom((gMapRef.current.getZoom() ?? DEFAULT_ZOOM) - 1); }
+  function handleZoomIn()  {
+    if (mapEngine === 'osm') { osmZoomInRef.current?.(); return; }
+    if (gMapRef.current) gMapRef.current.setZoom((gMapRef.current.getZoom() ?? DEFAULT_ZOOM) + 1);
+  }
+  function handleZoomOut() {
+    if (mapEngine === 'osm') { osmZoomOutRef.current?.(); return; }
+    if (gMapRef.current) gMapRef.current.setZoom((gMapRef.current.getZoom() ?? DEFAULT_ZOOM) - 1);
+  }
   function handleFitAll() {
+    if (mapEngine === 'osm') { osmFitRef.current?.(); return; }
     if (!gMapRef.current || !window.google?.maps) return;
     const G = window.google.maps;
     if (mapMode === 'live' && withGps.length > 0) {
@@ -1123,8 +1143,73 @@ export default function FleetLiveMap() {
         >
           <div ref={mapRef} className="absolute inset-0" style={{ minHeight: '300px' }} />
 
-          {/* Map load error — shows exact diagnostic reason + clean retry */}
-          {mapError && (
+          {mapEngine === 'osm' && (
+            <OsmFallbackMap
+              pins={[
+                ...withGps.map(s => ({
+                  id: `live-${s.session_id}`,
+                  lat: Number(s.lat),
+                  lng: Number(s.lng),
+                  label: s.driver_name,
+                  color: '#7c3aed',
+                })),
+                ...staleGps.map(s => ({
+                  id: `stale-${s.session_id}`,
+                  lat: Number(s.lat),
+                  lng: Number(s.lng),
+                  label: `${s.driver_name} (last known)`,
+                  color: '#64748b',
+                })),
+                ...(mapMode === 'last-known' ? lastKnown.map(p => ({
+                  id: `asset-${p.asset_id}`,
+                  lat: Number(p.lat),
+                  lng: Number(p.lng),
+                  label: p.asset_name,
+                  color: '#64748b',
+                })) : []),
+                ...(mapMode === 'office' && officePos ? [{
+                  id: 'office',
+                  lat: officePos.lat,
+                  lng: officePos.lng,
+                  label: officePos.label,
+                  color: '#3b82f6',
+                }] : []),
+              ]}
+              zoomInRef={osmZoomInRef}
+              zoomOutRef={osmZoomOutRef}
+              fitRef={osmFitRef}
+            />
+          )}
+
+          {/* Google Maps blocked — map still works on OpenStreetMap */}
+          {mapEngine === 'osm' && mapError && (
+            <div className="absolute top-3 left-3 right-14 z-20">
+              <div className="bg-white/95 border border-amber-200 rounded-xl px-3 py-2 shadow-sm text-left">
+                <p className="text-[11px] font-semibold text-amber-800">Using OpenStreetMap</p>
+                <p className="text-[10px] text-slate-500 leading-snug">
+                  Google Maps permission is not ready (API, billing, or referrer). Vehicles still plot here.
+                </p>
+                <button
+                  onClick={() => {
+                    window.__gmapsLoader = undefined;
+                    window.__gmapsLoaded = false;
+                    window.__gmapsAuthError = undefined;
+                    setMapError(null);
+                    setMapReady(false);
+                    setMapEngine(null);
+                    gMapRef.current = null;
+                    setMapRetryKey(k => k + 1);
+                  }}
+                  className="mt-1 text-[10px] font-semibold text-violet-700 underline"
+                >
+                  Retry Google Maps
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Map load error — only if OSM also not up */}
+          {mapError && mapEngine !== 'osm' && (
             <div className="absolute inset-0 flex items-center justify-center bg-slate-50 z-10 p-4">
               <div className="bg-white border border-red-200 rounded-2xl px-6 py-5 shadow-lg text-center max-w-sm w-full">
                 <AlertCircle size={28} className="text-red-400 mx-auto mb-2" />
@@ -1132,17 +1217,12 @@ export default function FleetLiveMap() {
                 <p className="text-xs text-slate-500 break-words leading-relaxed">{mapError}</p>
                 <button
                   onClick={() => {
-                    // Reset all singleton state so loadGoogleMaps retries from scratch
                     window.__gmapsLoader = undefined;
                     window.__gmapsLoaded = false;
                     window.__gmapsAuthError = undefined;
-                    // Do NOT reset __gmapsLoaded if the script already loaded successfully —
-                    // we only need to re-init the Map instance, not re-fetch the script.
-                    // (The check above already handles this via the auth-error guard.)
                     setMapError(null);
                     setMapReady(false);
                     gMapRef.current = null;
-                    // Increment key → triggers the map init useEffect to re-run
                     setMapRetryKey(k => k + 1);
                   }}
                   className="mt-3 px-4 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold rounded-lg transition-colors"

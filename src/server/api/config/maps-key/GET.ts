@@ -33,8 +33,10 @@ import { getAuth } from '../../../../lib/auth/auth.js';
  *   - HTTP referrer restrictions must include:
  *       https://iwillbuild.com/*
  *       https://www.iwillbuild.com/*
- *   (capacitor://localhost is NOT needed — FleetLiveMap only runs in the
- *    desktop browser, not in the Capacitor WebView)
+ *       capacitor://localhost
+ *       http://localhost/*
+ *   If Google still blocks the key, Fleet Live Map falls back to OpenStreetMap
+ *   so Drive → Map still shows vehicles.
  */
 export default async function handler(req: Request, res: Response) {
   try {
