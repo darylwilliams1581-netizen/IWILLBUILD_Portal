@@ -1,25 +1,22 @@
-# Agent rules for IWILLBUILD_Portal
+# Agent rules for IWILLBUILD-iOS
 
-You are editing the **web portal and API** repo.
+Native Swift / SwiftUI iPhone **field app**. Offline-first.
 
-GoDaddy Airo still controls the live website. This GitHub repo is the source of truth for code that gets committed and (for the Capacitor wrapper) built by Appflow.
+## Do
 
-## Hard stops
+- In-app `AVCaptureSession` preview (Solocator-style)
+- Live overlay of job / date / time / GPS / label
+- Bake watermark into JPEG on shutter
+- Persist on device, then upload to `https://iwillbuild.com/api/jobs/:id/photos` (`photos` form field, `X-Client-Id`)
+- Sign on/off, Site Prestart / HazChat, and job forms must work with no reception and sync later
+- Cache jobs and form templates on the phone
 
-- Do not edit `ios/`, `android/`, or `capacitor.config.*` unless the human named that file.
-- Do not rewrite camera capture to `getUserMedia` or a new Capacitor fallback.
-- Do not dump a full project export onto `main`.
-- Native iPhone camera belongs in repo `IWILLBUILD-iOS`, not here.
-- Keep production Alpine constraints: no `sharp`, no `bcrypt`, no `canvas`. Use `jimp` and `bcryptjs`.
-- Every data query stays scoped to `company_id`.
+## Do not
 
-## Allowed here
-
-- Website pages and copy
-- Express API handlers
-- Job / photo **server** endpoints the iOS app will call
-- Billing, team, safety, studio, Dazza
-
-## If the user asks to fix TestFlight camera
-
-Stop. Tell them that work is `IWILLBUILD-iOS`. Do not patch the Capacitor wrapper camera again.
+- Capacitor, Cordova, or WKWebView of the website as the camera
+- `UIImagePickerController` / PhotosPicker as the primary shutter
+- `getUserMedia`
+- Copy office portal screens (quotes, billing, Dazza)
+- Let Airo export into this repo
+- Bundle id other than `com.iwillbuild.portal` (that is the live TestFlight app; we replaced Capacitor)
+- Require a live network call before the shutter, sign-on, or prestart can be used
