@@ -53,10 +53,9 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { useParams, useNavigate, useLocation } from "react-router";
 import { Helmet } from '@dr.pogodin/react-helmet';
-import { ArrowLeft, Settings, X, Check, Loader2, Lock, Unlock, AlertTriangle, Pencil, Zap, ZapOff, FlipHorizontal2, Camera as CameraIcon } from 'lucide-react';
+import { ArrowLeft, Settings, X, Check, Loader2, Lock, Unlock, AlertTriangle, Pencil, Zap, ZapOff, FlipHorizontal2 } from 'lucide-react';
 import { usePhotoUploadQueue } from '@/hooks/usePhotoUploadQueue';
 import { useWatermarkSettings } from '@/hooks/useWatermarkSettings';
-import { capturePhotoLocally } from '@/lib/capturePhotoLocally';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types
@@ -446,12 +445,31 @@ export default function JobPhotosCameraPage() {
     stopStream();
     setCamState('loading');
     setCamErrMsg('');
+
+    // ── Step 1: Request Capacitor camera permission ──────────────────────────
+    // On iOS WKWebView, navigator.mediaDevices is only populated AFTER the
+    // native camera permission has been granted. Calling requestPermissions()
+    // via the Capacitor bridge triggers the iOS permission prompt and causes
+    // WKWebView to expose navigator.mediaDevices for subsequent getUserMedia.
+    try {
+      const cap = (window as { Capacitor?: { isNativePlatform?: () => boolean; Plugins?: Record<string, unknown> } }).Capacitor;
+      if (cap?.isNativePlatform?.()) {
+        const CameraPlugin = cap.Plugins?.['Camera'] as { requestPermissions?: () => Promise<unknown> } | undefined;
+        if (typeof CameraPlugin?.requestPermissions === 'function') {
+          await CameraPlugin.requestPermissions();
+        }
+      }
+    } catch {
+      // Permission request failed or already granted — continue anyway
+    }
+
+    // ── Step 2: Wait for navigator.mediaDevices to become available ──────────
     // On capacitor://localhost, navigator.mediaDevices may be undefined on the
     // first tick because WKWebView's secure-context initialisation is async.
-    // Retry up to 10 times (500 ms total) before giving up.
+    // Retry up to 20 times (1000 ms total) before giving up.
     let mediaDevices = navigator.mediaDevices;
     if (!mediaDevices?.getUserMedia) {
-      for (let i = 0; i < 10; i++) {
+      for (let i = 0; i < 20; i++) {
         await new Promise<void>(r => setTimeout(r, 50));
         mediaDevices = navigator.mediaDevices;
         if (mediaDevices?.getUserMedia) break;
@@ -530,67 +548,6 @@ export default function JobPhotosCameraPage() {
     setFlashMode(next);
     if (streamRef.current) await applyFlash(next, streamRef.current);
   }, [applyFlash]);
-
-  // ── Native fallback shutter (getUserMedia unavailable) ─────────────────────
-  const [nativeCapturing, setNativeCapturing] = useState(false);
-
-  const handleNativeShutter = useCallback(async () => {
-    if (nativeCapturing) return;
-    setNativeCapturing(true);
-    try {
-      const result = await capturePhotoLocally();
-      if (!result) return;
-
-      // Use readLocalPhoto to get a proper File — avoids any fetch() on blob:/
-      // file:// or capacitor:// URLs which the global fetch patch can't handle.
-      const { readLocalPhoto } = await import('@/lib/capturePhotoLocally');
-      const file = await readLocalPhoto(result.localPath);
-      if (!file) {
-        // Last resort: try reading the previewUrl as a blob URL via native
-        // XMLHttpRequest (bypasses the CapacitorHttp fetch patch)
-        const xhr = new XMLHttpRequest();
-        xhr.open('GET', result.previewUrl, true);
-        xhr.responseType = 'blob';
-        const blob = await new Promise<Blob | null>(resolve => {
-          xhr.onload = () => resolve(xhr.response as Blob);
-          xhr.onerror = () => resolve(null);
-          xhr.send();
-        });
-        if (blob) {
-          const fallbackFile = new File([blob], `native_${Date.now()}.jpg`, { type: 'image/jpeg' });
-          void enqueueFiles([fallbackFile]);
-          setSessionCount(c => c + 1);
-          // Show thumbnail
-          setLastThumb(prev => {
-            if (prev) URL.revokeObjectURL(prev);
-            lastThumbRef.current = result.previewUrl;
-            return result.previewUrl;
-          });
-        }
-        return;
-      }
-
-      void enqueueFiles([file]);
-      setSessionCount(c => c + 1);
-
-      // Show thumbnail from the previewUrl blob URL already created by capturePhotoLocally
-      if (result.previewUrl) {
-        setLastThumb(prev => {
-          if (prev) URL.revokeObjectURL(prev);
-          lastThumbRef.current = result.previewUrl;
-          return result.previewUrl;
-        });
-      }
-    } catch (err) {
-      // User cancelled native camera — not an error
-      const msg = err instanceof Error ? err.message : String(err);
-      if (!msg.includes('cancel') && !msg.includes('Cancel') && !msg.includes('dismissed')) {
-        console.warn('[NativeShutter] capture failed:', msg);
-      }
-    } finally {
-      setNativeCapturing(false);
-    }
-  }, [nativeCapturing, enqueueFiles]);
 
   // ── Composition error state ─────────────────────────────────────────────────
   const [composeError, setComposeError] = useState(false);
@@ -774,36 +731,30 @@ export default function JobPhotosCameraPage() {
         {/* Live video */}
         <video ref={videoRef} className="absolute inset-0 w-full h-full object-cover" autoPlay playsInline muted />
 
-        {/* getUserMedia unavailable — show native shutter UI */}
+        {/* getUserMedia unavailable — show retry UI */}
         {camState === 'unavailable' && (
           <div className="absolute inset-0 flex flex-col items-center justify-center gap-5 bg-black px-8 text-center">
-            <CameraIcon size={52} className="text-white/30" />
+            <AlertTriangle size={40} className="text-yellow-400" />
             <div>
-              <p className="text-white text-base font-semibold mb-1">
-                Tap the shutter to open the iPhone camera.
+              <p className="text-white text-base font-semibold mb-2">
+                Camera access is not available.
               </p>
               <p className="text-gray-400 text-sm leading-relaxed">
-                Photos are saved on this device first and sync when a connection is available.
+                Make sure camera permission is granted for IWILLBUILD in iOS Settings, then tap Retry.
               </p>
             </div>
-            {/* Watermark preview pill */}
-            {hasPreview && (
-              <button onClick={openWatermarkPopup} className="inline-flex flex-col gap-0.5 bg-black/65 rounded-lg px-2.5 py-1.5 max-w-[calc(100vw-3rem)]" aria-label="Edit watermark">
-                {previewLine1 && <span className="text-white text-[11px] font-bold leading-tight whitespace-nowrap">{previewLine1}</span>}
-                {previewLabelRows.map((row, i) => <span key={i} className="text-white text-[10px] font-semibold leading-tight break-words">{row}</span>)}
-                <span className="flex items-center gap-1 mt-0.5">
-                  <Pencil size={9} className="text-white/40" />
-                  <span className="text-white/40 text-[9px] leading-none">tap to edit</span>
-                </span>
-              </button>
-            )}
-            {/* Date/time stamp shown at bottom-left like the live view */}
-            <div className="absolute bottom-32 left-5 text-left pointer-events-none">
-              <p className="text-white/60 text-sm font-semibold leading-tight">
-                {`${String(new Date().getDate()).padStart(2,'0')}/${String(new Date().getMonth()+1).padStart(2,'0')}/${new Date().getFullYear()} — ${String(new Date().getHours()).padStart(2,'0')}:${String(new Date().getMinutes()).padStart(2,'0')}`}
-              </p>
-              <p className="text-white/30 text-[10px] mt-0.5">tap to edit</p>
-            </div>
+            <button
+              onClick={() => void startStream()}
+              className="px-6 py-3 bg-violet-600 text-white text-sm font-semibold rounded-xl active:scale-95 transition-transform"
+            >
+              Retry
+            </button>
+            <button
+              onClick={() => navigate(backPath ?? `/jobs/${id}?tab=photos`)}
+              className="text-gray-500 text-sm underline"
+            >
+              Back to Photos
+            </button>
           </div>
         )}
 
@@ -878,14 +829,14 @@ export default function JobPhotosCameraPage() {
             </span>
           </button>
 
-          {/* Shutter — works in both live (ready) and native (unavailable) modes */}
+          {/* Shutter */}
           <button
-            onClick={camState === 'unavailable' ? () => void handleNativeShutter() : () => void handleShutter()}
-            disabled={(camState !== 'ready' && camState !== 'unavailable') || capturing || nativeCapturing || sessionLimitReached}
+            onClick={() => void handleShutter()}
+            disabled={camState !== 'ready' || capturing || sessionLimitReached}
             className="w-20 h-20 rounded-full border-4 border-white bg-white/20 flex items-center justify-center disabled:opacity-40 touch-manipulation active:scale-95 transition-transform shrink-0"
             aria-label="Take photo"
           >
-            {(capturing && !pendingBitmap) || nativeCapturing
+            {capturing && !pendingBitmap
               ? <Loader2 size={28} className="animate-spin text-white" />
               : <div className="w-14 h-14 rounded-full bg-white" />}
           </button>
