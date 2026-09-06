@@ -580,13 +580,26 @@ export default memo(function PagedHomeScreen({
       {/* ── Top bar: two-row stacked layout ──────────────────────────────────── */}
       {/* Row 1: logo + name (left) + utility buttons (right) */}
       <div className="flex items-center justify-between shrink-0 px-3 pt-2 pb-1 gap-2">
-        {/* Brand mark — logo asset already contains the IWILLBUILD wordmark; no extra text span */}
+        {/* Brand mark — light surface, use base horizontal slot (not /dark variant) */}
         <div className="flex items-center shrink-0">
           <img
-            src="/airo-assets/images/logo/horizontal/dark"
+            src="/airo-assets/images/logo/horizontal"
             alt="IWILLBUILD"
             className="h-7 w-auto max-w-[140px] object-contain"
+            onError={e => {
+              // Fallback to text wordmark if logo asset fails to load on device
+              const img = e.currentTarget;
+              img.style.display = 'none';
+              const fallback = img.nextElementSibling as HTMLElement | null;
+              if (fallback) fallback.style.display = 'block';
+            }}
           />
+          <span
+            className="text-sm font-black tracking-tight text-violet-700 hidden"
+            aria-hidden="true"
+          >
+            IWILLBUILD
+          </span>
         </div>
         {/* Utility buttons — min-w-0 so they can shrink; text hidden below 360 px */}
         <div className="flex items-center gap-1.5 min-w-0 justify-end">

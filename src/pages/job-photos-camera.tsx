@@ -53,9 +53,10 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { useParams, useNavigate, useLocation } from "react-router";
 import { Helmet } from '@dr.pogodin/react-helmet';
-import { ArrowLeft, Settings, X, Check, Loader2, Lock, Unlock, AlertTriangle, Pencil, Zap, ZapOff, FlipHorizontal2 } from 'lucide-react';
+import { ArrowLeft, Settings, X, Check, Loader2, Lock, Unlock, AlertTriangle, Pencil, Zap, ZapOff, FlipHorizontal2, Camera as CameraIcon } from 'lucide-react';
 import { usePhotoUploadQueue } from '@/hooks/usePhotoUploadQueue';
 import { useWatermarkSettings } from '@/hooks/useWatermarkSettings';
+import { capturePhotoLocally } from '@/lib/capturePhotoLocally';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types
@@ -530,10 +531,32 @@ export default function JobPhotosCameraPage() {
     if (streamRef.current) await applyFlash(next, streamRef.current);
   }, [applyFlash]);
 
+  // ── Native fallback shutter (getUserMedia unavailable) ─────────────────────
+  const [nativeCapturing, setNativeCapturing] = useState(false);
+
+  const handleNativeShutter = useCallback(async () => {
+    if (nativeCapturing) return;
+    setNativeCapturing(true);
+    try {
+      const result = await capturePhotoLocally();
+      if (!result) return;
+      // Build a File from the local URI for the upload queue
+      // capturePhotoLocally returns a previewUrl (data URI or file URI)
+      const response = await fetch(result.previewUrl);
+      const blob = await response.blob();
+      const fileName = `native_${Date.now()}.jpg`;
+      const file = new File([blob], fileName, { type: 'image/jpeg' });
+      await enqueueFiles([file]);
+      setSessionCount(c => c + 1);
+    } catch {
+      // Silently ignore — user cancelled or permission denied
+    } finally {
+      setNativeCapturing(false);
+    }
+  }, [nativeCapturing, enqueueFiles]);
+
   // ── Composition error state ─────────────────────────────────────────────────
   const [composeError, setComposeError] = useState(false);
-
-  // ── Build watermark opts ────────────────────────────────────────────────────
   const makeOpts = useCallback((resolvedLabel: string): WatermarkOpts => ({
     showLabel: settings.showLabel,
     showDate: settings.showDate,
@@ -714,19 +737,38 @@ export default function JobPhotosCameraPage() {
         {/* Live video */}
         <video ref={videoRef} className="absolute inset-0 w-full h-full object-cover" autoPlay playsInline muted />
 
-        {/* getUserMedia unavailable */}
-        {camState === 'unavailable' && <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 bg-black/90 px-8 text-center">
-            <AlertTriangle size={36} className="text-yellow-400" />
-            <p className="text-white text-sm font-semibold">
-              Live camera preview is not available on this device.
-            </p>
-            <p className="text-gray-400 text-xs leading-relaxed">
-              Use the <strong className="text-white">Take Photo</strong> button on the photos page instead.
-            </p>
-            <button onClick={() => navigate(backPath ?? `/jobs/${id}?tab=photos`)} className="mt-1 px-5 py-2.5 bg-primary text-white text-sm font-semibold rounded-xl">
-              Back to Photos
-            </button>
-          </div>}
+        {/* getUserMedia unavailable — show native shutter UI */}
+        {camState === 'unavailable' && (
+          <div className="absolute inset-0 flex flex-col items-center justify-center gap-5 bg-black px-8 text-center">
+            <CameraIcon size={52} className="text-white/30" />
+            <div>
+              <p className="text-white text-base font-semibold mb-1">
+                Tap the shutter to open the iPhone camera.
+              </p>
+              <p className="text-gray-400 text-sm leading-relaxed">
+                Photos are saved on this device first and sync when a connection is available.
+              </p>
+            </div>
+            {/* Watermark preview pill */}
+            {hasPreview && (
+              <button onClick={openWatermarkPopup} className="inline-flex flex-col gap-0.5 bg-black/65 rounded-lg px-2.5 py-1.5 max-w-[calc(100vw-3rem)]" aria-label="Edit watermark">
+                {previewLine1 && <span className="text-white text-[11px] font-bold leading-tight whitespace-nowrap">{previewLine1}</span>}
+                {previewLabelRows.map((row, i) => <span key={i} className="text-white text-[10px] font-semibold leading-tight break-words">{row}</span>)}
+                <span className="flex items-center gap-1 mt-0.5">
+                  <Pencil size={9} className="text-white/40" />
+                  <span className="text-white/40 text-[9px] leading-none">tap to edit</span>
+                </span>
+              </button>
+            )}
+            {/* Date/time stamp shown at bottom-left like the live view */}
+            <div className="absolute bottom-32 left-5 text-left pointer-events-none">
+              <p className="text-white/60 text-sm font-semibold leading-tight">
+                {`${String(new Date().getDate()).padStart(2,'0')}/${String(new Date().getMonth()+1).padStart(2,'0')}/${new Date().getFullYear()} — ${String(new Date().getHours()).padStart(2,'0')}:${String(new Date().getMinutes()).padStart(2,'0')}`}
+              </p>
+              <p className="text-white/30 text-[10px] mt-0.5">tap to edit</p>
+            </div>
+          </div>
+        )}
 
         {/* Camera error */}
         {camState === 'error' && <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-black/88 px-8 text-center">
@@ -778,8 +820,8 @@ export default function JobPhotosCameraPage() {
 
       {/* ── Bottom footer: Back · Lock · SHUTTER · Settings · Gallery ── */}
       <div className="relative z-20 shrink-0 bg-gradient-to-t from-black/90 to-transparent" style={{
-        paddingBottom: 'max(env(safe-area-inset-bottom), 16px)',
-        paddingTop: '12px'
+        paddingBottom: 'max(env(safe-area-inset-bottom), 28px)',
+        paddingTop: '14px'
       }}>
         <div className="flex items-center justify-between px-6">
 
@@ -799,9 +841,16 @@ export default function JobPhotosCameraPage() {
             </span>
           </button>
 
-          {/* Shutter — dominant centre control */}
-          <button onClick={() => void handleShutter()} disabled={camState !== 'ready' || capturing || sessionLimitReached} className="w-20 h-20 rounded-full border-4 border-white bg-white/20 flex items-center justify-center disabled:opacity-40 touch-manipulation active:scale-95 transition-transform shrink-0" aria-label="Take photo">
-            {capturing && !pendingBitmap ? <Loader2 size={28} className="animate-spin text-white" /> : <div className="w-14 h-14 rounded-full bg-white" />}
+          {/* Shutter — works in both live (ready) and native (unavailable) modes */}
+          <button
+            onClick={camState === 'unavailable' ? () => void handleNativeShutter() : () => void handleShutter()}
+            disabled={(camState !== 'ready' && camState !== 'unavailable') || capturing || nativeCapturing || sessionLimitReached}
+            className="w-20 h-20 rounded-full border-4 border-white bg-white/20 flex items-center justify-center disabled:opacity-40 touch-manipulation active:scale-95 transition-transform shrink-0"
+            aria-label="Take photo"
+          >
+            {(capturing && !pendingBitmap) || nativeCapturing
+              ? <Loader2 size={28} className="animate-spin text-white" />
+              : <div className="w-14 h-14 rounded-full bg-white" />}
           </button>
 
           {/* Settings */}
