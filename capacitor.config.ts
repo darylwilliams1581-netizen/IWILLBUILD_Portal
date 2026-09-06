@@ -22,7 +22,7 @@ import type { CapacitorConfig } from '@capacitor/cli';
  *   3. Run: npm run build:cap  (builds web assets + cap sync)
  *   4. Archive in Xcode → Distribute → App Store Connect
  *
- * MARKETING_VERSION stays 1.0 unless the user explicitly requests a version bump.
+ * MARKETING_VERSION is explicitly set to 12 for the current TestFlight release line.
  *
  * ── Server config note ───────────────────────────────────────────────────────
  * For App Store / TestFlight builds: server.url must be ABSENT (commented out).
@@ -40,8 +40,8 @@ import type { CapacitorConfig } from '@capacitor/cli';
 
 // ── SINGLE SOURCE OF TRUTH FOR BUILD NUMBER ───────────────────────────────────
 // Increment this before every App Store / TestFlight upload.
-// Current: 25 (restore complete iOS app icon catalog)
-const IOS_BUILD_NUMBER = 25;
+// Current: 26 (Version 12 offline-camera test release)
+const IOS_BUILD_NUMBER = 26;
 
 const config: CapacitorConfig = {
   // Reverse-domain app identifier — must match your Apple/Google developer account
