@@ -31,6 +31,25 @@ export function toWebRequest(req: ExpressRequest): Request {
     }
   }
 
+  // Native iOS/Android app (CapacitorHttp → NSURLSession / OkHttp) does NOT
+  // send an Origin header. BetterAuth's CSRF guard fires before trustedOrigins
+  // runs and returns 403 when Origin is absent on a POST request.
+  //
+  // Detection: no Origin header AND user-agent contains "CFNetwork" (iOS) or
+  // "okhttp" (Android), OR the origin is "capacitor://localhost".
+  //
+  // Fix: inject a synthetic Origin header so BetterAuth's CSRF check has
+  // something to validate against. We use the production domain so it passes
+  // the trustedOrigins check that follows.
+  const existingOrigin = headers.get('origin');
+  if (!existingOrigin || existingOrigin === 'null') {
+    const ua = (req.headers['user-agent'] || '').toLowerCase();
+    const isNativeApp = ua.includes('cfnetwork') || ua.includes('okhttp') || ua.includes('capacitor');
+    if (isNativeApp) {
+      headers.set('origin', `${protocol}://iwillbuild.com`);
+    }
+  }
+
   const init: RequestInit = {
     method: req.method,
     headers,
