@@ -67,15 +67,26 @@ export function useAppLifecycle({
       // cold-start race). Safe to call unconditionally.
       const AppPlugin = getAppPlugin() as AppPlugin | null;
       if (AppPlugin) {
-        void AppPlugin.addListener('appStateChange', (state) => {
-          if (state.isActive) {
-            onForegroundRef.current?.();
-          } else {
-            onBackgroundRef.current?.();
-          }
-        }).then((handle) => {
-          cleanups.push(() => handle.remove());
-        }).catch(() => undefined);
+        // Capacitor's addListener() is typed as Promise<PluginListenerHandle>
+        // but some builds (particularly Capacitor 6+ on certain iOS versions)
+        // return the handle synchronously. Wrapping with Promise.resolve()
+        // normalises both cases so .then() always works.
+        try {
+          const result = AppPlugin.addListener('appStateChange', (state) => {
+            if (state.isActive) {
+              onForegroundRef.current?.();
+            } else {
+              onBackgroundRef.current?.();
+            }
+          });
+          void Promise.resolve(result).then((handle) => {
+            if (handle && typeof handle.remove === 'function') {
+              cleanups.push(() => handle.remove());
+            }
+          }).catch(() => undefined);
+        } catch {
+          // Bridge not ready — skip listener registration
+        }
       }
     } else {
       // ── Page Visibility API (web / PWA) ────────────────────────────────────
