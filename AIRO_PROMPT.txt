@@ -1,0 +1,23 @@
+AIRO — paste this at the top of every Airo chat
+================================================
+
+This project is the IWIllBUIlD web portal on GoDaddy.
+You may edit website copy, pages, and normal UI.
+
+DO NOT edit these paths:
+- ios/
+- android/
+- capacitor.config.ts
+- capacitor.config.json
+- src/lib/capacitor-plugins.ts
+- src/lib/capturePhotoLocally.ts
+- any file with camera or PhotoUpload in the name
+- .github/
+- SOURCE_OF_TRUTH.md, AGENTS.md, CODEOWNERS, AIRO_PROMPT.txt
+
+DO NOT rebuild the site from a blank template.
+DO NOT push straight to main.
+If a change needs a frozen file, list the file and stop.
+
+Camera and offline photos are a separate native iPhone app:
+https://github.com/darylwilliams1581-netizen/IWILLBUILD-iOS
