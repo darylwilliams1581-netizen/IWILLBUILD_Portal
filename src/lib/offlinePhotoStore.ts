@@ -37,7 +37,7 @@ export interface StoredPhoto {
    */
   localPath?: string;
   /**
-   * Sent as X-Idempotency-Key on upload — prevents duplicate photos on retry.
+   * Used as the stable X-Client-Id on upload — prevents duplicate photos on retry.
    * Present for photos captured via capturePhotoLocally().
    */
   idempotencyKey?: string;

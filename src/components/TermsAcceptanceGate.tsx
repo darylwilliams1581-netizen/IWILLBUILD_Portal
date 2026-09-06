@@ -17,7 +17,7 @@
  * Decline: signs the user out and returns them to the login screen.
  */
 
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Shield, FileText, AlertTriangle, ChevronDown, ExternalLink, Cpu } from 'lucide-react';
 import { authClient } from '@/lib/auth/auth-client';
@@ -58,6 +58,28 @@ export default function TermsAcceptanceGate({ onAccepted, userEmail }: Props) {
   const [declining, setDeclining] = useState(false);
   const [accepted, setAccepted] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (accepted) return;
+    const html = document.documentElement;
+    const body = document.body;
+    const previous = {
+      htmlOverflow: html.style.overflow,
+      htmlHeight: html.style.height,
+      bodyOverflow: body.style.overflow,
+      bodyHeight: body.style.height,
+    };
+    html.style.overflow = 'hidden';
+    html.style.height = '100%';
+    body.style.overflow = 'hidden';
+    body.style.height = '100%';
+    return () => {
+      html.style.overflow = previous.htmlOverflow;
+      html.style.height = previous.htmlHeight;
+      body.style.overflow = previous.bodyOverflow;
+      body.style.height = previous.bodyHeight;
+    };
+  }, [accepted]);
 
   function handleScroll() {
     const el = scrollRef.current;

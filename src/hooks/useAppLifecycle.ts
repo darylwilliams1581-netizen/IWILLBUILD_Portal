@@ -67,15 +67,27 @@ export function useAppLifecycle({
       // cold-start race). Safe to call unconditionally.
       const AppPlugin = getAppPlugin() as AppPlugin | null;
       if (AppPlugin) {
-        void AppPlugin.addListener('appStateChange', (state) => {
-          if (state.isActive) {
-            onForegroundRef.current?.();
-          } else {
-            onBackgroundRef.current?.();
-          }
-        }).then((handle) => {
-          cleanups.push(() => handle.remove());
-        }).catch(() => undefined);
+        let disposed = false;
+        try {
+          const registration = AppPlugin.addListener('appStateChange', (state) => {
+            if (state.isActive) {
+              onForegroundRef.current?.();
+            } else {
+              onBackgroundRef.current?.();
+            }
+          });
+          void Promise.resolve(registration).then((handle) => {
+            if (!handle || typeof handle.remove !== 'function') return;
+            if (disposed) {
+              void handle.remove();
+            } else {
+              cleanups.push(() => { void handle.remove(); });
+            }
+          }).catch(() => undefined);
+        } catch {
+          // Native bridge was not ready; lifecycle callbacks remain optional.
+        }
+        cleanups.push(() => { disposed = true; });
       }
     } else {
       // ── Page Visibility API (web / PWA) ────────────────────────────────────

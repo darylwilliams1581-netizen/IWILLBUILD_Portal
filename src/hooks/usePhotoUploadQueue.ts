@@ -52,6 +52,15 @@ export interface PendingPhoto {
   _file: File | null;
   /** Whether this item was restored from IDB on mount */
   restoredFromDevice: boolean;
+  /** Durable native file used if the IndexedDB blob is unavailable after restart. */
+  localPath?: string;
+  /** Stable key carried across retries. */
+  idempotencyKey?: string;
+}
+
+export interface EnqueueFileOptions {
+  localPath?: string;
+  idempotencyKey?: string;
 }
 
 interface UsePhotoUploadQueueOptions {
@@ -290,6 +299,8 @@ export function usePhotoUploadQueue({ jobId, uploadEndpoint, onBatchComplete, on
         error:             null,
         _file:             s.file,
         restoredFromDevice: true,
+        localPath:         s.localPath,
+        idempotencyKey:    s.idempotencyKey,
       }));
 
       setQueue(restored);
@@ -341,6 +352,9 @@ export function usePhotoUploadQueue({ jobId, uploadEndpoint, onBatchComplete, on
 
     void (async () => {
       let file: File | null = next._file;
+      if (!file && next.localPath) {
+        file = await readLocalPhoto(next.localPath, next.fileName, next.mimeType);
+      }
       if (!file) {
         updateItem(clientId, { status: 'failed', error: 'File missing — please retry' });
         activeRef.current -= 1;
@@ -372,6 +386,7 @@ export function usePhotoUploadQueue({ jobId, uploadEndpoint, onBatchComplete, on
 
         // Remove from IDB — confirmed synced
         void removePhoto(clientId);
+        if (next.localPath) void deleteLocalPhoto(next.localPath);
         // Clear last-failure record on any successful upload
         clearUploadFailure();
 
@@ -418,16 +433,17 @@ export function usePhotoUploadQueue({ jobId, uploadEndpoint, onBatchComplete, on
     // Note: do NOT call processNext() here again — the finally block above already
     // chains the next item. Calling it here races against the async state update
     // and causes the same item to be picked up twice (double-upload).
-  }, [jobId, updateItem, onBatchComplete]);
+  }, [jobId, updateItem, onBatchComplete, onPhotoSynced, uploadEndpoint]);
 
   // ── Enqueue files ──────────────────────────────────────────────────────────
 
-  const enqueueFiles = useCallback(async (files: File[]) => {
+  const enqueueFiles = useCallback(async (files: File[], options: EnqueueFileOptions[] = []) => {
     const now = Date.now();
     const newItems: PendingPhoto[] = [];
 
     for (let i = 0; i < files.length; i++) {
       const file = files[i];
+      const fileOptions = options[i] ?? {};
 
       // Check queue capacity before saving each file
       const capacityError = await checkQueueCapacity(jobId, file.size);
@@ -437,12 +453,12 @@ export function usePhotoUploadQueue({ jobId, uploadEndpoint, onBatchComplete, on
         break;
       }
 
-      const clientId = nextClientId();
+      const clientId = fileOptions.idempotencyKey ?? nextClientId();
       const isPreviewable = canPreview(file);
       const localPreviewUrl = isPreviewable ? URL.createObjectURL(file) : null;
 
       // Save to IDB immediately — photo is safe on device before any upload
-      void savePhoto({
+      await savePhoto({
         clientId,
         jobId,
         fileName:   file.name,
@@ -450,6 +466,8 @@ export function usePhotoUploadQueue({ jobId, uploadEndpoint, onBatchComplete, on
         file,
         capturedAt: now + i,
         attempts:   0,
+        localPath: fileOptions.localPath,
+        idempotencyKey: fileOptions.idempotencyKey,
       });
 
       newItems.push({
@@ -463,6 +481,8 @@ export function usePhotoUploadQueue({ jobId, uploadEndpoint, onBatchComplete, on
         error:             null,
         _file:             file,
         restoredFromDevice: false,
+        localPath:          fileOptions.localPath,
+        idempotencyKey:     fileOptions.idempotencyKey,
       });
     }
 

@@ -31,6 +31,20 @@ export function toWebRequest(req: ExpressRequest): Request {
     }
   }
 
+  // Native Capacitor HTTP requests use NSURLSession/OkHttp and may omit
+  // Origin. Give BetterAuth the canonical trusted origin for those requests.
+  // Browser JavaScript cannot spoof User-Agent, so normal browser CSRF checks
+  // continue to use the real Origin header.
+  const existingOrigin = headers.get('origin');
+  if (!existingOrigin || existingOrigin === 'null') {
+    const userAgent = (req.headers['user-agent'] || '').toLowerCase();
+    const isNativeApp =
+      userAgent.includes('cfnetwork') ||
+      userAgent.includes('okhttp') ||
+      userAgent.includes('capacitor');
+    if (isNativeApp) headers.set('origin', 'https://iwillbuild.com');
+  }
+
   const init: RequestInit = {
     method: req.method,
     headers,

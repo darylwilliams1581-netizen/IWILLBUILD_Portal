@@ -2012,7 +2012,7 @@ export default function HomeScreen() {
       {/* Permissions onboarding — shown once on native after terms accepted */}
       {showPermOnboarding && <AppPermissionsOnboarding onDone={() => setShowPermOnboarding(false)} />}
 
-      <div className="flex-1 flex flex-col relative overflow-hidden min-h-0 w-full max-w-full min-w-0" style={{
+      {!showTermsGate && <div className="flex-1 flex flex-col relative overflow-hidden min-h-0 w-full max-w-full min-w-0" style={{
       background: '#edf0f5'
     }}>
       {/* Very subtle noise texture — reduced opacity so it doesn't compete with tile colours */}
@@ -2103,6 +2103,6 @@ export default function HomeScreen() {
       <PhoneJobCardSheet open={jobCardOpen} onClose={() => setJobCardOpen(false)} />
       </div>{/* end z-10 content wrapper */}
 
-    </div>
+    </div>}
     </>;
 }
