@@ -9,10 +9,14 @@
  *   added), routes.tsx (beyond the additive route), any DB schema, any API
  *   endpoint, any markup editor, any native config.
  *
- * CAMERA PATHS:
- *   Native iOS/Android uses Camera.takePhoto() and immediately copies the image
- *   to Filesystem Directory.Data before any upload is attempted. Web browsers
- *   retain the persistent getUserMedia preview.
+ * PERSISTENT PREVIEW — getUserMedia() approach:
+ *   Capacitor 8.4.1 WebViewDelegationHandler.swift line 56:
+ *     decisionHandler(.grant)   ← auto-grants WKMediaCaptureType requests
+ *   CAPBridgeViewController.swift line 122:
+ *     allowsInlineMediaPlayback = true
+ *   capacitor.config.ts: NSCameraUsageDescription present, server.url is HTTPS
+ *   → getUserMedia works in this WKWebView without any native changes.
+ *   → Stream stays open between shots; five rapid captures work in locked mode.
  *
  * LABEL MODES:
  *   Locked  — label entered once, reused for every shot without prompting.
@@ -30,7 +34,9 @@
  *   Canvas uses the video's natural pixel dimensions, not CSS display size.
  *   JPEG quality 0.88 — matches existing normaliseToJpeg() quality.
  *
- * COMPOSITION FAILURE:
+ * COMPOSITION FAILURE / HEIC:
+ *   getUserMedia delivers raw YUV frames — never HEIC. HEIC is only possible
+ *   via the original Camera.getPhoto() path (Take Photo button, unchanged).
  *   If canvas creation or toBlob fails, an error panel is shown with three
  *   options: Retry | Cancel | Use original camera (navigates back to photos).
  *   Nothing is uploaded on failure.
@@ -47,11 +53,10 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { useParams, useNavigate, useLocation } from "react-router";
 import { Helmet } from '@dr.pogodin/react-helmet';
-import { ArrowLeft, Settings, X, Check, Loader2, Lock, Unlock, AlertTriangle, Pencil, Zap, ZapOff, FlipHorizontal2, Camera } from 'lucide-react';
+import { ArrowLeft, Settings, X, Check, Loader2, Lock, Unlock, AlertTriangle, Pencil, Zap, ZapOff, FlipHorizontal2 } from 'lucide-react';
 import { usePhotoUploadQueue } from '@/hooks/usePhotoUploadQueue';
 import { useWatermarkSettings } from '@/hooks/useWatermarkSettings';
-import { isNative } from '@/lib/capacitor-plugins';
-import { capturePhotoLocally, deleteLocalPhoto, readLocalPhoto } from '@/lib/capturePhotoLocally';
+import { getCameraPlugin } from '@/lib/capacitor-plugins';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types
@@ -366,11 +371,6 @@ export default function JobPhotosCameraPage() {
   const [pendingBitmap, setPendingBitmap] = useState<ImageBitmap | null>(null);
   const [pendingFileName, setPendingFileName] = useState('');
   const [pendingLabel, setPendingLabel] = useState('');
-  const [pendingNativeFile, setPendingNativeFile] = useState<{
-    localPath: string;
-    idempotencyKey: string;
-    previewUrl: string;
-  } | null>(null);
   const pendingLabelRef = useRef<HTMLTextAreaElement>(null);
 
   // ── Upload queue ────────────────────────────────────────────────────────────
@@ -399,7 +399,6 @@ export default function JobPhotosCameraPage() {
   const SESSION_MAX = 10;
   const [sessionCount, setSessionCount] = useState(0);
   const sessionLimitReached = sessionCount >= SESSION_MAX;
-  const nativeCamera = isNative();
 
   // ── Facing mode (rear / front) ──────────────────────────────────────────────
   type FacingMode = 'environment' | 'user';
@@ -447,16 +446,27 @@ export default function JobPhotosCameraPage() {
     stopStream();
     setCamState('loading');
     setCamErrMsg('');
-    if (nativeCamera) {
-      setCamState('ready');
-      return;
+
+    // On iOS, ask Capacitor for camera permission before WKWebView starts the
+    // embedded getUserMedia stream. The native prompt can initialise mediaDevices.
+    try {
+      const camera = getCameraPlugin();
+      if (camera) {
+        const permission = await camera.checkPermissions();
+        if (permission.camera !== 'granted' && permission.camera !== 'limited') {
+          await camera.requestPermissions({ permissions: ['camera'] });
+        }
+      }
+    } catch {
+      // Continue so getUserMedia can report the specific camera error below.
     }
+
     // On capacitor://localhost, navigator.mediaDevices may be undefined on the
     // first tick because WKWebView's secure-context initialisation is async.
-    // Retry up to 10 times (500 ms total) before giving up.
+    // Retry for up to one second before giving up.
     let mediaDevices = navigator.mediaDevices;
     if (!mediaDevices?.getUserMedia) {
-      for (let i = 0; i < 10; i++) {
+      for (let i = 0; i < 20; i++) {
         await new Promise<void>(r => setTimeout(r, 50));
         mediaDevices = navigator.mediaDevices;
         if (mediaDevices?.getUserMedia) break;
@@ -509,7 +519,7 @@ export default function JobPhotosCameraPage() {
       }
       setCamState('error');
     }
-  }, [stopStream, applyFlash, nativeCamera]);
+  }, [stopStream, applyFlash]);
   useEffect(() => {
     void startStream();
     return () => {
@@ -551,20 +561,14 @@ export default function JobPhotosCameraPage() {
   }), [settings, job]);
 
   // ── Finalise: composite + enqueue ───────────────────────────────────────────
-  const finalise = useCallback(async (
-    source: HTMLVideoElement | ImageBitmap,
-    resolvedLabel: string,
-    fileName: string,
-    nativeFile?: { localPath: string; idempotencyKey: string },
-  ): Promise<boolean> => {
+  const finalise = useCallback(async (source: HTMLVideoElement | ImageBitmap, resolvedLabel: string, fileName: string): Promise<boolean> => {
     const file = await compositeWatermark(source, makeOpts(resolvedLabel), fileName);
     if (!file) {
-      if (nativeFile) await deleteLocalPhoto(nativeFile.localPath);
       setComposeError(true);
       setCapturing(false);
       return false;
     }
-    await enqueueFiles([file], nativeFile ? [nativeFile] : []);
+    void enqueueFiles([file]);
     const thumb = URL.createObjectURL(file);
     setLastThumb(prev => {
       if (prev) URL.revokeObjectURL(prev);
@@ -578,64 +582,13 @@ export default function JobPhotosCameraPage() {
 
   // ── Shutter ─────────────────────────────────────────────────────────────────
   const handleShutter = useCallback(async () => {
-    if (camState !== 'ready' || capturing) return;
+    if (camState !== 'ready' || capturing || !videoRef.current) return;
+    const video = videoRef.current;
+    if (!video.videoWidth || !video.videoHeight) return;
     setCapturing(true);
     setFlashAnim(true);
     setTimeout(() => setFlashAnim(false), 150);
     const fileName = `job-${jobId}-photo-${Date.now()}.jpg`;
-
-    if (nativeCamera) {
-      let capture: Awaited<ReturnType<typeof capturePhotoLocally>>;
-      try {
-        capture = await capturePhotoLocally();
-      } catch (error) {
-        setCamErrMsg(error instanceof Error ? error.message : 'Could not open the native camera.');
-        setCamState('error');
-        setCapturing(false);
-        return;
-      }
-
-      const nativeFile = await readLocalPhoto(capture.localPath, fileName, 'image/jpeg');
-      if (!nativeFile) {
-        await deleteLocalPhoto(capture.localPath);
-        setComposeError(true);
-        setCapturing(false);
-        return;
-      }
-
-      let bitmap: ImageBitmap;
-      try {
-        bitmap = await createImageBitmap(nativeFile);
-      } catch {
-        await deleteLocalPhoto(capture.localPath);
-        setComposeError(true);
-        setCapturing(false);
-        return;
-      }
-
-      const metadata = {
-        localPath: capture.localPath,
-        idempotencyKey: capture.idempotencyKey,
-        previewUrl: capture.previewUrl,
-      };
-      if (labelLocked && (!settings.showLabel || label.trim())) {
-        await finalise(bitmap, label, fileName, metadata);
-        bitmap.close();
-        return;
-      }
-
-      setPendingBitmap(bitmap);
-      setPendingNativeFile(metadata);
-      setPendingFileName(fileName);
-      setPendingLabel(labelLocked ? '' : sanitizeLabel(label).slice(0, 120));
-      return;
-    }
-
-    const video = videoRef.current;
-    if (!video || !video.videoWidth || !video.videoHeight) {
-      setCapturing(false);
-      return;
-    }
     if (labelLocked) {
       // Locked: if label is empty, open the prompt once to obtain it, then lock
       if (settings.showLabel && !label.trim()) {
@@ -670,7 +623,7 @@ export default function JobPhotosCameraPage() {
       setPendingFileName(fileName);
       setPendingLabel(sanitizeLabel(label).slice(0, 120)); // pre-fill with last used value
     }
-  }, [camState, capturing, jobId, labelLocked, label, settings.showLabel, finalise, nativeCamera]);
+  }, [camState, capturing, jobId, labelLocked, label, settings.showLabel, finalise]);
 
   // ── Confirm label prompt ────────────────────────────────────────────────────
   const confirmPending = useCallback(async () => {
@@ -684,12 +637,10 @@ export default function JobPhotosCameraPage() {
     // If we arrived here from locked mode with empty label, lock it now
     if (labelLocked) setLabel(resolved);else setLabel(resolved); // remember for next pre-fill
 
-    const nativeFile = pendingNativeFile ?? undefined;
-    setPendingNativeFile(null);
-    const ok = await finalise(bitmap, resolved, fileName, nativeFile);
+    const ok = await finalise(bitmap, resolved, fileName);
     bitmap.close();
     if (!ok) return; // composeError already set
-  }, [pendingBitmap, pendingFileName, pendingLabel, labelLocked, finalise, pendingNativeFile]);
+  }, [pendingBitmap, pendingFileName, pendingLabel, labelLocked, finalise]);
 
   // ── Cancel label prompt ─────────────────────────────────────────────────────
   const cancelPending = useCallback(() => {
@@ -697,13 +648,9 @@ export default function JobPhotosCameraPage() {
       pendingBitmap.close();
       setPendingBitmap(null);
     }
-    if (pendingNativeFile) {
-      void deleteLocalPhoto(pendingNativeFile.localPath);
-      setPendingNativeFile(null);
-    }
     setPendingFileName('');
     setCapturing(false);
-  }, [pendingBitmap, pendingNativeFile]);
+  }, [pendingBitmap]);
 
   // ── Watermark popup helpers ─────────────────────────────────────────────────
   const openWatermarkPopup = useCallback(() => {
@@ -765,7 +712,7 @@ export default function JobPhotosCameraPage() {
         </span>
 
         {/* Flash cycle button */}
-        <button onClick={() => void handleFlashCycle()} disabled={nativeCamera || !torchSupported} className={`flex items-center gap-1 px-2.5 h-9 rounded-full transition-colors shrink-0 ${!torchSupported ? 'bg-black/20 text-white/25 cursor-default' : flashMode === 'on' ? 'bg-yellow-400/20 text-yellow-300' : flashMode === 'off' ? 'bg-black/40 text-white/40' : 'bg-black/40 text-white/80' /* auto */}`} aria-label={`Flash: ${flashMode}`} title={torchSupported ? `Flash: ${flashMode} — tap to cycle` : 'Flash not supported on this device'}>
+        <button onClick={() => void handleFlashCycle()} disabled={!torchSupported} className={`flex items-center gap-1 px-2.5 h-9 rounded-full transition-colors shrink-0 ${!torchSupported ? 'bg-black/20 text-white/25 cursor-default' : flashMode === 'on' ? 'bg-yellow-400/20 text-yellow-300' : flashMode === 'off' ? 'bg-black/40 text-white/40' : 'bg-black/40 text-white/80' /* auto */}`} aria-label={`Flash: ${flashMode}`} title={torchSupported ? `Flash: ${flashMode} — tap to cycle` : 'Flash not supported on this device'}>
           {flashMode === 'off' ? <ZapOff size={16} /> : <Zap size={16} className={flashMode === 'on' ? 'fill-yellow-300' : ''} />}
           <span className="text-[10px] font-bold leading-none tracking-wide">
             {flashMode === 'auto' ? 'AUTO' : flashMode === 'on' ? 'ON' : 'OFF'}
@@ -773,21 +720,15 @@ export default function JobPhotosCameraPage() {
         </button>
 
         {/* Flip camera */}
-        <button onClick={handleFlip} disabled={nativeCamera || camState === 'loading'} className="w-9 h-9 flex items-center justify-center rounded-full bg-black/40 text-white hover:bg-black/60 transition-colors shrink-0 disabled:opacity-40" aria-label={facingMode === 'environment' ? 'Switch to front camera' : 'Switch to rear camera'} title={facingMode === 'environment' ? 'Switch to front camera' : 'Switch to rear camera'}>
+        <button onClick={handleFlip} disabled={camState === 'loading'} className="w-9 h-9 flex items-center justify-center rounded-full bg-black/40 text-white hover:bg-black/60 transition-colors shrink-0 disabled:opacity-40" aria-label={facingMode === 'environment' ? 'Switch to front camera' : 'Switch to rear camera'} title={facingMode === 'environment' ? 'Switch to front camera' : 'Switch to rear camera'}>
           <FlipHorizontal2 size={18} />
         </button>
       </div>
 
       {/* ── Lens area — picture frame + live preview ── */}
       <div ref={lensRef} className="relative flex-1 min-h-0 overflow-hidden camera-lens-frame">
-        {/* Web preview; native opens the system camera from the shutter. */}
-        {!nativeCamera && <video ref={videoRef} className="absolute inset-0 w-full h-full object-cover" autoPlay playsInline muted />}
-
-        {nativeCamera && <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-black/90 px-8 text-center">
-            <Camera size={42} className="text-white/70" />
-            <p className="text-white text-sm font-semibold">Tap the shutter to open the iPhone camera.</p>
-            <p className="text-gray-400 text-xs leading-relaxed">Photos are saved on this device first and sync when a connection is available.</p>
-          </div>}
+        {/* Live video */}
+        <video ref={videoRef} className="absolute inset-0 w-full h-full object-cover" autoPlay playsInline muted />
 
         {/* getUserMedia unavailable */}
         {camState === 'unavailable' && <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 bg-black/90 px-8 text-center">
@@ -798,9 +739,14 @@ export default function JobPhotosCameraPage() {
             <p className="text-gray-400 text-xs leading-relaxed">
               Use the <strong className="text-white">Take Photo</strong> button on the photos page instead.
             </p>
-            <button onClick={() => navigate(backPath ?? `/jobs/${id}?tab=photos`)} className="mt-1 px-5 py-2.5 bg-primary text-white text-sm font-semibold rounded-xl">
-              Back to Photos
-            </button>
+            <div className="flex gap-2 mt-1">
+              <button onClick={() => void startStream()} className="px-5 py-2.5 bg-white text-black text-sm font-semibold rounded-xl">
+                Retry
+              </button>
+              <button onClick={() => navigate(backPath ?? `/jobs/${id}?tab=photos`)} className="px-5 py-2.5 bg-primary text-white text-sm font-semibold rounded-xl">
+                Back to Photos
+              </button>
+            </div>
           </div>}
 
         {/* Camera error */}
@@ -1045,9 +991,6 @@ export default function JobPhotosCameraPage() {
       {/* ── Label prompt (unlocked mode, or locked+empty first shot) ── */}
       {pendingBitmap && <div className="fixed inset-0 z-[60] flex items-end justify-center p-4 bg-black/72">
           <div className="bg-gray-900 rounded-2xl p-5 w-full max-w-sm border border-white/10">
-            {pendingNativeFile && <div className="w-full aspect-video rounded-xl overflow-hidden mb-4 bg-black">
-                <img src={pendingNativeFile.previewUrl} alt="Captured photo preview" className="w-full h-full object-contain" />
-              </div>}
             <p className="text-white text-sm font-semibold mb-1">Add a label</p>
             <p className="text-gray-400 text-xs mb-3 leading-relaxed">
               Optional. Leave blank to skip.
