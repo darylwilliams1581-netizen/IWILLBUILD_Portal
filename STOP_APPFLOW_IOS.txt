@@ -1,0 +1,15 @@
+STOP — Appflow must not ship iOS anymore
+========================================
+
+The live TestFlight app (Apple 6793437566, bundle com.iwillbuild.portal)
+is now the native field app from GitHub IWILLBUILD-iOS, starting at build 29.
+
+Do not:
+
+- Click Deploy / Build iOS in Appflow for IWILLBUILD_Portal
+- Leave iOS auto-updates on
+- Increment IOS_BUILD_NUMBER to "help TestFlight"
+
+Website changes go to GoDaddy / iwillbuild.com only.
+
+Turn off Appflow iOS automation in the Appflow dashboard (once).

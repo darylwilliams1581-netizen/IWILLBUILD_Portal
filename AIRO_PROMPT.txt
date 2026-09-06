@@ -14,8 +14,10 @@ We have split the product in two. Stop treating this as one Capacitor/iOS app.
    IWILLBUILD-iOS. You must never open, edit, generate, or push that app.
    You must never change iOS / Capacitor / camera-native files in THIS project either.
 
-The old TestFlight wrapper (Capacitor around the website) is frozen.
-Do not “fix camera”, “fix TestFlight”, “fix iOS”, or rebuild the native shell.
+The old TestFlight wrapper (Capacitor around the website) is frozen and retired.
+Do not “fix camera”, “fix TestFlight”, “fix iOS”, rebuild the native shell, or trigger Appflow iOS builds.
+Native TestFlight is now IWILLBUILD-iOS uploaded as com.iwillbuild.portal build 29+.
+If Appflow ships the website wrap again it will collide with that slot.
 The iPhone camera is becoming a Solocator-style in-app viewfinder in IWILLBUILD-iOS.
 That is not your job.
 
