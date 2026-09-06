@@ -540,16 +540,53 @@ export default function JobPhotosCameraPage() {
     try {
       const result = await capturePhotoLocally();
       if (!result) return;
-      // Build a File from the local URI for the upload queue
-      // capturePhotoLocally returns a previewUrl (data URI or file URI)
-      const response = await fetch(result.previewUrl);
-      const blob = await response.blob();
-      const fileName = `native_${Date.now()}.jpg`;
-      const file = new File([blob], fileName, { type: 'image/jpeg' });
-      await enqueueFiles([file]);
+
+      // Use readLocalPhoto to get a proper File — avoids any fetch() on blob:/
+      // file:// or capacitor:// URLs which the global fetch patch can't handle.
+      const { readLocalPhoto } = await import('@/lib/capturePhotoLocally');
+      const file = await readLocalPhoto(result.localPath);
+      if (!file) {
+        // Last resort: try reading the previewUrl as a blob URL via native
+        // XMLHttpRequest (bypasses the CapacitorHttp fetch patch)
+        const xhr = new XMLHttpRequest();
+        xhr.open('GET', result.previewUrl, true);
+        xhr.responseType = 'blob';
+        const blob = await new Promise<Blob | null>(resolve => {
+          xhr.onload = () => resolve(xhr.response as Blob);
+          xhr.onerror = () => resolve(null);
+          xhr.send();
+        });
+        if (blob) {
+          const fallbackFile = new File([blob], `native_${Date.now()}.jpg`, { type: 'image/jpeg' });
+          void enqueueFiles([fallbackFile]);
+          setSessionCount(c => c + 1);
+          // Show thumbnail
+          setLastThumb(prev => {
+            if (prev) URL.revokeObjectURL(prev);
+            lastThumbRef.current = result.previewUrl;
+            return result.previewUrl;
+          });
+        }
+        return;
+      }
+
+      void enqueueFiles([file]);
       setSessionCount(c => c + 1);
-    } catch {
-      // Silently ignore — user cancelled or permission denied
+
+      // Show thumbnail from the previewUrl blob URL already created by capturePhotoLocally
+      if (result.previewUrl) {
+        setLastThumb(prev => {
+          if (prev) URL.revokeObjectURL(prev);
+          lastThumbRef.current = result.previewUrl;
+          return result.previewUrl;
+        });
+      }
+    } catch (err) {
+      // User cancelled native camera — not an error
+      const msg = err instanceof Error ? err.message : String(err);
+      if (!msg.includes('cancel') && !msg.includes('Cancel') && !msg.includes('dismissed')) {
+        console.warn('[NativeShutter] capture failed:', msg);
+      }
     } finally {
       setNativeCapturing(false);
     }

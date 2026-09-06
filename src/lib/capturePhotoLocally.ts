@@ -193,15 +193,24 @@ export async function capturePhotoLocally(): Promise<LocalCaptureResult> {
     localUri = webPath ?? '';
   }
 
-  // Build a preview blob URL from the webPath (capacitor:// URL)
+  // Build a preview blob URL from the webPath (capacitor:// URL).
+  // Use XHR instead of fetch — the global fetch patch in main.tsx routes
+  // capacitor:// and file:// URLs through CapacitorHttp which can't return
+  // a Blob, causing a hang. XHR bypasses the patch and works correctly.
   let previewUrl = '';
   if (webPath) {
     try {
-      const res = await fetch(webPath);
-      if (res.ok) {
-        const blob = await res.blob();
-        previewUrl = URL.createObjectURL(blob);
-      }
+      const blob = await new Promise<Blob | null>(resolve => {
+        const xhr = new XMLHttpRequest();
+        xhr.open('GET', webPath, true);
+        xhr.responseType = 'blob';
+        xhr.onload = () => resolve(xhr.response as Blob);
+        xhr.onerror = () => resolve(null);
+        xhr.ontimeout = () => resolve(null);
+        xhr.timeout = 8000;
+        xhr.send();
+      });
+      if (blob) previewUrl = URL.createObjectURL(blob);
     } catch {
       // Preview unavailable — not fatal
     }
