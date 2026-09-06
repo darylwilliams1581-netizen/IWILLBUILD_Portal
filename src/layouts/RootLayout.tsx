@@ -94,11 +94,19 @@ const DeferredMount = ClientOnly;
 export default function RootLayout({ children }: RootLayoutProps) {
   const location = useLocation();
 
-  // Route change tracking — placed here so it has router context on both
-  // client and server (server is a no-op since recordRouteChange is client-only).
   useEffect(() => {
     recordRouteChange(location.pathname);
   }, [location.pathname]);
+
+  // Clear leftover inline locks from the old full-screen terms overlay.
+  useEffect(() => {
+    const html = document.documentElement;
+    const body = document.body;
+    html.style.removeProperty('overflow');
+    html.style.removeProperty('height');
+    body.style.removeProperty('overflow');
+    body.style.removeProperty('height');
+  }, []);
 
   return (
     <div suppressHydrationWarning className="h-full bg-background text-foreground flex flex-col">

@@ -439,11 +439,13 @@ textarea {
 */
 .portal-page {
   display: flex;
-  height: 100dvh;          /* dynamic viewport height — correct on mobile */
+  flex: 1 1 auto;
+  min-height: 0;
+  height: 100%;
   overflow: hidden;
   background-color: #f5f6f8;
-  width: 100%;             /* avoid scrollbar-width issue (100vw includes scrollbar) */
-  max-width: 100%;         /* hard cap — never wider than the viewport */
+  width: 100%;
+  max-width: 100%;
 }
 
 .portal-main {
