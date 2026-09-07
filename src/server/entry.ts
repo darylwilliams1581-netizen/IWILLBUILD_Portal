@@ -2871,6 +2871,44 @@ async function runStartupMigrations() {
     }
   }
 
+  // ── job_attendance.client_id column + unique index (idempotent) ───────────
+  // Required for TestFlight offline-queue idempotency: the native app sends a
+  // stable clientId so retried sign-in/out events are not duplicated.
+  // Uses INFORMATION_SCHEMA so it is safe to run against existing databases.
+  try {
+    const [colRows] = await db.execute(sql.raw(
+      "SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS " +
+      "WHERE TABLE_SCHEMA = DATABASE() " +
+      "  AND TABLE_NAME   = 'job_attendance' " +
+      "  AND COLUMN_NAME  = 'client_id'"
+    )) as unknown as [Array<{ COLUMN_NAME: string }>, unknown];
+    if (!colRows?.length) {
+      await db.execute(sql.raw(
+        "ALTER TABLE job_attendance ADD COLUMN client_id VARCHAR(64) NULL"
+      ));
+      console.log('[startup-migration] job_attendance.client_id column added');
+    }
+  } catch (e: unknown) {
+    console.warn('[startup-migration] job_attendance client_id column check failed:', migrationErrMsg(e));
+  }
+
+  try {
+    const [idxRows] = await db.execute(sql.raw(
+      "SELECT INDEX_NAME FROM INFORMATION_SCHEMA.STATISTICS " +
+      "WHERE TABLE_SCHEMA = DATABASE() " +
+      "  AND TABLE_NAME   = 'job_attendance' " +
+      "  AND INDEX_NAME   = 'idx_ja_client'"
+    )) as unknown as [Array<{ INDEX_NAME: string }>, unknown];
+    if (!idxRows?.length) {
+      await db.execute(sql.raw(
+        "CREATE UNIQUE INDEX idx_ja_client ON job_attendance (company_id, user_id, client_id)"
+      ));
+      console.log('[startup-migration] job_attendance idx_ja_client unique index added');
+    }
+  } catch (e: unknown) {
+    console.warn('[startup-migration] job_attendance idx_ja_client index check failed:', migrationErrMsg(e));
+  }
+
   // ── guest_checkins ────────────────────────────────────────────────────────
   try {
     await db.execute(sql.raw(

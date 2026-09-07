@@ -583,7 +583,7 @@ export default memo(function PagedHomeScreen({
         {/* Brand mark — light surface, use base horizontal slot (not /dark variant) */}
         <div className="flex items-center shrink-0">
           <img
-            src="/airo-assets/images/logo/horizontal"
+            src="/assets/logo.png"
             alt="IWILLBUILD"
             className="h-7 w-auto max-w-[140px] object-contain"
             onError={e => {
