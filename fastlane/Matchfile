@@ -4,4 +4,3 @@ storage_mode("git")
 type("appstore")
 app_identifier(["com.iwillbuild.portal"])
 team_id("L287H9J7L3")
-
