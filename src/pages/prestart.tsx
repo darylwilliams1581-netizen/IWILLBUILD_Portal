@@ -14,6 +14,12 @@ import { motion, AnimatePresence } from 'motion/react';
 import { Helmet } from '@dr.pogodin/react-helmet';
 import { ArrowLeft, ClipboardCheck, Loader2, Car, ChevronRight, CheckCircle2, XCircle, AlertTriangle, AlertCircle, Play, X } from 'lucide-react';
 import { hapticSuccess, hapticError } from '@/lib/capacitor-plugins';
+import { useOfflineQueue } from '@/lib/useOfflineQueue';
+import {
+  createOfflineClientId,
+  type FleetPrestartOfflineAction,
+  syncFleetPrestartAction,
+} from '@/lib/offlineFieldActions';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -28,6 +34,22 @@ interface Vehicle {
   current_driver: string | null;
 }
 type Step = 'pick' | 'form' | 'done';
+const VEHICLE_CACHE_KEY = 'iwb_fleet_vehicles';
+
+function readCachedVehicles(): Vehicle[] {
+  try {
+    const value = JSON.parse(localStorage.getItem(VEHICLE_CACHE_KEY) ?? '[]') as Vehicle[];
+    return Array.isArray(value) ? value : [];
+  } catch {
+    return [];
+  }
+}
+
+function cacheVehicles(vehicles: Vehicle[]): void {
+  try {
+    localStorage.setItem(VEHICLE_CACHE_KEY, JSON.stringify(vehicles));
+  } catch { /* retain the current in-memory list when storage is full */ }
+}
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -97,7 +119,7 @@ function PrestartForm({
   onDone
 }: {
   vehicle: Vehicle;
-  onDone: () => void;
+  onDone: (savedOffline: boolean) => void;
 }) {
   const [form, setForm] = useState<PrestartFormState>({
     kmHours: '',
@@ -108,6 +130,7 @@ function PrestartForm({
   });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+  const { enqueue } = useOfflineQueue<FleetPrestartOfflineAction>('fleet-prestart', syncFleetPrestartAction);
   async function handleSubmit() {
     if (form.issueNeedsAttention && !form.issueComment.trim()) {
       setError('Please describe the issue');
@@ -116,32 +139,23 @@ function PrestartForm({
     setSaving(true);
     setError('');
     try {
-      const res = await fetch(`/api/fleet/${vehicle.id}/prestarts`, {
-        method: 'POST',
-        credentials: 'include',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
+      const occurredAt = new Date().toISOString();
+      enqueue({
+        clientId: createOfflineClientId(),
+        assetId: vehicle.id,
+        occurredAt,
+        body: {
           kmHours: form.kmHours.trim() || undefined,
           safeToOperate: form.safeToOperate,
           issueNeedsAttention: form.issueNeedsAttention,
           issueComment: form.issueNeedsAttention ? form.issueComment.trim() : undefined,
           notes: form.notes.trim() || undefined
-        })
+        },
       });
-      if (!res.ok) {
-        const d = (await res.json().catch(() => ({}))) as {
-          error?: string;
-        };
-        setError(d.error ?? 'Failed to save prestart');
-        void hapticError();
-        return;
-      }
       void hapticSuccess();
-      onDone();
-    } catch {
-      setError('Network error — please try again');
+      onDone(!navigator.onLine);
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : 'Could not save on this device');
       void hapticError();
     } finally {
       setSaving(false);
@@ -266,9 +280,11 @@ function PrestartForm({
 
 function DoneState({
   vehicle,
+  savedOffline,
   onAnother
 }: {
   vehicle: Vehicle;
+  savedOffline: boolean;
   onAnother: () => void;
 }) {
   const navigate = useNavigate();
@@ -284,7 +300,7 @@ function DoneState({
       </div>
       <div>
         <h2 className="text-gray-900 font-black text-xl">Prestart Complete</h2>
-        <p className="text-gray-400 text-sm mt-1">{vehicle.name} · logged successfully</p>
+        <p className="text-gray-400 text-sm mt-1">{vehicle.name} · {savedOffline ? 'saved on device — will sync online' : 'saved and syncing'}</p>
       </div>
 
       {/* Start drive session CTA */}
@@ -316,6 +332,7 @@ export default function PrestartPage() {
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [vehiclesLoading, setVehiclesLoading] = useState(true);
   const [selectedVehicle, setSelectedVehicle] = useState<Vehicle | null>(null);
+  const [savedOffline, setSavedOffline] = useState(false);
   const loadVehicles = useCallback(async () => {
     setVehiclesLoading(true);
     try {
@@ -327,6 +344,7 @@ export default function PrestartPage() {
       };
       const list = data.vehicles ?? [];
       setVehicles(list);
+      cacheVehicles(list);
       // Auto-select if vehicleId param provided
       if (vehicleIdParam) {
         const found = list.find(v => String(v.id) === vehicleIdParam);
@@ -336,7 +354,7 @@ export default function PrestartPage() {
         }
       }
     } catch {
-      setVehicles([]);
+      setVehicles(readCachedVehicles());
     } finally {
       setVehiclesLoading(false);
     }
@@ -348,7 +366,8 @@ export default function PrestartPage() {
     setSelectedVehicle(v);
     setStep('form');
   }
-  function handleDone() {
+  function handleDone(wasSavedOffline: boolean) {
+    setSavedOffline(wasSavedOffline);
     setStep('done');
   }
   function handleAnother() {
@@ -443,7 +462,7 @@ export default function PrestartPage() {
           }} transition={{
             duration: 0.18
           }}>
-                <DoneState vehicle={selectedVehicle} onAnother={handleAnother} />
+                <DoneState vehicle={selectedVehicle} savedOffline={savedOffline} onAnother={handleAnother} />
               </motion.div>}
           </AnimatePresence>
         </div>

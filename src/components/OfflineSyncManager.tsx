@@ -2,9 +2,11 @@ import { useOfflineQueue } from '@/lib/useOfflineQueue';
 import {
   type AttendanceOfflineAction,
   type FormOfflineAction,
+  type FleetPrestartOfflineAction,
   type SitePrestartOfflineAction,
   syncAttendanceAction,
   syncFormAction,
+  syncFleetPrestartAction,
   syncSitePrestartAction,
 } from '@/lib/offlineFieldActions';
 
@@ -12,6 +14,7 @@ import {
 export default function OfflineSyncManager() {
   useOfflineQueue<AttendanceOfflineAction>('job-attendance', syncAttendanceAction);
   useOfflineQueue<SitePrestartOfflineAction>('site-prestart', syncSitePrestartAction);
+  useOfflineQueue<FleetPrestartOfflineAction>('fleet-prestart', syncFleetPrestartAction);
   useOfflineQueue<FormOfflineAction>('form-submit', syncFormAction);
   return null;
 }

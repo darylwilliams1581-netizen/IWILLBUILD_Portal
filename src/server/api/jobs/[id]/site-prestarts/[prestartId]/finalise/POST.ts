@@ -25,7 +25,9 @@ export default async function handler(req: Request, res: Response) {
     `) as unknown as [Array<Record<string, unknown>>, unknown];
     const prestart = (rows ?? [])[0] as Record<string, unknown> | undefined;
     if (!prestart) return res.status(404).json({ error: 'Not found' });
-    if (prestart.status === 'finalised') return res.status(400).json({ error: 'Already finalised' });
+    // A queued request can be retried after the server commits but the phone
+    // loses the response. Treat that retry as success instead of blocking sync.
+    if (prestart.status === 'finalised') return res.json({ ok: true, alreadyFinalised: true });
 
     const { supervisorSignature, supervisorSignoffName } = req.body as {
       supervisorSignature?: string;

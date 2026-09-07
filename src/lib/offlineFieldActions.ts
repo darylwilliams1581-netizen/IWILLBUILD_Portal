@@ -26,6 +26,13 @@ export interface FormOfflineAction {
   status: 'in_progress' | 'completed';
 }
 
+export interface FleetPrestartOfflineAction {
+  clientId: string;
+  assetId: number;
+  occurredAt: string;
+  body: Record<string, unknown>;
+}
+
 export interface CachedAttendanceStatus {
   signedIn: boolean;
   lastAction: 'signin' | 'signout' | null;
@@ -114,6 +121,17 @@ export async function syncSitePrestartAction(item: SitePrestartOfflineAction): P
   }
   const suffix = item.action === 'finalise' ? '/finalise' : '';
   await sendJson(`/api/jobs/${item.jobId}/site-prestarts/${item.prestartId}${suffix}`, item.action === 'save' ? 'PUT' : 'POST', {
+    ...item.body,
+    clientId: item.clientId,
+    occurredAt: item.occurredAt,
+  });
+}
+
+export async function syncFleetPrestartAction(item: FleetPrestartOfflineAction): Promise<void> {
+  if (!Number.isInteger(item.assetId) || item.assetId <= 0) {
+    throw new OfflineQueueSyncError('Invalid fleet asset for prestart sync.', false);
+  }
+  await sendJson(`/api/fleet/${item.assetId}/prestarts`, 'POST', {
     ...item.body,
     clientId: item.clientId,
     occurredAt: item.occurredAt,

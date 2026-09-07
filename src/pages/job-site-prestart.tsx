@@ -18,6 +18,17 @@ import MobileOverflowMenu from '@/components/MobileOverflowMenu';
 import JobPickerSheet from '@/components/JobPickerSheet';
 import { cn } from '@/lib/utils';
 import { goBack } from '@/lib/navigation';
+import { useOfflineQueue } from '@/lib/useOfflineQueue';
+import {
+  createOfflineClientId,
+  type SitePrestartOfflineAction,
+  syncSitePrestartAction,
+} from '@/lib/offlineFieldActions';
+import {
+  cacheSitePrestart,
+  readCachedSitePrestart,
+  readCachedSitePrestarts,
+} from '@/lib/offlinePrestartStore';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -272,10 +283,21 @@ function PrestartList({
   onSelect,
   onNew
 }: PrestartListProps) {
-  const [prestarts, setPrestarts] = useState<SitePrestart[]>([]);
+  const [prestarts, setPrestarts] = useState<SitePrestart[]>(() => readCachedSitePrestarts<SitePrestart>(jobId));
   const [loading, setLoading] = useState(true);
   useEffect(() => {
-    fetch(`/api/jobs/${jobId}/site-prestarts`).then(r => r.json()).then(d => setPrestarts(d.prestarts ?? [])).finally(() => setLoading(false));
+    fetch(`/api/jobs/${jobId}/site-prestarts`)
+      .then(r => {
+        if (!r.ok) throw new Error(`prestarts ${r.status}`);
+        return r.json();
+      })
+      .then(d => {
+        const list = (d.prestarts ?? []) as SitePrestart[];
+        list.forEach((item) => cacheSitePrestart(jobId, item));
+        setPrestarts(list);
+      })
+      .catch(() => setPrestarts(readCachedSitePrestarts<SitePrestart>(jobId)))
+      .finally(() => setLoading(false));
   }, [jobId]);
   if (loading) return <div className="flex items-center justify-center py-16">
       <Loader2 size={24} className="animate-spin text-violet-600" />
@@ -782,6 +804,8 @@ export default function JobSitePrestartPage() {
   const [showFinaliseConfirm, setShowFinaliseConfirm] = useState(false);
   const [supervisorSig, setSupervisorSig] = useState('');
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const { queue: prestartQueue, enqueue: enqueuePrestart, retryAll: retryPrestartSync } =
+    useOfflineQueue<SitePrestartOfflineAction>('site-prestart', syncSitePrestartAction);
 
   // Load SWMS for this job
   useEffect(() => {
@@ -791,9 +815,18 @@ export default function JobSitePrestartPage() {
 
   // Load full prestart when selected
   async function loadPrestart(p: SitePrestart) {
-    const r = await fetch(`/api/jobs/${jobId}/site-prestarts/${p.id}`);
-    const d = await r.json();
-    const full = d.prestart as SitePrestart;
+    let full = p;
+    let loadedWorkers: Worker[] = [];
+    try {
+      const r = await fetch(`/api/jobs/${jobId}/site-prestarts/${p.id}`);
+      if (!r.ok) throw new Error(`prestart ${r.status}`);
+      const d = await r.json();
+      full = d.prestart as SitePrestart;
+      loadedWorkers = d.workers ?? [];
+      cacheSitePrestart(jobId, full);
+    } catch {
+      full = readCachedSitePrestart<SitePrestart>(jobId, p.id) ?? p;
+    }
     // Parse JSON fields
     for (const key of ['situation_checkboxes', 'execution_checklist', 'admin_checklist', 'relevant_swms_ids', 'swms_snapshot']) {
       const val = (full as Record<string, unknown>)[key];
@@ -804,7 +837,7 @@ export default function JobSitePrestartPage() {
       }
     }
     setPrestart(full);
-    setWorkers(d.workers ?? []);
+    setWorkers(loadedWorkers);
     // Load existing delays for this job
     try {
       const dr = await fetch(`/api/jobs/${jobId}/delays`, {
@@ -821,25 +854,28 @@ export default function JobSitePrestartPage() {
   }
 
   // Auto-save debounced
-  const autoSave = useCallback((updates: Partial<SitePrestart>) => {
-    if (!prestart || prestart.status === 'finalised') return;
+  const autoSave = useCallback((updated: SitePrestart) => {
+    if (updated.status === 'finalised') return;
     if (saveTimer.current) clearTimeout(saveTimer.current);
-    saveTimer.current = setTimeout(async () => {
+    saveTimer.current = setTimeout(() => {
       setSaving(true);
       try {
-        await fetch(`/api/jobs/${jobId}/site-prestarts/${prestart.id}`, {
-          method: 'PUT',
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify(updates)
-        });
-        setSaveMsg('Saved');
+        enqueuePrestart({
+          clientId: createOfflineClientId(),
+          jobId,
+          prestartId: updated.id,
+          action: 'save',
+          occurredAt: new Date().toISOString(),
+          body: { ...updated },
+        }, { dedupeKey: `prestart-save:${updated.id}` });
+        setSaveMsg(navigator.onLine ? 'Syncing' : 'Saved on device');
         setTimeout(() => setSaveMsg(''), 2000);
-      } catch {/* ignore */}
+      } catch (error) {
+        setSaveMsg(error instanceof Error ? error.message : 'Could not save on device');
+      }
       setSaving(false);
     }, 800);
-  }, [prestart, jobId]);
+  }, [enqueuePrestart, jobId]);
   function update(field: keyof SitePrestart, value: unknown) {
     if (!prestart) return;
     const updated = {
@@ -847,9 +883,8 @@ export default function JobSitePrestartPage() {
       [field]: value
     } as SitePrestart;
     setPrestart(updated);
-    autoSave({
-      [field]: value
-    });
+    cacheSitePrestart(jobId, updated);
+    autoSave(updated);
   }
   function updateChecklist(field: 'situation_checkboxes' | 'execution_checklist' | 'admin_checklist', key: string, val: boolean) {
     if (!prestart) return;
@@ -881,32 +916,38 @@ export default function JobSitePrestartPage() {
       swms_snapshot: snapshot
     };
     setPrestart(p2 as SitePrestart);
-    autoSave({
-      relevant_swms_ids: updated,
-      swms_snapshot: snapshot
-    });
+    cacheSitePrestart(jobId, p2 as SitePrestart);
+    autoSave(p2 as SitePrestart);
   }
   async function finalise() {
     if (!prestart) return;
     setFinalising(true);
     setFinaliseError('');
     try {
-      const r = await fetch(`/api/jobs/${jobId}/site-prestarts/${prestart.id}/finalise`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
+      if (saveTimer.current) clearTimeout(saveTimer.current);
+      const finalised = { ...prestart, status: 'finalised' as const };
+      cacheSitePrestart(jobId, finalised);
+      enqueuePrestart({
+        clientId: createOfflineClientId(),
+        jobId,
+        prestartId: prestart.id,
+        action: 'save',
+        occurredAt: new Date().toISOString(),
+        body: { ...prestart },
+      }, { dedupeKey: `prestart-save:${prestart.id}` });
+      enqueuePrestart({
+        clientId: createOfflineClientId(),
+        jobId,
+        prestartId: prestart.id,
+        action: 'finalise',
+        occurredAt: new Date().toISOString(),
+        body: {
           supervisorSignature: supervisorSig || prestart.supervisor_signature,
           supervisorSignoffName: prestart.supervisor_signoff_name || prestart.supervisor_name
-        })
-      });
-      const d = await r.json();
-      if (!r.ok) throw new Error(d.error ?? 'Failed');
-      setPrestart(p => p ? {
-        ...p,
-        status: 'finalised'
-      } : p);
+        },
+      }, { dedupeKey: `prestart-finalise:${prestart.id}` });
+      setPrestart(finalised);
+      setSaveMsg(navigator.onLine ? 'Syncing' : 'Saved on device');
       setShowFinaliseConfirm(false);
     } catch (e) {
       setFinaliseError(String(e));
@@ -918,6 +959,8 @@ export default function JobSitePrestartPage() {
     window.print();
   }
   const isReadOnly = prestart?.status === 'finalised' || prestart?.status === 'closed';
+  const activePrestartQueue = prestartQueue.filter((item) => item.payload.prestartId === prestart?.id);
+  const prestartSyncFailed = activePrestartQueue.some((item) => item.status === 'failed');
 
   // ── Sign-on view ───────────────────────────────────────────────────────────
   if (view === 'signon' && prestart) {
@@ -1005,6 +1048,12 @@ export default function JobSitePrestartPage() {
                     <button onClick={printPrestart} className="hidden sm:inline text-xs text-slate-500 underline">Print</button>
                   </div>}
               </div>
+
+              {activePrestartQueue.length > 0 && <div className={cn('flex items-center gap-2 px-3 py-2 rounded-xl border text-xs', prestartSyncFailed ? 'bg-red-50 border-red-200 text-red-700' : 'bg-blue-50 border-blue-200 text-blue-700')}>
+                  {prestartSyncFailed ? <AlertTriangle size={14} /> : <Clock size={14} />}
+                  <span className="flex-1">{prestartSyncFailed ? 'Sync failed — saved on this device' : navigator.onLine ? 'Syncing saved prestart…' : 'Saved on this device — will sync online'}</span>
+                  {prestartSyncFailed && <button type="button" className="font-semibold underline" onClick={retryPrestartSync}>Retry</button>}
+                </div>}
 
               {/* Safety motto */}
               <div className="text-center py-1">
