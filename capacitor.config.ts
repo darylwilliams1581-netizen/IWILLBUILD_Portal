@@ -22,7 +22,7 @@ import type { CapacitorConfig } from '@capacitor/cli';
  *   3. Run: npm run build:cap  (builds web assets + cap sync)
  *   4. Archive in Xcode → Distribute → App Store Connect
  *
- * MARKETING_VERSION is explicitly set to 12 for the current TestFlight release line.
+ * MARKETING_VERSION is explicitly set to 13 for the current TestFlight release line.
  *
  * ── Server config note ───────────────────────────────────────────────────────
  * For App Store / TestFlight builds: server.url must be ABSENT (commented out).
@@ -40,8 +40,8 @@ import type { CapacitorConfig } from '@capacitor/cli';
 
 // ── SINGLE SOURCE OF TRUTH FOR BUILD NUMBER ───────────────────────────────────
 // Increment this before every App Store / TestFlight upload.
-// Current: 27 (Version 12 native camera and login hotfix)
-const IOS_BUILD_NUMBER = 31;
+// Current: 32 (Version 13 restored Package 80 with map and terms fixes)
+const IOS_BUILD_NUMBER = 32;
 
 const config: CapacitorConfig = {
   // Reverse-domain app identifier — must match your Apple/Google developer account
@@ -68,7 +68,7 @@ const config: CapacitorConfig = {
     // ── Build number — MUST increase with every App Store upload ─────────────
     // This sets CURRENT_PROJECT_VERSION / CFBundleVersion in project.pbxproj
     // when `npx cap sync` runs. MARKETING_VERSION (CFBundleShortVersionString)
-    // stays 12 and is controlled in Xcode / Appflow separately.
+    // stays 13 and is controlled in the Xcode project separately.
     buildNumber: String(IOS_BUILD_NUMBER),
 
     // ── Info.plist usage description strings ─────────────────────────────────
