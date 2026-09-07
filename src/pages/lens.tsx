@@ -150,7 +150,8 @@ function Lightbox({
 
   // Cache-bust the image URL after an edit
   const bust = cacheBust[photo.id];
-  const imgSrc = bust ? `${photo.downloadUrl}${photo.downloadUrl.includes('?') ? '&' : '?'}_cb=${bust}` : photo.downloadUrl;
+  const resolvedDownloadUrl = resolveDownloadUrl(photo.downloadUrl);
+  const imgSrc = bust ? `${resolvedDownloadUrl}${resolvedDownloadUrl.includes('?') ? '&' : '?'}_cb=${bust}` : resolvedDownloadUrl;
   return <div className="fixed inset-0 z-50 flex bg-black/95" style={{
     paddingTop: 'env(safe-area-inset-top)',
     paddingBottom: 'env(safe-area-inset-bottom)'
@@ -324,7 +325,8 @@ function PhotoCard({
   const [imgError, setImgError] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const isLocked = photo.status === 'locked';
-  const thumbSrc = cacheBust ? `${photo.thumbnailUrl}${photo.thumbnailUrl.includes('?') ? '&' : '?'}_cb=${cacheBust}` : photo.thumbnailUrl;
+  const resolvedThumbnailUrl = resolveDownloadUrl(photo.thumbnailUrl);
+  const thumbSrc = cacheBust ? `${resolvedThumbnailUrl}${resolvedThumbnailUrl.includes('?') ? '&' : '?'}_cb=${cacheBust}` : resolvedThumbnailUrl;
   function handleClick() {
     if (menuOpen) return;
     if (selectionMode) onToggleSelect(photo.id);else onOpen();
@@ -575,7 +577,7 @@ export default function LensPage() {
   }
   function buildEditorConfig(photo: LensPhoto): EditorConfig {
     return {
-      imageUrl: photo.downloadUrl,
+      imageUrl: resolveDownloadUrl(photo.downloadUrl),
       photoId: photo.id,
       label: photo.label,
       createdAt: photo.createdAt,

@@ -11,6 +11,7 @@ import { useMemo } from 'react';
 import { Calendar, ImageOff, CheckSquare, Square, ExternalLink } from 'lucide-react';
 import { useState } from 'react';
 import { type LensPhoto } from './lensTypes';
+import { resolveDownloadUrl } from '@/lib/native-api';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -101,7 +102,7 @@ function Thumb({ photo, onOpen, selectionMode, selected, onToggleSelect }: Thumb
         </div>
       ) : (
         <img
-          src={photo.thumbnailUrl}
+          src={resolveDownloadUrl(photo.thumbnailUrl)}
           alt={alt}
           loading="lazy"
           className="w-full h-full object-cover"

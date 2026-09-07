@@ -4,9 +4,10 @@
  * Isolated full-screen camera viewport with watermark compositing.
  *
  * NATIVE PREVIEW:
- *   @capacitor-community/camera-preview owns the AVCaptureSession and renders
- *   its preview layer behind the transparent lens area. The React chrome stays
- *   interactive above it. No getUserMedia call is made in this page.
+ *   The app-local IWBNativeLens plugin owns the AVCaptureSession and inserts a
+ *   bounded preview inside the WebView at the transparent lens rectangle. The
+ *   React chrome stays interactive and the native layer cannot cover navigation.
+ *   No getUserMedia call is made in this page.
  *   If native preview cannot start within four seconds, the same shutter uses
  *   capturePhotoLocally() once so a site photo can still be saved offline.
  *
@@ -44,7 +45,6 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { useParams, useNavigate, useLocation } from "react-router";
 import { Helmet } from '@dr.pogodin/react-helmet';
-import { CameraPreview } from '@capacitor-community/camera-preview';
 import { ArrowLeft, Settings, X, Check, Loader2, Lock, Unlock, AlertTriangle, Pencil, Zap, ZapOff, FlipHorizontal2 } from 'lucide-react';
 import { usePhotoUploadQueue } from '@/hooks/usePhotoUploadQueue';
 import { useWatermarkSettings } from '@/hooks/useWatermarkSettings';
@@ -56,6 +56,7 @@ import {
   readLocalPhoto,
 } from '@/lib/capturePhotoLocally';
 import { goBack } from '@/lib/navigation';
+import { NativeLensPreview } from '@/lib/native-lens-preview';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types
@@ -453,36 +454,25 @@ export default function JobPhotosCameraPage() {
 
   const stopPreview = useCallback(async () => {
     previewGenerationRef.current += 1;
-    const preview = isNative() ? CameraPreview : null;
-    const pendingStart = previewStartRef.current;
+    const preview = isNative() ? NativeLensPreview : null;
     previewStartRef.current = null;
-    const wasStarted = previewStartedRef.current;
     previewStartedRef.current = false;
     if (!preview) return;
 
-    // If start() is still inside AVFoundation, stop as soon as it resolves.
-    if (pendingStart && !wasStarted) {
-      try {
-        await withTimeout(CameraPreview.stop(), 2_000, 'Camera stop timed out.');
-      } catch {
-        // start() may not have created its session yet; late cleanup below wins.
-      }
-      void pendingStart.then(() => CameraPreview.stop()).catch(() => {});
-      return;
-    }
-    if (wasStarted) {
-      try {
-        await withTimeout(CameraPreview.stop(), 2_000, 'Camera stop timed out.');
-      } catch {
-        // An already-stopped native session needs no further cleanup.
-      }
+    // The app-local plugin removes its bounded native view immediately and
+    // resolves even when AVFoundation never finished starting. Always call it;
+    // flags in JavaScript must never decide whether native UI gets cleaned up.
+    try {
+      await withTimeout(preview.stop(), 2_000, 'Camera stop timed out.');
+    } catch {
+      // The native view is removed before session shutdown, even on timeout.
     }
   }, []);
 
   const startNativePreview = useCallback(async () => {
     await stopPreview();
     const generation = previewGenerationRef.current;
-    const preview = isNative() ? CameraPreview : null;
+    const preview = isNative() ? NativeLensPreview : null;
     const lens = lensRef.current;
     if (!isNative() || !preview || !lens) {
       setCamState('unavailable');
@@ -494,24 +484,20 @@ export default function JobPhotosCameraPage() {
     setCamErrMsg('');
     const rect = lens.getBoundingClientRect();
     const startCall = preview.start({
-      // The iOS preview UIView uses the same point-space as these CSS bounds.
-      // `parent` is deliberately omitted because it is web-only.
+      // The app-local plugin accepts this CSS-point rectangle directly and
+      // inserts its clipped native view inside the WKWebView scroll hierarchy.
       x: Math.max(0, Math.round(rect.left)),
       y: Math.max(0, Math.round(rect.top)),
       width: Math.max(1, Math.round(rect.width)),
       height: Math.max(1, Math.round(rect.height)),
       position: 'rear',
-      toBack: true,
-      storeToFile: false,
-      disableAudio: true,
-      rotateWhenOrientationChanged: true,
     });
     previewStartRef.current = startCall;
 
     try {
       await withTimeout(startCall, 4_000, 'Native preview did not start within 4 seconds.');
       if (previewGenerationRef.current !== generation) {
-        await CameraPreview.stop().catch(() => {});
+        await NativeLensPreview.stop().catch(() => {});
         return;
       }
       const status = await withTimeout(
@@ -543,7 +529,7 @@ export default function JobPhotosCameraPage() {
         : 'Live preview is unavailable. The shutter still opens the iPhone camera.');
       setCamState('unavailable');
       // A timed-out start may resolve later. Never leave that session running.
-      void startCall.then(() => CameraPreview.stop()).catch(() => {});
+      void startCall.then(() => NativeLensPreview.stop()).catch(() => {});
     }
   }, [stopPreview]);
 
@@ -600,7 +586,7 @@ export default function JobPhotosCameraPage() {
   // ── Flip camera ─────────────────────────────────────────────────────────────
   const handleFlip = useCallback(async () => {
     if (camState !== 'ready') return;
-    const preview = isNative() ? CameraPreview : null;
+    const preview = isNative() ? NativeLensPreview : null;
     if (!preview) return;
     try {
       await preview.flip();
@@ -615,7 +601,7 @@ export default function JobPhotosCameraPage() {
   // ── Cycle flash mode ────────────────────────────────────────────────────────
   const handleFlashCycle = useCallback(async () => {
     if (camState !== 'ready') return;
-    const preview = isNative() ? CameraPreview : null;
+    const preview = isNative() ? NativeLensPreview : null;
     if (!preview) return;
     const order: FlashMode[] = ['auto', 'on', 'off'];
     const next = order[(order.indexOf(flashModeRef.current) + 1) % order.length];
@@ -687,7 +673,7 @@ export default function JobPhotosCameraPage() {
       if (camState === 'ready') {
         try {
           const result = await withTimeout(
-            CameraPreview.capture({ quality: 88 }),
+            NativeLensPreview.capture({ quality: 88 }),
             12_000,
             'Native photo capture timed out.',
           );

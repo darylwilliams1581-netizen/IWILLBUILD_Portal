@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 import { type LensPhoto } from './lensTypes';
 import { type LensJobOption } from './LensJobPickerSheet';
+import { resolveDownloadUrl } from '@/lib/native-api';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -107,7 +108,7 @@ function Thumb({ photo, onOpen, selectionMode, selected, onToggleSelect }: Thumb
         </div>
       ) : (
         <img
-          src={photo.thumbnailUrl}
+          src={resolveDownloadUrl(photo.thumbnailUrl)}
           alt={photoAlt(photo)}
           loading="lazy"
           className="w-full h-full object-cover"
