@@ -15,6 +15,7 @@ import FormSection from '@/components/FormSection';
 import PhotoEditor from '@/components/PhotoEditor';
 import type { JobPhoto } from '@/components/JobPhotos';
 import PortalSidebar from '@/components/PortalSidebar';
+import { goBack } from '@/lib/navigation';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -668,7 +669,7 @@ export default function IncidentDetailPage() {
         <div className="bg-red-700 text-white px-4 safe-top pb-3 flex flex-col gap-0 min-w-0 overflow-x-clip">
           {/* Breadcrumb */}
           <div className="flex items-center gap-1.5 text-xs text-red-300 pt-1 mb-1.5 min-w-0 overflow-hidden">
-            <button type="button" onClick={() => goBack(navigate, '/home')} className="flex items-center gap-1 hover:text-white transition-colors">
+            <button type="button" onClick={() => navigate('/home')} className="flex items-center gap-1 hover:text-white transition-colors">
               <Home size={11} /> Home
             </button>
             <ChevronRight size={10} className="text-red-400" />
@@ -679,7 +680,7 @@ export default function IncidentDetailPage() {
             <span className="text-red-100 font-medium truncate max-w-[120px]">{pageTitle}</span>
           </div>
           <div className="flex items-center gap-3 min-w-0">
-            <button type="button" onClick={() => navigate(returnTo)} className="p-1.5 rounded-lg bg-white/20">
+            <button type="button" onClick={() => goBack(navigate, returnTo)} className="p-1.5 rounded-lg bg-white/20">
               <ChevronLeft size={20} />
             </button>
             <div className="flex-1 min-w-0">

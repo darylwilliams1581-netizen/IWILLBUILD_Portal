@@ -11,6 +11,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useNavigate, useLocation } from "react-router";
 import { getPlatform, getAppPlugin, getStatusBar, getNetworkPlugin } from './capacitor-plugins';
+import { goBack } from './navigation';
 export function useAndroidNative() {
   const platform = getPlatform();
   const navigate = useNavigate();
@@ -28,7 +29,7 @@ export function useAndroidNative() {
         canGoBack
       }) => {
         if (canGoBack) {
-          navigate(-1);
+          goBack(navigate, '/home');
         } else {
           // On root pages, confirm exit
           if (window.confirm('Exit IWIllBUIlD?')) {

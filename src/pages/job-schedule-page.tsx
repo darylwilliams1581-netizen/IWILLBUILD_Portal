@@ -376,11 +376,11 @@ export default function JobSchedulePage() {
       paddingTop: 'max(env(safe-area-inset-top), 12px)'
     }}>
         <div className="flex items-center gap-3 w-full px-4 py-3">
-        <button onClick={() => navigate(`/jobs/${id}`)} className="hidden md:flex w-9 h-9 rounded-xl bg-gray-100 items-center justify-center text-gray-600 hover:bg-gray-200 transition-colors shrink-0">
+        <button onClick={() => goBack(navigate, Number(id) > 0 ? `/jobs/${id}` : '/home')} className="hidden md:flex w-9 h-9 rounded-xl bg-gray-100 items-center justify-center text-gray-600 hover:bg-gray-200 transition-colors shrink-0">
           <ArrowLeft size={18} />
         </button>
           <div className="hidden md:flex items-center gap-1.5 shrink-0">
-            <button onClick={() => goBack(navigate, '/home')} className="flex items-center justify-center w-9 h-9 rounded-lg bg-violet-500 text-white hover:bg-violet-700 active:bg-violet-800 transition-colors touch-manipulation shadow-sm" title="Dashboard"><Home size={18} /></button>
+            <button onClick={() => navigate('/home')} className="flex items-center justify-center w-9 h-9 rounded-lg bg-violet-500 text-white hover:bg-violet-700 active:bg-violet-800 transition-colors touch-manipulation shadow-sm" title="Dashboard"><Home size={18} /></button>
           </div>
           <div className="flex-1 flex flex-col items-center justify-center min-w-0 px-2">
             {loading ? <div className="h-4 w-32 bg-gray-200 rounded animate-pulse" /> : <>
@@ -409,10 +409,10 @@ export default function JobSchedulePage() {
       paddingBottom: 'env(safe-area-inset-bottom)'
     }}>
         <div className="flex items-center gap-2 px-3 py-2">
-          <button onClick={() => navigate(`/jobs/${id}`)} aria-label="Back" className="w-10 h-10 rounded-xl bg-gray-100 flex items-center justify-center text-gray-600 active:bg-gray-200 transition-colors touch-manipulation shrink-0">
+          <button onClick={() => goBack(navigate, Number(id) > 0 ? `/jobs/${id}` : '/home')} aria-label="Back" className="w-10 h-10 rounded-xl bg-gray-100 flex items-center justify-center text-gray-600 active:bg-gray-200 transition-colors touch-manipulation shrink-0">
             <ArrowLeft size={16} />
           </button>
-          <button onClick={() => goBack(navigate, '/home')} aria-label="Dashboard" className="w-10 h-10 rounded-xl bg-violet-50 border border-violet-200 flex items-center justify-center text-violet-600 active:bg-violet-100 transition-colors touch-manipulation shrink-0">
+          <button onClick={() => navigate('/home')} aria-label="Dashboard" className="w-10 h-10 rounded-xl bg-violet-50 border border-violet-200 flex items-center justify-center text-violet-600 active:bg-violet-100 transition-colors touch-manipulation shrink-0">
             <Home size={16} />
           </button>
           <div className="flex-1 min-w-0">

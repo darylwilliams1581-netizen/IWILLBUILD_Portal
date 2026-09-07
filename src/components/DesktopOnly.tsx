@@ -41,6 +41,7 @@ import { useState, useEffect } from 'react';
 import { Monitor, Smartphone, ArrowLeft } from 'lucide-react';
 import { isNative } from '@/lib/capacitor-plugins';
 import { useNavigate } from "react-router";
+import { goBack } from '@/lib/navigation';
 /** Viewport width below which the guard activates (px). */
 const MOBILE_BREAKPOINT = 768;
 function isMobileViewport(): boolean {
@@ -82,7 +83,7 @@ export default function DesktopOnly({
   }
   return <div className="fixed inset-0 flex flex-col items-center justify-center gap-6 px-8 text-center bg-background">
       {/* Back button — top-left */}
-      <button onClick={() => window.history.length > 1 ? navigate(-1) : navigate('/home')} className="absolute top-4 left-4 flex items-center gap-1.5 text-sm font-medium text-muted-foreground hover:text-foreground active:scale-95 transition-all px-2 py-1.5 rounded-lg hover:bg-muted" aria-label="Go back">
+      <button onClick={() => goBack(navigate, '/home')} className="absolute top-4 left-4 flex items-center gap-1.5 text-sm font-medium text-muted-foreground hover:text-foreground active:scale-95 transition-all px-2 py-1.5 rounded-lg hover:bg-muted" aria-label="Go back">
         <ArrowLeft size={16} />
         Back
       </button>

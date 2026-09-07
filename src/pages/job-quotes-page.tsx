@@ -6,6 +6,7 @@ import { usePermissions } from '@/lib/usePermissions';
 import { fetchJob, type Job } from '@/lib/jobs-api';
 import PortalSidebar from '@/components/PortalSidebar';
 import { getEstimateStatusStyle, ESTIMATE_STATUSES, type Estimate, type EstimateStatus } from '@/lib/estimates-api';
+import { goBack } from '@/lib/navigation';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 function fmt(n: number) {
@@ -276,12 +277,12 @@ export default function JobQuotesPage() {
         <div className="max-w-2xl mx-auto px-4 h-14 flex items-center gap-2">
 
           {/* ← Back */}
-          <button onClick={() => navigate(`/jobs/${id}`)} aria-label="Back to job" className="w-9 h-9 rounded-full bg-gray-100 hover:bg-gray-200 active:bg-gray-300 flex items-center justify-center text-gray-500 transition-colors shrink-0">
+          <button onClick={() => goBack(navigate, Number(id) > 0 ? `/jobs/${id}` : '/home')} aria-label="Back to job" className="w-9 h-9 rounded-full bg-gray-100 hover:bg-gray-200 active:bg-gray-300 flex items-center justify-center text-gray-500 transition-colors shrink-0">
             <ChevronLeft size={18} strokeWidth={2.5} />
           </button>
 
           {/* ⌂ Home */}
-          <button onClick={() => navigate('/')} aria-label="Dashboard" className="w-9 h-9 rounded-full bg-violet-600 hover:bg-violet-700 active:bg-violet-800 flex items-center justify-center text-white transition-colors shrink-0">
+          <button onClick={() => navigate('/home')} aria-label="Dashboard" className="w-9 h-9 rounded-full bg-violet-600 hover:bg-violet-700 active:bg-violet-800 flex items-center justify-center text-white transition-colors shrink-0">
             <Home size={15} />
           </button>
 

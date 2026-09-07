@@ -7,15 +7,16 @@
  * Used by every standalone /jobs/:id/<feature> page that is reached
  * via the home screen opening-page icons or directly via a deep link.
  *
- * BACK NAVIGATION — deterministic, not history-dependent:
- *   - If `backTo` is provided, Back navigates there explicitly.
- *   - Otherwise falls back to navigate(-1) when history depth > 1.
- *   - Safe fallback: / (home screen — never an arbitrary external URL).
+ * BACK NAVIGATION — Capacitor-safe and history-aware:
+ *   - Back uses goBack() so it returns one real router history entry.
+ *   - If history is shallow, `backTo` is the safe fallback.
+ *   - Safe default fallback: /home (app dashboard).
  *   - backTo is validated to be an internal path (starts with /).
  */
 import { type ReactNode } from 'react';
 import { useNavigate } from 'react-router';
 import { ArrowLeft, RefreshCw, type LucideIcon } from 'lucide-react';
+import { goBack } from '@/lib/navigation';
 
 interface JobFeatureShellProps {
   /** Feature icon component */
@@ -29,7 +30,7 @@ interface JobFeatureShellProps {
   /**
    * Explicit back destination.
    * Must be an internal path starting with "/".
-   * If omitted, falls back to navigate(-1) or / (home screen).
+   * If omitted, falls back to /home (app dashboard).
    */
   backTo?: string;
   /** Called when user taps "Change Job" — should navigate back to the launcher picker */
@@ -64,24 +65,10 @@ export default function JobFeatureShell({
   const navigate = useNavigate();
 
   function handleBack() {
-    if (isSafeBackPath(backTo)) {
-      navigate(backTo);
-      return;
-    }
-    // Check if there is real history to go back to (history.length > 1 means
-    // we didn't land here directly from a bookmark/deep link)
-    if (window.history.length > 1) {
-      navigate(-1);
-      return;
-    }
-    // Safe fallback for direct deep links
-    navigate('/');
+    goBack(navigate, isSafeBackPath(backTo) ? backTo : '/home');
   }
 
-  // Derive a display back label for the header
-  const backLabel = isSafeBackPath(backTo)
-    ? (backTo === '/' || backTo === '/home') ? 'Home' : 'Back'
-    : 'Back';
+  const backLabel = 'Back';
 
   return (
     <div className="flex flex-col flex-1 min-h-0">

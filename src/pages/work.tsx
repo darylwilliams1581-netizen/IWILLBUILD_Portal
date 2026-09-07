@@ -266,13 +266,13 @@ function MobileToolsLauncher({ onBack }: { onBack: () => void }) {
           </div>
           <h2 className="text-sm font-bold text-foreground">Tools</h2>
         </div>
-        <a
-          href="/"
+        <button
+          onClick={() => navigate('/home')}
           className="ml-auto flex items-center justify-center w-9 h-9 rounded-xl border border-border hover:bg-muted transition-colors shrink-0"
           aria-label="Home"
         >
           <Home size={16} />
-        </a>
+        </button>
       </div>
 
       <div className="flex-1 overflow-y-auto px-4 py-4">

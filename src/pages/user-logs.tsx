@@ -757,7 +757,7 @@ export default function UserLogsPage() {
       {/* ── Breadcrumb ── */}
       <div className="bg-white border-b border-gray-100 px-6 py-2 flex items-center gap-1.5 text-[12px] text-gray-400">
         <a
-          href="/?page=2"
+          href="/home"
           className="flex items-center gap-1 text-gray-400 hover:text-primary transition-colors"
         >
           <LayoutDashboard size={12} />

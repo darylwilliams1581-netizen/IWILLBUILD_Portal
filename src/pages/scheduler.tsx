@@ -1331,7 +1331,7 @@ export default function SchedulerPage() {
     }
     return true;
   });
-  function navigate(direction: -1 | 1) {
+  function movePeriod(direction: -1 | 1) {
     setAnchorDate(prev => stepAnchor(prev, timeWindow, direction));
   }
   function goToToday() {
@@ -1396,7 +1396,7 @@ export default function SchedulerPage() {
         <div className="op-page-header flex flex-wrap items-center gap-x-2 gap-y-1.5 shrink-0 min-w-0">
 
           {/* Back — mobile only (desktop navigates via sidebar) */}
-          <button type="button" onClick={() => rrNavigate(-1)} title="Back" className="lg:hidden shrink-0 w-7 h-7 flex items-center justify-center rounded hover:bg-gray-100 text-gray-400 hover:text-gray-700 transition-colors">
+          <button type="button" onClick={() => goBack(rrNavigate, '/home')} title="Back" className="lg:hidden shrink-0 w-7 h-7 flex items-center justify-center rounded hover:bg-gray-100 text-gray-400 hover:text-gray-700 transition-colors">
             <ArrowLeft size={14} />
           </button>
           {/* Home — mobile only */}
@@ -1498,11 +1498,11 @@ export default function SchedulerPage() {
 
           {/* Period navigation */}
           {view !== 'table' && <div className="flex items-center gap-1 ml-auto">
-              <button onClick={() => goBack(navigate, '/home')} className="p-1 rounded hover:bg-gray-100 text-gray-500 hover:text-gray-700 transition-colors" title="Previous period">
+              <button onClick={() => movePeriod(-1)} className="p-1 rounded hover:bg-gray-100 text-gray-500 hover:text-gray-700 transition-colors" title="Previous period">
                 <ChevronLeft size={13} />
               </button>
               <span className="text-xs font-semibold text-gray-700 min-w-[130px] text-center px-1">{windowLabel}</span>
-              <button onClick={() => navigate(1)} className="p-1 rounded hover:bg-gray-100 text-gray-500 hover:text-gray-700 transition-colors" title="Next period">
+              <button onClick={() => movePeriod(1)} className="p-1 rounded hover:bg-gray-100 text-gray-500 hover:text-gray-700 transition-colors" title="Next period">
                 <ChevronRight size={13} />
               </button>
               <button onClick={goToToday} className="px-2 py-0.5 text-xs font-semibold text-primary hover:bg-violet-50 rounded transition-colors border border-violet-200 ml-1">
@@ -1527,7 +1527,7 @@ export default function SchedulerPage() {
           {activeTab === 'jobs' && <>
               {/* Assets view — full-height, manages its own layout */}
               {view === 'assets' && <div className="h-full flex flex-col bg-white border border-gray-200 rounded-none overflow-hidden">
-                  <AssetSchedulerView timeWindow={timeWindow === 'day' ? 'week' : timeWindow as 'week' | 'month' | '3months'} anchorDate={anchorDate} onWindowChange={tw => switchWindow(tw)} onNavigate={navigate} onGoToday={goToToday} windowLabel={windowLabel} />
+                  <AssetSchedulerView timeWindow={timeWindow === 'day' ? 'week' : timeWindow as 'week' | 'month' | '3months'} anchorDate={anchorDate} onWindowChange={tw => switchWindow(tw)} onNavigate={movePeriod} onGoToday={goToToday} windowLabel={windowLabel} />
                 </div>}
 
               {view !== 'assets' && loading && <div className="flex items-center justify-center py-20">
@@ -1551,7 +1551,7 @@ export default function SchedulerPage() {
                     {view === 'table' && <TableView jobs={filtered} />}
                     {view === 'timeline' && timeWindow === 'day' && <DayView jobs={filtered} anchorDate={anchorDate} onReschedule={handleReschedule} />}
                     {view === 'timeline' && timeWindow !== 'day' && <TimelineView jobs={filtered} window={timeWindow} anchorDate={anchorDate} onReschedule={handleReschedule} />}
-                    {view === 'calendar' && <CalendarView jobs={filtered} anchorDate={anchorDate} onNavigate={navigate} onReschedule={handleReschedule} />}
+                    {view === 'calendar' && <CalendarView jobs={filtered} anchorDate={anchorDate} onNavigate={movePeriod} onReschedule={handleReschedule} />}
                     {view === 'crew' && <CrewView members={crewMembers} unassignedJobs={unassignedJobs} window={timeWindow} anchorDate={anchorDate} loading={crewLoading} onReschedule={handleReschedule} />}
                   </div>
 

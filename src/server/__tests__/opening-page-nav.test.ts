@@ -259,18 +259,19 @@ describe('Timesheets — no Job picker', () => {
   });
 });
 
-// ── 12. JobFeatureShell fallback is / not /work-field ────────────────────────
+// ── 12. JobFeatureShell uses shared Back with /home fallback ─────────────────
 
-describe('JobFeatureShell — safe fallback to /', () => {
+describe('JobFeatureShell — safe fallback to /home', () => {
   const shellSrc = src('src/components/job/JobFeatureShell.tsx');
 
-  it('fallback navigate goes to / not /work-field', () => {
-    expect(shellSrc).toContain("navigate('/')");
+  it('uses goBack with /home as the default fallback', () => {
+    expect(shellSrc).toContain("goBack(navigate, isSafeBackPath(backTo) ? backTo : '/home')");
+    expect(shellSrc).not.toContain('navigate(-1)');
     expect(shellSrc).not.toContain("navigate('/work-field')");
   });
 
-  it('back label uses "Home" for backTo="/" or backTo="/home"', () => {
-    expect(shellSrc).toContain("(backTo === '/' || backTo === '/home') ? 'Home'");
+  it('labels the history control as Back', () => {
+    expect(shellSrc).toContain("const backLabel = 'Back'");
   });
 
   it('still validates backTo starts with /', () => {

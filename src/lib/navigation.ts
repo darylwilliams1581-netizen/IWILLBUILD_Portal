@@ -10,9 +10,10 @@
  *   nothing (or exits the webview on Android).
  *
  * Solution:
- *   goBack(navigate, fallback) checks window.history.length before deciding:
- *     - history.length > 1  → navigate(-1)   (normal step-back)
- *     - history.length <= 1 → navigate(fallback)  (safe parent route)
+ *   goBack(navigate, fallback) checks React Router's history index before
+ *   deciding:
+ *     - index > 0  → navigate(-1)   (normal step-back)
+ *     - index <= 0 → navigate(fallback)  (safe parent route)
  *
  * Usage:
  *   import { goBack } from '@/lib/navigation';
@@ -26,9 +27,9 @@
  *   Studio sub-pages                          → '/studio'
  *   Fleet sub-pages                           → '/fleet'
  *
- * The threshold of 1 is intentional: a fresh Capacitor webview starts with
- * history.length === 1 (the initial page load). Any real navigation pushes it
- * to 2+, making it safe to go back.
+ * React Router stores its current stack position in history.state.idx. Total
+ * browser history length is not reliable because redirects and previous page
+ * loads can make it greater than one without a usable in-app Back entry.
  */
 
 import type { NavigateFunction } from 'react-router';
@@ -40,9 +41,20 @@ import type { NavigateFunction } from 'react-router';
  * @param fallback  Route to use when history is too shallow (e.g. '/home')
  */
 export function goBack(navigate: NavigateFunction, fallback: string): void {
-  if (typeof window !== 'undefined' && window.history.length > 1) {
+  const internalFallback = fallback.startsWith('/') && !fallback.startsWith('//') ? fallback : '/home';
+  if (typeof window === 'undefined') {
+    navigate(internalFallback, { replace: true });
+    return;
+  }
+
+  const state = window.history.state as { idx?: unknown } | null;
+  const canGoBack = typeof state?.idx === 'number' && state.idx > 0;
+  const currentPath = `${window.location.pathname}${window.location.search}`;
+  const safeFallback = internalFallback === currentPath && currentPath !== '/home' ? '/home' : internalFallback;
+
+  if (canGoBack) {
     navigate(-1);
   } else {
-    navigate(fallback, { replace: true });
+    navigate(safeFallback, { replace: true });
   }
 }
