@@ -20,9 +20,8 @@ interface AppShellProps {
 export default function AppShell({ children }: AppShellProps) {
   return (
     <div
-      className="flex flex-col bg-[#F2F2F7] text-gray-900"
+      className="flex h-full min-h-0 flex-col bg-[#F2F2F7] text-gray-900"
       style={{
-        minHeight: '100dvh',
         // Ensure content never bleeds under the native status bar
         paddingTop: 'env(safe-area-inset-top, 0px)',
       }}
@@ -33,7 +32,7 @@ export default function AppShell({ children }: AppShellProps) {
           miscalculate their own width, producing the left-clip / overflow bug.
           The overflow:hidden on the swipe container in PagedHomeScreen is sufficient. */}
       <main
-        className="flex-1 overflow-y-auto overflow-x-hidden"
+        className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden"
         style={{
           paddingBottom: 'calc(56px + env(safe-area-inset-bottom, 0px))',
           minWidth: 0,
