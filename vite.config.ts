@@ -1,4 +1,4 @@
-import { defineConfig, type Plugin, type ViteDevServer } from "vite";
+import { defineConfig, type Plugin, type ViteDevServer, mergeConfig as mergeViteConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import path from "path";
 import { URL } from "node:url";
@@ -12,6 +12,7 @@ import { createRequire } from "module";
 // starts. tryLoad() catches the missing-module error and returns null so the
 // rest of the config can guard each usage with a simple truthiness check.
 // ---------------------------------------------------------------------------
+import { devToolsPlugin as _devToolsPlugin } from "./dev-tools/src/vite-plugin";
 const _require = createRequire(import.meta.url);
 function tryLoad(id: string, named?: string): ((...args: unknown[]) => unknown) | null {
   try {
@@ -130,7 +131,10 @@ if (corsOrigins.length === 0) {
 }
 
 // ---------------------------------------------------------------------------
-export default defineConfig(({ mode, isSsrBuild }) => ({
+export default defineConfig(({
+  mode,
+  isSsrBuild
+}) => ((configValue, mergeResolvedConfig) => typeof configValue === "function" ? async (...configArgs) => mergeResolvedConfig(await configValue(...configArgs)) : (async () => mergeResolvedConfig(await configValue))())({
   envPrefix: ["VITE_", "SITE_"],
   define: {
     __APP_VERSION__: JSON.stringify(process.env.npm_package_version ?? '1.0.0')
@@ -551,7 +555,7 @@ export default defineConfig(({ mode, isSsrBuild }) => ({
     // html-to-image uses canvas/DOM APIs — browser only.
     'html-to-image',
     // drizzle-kit is a CLI migration tool — never needed at SSR runtime.
-    'drizzle-kit',
+    'drizzle-kit'
     // mammoth was previously externalised to avoid OOM during the SSR Rollup
     // build, but the publish container has no node_modules so external packages
     // crash at startup. mammoth is now split into its own Rollup chunk (see
@@ -819,4 +823,6 @@ export default defineConfig(({ mode, isSsrBuild }) => ({
       }
     }
   }
-}));
+}, resolvedConfig => mergeViteConfig(resolvedConfig, {
+  plugins: [_devToolsPlugin()]
+})));
