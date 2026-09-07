@@ -7,7 +7,7 @@ final class PhotoQueue: ObservableObject {
 
     var isOnline: Bool { net.isOnline }
 
-    static var directory: URL {
+    nonisolated static var directory: URL {
         let url = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
             .appendingPathComponent("queued-photos", isDirectory: true)
         try? FileManager.default.createDirectory(at: url, withIntermediateDirectories: true)
