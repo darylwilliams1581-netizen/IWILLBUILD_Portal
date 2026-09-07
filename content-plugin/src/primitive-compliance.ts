@@ -11,7 +11,6 @@ import {
   isCallExpression,
   isConditionalExpression,
   isLogicalExpression,
-  isExportNamedDeclaration,
   isIdentifier,
   isImportDeclaration,
   isMemberExpression,
@@ -22,7 +21,6 @@ import {
   isStringLiteral,
   isTemplateLiteral,
   isTSNonNullExpression,
-  isVariableDeclaration,
 } from '@babel/types';
 import type {
   Expression,
@@ -67,9 +65,10 @@ export interface UnboundSite {
     | 'title'
     | 'input-value'
     | 'jsx-expression-literal'
-    | 'local-map';
+    | 'local-map'
+    | 'local-const';
   readonly text: string;
-  /** For kind 'local-map': the line declaring the offending module-local literal. */
+  /** For 'local-map' and 'local-const': the line declaring the offending binding, at any scope. */
   readonly declaredLine?: number;
 }
 
@@ -91,10 +90,27 @@ export interface I18nSite {
   readonly key?: string;
 }
 
+/**
+ * Kinds that name an attribute rather than element text. Never enforced, because no primitive binds
+ * an attribute: {@link enforcedSites} explains why, and {@link ENFORCED_KINDS} is its complement over
+ * the text kinds.
+ */
+const ATTRIBUTE_KINDS: ReadonlySet<UnboundSite['kind']> = new Set([
+  'alt',
+  'placeholder',
+  'title',
+  'input-value',
+]);
+
+function isAttributeKind(kind: UnboundSite['kind']): boolean {
+  return ATTRIBUTE_KINDS.has(kind);
+}
+
 const ENFORCED_KINDS: ReadonlySet<UnboundSite['kind']> = new Set([
   'jsx-text',
   'jsx-expression-literal',
   'local-map',
+  'local-const',
 ]);
 
 /** Whether the gates refuse this site. */
@@ -246,8 +262,29 @@ export function isFrameworkExemptPath(relPath: string): boolean {
 /** Whether writes to this app-relative path are subject to the content-authority rule. */
 export function isGatedPath(relPath: string): boolean {
   const p: string = toPosix(relPath);
+  if (!isScannableSourceFile(p)) return false;
   if (isFrameworkExemptPath(p)) return false;
   return GATED_ROOTS.some((root: string): boolean => p === root || p.startsWith(root + '/'));
+}
+
+/**
+ * Whether this app-relative path is a component rather than a page.
+ *
+ * Exists because the prohibition on importing `virtual:content` is component-scoped, not gate-wide:
+ * a component that reads content directly loses source-mapper attribution and its text stops being
+ * inline-editable, whereas a PAGE reading `{home.hero.title}` off the virtual module is the pattern
+ * every authoring document asks for. That page read is attributed by source-mapper in dev mode only:
+ * a production-mode start (the Git-sync restart path) strips the key while leaving the editor loaded,
+ * so the copy is offered for editing and cannot be edited. `<Text>` is immune, setting its key at
+ * runtime. That gap predates this predicate and is not what it decides. `content-rules-lint`
+ * already draws the line here — `detectComponentImportsContent` returns early unless the file is a
+ * component — so a gate that refused pages too was strictly stricter than the linter and rejected
+ * the sanctioned form.
+ */
+export function isComponentPath(relPath: string): boolean {
+  const p: string = toPosix(relPath);
+  if (isFrameworkExemptPath(p)) return false;
+  return p === COMPONENTS_ROOT || p.startsWith(COMPONENTS_ROOT + '/');
 }
 
 /**
@@ -268,8 +305,12 @@ const MAX_LISTED_SITES: number = 20;
 function describeSite(site: UnboundSite): string {
   const where: string = `:${site.line}`.padEnd(6, ' ');
   const kind: string = site.kind.padEnd(11, ' ');
-  if (site.kind === 'local-map') {
-    return `  ${where} ${kind} ${site.text} (declared :${site.declaredLine ?? '?'}), not the content layer`;
+  if (site.kind === 'local-map' || site.kind === 'local-const') {
+    // Spelled out rather than `:?` when the line is unknown: a refusal that shows a placeholder
+    // reads as a formatting bug, and an agent given `:?` will try to satisfy the `?`.
+    const origin: string =
+      site.declaredLine !== undefined ? `declared :${site.declaredLine}` : 'declared in more than one scope';
+    return `  ${where} ${kind} ${site.text} (${origin}), not the content layer`;
   }
   return `  ${where} ${kind} ${JSON.stringify(site.text)}`;
 }
@@ -281,6 +322,17 @@ function describeSite(site: UnboundSite): string {
  * caught. Two wordings for one rule is how an agent concludes the two gates enforce different rules
  * and starts satisfying the wrong one. Callers supply the leading verb and the closing line, which
  * are the only parts that legitimately differ.
+ *
+ * The advice below MUST name the same shape the authoring guidance teaches. It previously recommended
+ * `<Text k=…>`, which no authoring document mentions: every one of them (`develop/content-layer.md`,
+ * the `template-v8` corpus, the content-system skill, `initial/speed/handoff-template.md`) says to read
+ * copy off `virtual:content`. The agent therefore wrote one shape, was corrected toward another, and
+ * had no reason to carry the correction past the single file it was refused on — so it relearned the
+ * rule once per page. `content-authority-refusal-parity.test.ts` reads the prompt fragment and fails if
+ * the two drift apart again; changing the canonical shape means changing both together.
+ *
+ * The closing line states the rule is general on purpose. A correction that reads as being about one
+ * file gets applied to one file.
  */
 export function describeUnboundSites(relPath: string, sites: readonly UnboundSite[]): string {
   const shown: readonly UnboundSite[] = sites.slice(0, MAX_LISTED_SITES);
@@ -294,9 +346,11 @@ export function describeUnboundSites(relPath: string, sites: readonly UnboundSit
   lines.push(
     '',
     'Bind each one:',
-    '  1. content_scaffold the keys (one call can add several)',
-    '  2. <Text as="p" k="pages.home.about.body" />',
-    "     Inside a <Collection>, take the key off the item: <Text k={item.k('title')} />",
+    '  1. content_scaffold the keys (one call can add several). It returns the import line to use.',
+    "  2. import { home } from 'virtual:content';  then read each field directly: {home.hero.title}",
+    '  3. For a list, keep the .map() and the {item.field} that renders each value on the page.',
+    '',
+    'This rule applies to every page you write, not only this file.',
   );
   return lines.join('\n');
 }
@@ -374,26 +428,105 @@ function containsStringLiteral(node: ObjectExpression | ArrayExpression): boolea
   return false;
 }
 
+/** A file-local binding that holds display copy, and which refusal kind reading it produces. */
+interface LocalCopyBinding {
+  readonly kind: 'local-map' | 'local-const';
+  /**
+   * Declaration line, absent when the same name is declared in more than one scope. Bindings are
+   * keyed by bare name, so a shadowed pair collapses into one entry and there is no way to tell
+   * which declaration a given read resolves to. Naming one of them would send the author to the
+   * wrong string — `${position} reads ${root}` offers no other location — so an ambiguous binding
+   * names none. The kind is kept: both members are enforced, so the verdict is unchanged.
+   */
+  readonly line?: number;
+}
+
 /**
- * Module-scope `const`s initialised to an object/array literal containing display strings, mapped
- * to their declaration line. Reading one of these in a gated position puts user-visible copy
- * outside the content layer exactly as a literal does, and far less visibly.
+ * Which refusal kind an initialiser makes its binding worth recording as, or `undefined` when the
+ * binding holds nothing user-visible.
+ *
+ * A bare string `const` is the cheapest evasion of the whole rule — `const title = 'Book a table'`
+ * next to `<h1>{title}</h1>` reads identically to the refused literal — so it is recorded too, as
+ * `local-const`, separately from the object/array `local-map` case. Separate kinds because the two
+ * plausibly carry different false-positive rates, and the ramp is decided on the by-kind breakdown:
+ * folding them together would hide whichever one turns out to be noisy.
+ *
+ * Both are only ever refused from a gated position, so a `const` holding a class name, an icon id or
+ * an animation variant is untouched — the same protection the object/array case already relied on.
  */
-function collectLocalStringMaps(ast: File): ReadonlyMap<string, number> {
-  const maps: Map<string, number> = new Map();
-  for (const stmt of ast.program.body) {
-    const decl: VariableDeclaration | undefined = isVariableDeclaration(stmt)
-      ? stmt
-      : isExportNamedDeclaration(stmt) && isVariableDeclaration(stmt.declaration)
-        ? stmt.declaration
-        : undefined;
-    if (decl === undefined) continue;
+function bindingKind(init: Node): LocalCopyBinding['kind'] | undefined {
+  if (isObjectExpression(init) || isArrayExpression(init)) {
+    return containsStringLiteral(init) ? 'local-map' : undefined;
+  }
+  // A template literal with substitutions is derived text, not a fixed string; it has no single
+  // stored value a refusal could tell the author to move into content.
+  if (isStringLiteral(init) || (isTemplateLiteral(init) && init.expressions.length === 0)) {
+    // Through `editableLiteralsIn`, so a named string is judged by the same empty/decorative filter
+    // the inline paths apply. Spelling the filter again here would let `const sep = '—'` be refused
+    // while the identical `<h1>—</h1>` passes — refused for having a name, with inlining the
+    // character as the only fix the message can name, which is the shape the rule discourages.
+    return editableLiteralsIn(init).length > 0 ? 'local-const' : undefined;
+  }
+  return undefined;
+}
+
+/**
+ * File-local bindings whose initialiser holds display strings, mapped to their declaration line.
+ * Reading one of these in a gated position puts user-visible copy outside the content layer exactly
+ * as a literal does, and far less visibly.
+ *
+ * `let` and `var` are collected alongside `const`: a reassignable binding read into a gated position
+ * renders the same copy, and exempting it would be a one-keyword evasion.
+ *
+ * Collected at EVERY scope, not just module scope. Walking `ast.program.body` alone — which this did
+ * originally — made the rule trivially evadable: the identical array declared inside the component
+ * function was invisible, so an agent refused for `<h1>Book a table</h1>` could satisfy the gate by
+ * hoisting the string into a function-local `const` and mapping over it, changing nothing about the
+ * problem the refusal named. A refusal message that teaches an agent to launder the violation is
+ * worse than no refusal, and the same blindness applies to the build gate, which shares this checker.
+ *
+ * The advisory linter already judged it this way: `isLocalContentObjectScope` in
+ * `agents/src/tools/content-rules-ast.ts` accepts a `BlockStatement` container for the same
+ * violation class, so the two checkers disagreed about whether a function-scope declaration counts —
+ * the gate being the looser of the pair. Keeping them aligned is the point; a checker stricter than
+ * its counterpart rejects healthy input, and looser lets exactly this through.
+ *
+ * Keyed by bare identifier name, so two same-named bindings in sibling scopes collapse into one
+ * entry. That over-approximates rather than resolving bindings, which is deliberate and consistent
+ * with {@link readRoots}: it also yields bare names, so no scope-precise lookup is available to
+ * either side. The consequence is a possible false positive when one scope's `greeting` is copy and
+ * another's is not — acceptable against the alternative of a rule with a five-line workaround. What
+ * is not acceptable is naming a line the read may not resolve to, so a collapsed entry reports no
+ * declaration line at all; see {@link LocalCopyBinding.line}.
+ */
+function collectLocalStringMaps(ast: File): ReadonlyMap<string, LocalCopyBinding> {
+  const maps: Map<string, LocalCopyBinding> = new Map();
+
+  const record = (decl: VariableDeclaration): void => {
     for (const d of decl.declarations) {
       if (d.id.type !== 'Identifier' || d.init === null || d.init === undefined) continue;
-      if (d.init.type !== 'ObjectExpression' && d.init.type !== 'ArrayExpression') continue;
-      if (containsStringLiteral(d.init)) maps.set(d.id.name, d.id.loc?.start.line ?? 0);
+      const kind: LocalCopyBinding['kind'] | undefined = bindingKind(d.init);
+      if (kind === undefined) continue;
+      const existing: LocalCopyBinding | undefined = maps.get(d.id.name);
+      if (existing === undefined) {
+        maps.set(d.id.name, { kind, line: d.id.loc?.start.line ?? 0 });
+        continue;
+      }
+      // Re-declared at another scope: keep the refusal, drop the line rather than name whichever
+      // declaration source order reached first. See {@link LocalCopyBinding.line}.
+      if (existing.line !== undefined) maps.set(d.id.name, { kind: existing.kind });
     }
-  }
+  };
+
+  // Source order, so a module-scope declaration is reached before a function-scope one shadowing it
+  // in the body below — which is why "first wins" reports the outer line. `export const` needs no
+  // special case here: the traversal reaches the inner VariableDeclaration either way.
+  traverse(ast, {
+    VariableDeclaration: (path: NodePath<VariableDeclaration>): void => {
+      record(path.node);
+    },
+  });
+
   return maps;
 }
 
@@ -504,7 +637,9 @@ type TranslationCall = Omit<I18nSite, 'file' | 'line'>;
  * rather than by resolving the `useTranslation()` binding, which would add a scope analysis to a
  * checker two write paths depend on.
  *
- * That trade is only safe while no gate reads `i18nSites`, so keep it that way. A renamed `t`, a
+ * That trade is only safe while no *refusal decision* reads `i18nSites`, so keep it that way — the
+ * write gate counts these sites for telemetry (`content_authority.write_gate.translated_sites`),
+ * which is deliberate and does not change any verdict. A renamed `t`, a
  * callee reached through a deeper chain, or one held in a computed member are all false negatives,
  * and a gate built on this would start refusing real translation calls. Such a miss is otherwise
  * harmless because an unrecognized call yields no site at all (its root identifier is the callee,
@@ -616,7 +751,7 @@ export function classifyFileSource(source: string, relPath: string): ComplianceR
   }
 
   const boundLocalNames: ReadonlySet<string> = collectContentImportAliases(ast, BOUND_IMPORT_NAME);
-  const localStringMaps: ReadonlyMap<string, number> = collectLocalStringMaps(ast);
+  const localStringMaps: ReadonlyMap<string, LocalCopyBinding> = collectLocalStringMaps(ast);
   let bound: number = 0;
   const sites: UnboundSite[] = [];
   const i18nSites: I18nSite[] = [];
@@ -631,13 +766,31 @@ export function classifyFileSource(source: string, relPath: string): ComplianceR
 
   /**
    * Rule 2. Only fires in a gated position, which is why an animation-variant object read as
-   * `variants={fadeUp}` is untouched while `alt={galleryAlts[id]}` is rejected.
+   * `variants={fadeUp}` is untouched.
+   *
+   * `positionKind` decides whether the site is refusable. In child text it takes the binding's own
+   * kind, which is enforced. In an ATTRIBUTE it is recorded under the attribute's kind instead, so it
+   * stays counted-only — the same treatment a literal `alt="…"` already gets, and for the same
+   * reason: no primitive binds an attribute, so a refusal there names no legal fix. Refusing
+   * `alt={galleryAlts[id]}` while accepting `alt="A plated dish"` left the author of an unbound alt
+   * with nothing to do but inline the string, which is the shape the rule was trying to discourage.
    */
-  const checkLocalMap = (expr: unknown, line: number, source: string): void => {
+  const checkLocalMap = (
+    expr: unknown,
+    line: number,
+    source: string,
+    positionKind: UnboundSite['kind'],
+  ): void => {
     for (const root of readRoots(expr)) {
-      const declaredLine: number | undefined = localStringMaps.get(root);
-      if (declaredLine !== undefined) {
-        sites.push({ file: relPath, line, kind: 'local-map', text: `${source} reads ${root}`, declaredLine });
+      const binding: LocalCopyBinding | undefined = localStringMaps.get(root);
+      if (binding !== undefined) {
+        sites.push({
+          file: relPath,
+          line,
+          kind: isAttributeKind(positionKind) ? positionKind : binding.kind,
+          text: `${source} reads ${root}`,
+          ...(binding.line !== undefined ? { declaredLine: binding.line } : {}),
+        });
         return;
       }
     }
@@ -661,7 +814,7 @@ export function classifyFileSource(source: string, relPath: string): ComplianceR
       for (const literal of reached) sites.push({ file: relPath, line, kind, text: literal });
       return;
     }
-    checkLocalMap(expr, line, mapSource);
+    checkLocalMap(expr, line, mapSource, kind);
   };
 
   traverse(ast, {
