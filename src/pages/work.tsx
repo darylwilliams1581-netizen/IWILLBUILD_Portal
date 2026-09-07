@@ -26,7 +26,7 @@ import NewJobModal from '@/components/NewJobModal';
 import { usePermissions } from '@/lib/usePermissions';
 import { goBack } from '@/lib/navigation';
 import WorkToolsTab from '@/components/work/WorkToolsTab';
-import { fetchJobs } from '@/lib/jobs-api';
+import { cacheActiveJobs, readCachedActiveJobs } from '@/lib/offlineJobCache';
 
 // ── Tools sub-items ───────────────────────────────────────────────────────────
 
@@ -160,9 +160,14 @@ function JobsList({ onNewJob, isViewOnly }: JobsListProps) {
 
   useEffect(() => {
     setLoading(true);
-    fetchJobs()
-      .then(data => setJobs(data.filter((job) => !['Completed', 'Cancelled', 'Archived'].includes(job.status))))
-      .catch(() => setJobs([]))
+    fetch('/api/jobs?status=active&limit=200', { credentials: 'include' })
+      .then(r => r.ok ? r.json() : Promise.reject(r))
+      .then(data => {
+        const list = Array.isArray(data.jobs) ? data.jobs as JobItem[] : [];
+        setJobs(list);
+        void cacheActiveJobs(list);
+      })
+      .catch(() => readCachedActiveJobs().then(setJobs).catch(() => setJobs([])))
       .finally(() => setLoading(false));
   }, []);
 
