@@ -1,0 +1,10 @@
+Capacitor template                 Swift zip (engine only)
+------------------------------     --------------------------------
+job-photos-camera.tsx chrome       LensView.REFERENCE_ONLY.swift (do not ship as UI)
+video + getUserMedia               CameraPreview.swift + CameraSession.start()
+handleShutter / createImageBitmap  CameraSession.capture()
+useWatermarkSettings.ts            WatermarkSettings.swift (same flags)
+JS compositor in the TSX           WatermarkComposer.swift (keep JS)
+usePhotoUploadQueue                do not use Swift PhotoQueue
+capturePhotoLocally.ts             fallback only if preview fails
+goBack(..., '/lens')               dismiss in LensView — keep Capacitor backPath

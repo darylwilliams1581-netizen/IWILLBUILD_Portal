@@ -1,0 +1,58 @@
+ONE VOICE. Review of this prompt is already done. Implement locally. Do not push, merge, upload, touch main, Swift-as-the-whole-app, Airo, or server.url.
+
+Daryl will attach a zip: SOL_NATIVE_LENS_HANDOFF (swift-camera-engine/).
+
+GOAL
+Purple Camera on Lens must feel like Solocator: the EXISTING Capacitor camera template, live native glass behind it, watermark on the photo, back to Lens. Launch must be quick.
+
+THIS IS NOT
+- System Camera.app / UIImagePicker as the product UX
+- getUserMedia / video element in WKWebView (that hangs on capacitor://localhost — 13 (35) spinner + React #301)
+- Merging IWILLBUILDField / replacing the Capacitor IPA
+- ccap, Mijick, or a second GitHub app
+
+BRANCH
+fix/capacitor-camera-getusermedia-hang
+Version 13, build 36 (bump IOS_BUILD_NUMBER and CURRENT_PROJECT_VERSION to 36). MARKETING_VERSION stays 13.
+
+KEEP THIS UI (the template)
+src/pages/job-photos-camera.tsx
+  Back, AUTO/flash, date/time watermark pill, LOCK, centre shutter, FIELDS, session count, navy safe-area bar.
+src/hooks/useWatermarkSettings.ts
+Existing JS watermark compositor + usePhotoUploadQueue enqueueFiles.
+Entry: Lens purple Camera → /jobs/:id/camera with location.state.backPath = '/lens'
+Exit: goBack to /lens. Do not break that route.
+
+FAST LAUNCH (do this first, before extra Swift)
+1. Paint chrome immediately on open. Never a full-screen spinner. Optional small corner loader only.
+2. Do not call getUserMedia. Remove the camState === 'ready' gate on the shutter.
+3. Preferred engine: @capacitor-community/camera-preview@8 (project is Capacitor 8).
+   npm i @capacitor-community/camera-preview@8
+   npx cap sync ios
+   Start with: toBack true, rear camera, disableAudio true, parent = the lens frame in job-photos-camera.tsx.
+   Do NOT request 1920x1080 for the preview stream (that made start() 2-4s on iPhone). High-res only on capture.
+4. Shutter: CameraPreview.capture() → ImageBitmap/File → EXISTING watermark compositor → enqueueFiles.
+5. CameraPreview.stop() on Back and unmount.
+6. If no preview frame in 4 seconds: keep chrome, one-shot fallback capturePhotoLocally() (src/lib/capturePhotoLocally.ts), then stay or Back. Never infinite loading. Never a Retry loop.
+
+REACT #301 (too many re-renders)
+- Never call startStream() during render
+- Set camState to unavailable/error once
+- Move composeError useState up with the other useState hooks (it is currently after useEffect — tidy this)
+
+IF PREVIEW IS STILL SLOW OR BLANK — use the attached Swift as a Capacitor plugin, still under the same TSX:
+  swift-camera-engine/CameraSession.swift   sessionQueue already off main (WWDC)
+  swift-camera-engine/CameraPreview.swift   AVCaptureVideoPreviewLayer, resizeAspectFill, portrait
+Do not mount LensView.REFERENCE_ONLY.swift as the screen.
+Do not import WatermarkComposer.swift unless JS stamp is missing — prefer the existing TS compositor so stamps match the rest of the app.
+Optional iOS 26: photoOutput.isDeferredStartEnabled = true so first preview frame wins (WWDC26).
+
+DO NOT
+- Copy IWILLBUILDFieldApp.swift or Swift PhotoQueue
+- Restore server.url
+- Change Airo / GoDaddy
+- Force-push or merge main
+
+COMMIT
+fix: native live lens under Capacitor camera template
+STOP. Print changed-file list. Wait for Daryl: "push" then "upload".
