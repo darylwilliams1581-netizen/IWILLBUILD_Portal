@@ -68,6 +68,71 @@ interface Job {
   jobNumber?: string | null;
 }
 
+class CameraStartTimeoutError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'CameraStartTimeoutError';
+  }
+}
+
+type CameraMediaDevices = {
+  getUserMedia?: (constraints?: MediaStreamConstraints) => Promise<MediaStream>;
+};
+
+/**
+ * WebKit does not accept an AbortSignal in getUserMedia constraints, so race
+ * each startup step against one controller and dispose of a stream that arrives
+ * after the attempt has timed out or been replaced by Retry.
+ */
+function waitForCameraStep<T>(
+  promise: Promise<T>,
+  timeoutMs: number,
+  controller: AbortController,
+  timeoutMessage: string,
+  onLateResolve?: (value: T) => void
+): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    let settled = false;
+    let timer = 0;
+    const cleanup = () => {
+      window.clearTimeout(timer);
+      controller.signal.removeEventListener('abort', handleAbort);
+    };
+    const handleAbort = () => {
+      if (settled) return;
+      settled = true;
+      cleanup();
+      reject(controller.signal.reason instanceof Error
+        ? controller.signal.reason
+        : new DOMException('Camera startup was cancelled.', 'AbortError'));
+    };
+    timer = window.setTimeout(() => {
+      controller.abort(new CameraStartTimeoutError(timeoutMessage));
+    }, timeoutMs);
+
+    controller.signal.addEventListener('abort', handleAbort, { once: true });
+    if (controller.signal.aborted) {
+      handleAbort();
+      return;
+    }
+
+    promise.then(value => {
+      if (settled) {
+        onLateResolve?.(value);
+        return;
+      }
+      settled = true;
+      cleanup();
+      resolve(value);
+    }, error => {
+      if (settled) return;
+      settled = true;
+      cleanup();
+      reject(error);
+    });
+  });
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Watermark compositor
 // ─────────────────────────────────────────────────────────────────────────────
@@ -385,6 +450,7 @@ export default function JobPhotosCameraPage() {
   const videoRef = useRef<HTMLVideoElement>(null);
   const lensRef = useRef<HTMLDivElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
+  const startControllerRef = useRef<AbortController | null>(null);
   type CamState = 'loading' | 'ready' | 'error' | 'unavailable';
   const [camState, setCamState] = useState<CamState>('loading');
   const [camErrMsg, setCamErrMsg] = useState('');
@@ -439,45 +505,67 @@ export default function JobPhotosCameraPage() {
     }
   }, []);
   const stopStream = useCallback(() => {
+    startControllerRef.current?.abort();
+    startControllerRef.current = null;
     streamRef.current?.getTracks().forEach(t => t.stop());
     streamRef.current = null;
+    if (videoRef.current) videoRef.current.srcObject = null;
   }, []);
   const startStream = useCallback(async (facing: FacingMode = facingModeRef.current) => {
     stopStream();
+    const startController = new AbortController();
+    startControllerRef.current = startController;
     setCamState('loading');
     setCamErrMsg('');
 
-    // On iOS, ask Capacitor for camera permission before WKWebView starts the
-    // embedded getUserMedia stream. The native prompt can initialise mediaDevices.
+    // Final guard: permission, WebKit initialisation, stream acquisition and
+    // playback combined can never leave the UI loading indefinitely.
+    const startupTimer = window.setTimeout(() => {
+      startController.abort(new CameraStartTimeoutError(
+        'Camera startup took too long. Tap Retry to try again.'
+      ));
+    }, 10_000);
+
     try {
+      // On iOS, ask Capacitor for camera permission before WKWebView starts the
+      // embedded getUserMedia stream. The native prompt can initialise mediaDevices.
       const camera = getCameraPlugin();
       if (camera) {
-        const permission = await camera.checkPermissions();
+        const permission = await waitForCameraStep(
+          camera.checkPermissions(),
+          10_000,
+          startController,
+          'Camera permission check took too long. Tap Retry to try again.'
+        );
         if (permission.camera !== 'granted' && permission.camera !== 'limited') {
-          await camera.requestPermissions({ permissions: ['camera'] });
+          await waitForCameraStep(
+            camera.requestPermissions({ permissions: ['camera'] }),
+            10_000,
+            startController,
+            'Camera permission request took too long. Tap Retry to try again.'
+          );
         }
       }
-    } catch {
-      // Continue so getUserMedia can report the specific camera error below.
-    }
 
-    // On capacitor://localhost, navigator.mediaDevices may be undefined on the
-    // first tick because WKWebView's secure-context initialisation is async.
-    // Retry for up to one second before giving up.
-    let mediaDevices = navigator.mediaDevices;
-    if (!mediaDevices?.getUserMedia) {
-      for (let i = 0; i < 20; i++) {
-        await new Promise<void>(r => setTimeout(r, 50));
-        mediaDevices = navigator.mediaDevices;
-        if (mediaDevices?.getUserMedia) break;
+      // On capacitor://localhost, navigator.mediaDevices may be undefined on the
+      // first tick because WKWebView's secure-context initialisation is async.
+      // Retry for at most one second before showing a recoverable error.
+      let mediaDevices = navigator.mediaDevices as CameraMediaDevices | undefined;
+      if (!mediaDevices?.getUserMedia) {
+        for (let i = 0; i < 20 && !startController.signal.aborted; i++) {
+          await new Promise<void>(r => window.setTimeout(r, 50));
+          mediaDevices = navigator.mediaDevices as CameraMediaDevices | undefined;
+          if (mediaDevices?.getUserMedia) break;
+        }
       }
-    }
-    if (!mediaDevices?.getUserMedia) {
-      setCamState('unavailable');
-      return;
-    }
-    try {
-      const stream = await mediaDevices.getUserMedia({
+      if (startController.signal.aborted) {
+        throw startController.signal.reason;
+      }
+      if (!mediaDevices?.getUserMedia) {
+        throw new Error('The in-app camera is unavailable. Tap Retry to try again.');
+      }
+
+      const stream = await waitForCameraStep(mediaDevices.getUserMedia({
         video: {
           facingMode: {
             ideal: facing
@@ -490,12 +578,24 @@ export default function JobPhotosCameraPage() {
           }
         },
         audio: false
-      });
-      streamRef.current = stream;
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream;
-        await videoRef.current.play();
+      }), 8_000, startController,
+      'Camera did not start within 8 seconds. Tap Retry to try again.',
+      lateStream => lateStream.getTracks().forEach(track => track.stop()));
+
+      if (startController.signal.aborted) {
+        stream.getTracks().forEach(track => track.stop());
+        return;
       }
+      streamRef.current = stream;
+      const video = videoRef.current;
+      if (!video) throw new Error('Camera preview is not available. Tap Retry to try again.');
+      video.srcObject = stream;
+      await waitForCameraStep(
+        video.play(),
+        3_000,
+        startController,
+        'Camera preview did not start within 3 seconds. Tap Retry to try again.'
+      );
 
       // Detect torch support
       const track = stream.getVideoTracks()[0];
@@ -506,18 +606,36 @@ export default function JobPhotosCameraPage() {
       setTorchSupported(!!caps?.torch);
 
       // Apply current flash mode to the new stream
-      await applyFlash(flashModeRef.current, stream);
+      await waitForCameraStep(
+        applyFlash(flashModeRef.current, stream),
+        1_000,
+        startController,
+        'Camera controls did not finish starting. Tap Retry to try again.'
+      );
       setCamState('ready');
     } catch (err) {
+      // A newer Retry or unmount owns the UI now; the old attempt must stay quiet.
+      if (startControllerRef.current !== startController) return;
+      streamRef.current?.getTracks().forEach(track => track.stop());
+      streamRef.current = null;
+      if (videoRef.current) videoRef.current.srcObject = null;
+
       const msg = err instanceof Error ? err.message : String(err);
-      if (/Permission|NotAllowed|denied/i.test(msg)) {
+      if (err instanceof CameraStartTimeoutError) {
+        setCamErrMsg(err.message);
+      } else if (/Permission|NotAllowed|denied/i.test(msg)) {
         setCamErrMsg('Camera access was denied. Please allow camera access in Settings, then tap Retry.');
       } else if (/NotFound|DevicesNotFound/i.test(msg)) {
         setCamErrMsg('No camera found on this device.');
       } else {
-        setCamErrMsg('Could not start the camera. Tap Retry or use the original Take Photo button.');
+        setCamErrMsg(msg || 'Could not start the in-app camera. Tap Retry to try again.');
       }
       setCamState('error');
+    } finally {
+      window.clearTimeout(startupTimer);
+      if (startControllerRef.current === startController) {
+        startControllerRef.current = null;
+      }
     }
   }, [stopStream, applyFlash]);
   useEffect(() => {
