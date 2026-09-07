@@ -1,4 +1,4 @@
-import { advanceCycleId, getCurrentCycleId } from './cycle-state';
+import { advanceCycleId, getCurrentCycleId, hasCurrentCycleErrored, markCurrentCycleErrored } from './cycle-state';
 import { postIframeBootingBeacon } from './iframe-booting';
 import { type BusEventType, type BusMessage, send } from './utils/eventBus';
 import { injectDevToolsStyles } from './utils/injectDevToolsStyles';
@@ -39,6 +39,47 @@ function beginNewRenderCycle(): void {
   } catch (err) {
     console.error('Failed to announce runtime-error cycle to parent:', err);
   }
+}
+
+/**
+ * Quiet window between a render landing (initial mount, HMR update) and
+ * announcing it as successful. Gives an async error (e.g. a failed
+ * `useEffect` fetch) a beat to surface and flag the cycle via
+ * `markCurrentCycleErrored` before we'd otherwise report it clean.
+ */
+export const RENDER_SUCCESS_QUIET_WINDOW_MS = 1000;
+
+let renderSuccessTimer: ReturnType<typeof setTimeout> | null = null;
+
+/**
+ * Schedule a `render-success` beacon for `cycleId` after a quiet window,
+ * provided no error has been recorded for that cycle and the app has
+ * mounted by then. Called after the initial module-load cycle (covers
+ * cold load / full reload) and after every successful HMR update.
+ *
+ * This is a positive counterpart to the existing error-only beacon
+ * pipeline: the server-side post-stream validator uses it to require
+ * proof a live preview actually re-rendered cleanly, not just that no
+ * error happened to arrive within its own drain window. Accepted
+ * limitation: an error that surfaces after this quiet window has already
+ * fired keeps the same "quiet window" blind spot the server-side drain
+ * already has.
+ */
+function scheduleRenderSuccessCheck(cycleId: number): void {
+  if (renderSuccessTimer !== null) {
+    clearTimeout(renderSuccessTimer);
+  }
+  renderSuccessTimer = setTimeout(() => {
+    renderSuccessTimer = null;
+    if (cycleId !== getCurrentCycleId() || hasCurrentCycleErrored() || !appHasMounted()) {
+      return;
+    }
+    try {
+      postToParent({ type: 'render-success', cycleId });
+    } catch (err) {
+      console.error('Failed to announce render success to parent:', err);
+    }
+  }, RENDER_SUCCESS_QUIET_WINDOW_MS);
 }
 
 function parseViteError(data: any): {
@@ -548,6 +589,7 @@ export function presentCompileError(parsed: ParsedViteError) {
   isFixRequested = false;
   copiedToClipboard = false;
   sawCompileError = true;
+  markCurrentCycleErrored();
   sendCompileErrorToParent(parsed);
 
   if (isStandalonePreview()) {
@@ -617,6 +659,7 @@ async function copyErrorToClipboard(parsed: ParsedViteError) {
 // server sees a fresh cycleId before the next render starts throwing.
 postIframeBootingBeacon();
 beginNewRenderCycle();
+scheduleRenderSuccessCheck(getCurrentCycleId());
 clearRecoveryReloadBudgetAfterCleanMount();
 
 // Catch initial page load failures (import errors before HMR is connected).
@@ -672,6 +715,7 @@ if (import.meta.env.MODE === 'development' && import.meta.hot) {
     // broke the initial mount, `#app` is still empty. Reload to remount
     // (no-op while the agent is mid-edit; the grace + budget guard the rest).
     maybeRecoverBlankPreview();
+    scheduleRenderSuccessCheck(getCurrentCycleId());
   };
 
   // Start a fresh render generation before each HMR update applies.

@@ -5,7 +5,7 @@ import { send } from './utils/eventBus';
 import type { RuntimeErrorData } from './types';
 import MessageOverlay from './components/MessageOverlay';
 import Button from './components/Button';
-import { getCurrentCycleId } from './cycle-state';
+import { getCurrentCycleId, markCurrentCycleErrored } from './cycle-state';
 import { claim, isClaimed, reset as resetClaims } from './error-claims';
 import { setTranslations, t } from './utils/translations';
 
@@ -404,6 +404,10 @@ export default class AiroErrorBoundary extends Component<Props, State> {
   }
 
   componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
+    // Flag the cycle unconditionally, before any suppression/dedup checks
+    // below — every path through this method means the render genuinely
+    // errored this cycle, which must block a `render-success` beacon.
+    markCurrentCycleErrored();
     // Claim across instances first: React 18 re-dispatches this exact
     // Error to `window.onerror`, where the ROOT boundary's global handler
     // would otherwise re-forward and re-overlay an error this boundary
@@ -436,6 +440,8 @@ export default class AiroErrorBoundary extends Component<Props, State> {
   }
 
   private captureAsyncError(error: Error) {
+    // Flag the cycle unconditionally, same rationale as componentDidCatch.
+    markCurrentCycleErrored();
     // Cross-instance short-circuit: a boundary's `componentDidCatch`
     // (this one or another instance — e.g. the inner route boundary
     // whose render error React 18 re-dispatches to this root boundary's

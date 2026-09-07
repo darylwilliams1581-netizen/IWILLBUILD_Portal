@@ -3,8 +3,13 @@
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, cleanup } from '@testing-library/react';
-import { createElement } from 'react';
+import { createElement, useState } from 'react';
 import TextAlignButton from '../TextAlignButton';
+
+function Controlled({ selectedElement }: { selectedElement: HTMLElement | null }) {
+  const [isOpen, setIsOpen] = useState(false);
+  return createElement(TextAlignButton, { selectedElement, isOpen, onOpenChange: setIsOpen });
+}
 
 vi.mock('../../utils/postMessage', () => ({
   safePostMessage: vi.fn(),
@@ -49,18 +54,18 @@ describe('TextAlignButton', () => {
   describe('rendering', () => {
     it('renders the toolbar button', () => {
       const paragraph = makeParagraph();
-      render(createElement(TextAlignButton, { selectedElement: paragraph }));
+      render(createElement(Controlled, { selectedElement: paragraph }));
       expect(screen.getByRole('button', { name: 'Text alignment' })).not.toBeNull();
     });
 
     it('does not show the dropdown by default', () => {
       const paragraph = makeParagraph();
-      render(createElement(TextAlignButton, { selectedElement: paragraph }));
+      render(createElement(Controlled, { selectedElement: paragraph }));
       expect(screen.queryByRole('button', { name: 'Align center' })).toBeNull();
     });
 
     it('renders with null selectedElement without crashing', () => {
-      const { container } = render(createElement(TextAlignButton, { selectedElement: null }));
+      const { container } = render(createElement(Controlled, { selectedElement: null }));
       expect(container.firstChild).not.toBeNull();
     });
   });
@@ -68,7 +73,7 @@ describe('TextAlignButton', () => {
   describe('menu toggle', () => {
     it('opens the dropdown when the toolbar button is clicked', () => {
       const paragraph = makeParagraph();
-      render(createElement(TextAlignButton, { selectedElement: paragraph }));
+      render(createElement(Controlled, { selectedElement: paragraph }));
       fireEvent.click(screen.getByRole('button', { name: 'Text alignment' }));
       expect(screen.getByRole('button', { name: 'Align left' })).not.toBeNull();
       expect(screen.getByRole('button', { name: 'Align center' })).not.toBeNull();
@@ -78,7 +83,7 @@ describe('TextAlignButton', () => {
 
     it('closes the dropdown when the toolbar button is clicked again', () => {
       const paragraph = makeParagraph();
-      render(createElement(TextAlignButton, { selectedElement: paragraph }));
+      render(createElement(Controlled, { selectedElement: paragraph }));
       fireEvent.click(screen.getByRole('button', { name: 'Text alignment' }));
       fireEvent.click(screen.getByRole('button', { name: 'Text alignment' }));
       expect(screen.queryByRole('button', { name: 'Align center' })).toBeNull();
@@ -88,7 +93,7 @@ describe('TextAlignButton', () => {
   describe('tracking', () => {
     it('fires devtools.toolbar.text_align click on apply (not on toolbar open)', () => {
       const paragraph = makeParagraph();
-      render(createElement(TextAlignButton, { selectedElement: paragraph }));
+      render(createElement(Controlled, { selectedElement: paragraph }));
       const trackCalls = () =>
         vi.mocked(safePostMessage).mock.calls.filter(
           ([, msg]) => (msg as { type?: string })?.type === 'TRACK_EVENT',
@@ -105,7 +110,7 @@ describe('TextAlignButton', () => {
   describe('alignment selection', () => {
     it('adds the alignment class to the element', () => {
       const paragraph = makeParagraph();
-      render(createElement(TextAlignButton, { selectedElement: paragraph }));
+      render(createElement(Controlled, { selectedElement: paragraph }));
       fireEvent.click(screen.getByRole('button', { name: 'Text alignment' }));
       fireEvent.click(screen.getByRole('button', { name: 'Align center' }));
       expect(paragraph.classList.contains('text-center')).toBe(true);
@@ -113,7 +118,7 @@ describe('TextAlignButton', () => {
 
     it('removes other alignment classes when applying a new one', () => {
       const paragraph = makeParagraph('text-left font-bold');
-      render(createElement(TextAlignButton, { selectedElement: paragraph }));
+      render(createElement(Controlled, { selectedElement: paragraph }));
       fireEvent.click(screen.getByRole('button', { name: 'Text alignment' }));
       fireEvent.click(screen.getByRole('button', { name: 'Align right' }));
       expect(paragraph.classList.contains('text-right')).toBe(true);
@@ -122,7 +127,7 @@ describe('TextAlignButton', () => {
 
     it('removes the alignment class when clicking the active alignment (toggle off)', () => {
       const paragraph = makeParagraph('text-center');
-      render(createElement(TextAlignButton, { selectedElement: paragraph }));
+      render(createElement(Controlled, { selectedElement: paragraph }));
       fireEvent.click(screen.getByRole('button', { name: 'Text alignment' }));
       fireEvent.click(screen.getByRole('button', { name: 'Align center' }));
       expect(paragraph.classList.contains('text-center')).toBe(false);
@@ -130,7 +135,7 @@ describe('TextAlignButton', () => {
 
     it('closes the dropdown after selecting an alignment', () => {
       const paragraph = makeParagraph();
-      render(createElement(TextAlignButton, { selectedElement: paragraph }));
+      render(createElement(Controlled, { selectedElement: paragraph }));
       fireEvent.click(screen.getByRole('button', { name: 'Text alignment' }));
       fireEvent.click(screen.getByRole('button', { name: 'Align left' }));
       expect(screen.queryByRole('button', { name: 'Align center' })).toBeNull();
@@ -138,7 +143,7 @@ describe('TextAlignButton', () => {
 
     it('supports text-justify', () => {
       const paragraph = makeParagraph();
-      render(createElement(TextAlignButton, { selectedElement: paragraph }));
+      render(createElement(Controlled, { selectedElement: paragraph }));
       fireEvent.click(screen.getByRole('button', { name: 'Text alignment' }));
       fireEvent.click(screen.getByRole('button', { name: 'Align justify' }));
       expect(paragraph.classList.contains('text-justify')).toBe(true);
@@ -148,7 +153,7 @@ describe('TextAlignButton', () => {
   describe('postMessage', () => {
     it('posts UPDATED with the new alignment value', () => {
       const paragraph = makeParagraph();
-      render(createElement(TextAlignButton, { selectedElement: paragraph }));
+      render(createElement(Controlled, { selectedElement: paragraph }));
       fireEvent.click(screen.getByRole('button', { name: 'Text alignment' }));
       fireEvent.click(screen.getByRole('button', { name: 'Align center' }));
       expect(safePostMessage).toHaveBeenCalledWith(
@@ -165,7 +170,7 @@ describe('TextAlignButton', () => {
 
     it('posts UPDATED with empty value when toggling alignment off', () => {
       const paragraph = makeParagraph('text-right');
-      render(createElement(TextAlignButton, { selectedElement: paragraph }));
+      render(createElement(Controlled, { selectedElement: paragraph }));
       fireEvent.click(screen.getByRole('button', { name: 'Text alignment' }));
       fireEvent.click(screen.getByRole('button', { name: 'Align right' }));
       expect(safePostMessage).toHaveBeenCalledWith(
@@ -177,17 +182,32 @@ describe('TextAlignButton', () => {
     });
 
     it('does not post when selectedElement is null', () => {
-      render(createElement(TextAlignButton, { selectedElement: null }));
+      render(createElement(Controlled, { selectedElement: null }));
       fireEvent.click(screen.getByRole('button', { name: 'Text alignment' }));
       expect(safePostMessage).not.toHaveBeenCalled();
     });
 
     it('registers a style edit listener for rollback', () => {
       const paragraph = makeParagraph();
-      render(createElement(TextAlignButton, { selectedElement: paragraph }));
+      render(createElement(Controlled, { selectedElement: paragraph }));
       fireEvent.click(screen.getByRole('button', { name: 'Text alignment' }));
       fireEvent.click(screen.getByRole('button', { name: 'Align left' }));
       expect(addStyleEditListener).toHaveBeenCalledOnce();
+    });
+
+    it('sends the pre-mutation className in elementInfo, not the post-mutation value', () => {
+      const paragraph = makeParagraph('text-center');
+      render(createElement(Controlled, { selectedElement: paragraph }));
+      fireEvent.click(screen.getByRole('button', { name: 'Text alignment' }));
+      fireEvent.click(screen.getByRole('button', { name: 'Align center' }));
+      expect(safePostMessage).toHaveBeenCalledWith(
+        window.parent,
+        expect.objectContaining({
+          data: expect.objectContaining({
+            elementInfo: expect.objectContaining({ className: 'text-center' }),
+          }),
+        }),
+      );
     });
   });
 
@@ -200,7 +220,7 @@ describe('TextAlignButton', () => {
       });
 
       const paragraph = makeParagraph('font-bold');
-      render(createElement(TextAlignButton, { selectedElement: paragraph }));
+      render(createElement(Controlled, { selectedElement: paragraph }));
       fireEvent.click(screen.getByRole('button', { name: 'Text alignment' }));
       fireEvent.click(screen.getByRole('button', { name: 'Align center' }));
 

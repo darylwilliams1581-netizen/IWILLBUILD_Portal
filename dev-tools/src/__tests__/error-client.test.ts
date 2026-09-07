@@ -8,6 +8,7 @@ import {
   MAX_CONSECUTIVE_RECOVERY_RELOADS,
   presentCompileError,
   RECOVERY_RELOAD_GRACE_MS,
+  RENDER_SUCCESS_QUIET_WINDOW_MS,
   resetErrorClientForTest,
 } from '../error-client';
 
@@ -305,6 +306,83 @@ describe('error-client compile-error overlay', () => {
       vi.advanceTimersByTime(RECOVERY_RELOAD_GRACE_MS);
 
       expect(reload).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('render-success beacon (scheduleRenderSuccessCheck)', () => {
+    // `scheduleRenderSuccessCheck` is only invoked from this module's
+    // top-level init and from the vite:afterUpdate HMR handler (which
+    // never registers under vitest, since `import.meta.hot` is undefined
+    // there). Re-importing the module fresh re-triggers the top-level
+    // `scheduleRenderSuccessCheck(getCurrentCycleId())` call so each test
+    // exercises a real, freshly-scheduled beacon.
+    afterEach(() => {
+      document.body.innerHTML = '';
+    });
+
+    function mountApp(): void {
+      const appEl = document.createElement('div');
+      appEl.id = 'app';
+      appEl.appendChild(document.createElement('main'));
+      document.body.appendChild(appEl);
+    }
+
+    function renderSuccessCalls(fakeParent: { postMessage: ReturnType<typeof vi.fn> }) {
+      return fakeParent.postMessage.mock.calls.filter(
+        ([message]) => (message as { type?: string })?.type === 'render-success',
+      );
+    }
+
+    it('posts render-success after the quiet window when the app mounted cleanly', async () => {
+      mountApp();
+      const fakeParent = makeEmbedded();
+
+      vi.resetModules();
+      await import('../error-client');
+
+      vi.advanceTimersByTime(RENDER_SUCCESS_QUIET_WINDOW_MS);
+
+      expect(renderSuccessCalls(fakeParent).length).toBe(1);
+    });
+
+    it('does NOT post render-success when the app never mounted', async () => {
+      // No #app element in the document.
+      const fakeParent = makeEmbedded();
+
+      vi.resetModules();
+      await import('../error-client');
+
+      vi.advanceTimersByTime(RENDER_SUCCESS_QUIET_WINDOW_MS);
+
+      expect(renderSuccessCalls(fakeParent).length).toBe(0);
+    });
+
+    it('does NOT post render-success when an error was recorded for the current cycle', async () => {
+      mountApp();
+      const fakeParent = makeEmbedded();
+
+      vi.resetModules();
+      await import('../error-client');
+      const { markCurrentCycleErrored } = await import('../cycle-state');
+      markCurrentCycleErrored();
+
+      vi.advanceTimersByTime(RENDER_SUCCESS_QUIET_WINDOW_MS);
+
+      expect(renderSuccessCalls(fakeParent).length).toBe(0);
+    });
+
+    it('does NOT post render-success once the cycle has advanced past the scheduled one', async () => {
+      mountApp();
+      const fakeParent = makeEmbedded();
+
+      vi.resetModules();
+      await import('../error-client');
+      const { advanceCycleId } = await import('../cycle-state');
+      advanceCycleId();
+
+      vi.advanceTimersByTime(RENDER_SUCCESS_QUIET_WINDOW_MS);
+
+      expect(renderSuccessCalls(fakeParent).length).toBe(0);
     });
   });
 });

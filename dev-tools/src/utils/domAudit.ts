@@ -128,13 +128,78 @@ export async function runMediaAudit(
   }
 }
 
-export function runDomAudit(validRoutes: string[]): AuditIssue[] {
+/** Find the first element whose img src or inline CSS background-image matches slotUrl.
+ *  Class-based CSS backgrounds are outside the audited surface — they are not accessible
+ *  via the element's inline style property and would require traversing all stylesheets. */
+function findElementForSlot(slotUrl: string): { el: Element; kind: 'img' | 'background' } | null {
+  // Check <img> src attributes
+  for (const el of document.querySelectorAll('img')) {
+    const img: HTMLImageElement = el as HTMLImageElement
+    if (img.getAttribute('src') === slotUrl) return { el: img, kind: 'img' }
+    try {
+      if (new URL(img.src).pathname === slotUrl) return { el: img, kind: 'img' }
+    } catch { /* non-parseable src — attribute check above handles it */ }
+  }
+  // Check inline CSS background-image (JSX style prop renders as inline style)
+  for (const el of document.querySelectorAll<HTMLElement>('[style]')) {
+    const bg: string = el.style.backgroundImage
+    if (!bg) continue
+    try {
+      const match: RegExpMatchArray | null = bg.match(/url\(['"]?([^'")\s]+)['"]?\)/)
+      if (match) {
+        const bgPath: string = new URL(match[1], location.href).pathname
+        if (bgPath === slotUrl) return { el, kind: 'background' }
+      }
+    } catch { /* invalid URL in background-image — skip */ }
+  }
+  return null
+}
+
+export function runDomAudit(validRoutes: string[], expectedSlotUrls?: string[]): AuditIssue[] {
   const issues: AuditIssue[] = []
 
-  // Broken images (loaded but 0 naturalWidth or errored)
-  document.querySelectorAll('img[src]').forEach(img => {
+  if (expectedSlotUrls && expectedSlotUrls.length > 0) {
+    // Scoped mode: verify only the specific image slots generated this turn.
+    for (const slotUrl of expectedSlotUrls) {
+      const found: { el: Element; kind: 'img' | 'background' } | null = findElementForSlot(slotUrl)
+      if (!found) {
+        issues.push({
+          type: 'broken-image',
+          detail: `Generated image not rendered — no <img> or CSS background-image element found with src "${slotUrl}"; verify the content JSON src field equals the slotUrl and the JSX component reads the correct field`,
+        })
+      } else if (found.kind === 'img') {
+        const img: HTMLImageElement = found.el as HTMLImageElement
+        if (img.complete && img.naturalWidth === 0 && !img.src.startsWith('data:')) {
+          issues.push({
+            type: 'broken-image',
+            src: img.src,
+            detail: `Generated image failed to load: ${img.src}`,
+          })
+        }
+      }
+      // background-image placement confirmed; load failure not detectable via naturalWidth
+    }
+    return issues
+  }
+
+  // Unscoped mode: check all images on the page (used when no specific slots
+  // are known, e.g. upload or logo tool calls).
+  // Broken images: src missing (React strips undefined attrs), src resolves to nothing,
+  // or fetch completed but no pixels were decoded.
+  document.querySelectorAll('img').forEach(img => {
     const el = img as HTMLImageElement
-    if (el.complete && el.naturalWidth === 0 && el.src && !el.src.startsWith('data:')) {
+    const altSnippet = el.alt ? ` (alt: "${el.alt.slice(0, 60)}")` : ''
+    if (!el.hasAttribute('src')) {
+      issues.push({
+        type: 'broken-image',
+        detail: `Image src is undefined${altSnippet} — slot key in component does not match content layer ID`,
+      })
+    } else if (el.getAttribute('src') === '') {
+      issues.push({
+        type: 'broken-image',
+        detail: `Image src is empty string${altSnippet} — check the content JSON file for this image and restore the correct path`,
+      })
+    } else if (el.complete && el.naturalWidth === 0 && !el.src.startsWith('data:')) {
       issues.push({
         type: 'broken-image',
         src: el.src,

@@ -294,6 +294,7 @@ export interface BusEventMap {
   "error-fix-request": { errorData: BusRuntimeErrorPayload };
   "error-platform-report": { errorData: BusRuntimeErrorPayload };
   "runtime-errors-cycle": { cycleId: number };
+  "render-success": { cycleId: number };
   "error-fix-user-requested": { errorData: BusRuntimeErrorPayload };
   "request-processing-state": object;
   "request-media-edit-lock": object;

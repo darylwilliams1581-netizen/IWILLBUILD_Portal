@@ -156,6 +156,20 @@ describe('ItalicButton', () => {
       fireEvent.click(screen.getByRole('button', { name: 'Toggle italic' }));
       expect(addStyleEditListener).toHaveBeenCalledOnce();
     });
+
+    it('sends the pre-mutation className in elementInfo, not the post-mutation value', () => {
+      const paragraph = makeParagraph('italic');
+      render(createElement(ItalicButton, { selectedElement: paragraph }));
+      fireEvent.click(screen.getByRole('button', { name: 'Toggle italic' }));
+      expect(safePostMessage).toHaveBeenCalledWith(
+        window.parent,
+        expect.objectContaining({
+          data: expect.objectContaining({
+            elementInfo: expect.objectContaining({ className: 'italic' }),
+          }),
+        }),
+      );
+    });
   });
 
   describe('rollback on EDIT_FAILED', () => {

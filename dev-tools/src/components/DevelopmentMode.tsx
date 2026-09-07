@@ -1647,16 +1647,23 @@ export default function DevelopmentMode() {
           const requestId: string = event.data.requestId
           captureCurrentPage(requestId)
         } else if (event.data?.type === 'REQUEST_AUDIT') {
+          const auditRequestId: string | undefined =
+            typeof event.data.requestId === 'string' ? event.data.requestId : undefined
           import('../utils/domAudit').then(({ runDomAudit }) => {
-            const validRoutes: string[] = event.data.validRoutes ?? []
-            const issues = runDomAudit(validRoutes)
+            const validRoutes: string[] = Array.isArray(event.data.validRoutes) ? event.data.validRoutes as string[] : []
+            const expectedSlotUrls: string[] | undefined = Array.isArray(event.data.expectedSlotUrls) ? event.data.expectedSlotUrls as string[] : undefined
+            const issues = runDomAudit(validRoutes, expectedSlotUrls)
+            // scopedMode: true signals to the Builder that this container honours
+            // expectedSlotUrls. Older containers that don't include this field ran
+            // whole-page mode, and the Builder filters results defensively.
+            const scopedMode: boolean = !!(expectedSlotUrls && expectedSlotUrls.length > 0)
             if (window.parent !== window) {
-              send({ type: 'AUDIT_RESPONSE', issues })
+              send({ type: 'AUDIT_RESPONSE', issues, scopedMode, ...(auditRequestId ? { requestId: auditRequestId } : {}) })
             }
           }).catch((error) => {
             console.error('Audit: Error running:', error)
             if (window.parent !== window) {
-              send({ type: 'AUDIT_RESPONSE', issues: [] })
+              send({ type: 'AUDIT_RESPONSE', issues: [], scopedMode: false, ...(auditRequestId ? { requestId: auditRequestId } : {}) })
             }
           })
         } else if (event.data?.type === 'REQUEST_MEDIA_AUDIT') {

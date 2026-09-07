@@ -34,6 +34,7 @@ vi.mock('../../utils/translations', () => ({
 }));
 
 import { safePostMessage } from '../../utils/postMessage';
+import { StyleMessageEventType } from '../../utils/elementStyleListeners';
 
 function makeParagraph(className = ''): HTMLElement {
   const paragraph = document.createElement('p');
@@ -52,9 +53,12 @@ beforeEach(() => {
   cleanup();
   vi.clearAllMocks();
   document.body.innerHTML = '';
-  // Default computed font-size so nearestSizeClass picks "text-base", leaving up/down both available.
+  // getPropertyValue must be present: dom-accessibility-api's getByRole calls it internally too.
   vi.spyOn(window, 'getComputedStyle').mockImplementation(
-    () => ({ fontSize: '16px' } as unknown as CSSStyleDeclaration),
+    () => ({
+      fontSize: '16px',
+      getPropertyValue: (prop: string) => (prop === 'font-size' ? '16px' : ''),
+    } as unknown as CSSStyleDeclaration),
   );
 });
 
@@ -78,6 +82,24 @@ describe('TextSizeStepperButton', () => {
       expect(trackCalls()).toEqual([
         [window.parent, { type: 'TRACK_EVENT', kind: 'click', eid: 'devtools.toolbar.text_size_down', properties: undefined }],
       ]);
+    });
+  });
+
+  describe('postMessage', () => {
+    it('sends the pre-mutation className in elementInfo, not the post-mutation value', () => {
+      const paragraph = makeParagraph('text-lg');
+      render(createElement(Controlled, { selectedElement: paragraph }));
+      fireEvent.click(screen.getByRole('button', { name: 'Text size' }));
+      fireEvent.click(screen.getByRole('button', { name: 'Decrease text size' }));
+      expect(safePostMessage).toHaveBeenCalledWith(
+        window.parent,
+        expect.objectContaining({
+          type: StyleMessageEventType.UPDATED,
+          data: expect.objectContaining({
+            elementInfo: expect.objectContaining({ className: 'text-lg' }),
+          }),
+        }),
+      );
     });
   });
 });

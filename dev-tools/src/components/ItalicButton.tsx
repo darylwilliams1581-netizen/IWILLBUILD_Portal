@@ -3,7 +3,7 @@ import { Italic } from "lucide-react";
 import { HoverBarButton } from "./HoverBar";
 import { t } from "../utils/translations";
 import { addStyleEditListener, StyleMessageEventType } from "../utils/elementStyleListeners";
-import { extractDevContext, generatePreciseSelector, getElementClassName } from "../utils/element-helpers";
+import { extractDevContext, generatePreciseSelector } from "../utils/element-helpers";
 import { send, trackEventBus } from "../utils/eventBus";
 
 interface ItalicButtonProps {
@@ -49,7 +49,7 @@ export default function ItalicButton({ selectedElement }: ItalicButtonProps) {
         newClassName: selectedElement.className,
         elementInfo: {
           tagName: selectedElement.tagName.toLowerCase(),
-          className: getElementClassName(selectedElement),
+          className: originalClassName,
           id: selectedElement.id,
           dataId: devContext?.devId || "",
           textContent: (selectedElement.textContent || "").substring(0, 500),

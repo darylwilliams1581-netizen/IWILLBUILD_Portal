@@ -8,6 +8,7 @@ import AiroErrorBoundary, {
   MAX_CONSECUTIVE_RECOVERY_RELOADS,
   RENDER_RECOVERY_RELOAD_GRACE_MS,
 } from '../AiroErrorBoundary';
+import { advanceCycleId, hasCurrentCycleErrored } from '../cycle-state';
 import { reset as resetClaims } from '../error-claims';
 
 type Boundary = InstanceType<typeof AiroErrorBoundary>;
@@ -1045,6 +1046,124 @@ describe('AiroErrorBoundary overlay copy', () => {
     expect(screen.getByText('Title from parent')).not.toBeNull();
     expect(screen.getByText('Intro from parent.\n\ntranslated-runtime-error')).not.toBeNull();
     expect(screen.getByText('Ask Airo to Fix It')).not.toBeNull();
+  });
+});
+
+describe('AiroErrorBoundary cycle-state integration', () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+    mockParentAvailable();
+    // `cycle-state` is a module-level singleton shared across this whole
+    // test file; advance past whatever a prior test left behind so each
+    // test here starts with `hasCurrentCycleErrored() === false`.
+    advanceCycleId();
+  });
+
+  afterEach(() => {
+    cleanup();
+    vi.useRealTimers();
+    vi.restoreAllMocks();
+  });
+
+  it('flags the cycle as errored via componentDidCatch even for a suppressed dev-tools-origin render error', () => {
+    function DevToolsBoom(): JSX.Element {
+      throw makeError(
+        'Error: dev-tools-render\n    at DevToolsBoom (http://localhost:3000/dev-tools/src/components/ElementHoverBar.tsx:42:9)',
+        'dev-tools-render',
+      );
+    }
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    render(
+      <AiroErrorBoundary>
+        <DevToolsBoom />
+      </AiroErrorBoundary>,
+    );
+    act(() => {
+      vi.advanceTimersByTime(600);
+    });
+
+    // Suppressed from the overlay, but the cycle must still be flagged —
+    // a render-success beacon must not fire for a turn that genuinely threw.
+    expect(screen.queryByText('Something hit a snag')).toBeNull();
+    expect(hasCurrentCycleErrored()).toBe(true);
+    errorSpy.mockRestore();
+  });
+
+  it('flags the cycle as errored via componentDidCatch for an ordinary user render error', () => {
+    function Boom(): JSX.Element {
+      throw makeError(
+        'Error: render-boom\n    at Boom (http://localhost:3000/src/Boom.tsx:2:3)',
+        'render-boom',
+      );
+    }
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    render(
+      <AiroErrorBoundary>
+        <Boom />
+      </AiroErrorBoundary>,
+    );
+    act(() => {
+      vi.advanceTimersByTime(600);
+    });
+
+    expect(screen.getByText('Something hit a snag')).not.toBeNull();
+    expect(hasCurrentCycleErrored()).toBe(true);
+    errorSpy.mockRestore();
+  });
+
+  it('flags the cycle as errored via captureAsyncError even for a suppressed dev-tools-origin async error', () => {
+    render(
+      <AiroErrorBoundary>
+        <div>child</div>
+      </AiroErrorBoundary>,
+    );
+    act(() => {
+      vi.advanceTimersByTime(600);
+    });
+    const err = makeError(
+      'Error: dev-tools-async\n    at useHoverHint (http://localhost:3000/dev-tools/src/hooks/useHoverHint.ts:129:21)',
+      'dev-tools-async',
+    );
+    act(() => {
+      window.dispatchEvent(new ErrorEvent('error', { error: err, message: 'dev-tools-async' }));
+    });
+
+    expect(screen.queryByText('Something hit a snag')).toBeNull();
+    expect(hasCurrentCycleErrored()).toBe(true);
+  });
+
+  it('flags the cycle as errored via captureAsyncError for an ordinary user async error', () => {
+    render(
+      <AiroErrorBoundary>
+        <div>child</div>
+      </AiroErrorBoundary>,
+    );
+    act(() => {
+      vi.advanceTimersByTime(600);
+    });
+    const err = makeError(
+      'Error: user-async\n    at handler (http://localhost:3000/src/MyComp.tsx:5:3)',
+      'user-async',
+    );
+    act(() => {
+      window.dispatchEvent(new ErrorEvent('error', { error: err, message: 'user-async' }));
+    });
+
+    expect(screen.getByText('Something hit a snag')).not.toBeNull();
+    expect(hasCurrentCycleErrored()).toBe(true);
+  });
+
+  it('does NOT flag the cycle when no error has occurred', () => {
+    render(
+      <AiroErrorBoundary>
+        <div>child</div>
+      </AiroErrorBoundary>,
+    );
+    act(() => {
+      vi.advanceTimersByTime(600);
+    });
+
+    expect(hasCurrentCycleErrored()).toBe(false);
   });
 });
 

@@ -33,6 +33,16 @@
 let currentCycleId = Date.now();
 
 /**
+ * Whether any error (Vite compile error or React render/async error) has
+ * been recorded for the current cycle. Read by `error-client.ts` before
+ * announcing a `render-success` beacon, and reset on every cycle advance.
+ * Kept here (not in `error-client.ts`) so `AiroErrorBoundary` — statically
+ * bundled into production — can flag an error without importing the
+ * dev-only module.
+ */
+let cycleHasError = false;
+
+/**
  * Read the currently-active cycle generation. Callers that produce
  * runtime-error POSTs should include the value they read here so the
  * server's buffer can filter stale entries from superseded render
@@ -51,5 +61,16 @@ export function getCurrentCycleId(): number {
  */
 export function advanceCycleId(): number {
   currentCycleId = Math.max(currentCycleId + 1, Date.now());
+  cycleHasError = false;
   return currentCycleId;
+}
+
+/** Flag the current cycle as errored. See `cycleHasError` above. */
+export function markCurrentCycleErrored(): void {
+  cycleHasError = true;
+}
+
+/** Whether the current cycle has had an error recorded against it. */
+export function hasCurrentCycleErrored(): boolean {
+  return cycleHasError;
 }

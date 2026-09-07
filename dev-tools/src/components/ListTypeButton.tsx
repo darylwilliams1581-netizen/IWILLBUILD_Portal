@@ -4,7 +4,7 @@ import type { LucideIcon } from "lucide-react";
 import { HoverBarButton } from "./HoverBar";
 import { t } from "../utils/translations";
 import { addStyleEditListener, StyleMessageEventType } from "../utils/elementStyleListeners";
-import { extractDevContext, generatePreciseSelector, getElementClassName } from "../utils/element-helpers";
+import { extractDevContext, generatePreciseSelector } from "../utils/element-helpers";
 import { send, trackEventBus } from "../utils/eventBus";
 
 enum ListType {
@@ -83,7 +83,7 @@ export default function ListTypeButton({ selectedElement, isOpen, onOpenChange }
           newClassName: selectedElement.className,
           elementInfo: {
             tagName: selectedElement.tagName.toLowerCase(),
-            className: getElementClassName(selectedElement),
+            className: originalClassName,
             id: selectedElement.id,
             dataId: devContext?.devId || "",
             textContent: selectedElement.textContent?.substring(0, 500) || "",

@@ -207,6 +207,21 @@ describe('ListTypeButton', () => {
       fireEvent.click(screen.getByRole('button', { name: 'List disc' }));
       expect(addStyleEditListener).toHaveBeenCalledOnce();
     });
+
+    it('sends the pre-mutation className in elementInfo, not the post-mutation value', () => {
+      const list = makeList('ul', 'list-disc');
+      render(createElement(Controlled, { selectedElement: list }));
+      fireEvent.click(screen.getByRole('button', { name: 'List type' }));
+      fireEvent.click(screen.getByRole('button', { name: 'List disc' }));
+      expect(safePostMessage).toHaveBeenCalledWith(
+        window.parent,
+        expect.objectContaining({
+          data: expect.objectContaining({
+            elementInfo: expect.objectContaining({ className: 'list-disc' }),
+          }),
+        }),
+      );
+    });
   });
 
   describe('rollback on EDIT_FAILED', () => {

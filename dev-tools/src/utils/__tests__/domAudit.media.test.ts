@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { runMediaAudit } from "../domAudit";
+import { runDomAudit, runMediaAudit } from "../domAudit";
 
 describe("domAudit media", function packageTests() {
   it("captures missing src for turtle key mismatch symptom", async function missingSrc() {
@@ -100,5 +100,69 @@ describe("domAudit media", function packageTests() {
     const result = await pending;
     expect(result.checkedCount).toBe(1);
     expect(result.failures).toEqual([]);
+  });
+});
+
+describe("runDomAudit scoped mode", function scopedTests() {
+  it("returns no issues when slot url matches img src exactly", function slotFound() {
+    const slotUrl: string = "/airo-assets/images/pages/home/hero";
+    document.body.innerHTML = `<img src="${slotUrl}" />`;
+    const img = document.querySelector("img") as HTMLImageElement;
+    Object.defineProperty(img, "complete", { configurable: true, get: () => true });
+    Object.defineProperty(img, "naturalWidth", { configurable: true, get: () => 150 });
+
+    const issues = runDomAudit([], [slotUrl]);
+    expect(issues).toHaveLength(0);
+  });
+
+  it("reports broken-image when slot url is not found in the DOM", function slotMissing() {
+    document.body.innerHTML = `<img src="/airo-assets/images/pages/home/other" />`;
+
+    const issues = runDomAudit([], ["/airo-assets/images/pages/home/hero"]);
+    expect(issues).toHaveLength(1);
+    expect(issues[0]!.type).toBe("broken-image");
+    expect(issues[0]!.detail).toMatch(/not rendered/);
+  });
+
+  it("reports broken-image when img is complete but naturalWidth is 0", function failedLoad() {
+    const slotUrl: string = "/airo-assets/images/pages/home/hero";
+    document.body.innerHTML = `<img src="${slotUrl}" />`;
+    const img = document.querySelector("img") as HTMLImageElement;
+    Object.defineProperty(img, "complete", { configurable: true, get: () => true });
+    Object.defineProperty(img, "naturalWidth", { configurable: true, get: () => 0 });
+    // Ensure src is not a data: URL so the naturalWidth=0 guard fires.
+    Object.defineProperty(img, "src", { configurable: true, get: () => `http://localhost${slotUrl}` });
+
+    const issues = runDomAudit([], [slotUrl]);
+    expect(issues).toHaveLength(1);
+    expect(issues[0]!.type).toBe("broken-image");
+  });
+
+  it("returns no issues for a background-image CSS match", function backgroundMatch() {
+    const slotUrl: string = "/airo-assets/images/pages/home/hero";
+    document.body.innerHTML = `<div style="background-image: url('${slotUrl}')"></div>`;
+
+    const issues = runDomAudit([], [slotUrl]);
+    expect(issues).toHaveLength(0);
+  });
+});
+
+describe("runDomAudit unscoped mode", function unscopedTests() {
+  it("reports broken-image for img without src attribute", function missingSrcAttr() {
+    document.body.innerHTML = `<img alt="hero" />`;
+
+    const issues = runDomAudit([]);
+    const brokenImages = issues.filter((i) => i.type === "broken-image");
+    expect(brokenImages).toHaveLength(1);
+    expect(brokenImages[0]!.detail).toMatch(/undefined/);
+  });
+
+  it("reports broken-image for img with empty src attribute", function emptySrc() {
+    document.body.innerHTML = `<img src="" alt="hero" />`;
+
+    const issues = runDomAudit([]);
+    const brokenImages = issues.filter((i) => i.type === "broken-image");
+    expect(brokenImages).toHaveLength(1);
+    expect(brokenImages[0]!.detail).toMatch(/empty string/);
   });
 });

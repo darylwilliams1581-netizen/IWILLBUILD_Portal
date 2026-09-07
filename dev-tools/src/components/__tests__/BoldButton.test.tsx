@@ -158,6 +158,20 @@ describe('BoldButton', () => {
       fireEvent.click(screen.getByRole('button', { name: 'Toggle bold' }));
       expect(addStyleEditListener).toHaveBeenCalledOnce();
     });
+
+    it('sends the pre-mutation className in elementInfo, not the post-mutation value', () => {
+      const paragraph = makeParagraph('font-bold');
+      render(createElement(BoldButton, { selectedElement: paragraph }));
+      fireEvent.click(screen.getByRole('button', { name: 'Toggle bold' }));
+      expect(safePostMessage).toHaveBeenCalledWith(
+        window.parent,
+        expect.objectContaining({
+          data: expect.objectContaining({
+            elementInfo: expect.objectContaining({ className: 'font-bold' }),
+          }),
+        }),
+      );
+    });
   });
 
   describe('rollback on EDIT_FAILED', () => {
