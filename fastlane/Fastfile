@@ -24,7 +24,10 @@ platform :ios do
     rescue => e
       UI.important("Could not read TestFlight build number (#{e.message}); using 31")
     end
-    next_build = [latest.to_i + 1, 32].max
+    requested_build = get_build_number(
+      xcodeproj: "ios/App/App.xcodeproj"
+    ).to_i
+    next_build = [latest.to_i + 1, requested_build, 32].max
     increment_build_number(
       build_number: next_build,
       xcodeproj: "ios/App/App.xcodeproj"
