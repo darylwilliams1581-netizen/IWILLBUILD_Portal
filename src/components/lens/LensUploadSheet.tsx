@@ -13,19 +13,18 @@
  *
  * Rules:
  *   - Reuses usePhotoUploadQueue (existing hook, existing endpoint)
- *   - Reuses useIosMediaPicker + IosMediaInputs (iOS/Capacitor safe)
+ *   - Uses the standard iOS file-input sheet for camera, library, or files
  *   - Reuses PendingPhotoCard for queue display
  *   - No base64 storage, no direct R2 upload, no duplicate records
  *   - Multiple files allowed
  *   - 44×44 px minimum touch targets
  */
 
-import { useState, useCallback, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
+import type { ChangeEvent } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
 import { X, Upload, CheckCircle2, RotateCcw, ImagePlus } from 'lucide-react';
 import { usePhotoUploadQueue } from '@/hooks/usePhotoUploadQueue';
-import { useIosMediaPicker } from '@/hooks/useIosMediaPicker';
-import { IosMediaInputs, IosPermissionBanner } from '@/components/IosMediaInputs';
 import PendingPhotoCard from '@/components/PendingPhotoCard';
 import LensJobPickerSheet, { type LensJobOption, jobLabel } from './LensJobPickerSheet';
 
@@ -79,13 +78,7 @@ function UploadPanel({
     },
   });
 
-  // iOS-safe multi-file picker
-  const picker = useIosMediaPicker(async (file: File) => {
-    await enqueueFiles([file]);
-  });
-
-  // Web multi-file input handler
-  function handleWebFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+  function handleFileChange(e: ChangeEvent<HTMLInputElement>) {
     const files = Array.from(e.target.files ?? []);
     if (files.length > 0) void enqueueFiles(files);
     // Reset so the same files can be re-selected if needed
@@ -93,12 +86,10 @@ function UploadPanel({
   }
 
   function openFilePicker() {
-    // On native iOS use the Capacitor-safe library picker
-    if (picker.openLibrary) {
-      void picker.openLibrary();
-    } else {
-      fileInputRef.current?.click();
-    }
+    // No capture attribute: iOS presents its standard Take Photo / Photo
+    // Library / Browse sheet. Every result is still a File for the existing
+    // on-device photo queue.
+    fileInputRef.current?.click();
   }
 
   const hasItems = queue.length > 0;
@@ -128,17 +119,7 @@ function UploadPanel({
         </button>
       </div>
 
-      {/* Permission denied banner */}
-      {picker.permissionDenied && (
-        <div className="px-4 pt-3 shrink-0">
-          <IosPermissionBanner type={picker.permissionDenied} />
-        </div>
-      )}
-
-      {/* Hidden inputs (iOS/web) */}
-      <IosMediaInputs picker={picker} accept="image/*" />
-
-      {/* Web multi-file input (hidden) */}
+      {/* Native iOS shows Take Photo / Photo Library / Browse. */}
       <input
         ref={fileInputRef}
         type="file"
@@ -146,7 +127,7 @@ function UploadPanel({
         multiple
         className="hidden"
         aria-hidden="true"
-        onChange={handleWebFileChange}
+        onChange={handleFileChange}
       />
 
       {/* Queue */}
@@ -219,17 +200,6 @@ export default function LensUploadSheet({ open, onClose, onPhotoSynced, initialJ
   const [selectedJob, setSelectedJob] = useState<LensJobOption | null>(null);
   const [showJobPicker, setShowJobPicker] = useState(false);
 
-  // When the sheet opens, decide whether to show job picker or go straight to upload
-  function handleOpen() {
-    if (initialJob) {
-      setSelectedJob(initialJob);
-      setShowJobPicker(false);
-    } else {
-      setSelectedJob(null);
-      setShowJobPicker(true);
-    }
-  }
-
   function handleJobSelect(job: LensJobOption) {
     setSelectedJob(job);
     setShowJobPicker(false);
@@ -246,18 +216,18 @@ export default function LensUploadSheet({ open, onClose, onPhotoSynced, initialJ
     onClose();
   }
 
-  // Trigger job picker (or direct upload) on open
-  const prevOpen = useRef(false);
-  if (open && !prevOpen.current) {
-    handleOpen();
-  }
-  // If initialJob changes while open, re-run handleOpen so the correct job is pre-seeded
-  const prevInitialJobId = useRef<number | null | undefined>(null);
-  if (open && initialJob?.id !== prevInitialJobId.current) {
-    prevInitialJobId.current = initialJob?.id ?? null;
-    handleOpen();
-  }
-  prevOpen.current = open;
+  // Initialise the sheet after render. Updating state during render caused a
+  // React #301 loop when the Lens Upload button opened with no preselected job.
+  useEffect(() => {
+    if (!open) return;
+    if (initialJob) {
+      setSelectedJob(initialJob);
+      setShowJobPicker(false);
+    } else {
+      setSelectedJob(null);
+      setShowJobPicker(true);
+    }
+  }, [open, initialJob]);
 
   return (
     <>
