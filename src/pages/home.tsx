@@ -24,6 +24,14 @@ import PagedHomeScreen from '@/components/home/PagedHomeScreen';
 import AppPermissionsOnboarding, { hasCompletedOnboarding } from '@/components/AppPermissionsOnboarding';
 import TermsAcceptanceGate, { hasAcceptedTerms } from '@/components/TermsAcceptanceGate';
 import { isNative } from '@/lib/capacitor-plugins';
+import { useOfflineQueue } from '@/lib/useOfflineQueue';
+import {
+  type AttendanceOfflineAction,
+  createOfflineClientId,
+  readCachedAttendanceStatus,
+  syncAttendanceAction,
+  writeCachedAttendanceStatus,
+} from '@/lib/offlineFieldActions';
 // ── Types ─────────────────────────────────────────────────────────────────────
 
 // ── Icon definitions ──────────────────────────────────────────────────────────
@@ -611,34 +619,27 @@ function ActiveStatusBar({
   const sessions = status?.drivingSessions ?? (status?.driving ? [status.driving] : []);
   const hasDrive = sessions.length > 0;
   const [signingOut, setSigningOut] = useState(false);
+  const { enqueue: enqueueAttendance } = useOfflineQueue<AttendanceOfflineAction>('job-attendance', syncAttendanceAction);
   if (!hasJob && !hasDrive) return null;
-  async function handleDirectSignOut(e: React.MouseEvent) {
+  function handleDirectSignOut(e: React.MouseEvent) {
     e.stopPropagation();
     if (!status?.jobSignIn || signingOut) return;
     setSigningOut(true);
     try {
-      const res = await fetch(`/api/jobs/${status.jobSignIn.jobId}/signout`, {
-        method: 'POST',
-        credentials: 'include',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({})
+      const occurredAt = new Date().toISOString();
+      enqueueAttendance({
+        clientId: createOfflineClientId(),
+        jobId: status.jobSignIn.jobId,
+        action: 'signout',
+        actorType: 'employee',
+        occurredAt,
       });
-      const data = (await res.json().catch(() => ({}))) as {
-        ok?: boolean;
-        notSignedIn?: boolean;
-        error?: string;
-      };
-      // Success OR already signed out — either way, dismiss the widget
-      if (res.ok || data.notSignedIn) {
-        onJobSignOut(status.jobSignIn.jobId);
-      } else {
-        // Real error — fall back to sheet
-        onJobPress();
-      }
-    } catch {
-      onJobPress();
+      writeCachedAttendanceStatus(status.jobSignIn.jobId, {
+        signedIn: false,
+        lastAction: 'signout',
+        lastActionAt: occurredAt,
+      });
+      onJobSignOut(status.jobSignIn.jobId);
     } finally {
       setSigningOut(false);
     }
@@ -1273,13 +1274,21 @@ function SignInOutSheet({
   const [jobQuery, setJobQuery] = useState('');
   const [status, setStatus] = useState<SignInStatus | null>(null);
   const [statusLoading, setStatusLoading] = useState(false);
-  const [acting, setActing] = useState(false);
   const [forcingOut, setForcingOut] = useState<string | null>(null); // userId being forced out
   const [result, setResult] = useState<{
     type: 'signin' | 'signout' | null;
     name?: string;
   } | null>(null);
   const [error, setError] = useState('');
+  const { queue: attendanceQueue, enqueue: enqueueAttendance, retryAll: retryAttendance } = useOfflineQueue<AttendanceOfflineAction>(
+    'job-attendance',
+    syncAttendanceAction,
+  );
+  const selectedQueue = selectedJob
+    ? attendanceQueue.filter((item) => item.payload.jobId === selectedJob.id)
+    : [];
+  const latestQueuedAction = selectedQueue.at(-1)?.payload.action;
+  const acting = selectedQueue.some((item) => item.status === 'syncing');
 
   // Load jobs on open
   useEffect(() => {
@@ -1327,8 +1336,20 @@ function SignInOutSheet({
       }
       const data = (await res.json()) as SignInStatus;
       setStatus(data);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Could not load sign-in status');
+      writeCachedAttendanceStatus(jobId, {
+        signedIn: data.signedIn,
+        lastAction: data.lastAction === 'signin' || data.lastAction === 'signout' ? data.lastAction : null,
+        lastActionAt: data.lastActionAt,
+      });
+    } catch {
+      const cached = readCachedAttendanceStatus(jobId);
+      setStatus({
+        signedIn: cached?.signedIn ?? false,
+        lastAction: cached?.lastAction ?? null,
+        lastActionAt: cached?.lastActionAt ?? null,
+        currentlyOnSite: [],
+      });
+      setError(cached ? 'Offline — showing the last status saved on this device.' : 'Offline — attendance will be saved on this device.');
     } finally {
       setStatusLoading(false);
     }
@@ -1337,82 +1358,33 @@ function SignInOutSheet({
     setSelectedJob(job);
     void loadStatus(job.id);
   }
-  async function handleSignIn() {
+  function handleAttendanceAction(action: 'signin' | 'signout') {
     if (!selectedJob) return;
-    setActing(true);
     setError('');
     try {
-      const res = await fetch(`/api/jobs/${selectedJob.id}/signin`, {
-        method: 'POST',
-        credentials: 'include',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          actorType: 'employee'
-        })
+      const occurredAt = new Date().toISOString();
+      enqueueAttendance({
+        clientId: createOfflineClientId(),
+        jobId: selectedJob.id,
+        action,
+        actorType: 'employee',
+        occurredAt,
       });
-      if (res.status === 401) {
-        setError('Session expired — please close this and sign in again.');
-        return;
-      }
-      const data = (await res.json()) as {
-        ok?: boolean;
-        alreadySignedIn?: boolean;
-        error?: string;
-      };
-      if (!res.ok) throw new Error(data.error ?? 'Sign in failed');
-      if (data.alreadySignedIn) {
-        setError('You are already signed in to this job.');
-      } else {
-        setResult({
-          type: 'signin',
-          name: selectedJob.name
-        });
-      }
-      void loadStatus(selectedJob.id);
+      const cached = {
+        signedIn: action === 'signin',
+        lastAction: action,
+        lastActionAt: occurredAt,
+      } as const;
+      writeCachedAttendanceStatus(selectedJob.id, cached);
+      setStatus((previous) => ({
+        signedIn: cached.signedIn,
+        lastAction: cached.lastAction,
+        lastActionAt: cached.lastActionAt,
+        currentlyOnSite: previous?.currentlyOnSite ?? [],
+      }));
+      setResult({ type: action, name: selectedJob.name });
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Sign in failed');
-    } finally {
-      setActing(false);
-    }
-  }
-  async function handleSignOut() {
-    if (!selectedJob) return;
-    setActing(true);
-    setError('');
-    try {
-      const res = await fetch(`/api/jobs/${selectedJob.id}/signout`, {
-        method: 'POST',
-        credentials: 'include',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({})
-      });
-      if (res.status === 401) {
-        setError('Session expired — please close this and sign in again.');
-        return;
-      }
-      const data = (await res.json()) as {
-        ok?: boolean;
-        notSignedIn?: boolean;
-        error?: string;
-      };
-      if (!res.ok) throw new Error(data.error ?? 'Sign out failed');
-      if (data.notSignedIn) {
-        setError('You are not currently signed in to this job.');
-      } else {
-        setResult({
-          type: 'signout',
-          name: selectedJob.name
-        });
-      }
-      void loadStatus(selectedJob.id);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Sign out failed');
-    } finally {
-      setActing(false);
+      setError(e instanceof Error ? e.message : 'Could not save attendance on this device.');
     }
   }
   async function handleForceSignOut(userId: string, userName: string) {
@@ -1456,7 +1428,7 @@ function SignInOutSheet({
       hour12: true
     });
   }
-  const isSignedIn = status?.signedIn ?? false;
+  const isSignedIn = latestQueuedAction ? latestQueuedAction === 'signin' : (status?.signedIn ?? false);
 
   // Guard: ignore backdrop clicks that arrive within 300 ms of the sheet
   // opening — this prevents the same touch that opened the sheet from
@@ -1601,13 +1573,22 @@ function SignInOutSheet({
                       </button>
                     </div>}
 
+                  {selectedQueue.length > 0 && <div className={`flex items-start gap-2 rounded-xl border px-3 py-2.5 ${selectedQueue[0].status === 'failed' ? 'bg-red-50 border-red-200 text-red-700' : 'bg-amber-50 border-amber-200 text-amber-800'}`}>
+                      {selectedQueue[0].status === 'syncing' ? <Loader2 size={14} className="animate-spin mt-0.5 shrink-0" /> : <RefreshCw size={14} className="mt-0.5 shrink-0" />}
+                      <div className="flex-1 min-w-0">
+                        <p className="text-xs font-bold">{selectedQueue[0].status === 'failed' ? 'Saved — sync needs attention' : selectedQueue[0].status === 'syncing' ? 'Syncing attendance…' : 'Saved on this device'}</p>
+                        <p className="text-[11px] mt-0.5">{selectedQueue[0].lastError ?? 'Will sync automatically when a connection is available.'}</p>
+                      </div>
+                      {selectedQueue[0].status === 'failed' && <button type="button" onClick={retryAttendance} className="text-xs font-bold underline">Retry</button>}
+                    </div>}
+
                   {/* Sign In / Sign Out buttons — ALWAYS shown once job selected, not gated on status */}
                   {!statusLoading && <div className="grid grid-cols-2 gap-2.5">
-                      <button onClick={() => void handleSignIn()} disabled={acting || isSignedIn} className="h-12 rounded-2xl bg-indigo-500 hover:bg-indigo-600 active:bg-indigo-700 disabled:opacity-40 text-white font-bold text-sm flex items-center justify-center gap-2 transition-colors">
+                      <button onClick={() => handleAttendanceAction('signin')} disabled={acting || isSignedIn} className="h-12 rounded-2xl bg-indigo-500 hover:bg-indigo-600 active:bg-indigo-700 disabled:opacity-40 text-white font-bold text-sm flex items-center justify-center gap-2 transition-colors">
                         {acting && !isSignedIn ? <Loader2 size={15} className="animate-spin" /> : <LogIn size={15} />}
                         Sign In
                       </button>
-                      <button onClick={() => void handleSignOut()} disabled={acting || !isSignedIn} className="h-12 rounded-2xl bg-violet-500 hover:bg-violet-700 active:bg-violet-800 disabled:opacity-40 text-white font-bold text-sm flex items-center justify-center gap-2 transition-colors">
+                      <button onClick={() => handleAttendanceAction('signout')} disabled={acting || !isSignedIn} className="h-12 rounded-2xl bg-violet-500 hover:bg-violet-700 active:bg-violet-800 disabled:opacity-40 text-white font-bold text-sm flex items-center justify-center gap-2 transition-colors">
                         {acting && isSignedIn ? <Loader2 size={15} className="animate-spin" /> : <LogOut size={15} />}
                         Sign Out
                       </button>

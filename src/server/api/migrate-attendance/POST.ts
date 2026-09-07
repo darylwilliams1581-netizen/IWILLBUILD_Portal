@@ -43,14 +43,23 @@ export default async function handler(_req: Request, res: Response) {
       source        VARCHAR(20)  NOT NULL DEFAULT 'portal',
       actor_type    VARCHAR(30)  NOT NULL DEFAULT 'employee',
       notes         TEXT         NULL,
+      client_id     VARCHAR(64)  NULL,
       created_at    TIMESTAMP    DEFAULT CURRENT_TIMESTAMP,
       INDEX idx_ja_job       (job_id),
       INDEX idx_ja_user      (user_id),
       INDEX idx_ja_company   (company_id),
       INDEX idx_ja_created   (created_at),
+      UNIQUE INDEX idx_ja_client (company_id, user_id, client_id),
       FOREIGN KEY (job_id)    REFERENCES jobs(id)      ON DELETE CASCADE,
       FOREIGN KEY (company_id) REFERENCES companies(id) ON DELETE CASCADE
     )
+  `);
+
+  await tryExec('Add job_attendance.client_id', `
+    ALTER TABLE job_attendance ADD COLUMN client_id VARCHAR(64) NULL
+  `);
+  await tryExec('Add job_attendance client id index', `
+    ALTER TABLE job_attendance ADD UNIQUE INDEX idx_ja_client (company_id, user_id, client_id)
   `);
 
   // ── 2. guest_checkins ─────────────────────────────────────────────────────

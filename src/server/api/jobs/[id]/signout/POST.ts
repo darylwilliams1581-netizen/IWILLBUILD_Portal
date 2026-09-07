@@ -12,6 +12,7 @@ import { db } from '../../../../db/client.js';
 import { sql } from 'drizzle-orm';
 import { getSessionAndProfile } from '../../../../lib/auth-middleware.js';
 import type { ResultSetHeader } from 'mysql2';
+import { toMySQLDatetime } from '../../../../lib/datetime.js';
 
 export default async function handler(req: Request, res: Response) {
   const auth = await getSessionAndProfile(req, res);
@@ -20,9 +21,12 @@ export default async function handler(req: Request, res: Response) {
   const jobId = parseInt(req.params.id);
   if (!jobId) return res.status(400).json({ error: 'Invalid job id' });
 
-  const { notes } = req.body as { notes?: string };
+  const { notes, clientId: bodyClientId, occurredAt } = req.body as { notes?: string; clientId?: string; occurredAt?: string };
   const userId    = auth.session.user.id;
   const companyId = auth.profile.companyId;
+  const rawClientId = bodyClientId ?? req.get('X-Client-Id') ?? '';
+  const clientId = /^[A-Za-z0-9-]{8,64}$/.test(rawClientId) ? rawClientId : null;
+  const actionAt = toMySQLDatetime(occurredAt) ?? toMySQLDatetime(new Date())!;
 
   try {
     // ── Verify job belongs to company ─────────────────────────────────────
@@ -31,6 +35,17 @@ export default async function handler(req: Request, res: Response) {
     ) as unknown as [Array<{ id: number }>, unknown];
     const jobRows = jobResult[0];
     if (!jobRows?.[0]) return res.status(404).json({ error: 'Job not found' });
+
+    if (clientId) {
+      const [existing] = await db.execute(sql`
+        SELECT id FROM job_attendance
+        WHERE company_id = ${companyId} AND user_id = ${userId} AND client_id = ${clientId}
+        LIMIT 1
+      `) as unknown as [Array<{ id: number }>, unknown];
+      if (existing[0]) {
+        return res.json({ ok: true, idempotent: true, action: 'signout', attendanceId: existing[0].id, message: 'Sign-out already synced.' });
+      }
+    }
 
     // ── Check open sign-in ────────────────────────────────────────────────
     const countResult = await db.execute(
@@ -56,14 +71,13 @@ export default async function handler(req: Request, res: Response) {
     }
 
     // ── Record sign-out ───────────────────────────────────────────────────
-    const safeNotes = notes ? `'${String(notes).replace(/'/g, "''").slice(0, 500)}'` : 'NULL';
-    const insertResult = await db.execute(
-      sql.raw(`
-        INSERT INTO job_attendance (company_id, job_id, user_id, action, source, actor_type, notes)
-        VALUES (${companyId}, ${jobId}, '${userId.replace(/'/g, '')}', 'signout', 'portal', 'employee', ${safeNotes})
-      `)
-    ) as unknown as [ResultSetHeader, unknown];
-    const header = insertResult[0];
+    const safeNotes = notes ? String(notes).slice(0, 500) : null;
+    const [header] = await db.execute(sql`
+      INSERT INTO job_attendance
+        (company_id, job_id, user_id, action, source, actor_type, notes, client_id, created_at)
+      VALUES
+        (${companyId}, ${jobId}, ${userId}, 'signout', 'portal', 'employee', ${safeNotes}, ${clientId}, ${actionAt})
+    `) as unknown as [ResultSetHeader, unknown];
 
     return res.status(201).json({
       ok: true,

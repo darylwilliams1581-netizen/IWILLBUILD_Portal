@@ -6,6 +6,7 @@ import { useSession } from '@/lib/auth/auth-client';
 import SupportModeBanner from '@/components/SupportModeBanner';
 import ViewOnlyBanner from '@/components/ViewOnlyBanner';
 import OfflineBanner from '@/components/OfflineBanner';
+import OfflineSyncManager from '@/components/OfflineSyncManager';
 import PwaInstallPrompt from '@/components/PwaInstallPrompt';
 import { DocumentActionsProvider } from '@/lib/document-actions-context';
 import DocumentActionsWidget from '@/components/DocumentActionsWidget';
@@ -128,6 +129,7 @@ export default function RootLayout({ children }: RootLayoutProps) {
         <PortalBanners pathname={location.pathname} />
       </ClientOnly>
       <DeferredMount>
+        <OfflineSyncManager />
         <OfflineBanner />
         <PwaInstallPrompt />
       </DeferredMount>

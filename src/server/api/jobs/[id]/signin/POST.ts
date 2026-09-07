@@ -12,6 +12,7 @@ import { db } from '../../../../db/client.js';
 import { sql } from 'drizzle-orm';
 import { getSessionAndProfile } from '../../../../lib/auth-middleware.js';
 import type { ResultSetHeader } from 'mysql2';
+import { toMySQLDatetime } from '../../../../lib/datetime.js';
 
 const VALID_ACTOR_TYPES = new Set([
   'employee', 'contractor', 'consultant', 'delivery_driver', 'guest',
@@ -24,14 +25,19 @@ export default async function handler(req: Request, res: Response) {
   const jobId = parseInt(req.params.id);
   if (!jobId) return res.status(400).json({ error: 'Invalid job id' });
 
-  const { actorType = 'employee', notes } = req.body as {
+  const { actorType = 'employee', notes, clientId: bodyClientId, occurredAt } = req.body as {
     actorType?: string;
     notes?: string;
+    clientId?: string;
+    occurredAt?: string;
   };
 
   const safeActorType = VALID_ACTOR_TYPES.has(actorType) ? actorType : 'employee';
   const userId    = auth.session.user.id;
   const companyId = auth.profile.companyId;
+  const rawClientId = bodyClientId ?? req.get('X-Client-Id') ?? '';
+  const clientId = /^[A-Za-z0-9-]{8,64}$/.test(rawClientId) ? rawClientId : null;
+  const actionAt = toMySQLDatetime(occurredAt) ?? toMySQLDatetime(new Date())!;
 
   try {
     // ── Verify job belongs to company ─────────────────────────────────────
@@ -39,6 +45,17 @@ export default async function handler(req: Request, res: Response) {
       sql.raw(`SELECT id FROM jobs WHERE id = ${jobId} AND company_id = ${companyId} LIMIT 1`)
     ) as unknown as [Array<{ id: number }>, unknown])[0];
     if (!jobRows?.[0]) return res.status(404).json({ error: 'Job not found' });
+
+    if (clientId) {
+      const [existing] = await db.execute(sql`
+        SELECT id FROM job_attendance
+        WHERE company_id = ${companyId} AND user_id = ${userId} AND client_id = ${clientId}
+        LIMIT 1
+      `) as unknown as [Array<{ id: number }>, unknown];
+      if (existing[0]) {
+        return res.json({ ok: true, idempotent: true, action: 'signin', attendanceId: existing[0].id, message: 'Sign-in already synced.' });
+      }
+    }
 
     // ── Check for open sign-in (signed in, not yet signed out) ────────────
     // Strategy: count sign-ins minus sign-outs for this user+job.
@@ -65,19 +82,19 @@ export default async function handler(req: Request, res: Response) {
     }
 
     // ── Record sign-in ────────────────────────────────────────────────────
-    const safeNotes = notes ? `'${String(notes).replace(/'/g, "''").slice(0, 500)}'` : 'NULL';
-    const result = await db.execute(
-      sql.raw(`
-        INSERT INTO job_attendance (company_id, job_id, user_id, action, source, actor_type, notes)
-        VALUES (${companyId}, ${jobId}, '${userId.replace(/'/g, '')}', 'signin', 'portal', '${safeActorType}', ${safeNotes})
-      `)
-    ) as unknown as ResultSetHeader;
+    const safeNotes = notes ? String(notes).slice(0, 500) : null;
+    const [result] = await db.execute(sql`
+      INSERT INTO job_attendance
+        (company_id, job_id, user_id, action, source, actor_type, notes, client_id, created_at)
+      VALUES
+        (${companyId}, ${jobId}, ${userId}, 'signin', 'portal', ${safeActorType}, ${safeNotes}, ${clientId}, ${actionAt})
+    `) as unknown as [ResultSetHeader, unknown];
 
     return res.status(201).json({
       ok: true,
       alreadySignedIn: false,
       action: 'signin',
-      attendanceId: (result as ResultSetHeader).insertId,
+      attendanceId: result.insertId,
       message: 'Signed in successfully.',
     });
   } catch (err) {

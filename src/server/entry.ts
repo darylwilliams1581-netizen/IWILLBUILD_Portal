@@ -2854,11 +2854,13 @@ async function runStartupMigrations() {
       "  source      VARCHAR(20) NOT NULL DEFAULT 'portal'," +
       "  actor_type  VARCHAR(30) NOT NULL DEFAULT 'employee'," +
       "  notes       TEXT        NULL," +
+      "  client_id   VARCHAR(64) NULL," +
       "  created_at  TIMESTAMP   DEFAULT CURRENT_TIMESTAMP," +
       "  INDEX idx_ja_job     (job_id)," +
       "  INDEX idx_ja_user    (user_id)," +
       "  INDEX idx_ja_company (company_id)," +
       "  INDEX idx_ja_created (created_at)," +
+      "  UNIQUE INDEX idx_ja_client (company_id, user_id, client_id)," +
       "  FOREIGN KEY (job_id)     REFERENCES jobs(id)      ON DELETE CASCADE," +
       "  FOREIGN KEY (company_id) REFERENCES companies(id) ON DELETE CASCADE" +
       ") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci"
@@ -2869,6 +2871,26 @@ async function runStartupMigrations() {
     if (!msg.includes('already exists') && !msg.includes('ER_TABLE_EXISTS')) {
       console.warn('[startup-migration] job_attendance CREATE failed:', msg);
     }
+  }
+
+  // Offline attendance idempotency for databases created before client_id.
+  try {
+    const [columns] = await db.execute(sql`
+      SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS
+      WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'job_attendance' AND COLUMN_NAME = 'client_id'
+    `) as unknown as [Array<{ COLUMN_NAME: string }>, unknown];
+    if (!columns.length) {
+      await db.execute(sql.raw('ALTER TABLE job_attendance ADD COLUMN client_id VARCHAR(64) NULL'));
+    }
+    const [indexes] = await db.execute(sql`
+      SELECT INDEX_NAME FROM INFORMATION_SCHEMA.STATISTICS
+      WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'job_attendance' AND INDEX_NAME = 'idx_ja_client'
+    `) as unknown as [Array<{ INDEX_NAME: string }>, unknown];
+    if (!indexes.length) {
+      await db.execute(sql.raw('ALTER TABLE job_attendance ADD UNIQUE INDEX idx_ja_client (company_id, user_id, client_id)'));
+    }
+  } catch (e: unknown) {
+    console.warn('[startup-migration] job_attendance client_id migration failed:', migrationErrMsg(e));
   }
 
   // ── guest_checkins ────────────────────────────────────────────────────────

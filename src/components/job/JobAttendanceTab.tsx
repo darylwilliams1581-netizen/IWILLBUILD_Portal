@@ -7,10 +7,18 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import {
   LogIn, LogOut, Loader2, CheckCircle2, AlertCircle,
-  Clock, QrCode, RefreshCw, User, UserCheck, History,
+  Clock, QrCode, RefreshCw, User, UserCheck, History, WifiOff,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import JobQrModal from './JobQrModal';
+import { useOfflineQueue } from '@/lib/useOfflineQueue';
+import {
+  type AttendanceOfflineAction,
+  createOfflineClientId,
+  readCachedAttendanceStatus,
+  syncAttendanceAction,
+  writeCachedAttendanceStatus,
+} from '@/lib/offlineFieldActions';
 
 interface OnSiteEntry {
   user_id: string;
@@ -61,20 +69,38 @@ const ACTOR_LABELS: Record<string, string> = {
 };
 
 export default function JobAttendanceTab({ jobId, jobName }: Props) {
-  const [status, setStatus]       = useState<StatusData | null>(null);
+  const [status, setStatus]       = useState<StatusData | null>(() => {
+    const cached = readCachedAttendanceStatus(jobId);
+    return cached ? { ok: true, ...cached, currentlyOnSite: [], recentLog: [] } : null;
+  });
   const [loading, setLoading]     = useState(true);
-  const [actionLoading, setActionLoading] = useState(false);
   const [message, setMessage]     = useState<{ text: string; ok: boolean } | null>(null);
   const [qrOpen, setQrOpen]       = useState(false);
   const [qrAction, setQrAction]   = useState<'signin' | 'signout'>('signin');
   // Auto-dismiss success message after 4 s
   const msgTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const previousPendingRef = useRef(0);
+  const { queue, enqueue, retryAll } = useOfflineQueue<AttendanceOfflineAction>(
+    'job-attendance',
+    syncAttendanceAction,
+  );
+  const jobQueue = queue.filter((item) => item.payload.jobId === jobId);
+  const latestQueuedAction = jobQueue.at(-1)?.payload.action;
+  const actionLoading = jobQueue.some((item) => item.status === 'syncing');
 
   const fetchStatus = useCallback(async () => {
     setLoading(true);
     try {
       const res = await fetch(`/api/jobs/${jobId}/signin-status`, { credentials: 'include' });
-      if (res.ok) setStatus(await res.json() as StatusData);
+      if (res.ok) {
+        const next = await res.json() as StatusData;
+        setStatus(next);
+        writeCachedAttendanceStatus(jobId, {
+          signedIn: next.signedIn,
+          lastAction: next.lastAction === 'signin' || next.lastAction === 'signout' ? next.lastAction : null,
+          lastActionAt: next.lastActionAt,
+        });
+      }
     } catch {
       // ignore
     } finally {
@@ -84,39 +110,43 @@ export default function JobAttendanceTab({ jobId, jobName }: Props) {
 
   useEffect(() => { void fetchStatus(); }, [fetchStatus]);
 
-  async function handleAction(action: 'signin' | 'signout') {
-    setActionLoading(true);
+  useEffect(() => {
+    if (previousPendingRef.current > 0 && jobQueue.length === 0 && navigator.onLine) {
+      void fetchStatus();
+    }
+    previousPendingRef.current = jobQueue.length;
+  }, [fetchStatus, jobQueue.length]);
+
+  function handleAction(action: 'signin' | 'signout') {
     setMessage(null);
     if (msgTimer.current) clearTimeout(msgTimer.current);
     try {
-      const res = await fetch(`/api/jobs/${jobId}/${action}`, {
-        method: 'POST',
-        credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({}),
+      const occurredAt = new Date().toISOString();
+      enqueue({
+        clientId: createOfflineClientId(),
+        jobId,
+        action,
+        occurredAt,
+        actorType: 'employee',
       });
-      const data = await res.json() as {
-        ok: boolean;
-        message?: string;
-        alreadySignedIn?: boolean;
-        notSignedIn?: boolean;
-      };
-      const msg = { text: data.message ?? (res.ok ? 'Done.' : 'Failed.'), ok: res.ok };
-      setMessage(msg);
-      // Auto-dismiss success after 4 s
-      if (res.ok) {
-        msgTimer.current = setTimeout(() => setMessage(null), 4000);
-        if (action === 'signin') {
-          setStatus((prev) => prev ? { ...prev, signedIn: true, lastAction: 'signin' } : prev);
-        } else {
-          setStatus((prev) => prev ? { ...prev, signedIn: false, lastAction: 'signout' } : prev);
-        }
-        await fetchStatus();
-      }
-    } catch {
-      setMessage({ text: 'Request failed. Please try again.', ok: false });
-    } finally {
-      setActionLoading(false);
+      const cached = {
+        signedIn: action === 'signin',
+        lastAction: action,
+        lastActionAt: occurredAt,
+      } as const;
+      writeCachedAttendanceStatus(jobId, cached);
+      setStatus((prev) => ({
+        ok: true,
+        currentlyOnSite: prev?.currentlyOnSite ?? [],
+        recentLog: prev?.recentLog ?? [],
+        ...cached,
+      }));
+      setMessage({
+        text: navigator.onLine ? 'Saved on this device — syncing…' : 'Saved on this device — will sync when online.',
+        ok: true,
+      });
+    } catch (error) {
+      setMessage({ text: error instanceof Error ? error.message : 'Could not save on this device.', ok: false });
     }
   }
 
@@ -125,7 +155,7 @@ export default function JobAttendanceTab({ jobId, jobName }: Props) {
     setQrOpen(true);
   }
 
-  const signedIn = status?.signedIn ?? false;
+  const signedIn = latestQueuedAction ? latestQueuedAction === 'signin' : (status?.signedIn ?? false);
 
   return (
     <div className="space-y-4">
@@ -172,9 +202,31 @@ export default function JobAttendanceTab({ jobId, jobName }: Props) {
       </div>
 
       {/* ── Action buttons ────────────────────────────────────────────────── */}
+      {jobQueue.length > 0 && (
+        <div className={`flex items-start gap-2.5 rounded-xl border px-4 py-3 text-sm ${
+          jobQueue[0].status === 'failed'
+            ? 'bg-red-50 border-red-200 text-red-700'
+            : 'bg-amber-50 border-amber-200 text-amber-800'
+        }`}>
+          {jobQueue[0].status === 'syncing'
+            ? <Loader2 size={15} className="animate-spin shrink-0 mt-0.5" />
+            : <WifiOff size={15} className="shrink-0 mt-0.5" />}
+          <div className="min-w-0 flex-1">
+            <p className="font-semibold">
+              {jobQueue[0].status === 'failed' ? 'Saved — sync needs attention' : jobQueue[0].status === 'syncing' ? 'Syncing attendance…' : 'Saved on this device'}
+            </p>
+            <p className="text-xs mt-0.5">
+              {jobQueue[0].lastError ?? `${jobQueue.length} attendance action${jobQueue.length === 1 ? '' : 's'} will sync in order.`}
+            </p>
+          </div>
+          {jobQueue[0].status === 'failed' && (
+            <button type="button" onClick={retryAll} className="text-xs font-bold underline underline-offset-2">Retry</button>
+          )}
+        </div>
+      )}
       <div className="flex flex-wrap gap-3">
         <button
-          onClick={() => void handleAction('signin')}
+          onClick={() => handleAction('signin')}
           disabled={actionLoading || signedIn}
           className="flex items-center gap-2 px-5 py-2.5 bg-green-600 hover:bg-green-700 disabled:opacity-40 text-white text-sm font-bold rounded-lg transition-colors"
         >
@@ -182,7 +234,7 @@ export default function JobAttendanceTab({ jobId, jobName }: Props) {
           Sign In
         </button>
         <button
-          onClick={() => void handleAction('signout')}
+          onClick={() => handleAction('signout')}
           disabled={actionLoading || !signedIn}
           className="flex items-center gap-2 px-5 py-2.5 bg-slate-700 hover:bg-slate-800 disabled:opacity-40 text-white text-sm font-bold rounded-lg transition-colors"
         >
