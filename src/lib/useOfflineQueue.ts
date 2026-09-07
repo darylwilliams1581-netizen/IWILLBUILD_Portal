@@ -269,13 +269,17 @@ export function useOfflineQueue<T>(key: string, syncFn: (item: T) => Promise<voi
     navigator.serviceWorker?.addEventListener('message', onServiceWorkerMessage);
 
     let removeAppListener: (() => Promise<void>) | undefined;
-    void getAppPlugin().then(async (app) => {
-      if (!app) return;
-      const handle = await app.App.addListener('appStateChange', ({ isActive }: { isActive: boolean }) => {
-        if (isActive) onOnline();
-      });
-      removeAppListener = () => handle.remove();
-    }).catch(() => undefined);
+    const App = getAppPlugin();
+    if (App) {
+      try {
+        const handle = App.addListener('appStateChange', ({ isActive }: { isActive: boolean }) => {
+          if (isActive) onOnline();
+        });
+        removeAppListener = () => Promise.resolve(handle).then((listener) => listener.remove());
+      } catch {
+        // Native bridge was not ready; online/visibility events still flush.
+      }
+    }
 
     if (isOnline()) void attemptSync();
     return () => {

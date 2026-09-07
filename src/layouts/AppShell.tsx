@@ -19,18 +19,16 @@ interface AppShellProps {
 
 export default function AppShell({ children }: AppShellProps) {
   return (
-    <div
-      className="flex h-full min-h-0 flex-col bg-[#F2F2F7] text-gray-900"
-      style={{
-        // Ensure content never bleeds under the native status bar
-        paddingTop: 'env(safe-area-inset-top, 0px)',
-      }}
-    >
-      {/* Main content area — scrollable, leaves room for MobileTabBar (56px + safe-area).
-          overflow-x:hidden clips the 300%-wide swipe track inside PagedHomeScreen.
-          contain:'layout' removed — on iOS Safari it causes flex children to
-          miscalculate their own width, producing the left-clip / overflow bug.
-          The overflow:hidden on the swipe container in PagedHomeScreen is sufficient. */}
+    <div className="flex h-full min-h-0 flex-col bg-[#F2F2F7] text-gray-900">
+      {/* Navy safe-area — keeps clock / Dynamic Island off the dashboard */}
+      <div
+        className="shrink-0 w-full"
+        style={{
+          height: 'env(safe-area-inset-top, 0px)',
+          backgroundColor: '#111827',
+        }}
+        aria-hidden="true"
+      />
       <main
         className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden"
         style={{
@@ -41,9 +39,6 @@ export default function AppShell({ children }: AppShellProps) {
       >
         {children}
       </main>
-      {/* MobileTabBar is rendered by the HomeScreen page itself — it lives inside
-          the page component so it can access page-level state (camera FAB, more sheet).
-          AppShell only provides the structural container. */}
     </div>
   );
 }

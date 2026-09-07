@@ -583,7 +583,7 @@ export default memo(function PagedHomeScreen({
         {/* Brand mark — logo asset already contains the IWILLBUILD wordmark; no extra text span */}
         <div className="flex items-center shrink-0">
           <img
-            src="/airo-assets/images/logo/horizontal/dark"
+            src="/assets/logo.png"
             alt="IWILLBUILD"
             className="h-7 w-auto max-w-[140px] object-contain"
           />

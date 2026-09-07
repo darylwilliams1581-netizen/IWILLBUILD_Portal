@@ -257,14 +257,14 @@ describe('Two-row stacked header', () => {
     expect(screenSrc).toContain('justify-between shrink-0 px-3 pt-2 pb-1');
   });
 
-  it('row 1 contains logo image (dark variant)', () => {
-    expect(screenSrc).toContain('/airo-assets/images/logo/horizontal/dark');
+  it('row 1 contains the bundled logo image', () => {
+    expect(screenSrc).toContain('/assets/logo.png');
   });
 
   it('row 1 branding comes from the logo image asset only — no duplicate text span', () => {
-    // The horizontal/dark logo asset already contains the IWILLBUILD wordmark.
+    // The bundled logo asset already contains the IWILLBUILD wordmark.
     // A separate <span> beside it would duplicate the branding on mobile.
-    expect(screenSrc).toContain('/airo-assets/images/logo/horizontal/dark');
+    expect(screenSrc).toContain('/assets/logo.png');
     // The alt attribute identifies the brand in the image
     expect(screenSrc).toContain('alt="IWILLBUILD"');
     // No standalone wordmark span next to the logo
