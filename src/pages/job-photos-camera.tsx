@@ -48,6 +48,7 @@ import { CameraPreview } from '@capacitor-community/camera-preview';
 import { ArrowLeft, Settings, X, Check, Loader2, Lock, Unlock, AlertTriangle, Pencil, Zap, ZapOff, FlipHorizontal2 } from 'lucide-react';
 import { usePhotoUploadQueue } from '@/hooks/usePhotoUploadQueue';
 import { useWatermarkSettings } from '@/hooks/useWatermarkSettings';
+import { useAppLifecycle } from '@/hooks/useAppLifecycle';
 import { isNative } from '@/lib/capacitor-plugins';
 import {
   capturePhotoLocally,
@@ -98,35 +99,6 @@ function base64JpegToFile(value: string, fileName: string): File {
     chunks.push(buffer);
   }
   return new File(chunks, fileName, { type: 'image/jpeg', lastModified: Date.now() });
-}
-
-/** Temporarily reveal the native preview behind WKWebView for this route only. */
-function makeCameraAncestorsTransparent(start: HTMLElement): () => void {
-  const elements: HTMLElement[] = [];
-  let current: HTMLElement | null = start;
-  while (current) {
-    elements.push(current);
-    current = current.parentElement;
-  }
-  if (!elements.includes(document.documentElement)) elements.push(document.documentElement);
-
-  const snapshots = elements.map(element => ({
-    element,
-    value: element.style.getPropertyValue('background'),
-    priority: element.style.getPropertyPriority('background'),
-  }));
-  for (const { element } of snapshots) {
-    // globals.css uses the background shorthand, so background-color alone
-    // cannot expose the native preview UIView behind WKWebView.
-    element.style.setProperty('background', 'transparent', 'important');
-  }
-
-  return () => {
-    for (const { element, value, priority } of snapshots) {
-      if (value) element.style.setProperty('background', value, priority);
-      else element.style.removeProperty('background');
-    }
-  };
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -445,11 +417,11 @@ export default function JobPhotosCameraPage() {
     jobId,
     uploadEndpoint: uploadEndpointOverride
   });
-  const cameraRootRef = useRef<HTMLDivElement>(null);
   const lensRef = useRef<HTMLDivElement>(null);
   const previewStartedRef = useRef(false);
   const previewStartRef = useRef<Promise<void> | null>(null);
   const previewGenerationRef = useRef(0);
+  const pageActiveRef = useRef(true);
   type CamState = 'starting' | 'ready' | 'unavailable';
   const [camState, setCamState] = useState<CamState>('starting');
   const [camErrMsg, setCamErrMsg] = useState('');
@@ -582,19 +554,46 @@ export default function JobPhotosCameraPage() {
       return;
     }
 
-    const root = cameraRootRef.current;
-    const restoreBackgrounds = root ? makeCameraAncestorsTransparent(root) : () => {};
-    const frame = window.requestAnimationFrame(() => void startNativePreview());
+    pageActiveRef.current = true;
+    document.documentElement.classList.add('iwb-lens-open');
+
+    // Let both the camera shell and lens rectangle finish layout before their
+    // CSS-point bounds are handed to the native iOS preview.
+    let secondFrame = 0;
+    const firstFrame = window.requestAnimationFrame(() => {
+      secondFrame = window.requestAnimationFrame(() => {
+        if (pageActiveRef.current) void startNativePreview();
+      });
+    });
     return () => {
-      window.cancelAnimationFrame(frame);
+      pageActiveRef.current = false;
+      window.cancelAnimationFrame(firstFrame);
+      if (secondFrame) window.cancelAnimationFrame(secondFrame);
       void stopPreview();
-      restoreBackgrounds();
+      document.documentElement.classList.remove('iwb-lens-open');
       if (lastThumbRef.current) URL.revokeObjectURL(lastThumbRef.current);
     };
   }, [startNativePreview, stopPreview]);
 
+  useAppLifecycle({
+    onBackground: () => {
+      pageActiveRef.current = false;
+      void stopPreview();
+    },
+    onForeground: () => {
+      pageActiveRef.current = true;
+      window.requestAnimationFrame(() => {
+        window.requestAnimationFrame(() => {
+          if (pageActiveRef.current) void startNativePreview();
+        });
+      });
+    },
+  });
+
   const handleBack = useCallback(async () => {
+    pageActiveRef.current = false;
     await stopPreview();
+    document.documentElement.classList.remove('iwb-lens-open');
     goBack(navigate, cameraFallback);
   }, [stopPreview, navigate, cameraFallback]);
 
@@ -816,7 +815,7 @@ export default function JobPhotosCameraPage() {
   return (
     // No transform/willChange on this container — position:fixed children must
     // not be trapped inside a stacking context created by CSS transforms.
-    <div ref={cameraRootRef} className="fixed inset-0 z-50 bg-transparent flex flex-col" style={{
+    <div className="fixed inset-0 z-50 bg-transparent flex flex-col" style={{
       userSelect: 'none'
     }}>
       <Helmet>
@@ -828,7 +827,7 @@ export default function JobPhotosCameraPage() {
       <h1 className="sr-only">Job Camera</h1>
 
       {/* ── Top bar: Back · job name · Flash · Flip ── */}
-      <div className="relative z-20 flex items-center gap-2 px-3 shrink-0 bg-gradient-to-b from-black/70 to-transparent" style={{
+      <div className="relative z-20 flex items-center gap-2 px-3 shrink-0 bg-gradient-to-b from-black to-[#090909]" style={{
         paddingTop: 'max(env(safe-area-inset-top), 10px)',
         paddingBottom: '10px'
       }}>
@@ -904,7 +903,7 @@ export default function JobPhotosCameraPage() {
       </div>
 
       {/* ── Bottom footer: Back · Lock · SHUTTER · Settings · Gallery ── */}
-      <div className="relative z-20 shrink-0 bg-gradient-to-t from-black/90 to-transparent" style={{
+      <div className="relative z-20 shrink-0 bg-gradient-to-t from-black to-[#090909]" style={{
         paddingBottom: 'max(env(safe-area-inset-bottom), 16px)',
         paddingTop: '12px'
       }}>
