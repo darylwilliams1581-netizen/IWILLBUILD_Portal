@@ -12,6 +12,7 @@
  *   - Map overlay banner when ALL active drivers have no usable GPS
  */
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { Capacitor } from '@capacitor/core';
 import {
   AlertCircle, Building2, Clock, Crosshair, Gauge, Loader2,
   MapPin, Navigation, RefreshCw, Truck, Users, ZoomIn, ZoomOut,
@@ -497,6 +498,7 @@ const MAX_MAP_MARKERS = 50;
 // ── Main component ────────────────────────────────────────────────────────────
 
 export default function FleetLiveMap() {
+  const nativePlatform = Capacitor.isNativePlatform();
   const mapRef          = useRef<HTMLDivElement>(null);
   const gMapRef         = useRef<GMap | null>(null);
   const liveMarkersRef  = useRef<Map<number, GMarker>>(new Map());
@@ -521,14 +523,16 @@ export default function FleetLiveMap() {
   const [selectedLiveId, setSelectedLiveId] = useState<number | null>(null);
   const [selectedAssetId, setSelectedAssetId] = useState<number | null>(null);
   const [lastRefresh,    setLastRefresh]    = useState<Date>(new Date());
-  const [mapReady,       setMapReady]       = useState(false);
+  const [mapReady,       setMapReady]       = useState(nativePlatform);
   const [mapError,       setMapError]       = useState<string | null>(null);
+  const [fetchingPositions, setFetchingPositions] = useState(true);
   // Incrementing this triggers a fresh map-init attempt after a failure
   const [mapRetryKey,    setMapRetryKey]    = useState(0);
-  const [mapEngine,      setMapEngine]      = useState<'google' | 'osm' | null>(null);
+  const [mapEngine,      setMapEngine]      = useState<'google' | 'osm' | null>(nativePlatform ? 'osm' : null);
   const osmZoomInRef  = useRef<(() => void) | null>(null);
   const osmZoomOutRef = useRef<(() => void) | null>(null);
   const osmFitRef     = useRef<(() => void) | null>(null);
+  const sessionsFetchInFlightRef = useRef(false);
 
   // ── Derive map mode ─────────────────────────────────────────────────────────
   // withGps = sessions that have a coordinate AND a fresh GPS fix (≤7 min old)
@@ -547,11 +551,13 @@ export default function FleetLiveMap() {
 
   // ── Fetch live sessions ─────────────────────────────────────────────────────
   const fetchSessions = useCallback(async (silent = false) => {
+    if (sessionsFetchInFlightRef.current) return;
+    sessionsFetchInFlightRef.current = true;
     if (!silent) setLoading(true);
     setError(null);
     try {
       const ac = new AbortController();
-      const timer = setTimeout(() => ac.abort(), 15_000);
+      const timer = setTimeout(() => ac.abort(), 8_000);
       let res: Response;
       try {
         res = await fetch('/api/fleet/driver-sessions/live', { credentials: 'include', signal: ac.signal });
@@ -572,39 +578,96 @@ export default function FleetLiveMap() {
         setError(err instanceof Error ? err.message : 'Failed to load live sessions');
       }
     } finally {
+      sessionsFetchInFlightRef.current = false;
       setLoading(false);
     }
   }, []);
 
-  // ── Fetch last-known positions (once on mount) ──────────────────────────────
-  useEffect(() => {
-    fetch('/api/fleet/last-known-positions', { credentials: 'include' })
-      .then(r => r.ok ? r.json() : Promise.resolve({ positions: [] }))
-      .then((data: { positions: LastKnownPosition[] }) => setLastKnown(data.positions ?? []))
-      .catch(() => { /* non-critical */ });
+  const fetchLastKnown = useCallback(async () => {
+    try {
+      const res = await fetch('/api/fleet/last-known-positions', { credentials: 'include' });
+      const data = res.ok
+        ? await res.json() as { positions?: LastKnownPosition[] }
+        : { positions: [] };
+      setLastKnown(data.positions ?? []);
+    } catch {
+      // Last-known data is useful fallback context, but a failure must not
+      // replace or block the live map.
+    }
   }, []);
 
-  // ── Fetch office/base location from company settings (once on mount) ────────
+  const fetchOfficePosition = useCallback(async () => {
+    try {
+      const res = await fetch('/api/company-settings', { credentials: 'include' });
+      const data: { structure?: { office_lat?: number; office_lng?: number; office_label?: string } } = res.ok
+        ? await res.json() as { structure?: { office_lat?: number; office_lng?: number; office_label?: string } }
+        : {};
+      const lat = data.structure?.office_lat;
+      const lng = data.structure?.office_lng;
+      if (lat != null && lng != null && !isNaN(Number(lat)) && !isNaN(Number(lng))) {
+        setOfficePos({
+          lat: Number(lat),
+          lng: Number(lng),
+          label: data.structure?.office_label ?? 'Office',
+        });
+      }
+    } catch {
+      // Office position is the final fallback and never blocks the map.
+    }
+  }, []);
+
+  // Live Map mounts when the tab is opened. Start all position requests in the
+  // same turn and remove the small status overlay after the first response or
+  // eight seconds. While the view remains open, refresh live driver positions
+  // every five seconds without replacing the map with a loading state.
   useEffect(() => {
-    fetch('/api/company-settings', { credentials: 'include' })
-      .then(r => r.ok ? r.json() : Promise.resolve({}))
-      .then((data: { structure?: { office_lat?: number; office_lng?: number; office_label?: string } }) => {
-        const lat = data.structure?.office_lat;
-        const lng = data.structure?.office_lng;
-        if (lat != null && lng != null && !isNaN(Number(lat)) && !isNaN(Number(lng))) {
-          setOfficePos({
-            lat: Number(lat),
-            lng: Number(lng),
-            label: data.structure?.office_label ?? 'Office',
-          });
-        }
-      })
-      .catch(() => { /* non-critical */ });
+    let active = true;
+    let firstResponse = false;
+    const finishFirstResponse = () => {
+      if (!active || firstResponse) return;
+      firstResponse = true;
+      setFetchingPositions(false);
+    };
+    const timer = setTimeout(finishFirstResponse, 8_000);
+
+    void fetchSessions(false).finally(finishFirstResponse);
+    void fetchLastKnown().finally(finishFirstResponse);
+    void fetchOfficePosition().finally(finishFirstResponse);
+    const refreshTimer = window.setInterval(() => {
+      if (document.visibilityState === 'visible') void fetchSessions(true);
+    }, 5_000);
+
+    return () => {
+      active = false;
+      clearTimeout(timer);
+      window.clearInterval(refreshTimer);
+    };
+  }, [fetchLastKnown, fetchOfficePosition, fetchSessions]);
+
+  // Google can append its own full-container error panel. It is never useful
+  // in the iPhone OSM path and must not replace our controlled web fallback.
+  useEffect(() => {
+    const hideGoogleError = () => {
+      document.querySelectorAll<HTMLElement>('.gm-err-container')
+        .forEach(element => { element.style.display = 'none'; });
+    };
+    hideGoogleError();
+    const observer = new MutationObserver(hideGoogleError);
+    observer.observe(document.documentElement, { childList: true, subtree: true });
+    return () => observer.disconnect();
   }, []);
 
   // ── Init Google Map ─────────────────────────────────────────────────────────
   // Re-runs when mapRetryKey increments (user tapped Retry after a failure).
   useEffect(() => {
+    if (nativePlatform) {
+      // The native shell always uses bundled Leaflet + OSM. Do not request a
+      // Google key, inject maps.googleapis.com, or wait for Google's timeout.
+      setMapEngine('osm');
+      setMapError(null);
+      setMapReady(true);
+      return;
+    }
     if (!mapRef.current || gMapRef.current) return;
     let disposed = false;
 
@@ -682,7 +745,7 @@ export default function FleetLiveMap() {
     };
   // mapRetryKey intentionally included — incrementing it re-runs this effect
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [mapRetryKey]);
+  }, [mapRetryKey, nativePlatform]);
 
   // ── Update LIVE markers ─────────────────────────────────────────────────────
   useEffect(() => {
@@ -731,8 +794,8 @@ export default function FleetLiveMap() {
       const existing = liveMarkersRef.current.get(session.session_id);
       if (existing) {
         // Only update position + icon when the data actually changed.
-        // This avoids 100 SVG encodes + DOM mutations every 15s when drivers
-        // are stationary or moving slowly.
+        // This avoids unnecessary SVG encodes and DOM mutations when a manual
+        // refresh returns an unchanged driver position.
         if (!unchanged) {
           existing.setPosition({ lat, lng });
           existing.setIcon({
@@ -870,7 +933,7 @@ export default function FleetLiveMap() {
   // ── Pan to selected live driver — only on explicit user click ──────────────
   // We track user-initiated selections in userSelectedIdRef. The pan effect
   // only fires when selectedLiveId matches that ref, preventing the map from
-  // re-panning on every 15s data refresh when a driver is already selected.
+  // re-panning when a manual refresh returns an already-selected driver.
   useEffect(() => {
     if (!selectedLiveId || !gMapRef.current) return;
     // Only pan if this selection was triggered by a user click (not a data refresh)
@@ -888,41 +951,6 @@ export default function FleetLiveMap() {
       openInfoWinIdRef.current = selectedLiveId;
     }
   }, [selectedLiveId, sessions]);
-
-  // ── Initial load + auto-refresh every 15s ──────────────────────────────────
-  // Pauses polling when the browser tab is hidden (Page Visibility API) to
-  // avoid wasting server resources when nobody is watching the map.
-  useEffect(() => {
-    void fetchSessions();
-
-    let interval: ReturnType<typeof setInterval> | null = null;
-
-    function startInterval() {
-      if (interval) return;
-      interval = setInterval(() => void fetchSessions(true), 15_000);
-    }
-    function stopInterval() {
-      if (interval) { clearInterval(interval); interval = null; }
-    }
-
-    function onVisibilityChange() {
-      if (document.hidden) {
-        stopInterval();
-      } else {
-        // Immediately refresh when the tab becomes visible again, then restart
-        void fetchSessions(true);
-        startInterval();
-      }
-    }
-
-    startInterval();
-    document.addEventListener('visibilitychange', onVisibilityChange);
-
-    return () => {
-      stopInterval();
-      document.removeEventListener('visibilitychange', onVisibilityChange);
-    };
-  }, [fetchSessions]);
 
   // ── Zoom / fit controls ─────────────────────────────────────────────────────
   function handleZoomIn()  {
@@ -985,7 +1013,7 @@ export default function FleetLiveMap() {
             <p className="text-sm font-bold text-slate-800">Fleet Map</p>
             <p className="text-[11px] text-slate-400 hidden sm:block">
               {mapMode === 'live'
-                ? `${sessions.length} active driver${sessions.length !== 1 ? 's' : ''} · refreshes every 15s`
+                ? `${sessions.length} active driver${sessions.length !== 1 ? 's' : ''} · live every 5s`
                 : mapMode === 'last-known'
                   ? `${lastKnown.length} vehicle${lastKnown.length !== 1 ? 's' : ''} · last known positions`
                   : mapMode === 'office'
@@ -998,7 +1026,7 @@ export default function FleetLiveMap() {
         <div className="flex-1" />
 
         {/* Mode badge */}
-        {mapMode === 'live' && (
+        {!nativePlatform && mapMode === 'live' && (
           <div className="flex items-center gap-1.5 flex-wrap">
             {sessions.length > MAX_MAP_MARKERS ? (
               <span className="flex items-center gap-1 px-2 py-1 bg-amber-50 border border-amber-200 rounded-full text-[11px] font-semibold text-amber-700">
@@ -1043,7 +1071,7 @@ export default function FleetLiveMap() {
         )}
 
         <button
-          onClick={() => void fetchSessions()}
+          onClick={() => void fetchSessions(false)}
           disabled={loading}
           title="Refresh now"
           className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-xs font-semibold text-slate-600 transition-colors disabled:opacity-50"
@@ -1181,8 +1209,17 @@ export default function FleetLiveMap() {
             />
           )}
 
+          {fetchingPositions && (
+            <div className="absolute top-3 left-3 right-14 z-30 pointer-events-none">
+              <div className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white/95 px-3 py-2 shadow-sm text-[11px] font-semibold text-slate-600">
+                <Loader2 size={13} className="animate-spin text-violet-500" />
+                Fetching positions…
+              </div>
+            </div>
+          )}
+
           {/* Google Maps blocked — map still works on OpenStreetMap */}
-          {mapEngine === 'osm' && mapError && (
+          {!nativePlatform && mapEngine === 'osm' && mapError && (
             <div className="absolute top-3 left-3 right-14 z-20">
               <div className="bg-white/95 border border-amber-200 rounded-xl px-3 py-2 shadow-sm text-left">
                 <p className="text-[11px] font-semibold text-amber-800">Using OpenStreetMap</p>
@@ -1278,7 +1315,7 @@ export default function FleetLiveMap() {
           )}
 
           {/* ── Live mode: GPS status overlay (all drivers have no GPS) ── */}
-          {!loading && mapMode === 'live' && withGps.length === 0 && sessions.length > 0 && (
+          {!nativePlatform && !loading && mapMode === 'live' && withGps.length === 0 && sessions.length > 0 && (
             <div className={`absolute left-3 right-14 pointer-events-none z-20 ${mapEngine === 'osm' && mapError ? 'top-28' : 'top-3'}`}>
               <div className="bg-white/95 backdrop-blur-sm border rounded-xl px-3 py-2 shadow-sm text-left"
                 style={{ borderColor: noGpsSummary === 'denied' ? '#fca5a5' : '#fcd34d' }}>
