@@ -11,6 +11,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { Helmet } from '@dr.pogodin/react-helmet';
 import { ArrowLeft, FileText, Loader2, Plus, CheckCircle2, Clock, Eye, EyeOff, ChevronRight, AlertCircle } from 'lucide-react';
 import JobFeatureShell from '@/components/job/JobFeatureShell';
+import { cacheJobForms, readCachedJobForms } from '@/lib/offlineFormStore';
 interface Job {
   id: number;
   name: string;
@@ -58,6 +59,11 @@ export default function JobFormsPage() {
       setLoading(false);
       return;
     }
+    const cached = readCachedJobForms<{ templates: FormTemplate[]; submissions: FormSubmission[] }>(Number(id));
+    if (cached) {
+      setTemplates(cached.templates ?? []);
+      setSubmissions(cached.submissions ?? []);
+    }
     Promise.all([fetch(`/api/jobs/${id}`, {
       credentials: 'include'
     }).then(r => r.json() as Promise<{
@@ -73,6 +79,7 @@ export default function JobFormsPage() {
     }>).then(data => {
       setTemplates(data.templates ?? []);
       setSubmissions(data.submissions ?? []);
+      cacheJobForms(Number(id), data);
     })]).catch(() => {}).finally(() => setLoading(false));
   };
   useEffect(load, [id]);

@@ -20,6 +20,18 @@ import {
 } from './SignaturePad';
 import { ReadOnlyAnswer, FieldInput } from './FormFieldRenderers';
 import { useDocumentActionsRegistration } from '@/lib/document-actions-context';
+import { readOfflineQueue, useOfflineQueue } from '@/lib/useOfflineQueue';
+import {
+  createOfflineClientId,
+  type FormOfflineAction,
+  syncFormAction,
+} from '@/lib/offlineFieldActions';
+import {
+  cacheFormAnswers,
+  cacheFormFields,
+  readCachedFormAnswers,
+  readCachedFormFields,
+} from '@/lib/offlineFormStore';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -86,6 +98,10 @@ export default function FormRunner({
   const [savedAt, setSavedAt] = useState<Date | null>(null);
   const [errors, setErrors] = useState<Record<number, string>>({});
   const [apiError, setApiError] = useState('');
+  const { queue: formQueue, enqueue: enqueueForm, retryAll: retryFormSync } =
+    useOfflineQueue<FormOfflineAction>('form-submit', syncFormAction);
+  const submissionQueue = formQueue.filter((item) => item.payload.submissionId === submission.id);
+  const formSyncFailed = submissionQueue.some((item) => item.status === 'failed');
 
   // ── Global Document Actions widget registration ───────────────────────────
   useDocumentActionsRegistration(
@@ -114,23 +130,34 @@ export default function FormRunner({
 
   const load = useCallback(async () => {
     setLoading(true);
+    const cachedFields = readCachedFormFields<FormField>(submission.templateId);
+    const cachedAnswers = readCachedFormAnswers<Answers>(submission.id);
+    const hasQueuedAnswers = readOfflineQueue<FormOfflineAction>('form-submit')
+      .some((item) => item.payload.submissionId === submission.id);
+    if (cachedFields.length > 0) setFields(cachedFields);
+    if (cachedAnswers) setAnswers(cachedAnswers);
     try {
       const res = await fetch(`/api/forms/${submission.templateId}/fields`, { credentials: 'include' });
       const data = await res.json() as { fields?: FormField[]; error?: string };
       if (!res.ok) throw new Error(data.error ?? 'Failed to load fields');
-      setFields(data.fields ?? []);
+      const loadedFields = data.fields ?? [];
+      setFields(loadedFields);
+      cacheFormFields(submission.templateId, loadedFields);
 
-      if (submission.answersJson) {
+      if (submission.answersJson && !hasQueuedAnswers) {
         try {
-          setAnswers(JSON.parse(submission.answersJson) as Answers);
+          const loadedAnswers = JSON.parse(submission.answersJson) as Answers;
+          setAnswers(loadedAnswers);
+          cacheFormAnswers(submission.id, loadedAnswers);
         } catch { /* ignore */ }
       }
     } catch (e) {
-      setApiError(e instanceof Error ? e.message : 'Failed to load');
+      if (cachedFields.length === 0) setApiError(e instanceof Error ? e.message : 'Failed to load');
+      else setApiError('Offline — using the form saved on this device');
     } finally {
       setLoading(false);
     }
-  }, [submission.templateId, submission.answersJson]);
+  }, [submission.id, submission.templateId, submission.answersJson]);
 
   useEffect(() => { void load(); }, [load]);
 
@@ -171,7 +198,15 @@ export default function FormRunner({
   }).length;
 
   function setAnswer(fieldId: number, value: AnswerValue) {
-    setAnswers((prev) => ({ ...prev, [fieldId]: value }));
+    setAnswers((prev) => {
+      const next = { ...prev, [fieldId]: value };
+      try {
+        cacheFormAnswers(submission.id, next);
+      } catch {
+        setApiError('Device storage is full. Connect and sync before adding more form data.');
+      }
+      return next;
+    });
     setErrors((prev) => { const n = { ...prev }; delete n[fieldId]; return n; });
     setSavedAt(null);
   }
@@ -180,16 +215,14 @@ export default function FormRunner({
     setSaving(true);
     setApiError('');
     try {
-      const res = await fetch(`/api/job-forms/${submission.id}`, {
-        method: 'PUT',
-        credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ answersJson: JSON.stringify(answers), status: 'in_progress' }),
-      });
-      if (!res.ok) {
-        const d = await res.json() as { error?: string };
-        throw new Error(d.error ?? 'Save failed');
-      }
+      cacheFormAnswers(submission.id, answers);
+      enqueueForm({
+        clientId: createOfflineClientId(),
+        submissionId: submission.id,
+        occurredAt: new Date().toISOString(),
+        answersJson: JSON.stringify(answers),
+        status: 'in_progress',
+      }, { dedupeKey: `form:${submission.id}` });
       const now = new Date();
       setSavedAt(now);
       onSaved?.(now);
@@ -238,16 +271,14 @@ export default function FormRunner({
     setCompleting(true);
     setApiError('');
     try {
-      const res = await fetch(`/api/job-forms/${submission.id}`, {
-        method: 'PUT',
-        credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ answersJson: JSON.stringify(answers), status: 'completed' }),
-      });
-      if (!res.ok) {
-        const d = await res.json() as { error?: string };
-        throw new Error(d.error ?? 'Complete failed');
-      }
+      cacheFormAnswers(submission.id, answers);
+      enqueueForm({
+        clientId: createOfflineClientId(),
+        submissionId: submission.id,
+        occurredAt: new Date().toISOString(),
+        answersJson: JSON.stringify(answers),
+        status: 'completed',
+      }, { dedupeKey: `form:${submission.id}` });
       onComplete();
     } catch (e) {
       setApiError(e instanceof Error ? e.message : 'Complete failed');
@@ -390,6 +421,14 @@ export default function FormRunner({
       {apiError && (
         <div className="flex items-center gap-2 text-xs text-red-700 bg-red-50 border border-red-200 rounded-xl px-3 py-2">
           <AlertCircle size={13} /> {apiError}
+        </div>
+      )}
+
+      {submissionQueue.length > 0 && (
+        <div className={`flex items-center gap-2 text-xs rounded-xl px-3 py-2 border ${formSyncFailed ? 'text-red-700 bg-red-50 border-red-200' : 'text-blue-700 bg-blue-50 border-blue-200'}`}>
+          <AlertCircle size={13} />
+          <span className="flex-1">{formSyncFailed ? 'Sync failed — form remains saved on this device' : navigator.onLine ? 'Syncing saved form…' : 'Saved on this device — will sync online'}</span>
+          {formSyncFailed && <button type="button" className="font-semibold underline" onClick={retryFormSync}>Retry</button>}
         </div>
       )}
 

@@ -23,6 +23,7 @@ import { Loader2, AlertTriangle, ChevronLeft, CheckCircle2, Pencil, Save, XCircl
 import FormRunner from '@/components/job/FormRunner';
 import type { FormSubmission } from '@/components/job/form-types';
 import type { Job } from '@/lib/jobs-api';
+import { cacheFormShell, readCachedFormShell } from '@/lib/offlineFormStore';
 interface LocationState {
   returnTo?: string;
 }
@@ -87,6 +88,7 @@ export default function JobFormRunnerPage() {
           error?: string;
         };
         if (!subData.submission) throw new Error('Form not found');
+        cacheFormShell(submissionId, subData);
         setSubmission(subData.submission);
         setTemplateName(subData.templateName ?? 'Form');
         const completed = subData.submission.status === 'completed' || subData.submission.status === 'submitted';
@@ -104,7 +106,16 @@ export default function JobFormRunnerPage() {
           }
         }
       } catch (e) {
-        setError(e instanceof Error ? e.message : 'Failed to load form');
+        const cached = readCachedFormShell<{ submission: FormSubmission; templateName?: string }>(submissionId);
+        if (cached?.submission) {
+          setSubmission(cached.submission);
+          setTemplateName(cached.templateName ?? 'Form');
+          const completed = cached.submission.status === 'completed' || cached.submission.status === 'submitted';
+          setIsReadOnly(completed);
+          setIsDone(completed);
+        } else {
+          setError(e instanceof Error ? e.message : 'Failed to load form');
+        }
       } finally {
         setLoading(false);
       }
