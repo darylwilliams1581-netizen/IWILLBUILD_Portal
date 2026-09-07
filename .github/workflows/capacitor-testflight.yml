@@ -1,0 +1,53 @@
+name: Capacitor TestFlight Restore
+
+on:
+  workflow_dispatch:
+
+concurrency:
+  group: capacitor-testflight-restore
+  cancel-in-progress: false
+
+jobs:
+  beta:
+    runs-on: macos-26
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build web assets and sync iOS
+        run: npm run build:cap
+
+      - uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: latest-stable
+
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: "3.3"
+          bundler-cache: true
+
+      - name: Build and upload completed portal
+        env:
+          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+          ASC_KEY_CONTENT: ${{ secrets.ASC_KEY_CONTENT }}
+          MATCH_PASSWORD: ${{ secrets.MATCH_PASSWORD }}
+          MATCH_GIT_URL: https://github.com/${{ github.repository }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          MATCH_KEYCHAIN_PASSWORD: ${{ secrets.MATCH_PASSWORD }}
+        run: |
+          if [ -z "$ASC_KEY_ID" ] || [ -z "$ASC_ISSUER_ID" ] || [ -z "$ASC_KEY_CONTENT" ] || [ -z "$MATCH_PASSWORD" ]; then
+            echo "Missing ASC_KEY_ID, ASC_ISSUER_ID, ASC_KEY_CONTENT, or MATCH_PASSWORD."
+            exit 1
+          fi
+          bundle exec fastlane ios capacitor_beta
+
