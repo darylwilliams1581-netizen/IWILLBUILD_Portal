@@ -14,6 +14,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
 import { Search, X, ChevronRight, Loader2, HardHat } from 'lucide-react';
+import { fetchActiveJobs } from '@/lib/jobs-api';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -70,11 +71,7 @@ export default function JobPickerSheet({
   async function fetchJobs(q: string) {
     setLoading(true);
     try {
-      const params = new URLSearchParams({ status: 'active', limit: '60' });
-      if (q) params.set('q', q);
-      const res = await fetch(`/api/jobs/search?${params}`, { credentials: 'include' });
-      const data = await res.json() as { jobs?: JobOption[] };
-      setJobs(data.jobs ?? []);
+      setJobs(await fetchActiveJobs(q, 60));
     } catch {
       setJobs([]);
     } finally {

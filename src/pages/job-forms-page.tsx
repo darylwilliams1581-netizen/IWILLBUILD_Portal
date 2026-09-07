@@ -12,6 +12,7 @@ import { Helmet } from '@dr.pogodin/react-helmet';
 import { ArrowLeft, FileText, Loader2, Plus, CheckCircle2, Clock, Eye, EyeOff, ChevronRight, AlertCircle } from 'lucide-react';
 import JobFeatureShell from '@/components/job/JobFeatureShell';
 import { cacheJobForms, readCachedJobForms } from '@/lib/offlineFormStore';
+import { fetchJob } from '@/lib/jobs-api';
 interface Job {
   id: number;
   name: string;
@@ -64,14 +65,7 @@ export default function JobFormsPage() {
       setTemplates(cached.templates ?? []);
       setSubmissions(cached.submissions ?? []);
     }
-    Promise.all([fetch(`/api/jobs/${id}`, {
-      credentials: 'include'
-    }).then(r => r.json() as Promise<{
-      job?: Job;
-    } | Job>).then(data => {
-      const j = data && typeof data === 'object' && 'job' in data ? data.job : data as Job;
-      setJob(j ?? null);
-    }), fetch(`/api/jobs/${id}/forms`, {
+    Promise.all([fetchJob(Number(id)).then(job => setJob(job)), fetch(`/api/jobs/${id}/forms`, {
       credentials: 'include'
     }).then(r => r.json() as Promise<{
       templates: FormTemplate[];

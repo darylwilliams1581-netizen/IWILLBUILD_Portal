@@ -1,5 +1,15 @@
 // Shared types and API helpers for Jobs
 
+import {
+  cacheActiveJobs,
+  cacheJob,
+  cacheJobs,
+  type CachedJobSummary,
+  readCachedActiveJobs,
+  readCachedJob,
+  readCachedJobs,
+} from './offlineJobCache';
+
 export const JOB_STATUSES = [
   'New',
   'Quoting',
@@ -89,17 +99,52 @@ function normaliseJob(job: Job): Job {
 // ── API helpers ───────────────────────────────────────────────────────────────
 
 export async function fetchJobs(): Promise<Job[]> {
-  const res = await fetch('/api/jobs', { credentials: 'include' });
-  if (!res.ok) throw new Error('Failed to fetch jobs');
-  const data = await res.json() as { jobs: Job[] };
-  return (data.jobs ?? []).map(normaliseJob);
+  try {
+    const res = await fetch('/api/jobs', { credentials: 'include' });
+    if (!res.ok) throw new Error('Failed to fetch jobs');
+    const data = await res.json() as { jobs: Job[] };
+    const jobs = (data.jobs ?? []).map(normaliseJob);
+    await cacheJobs(jobs).catch(() => undefined);
+    return jobs;
+  } catch (error) {
+    const cached = await readCachedJobs().catch(() => []);
+    if (cached.length > 0) return cached;
+    throw error;
+  }
 }
 
 export async function fetchJob(id: number): Promise<Job> {
-  const res = await fetch(`/api/jobs/${id}`, { credentials: 'include' });
-  if (!res.ok) throw new Error('Failed to fetch job');
-  const data = await res.json() as { job: Job };
-  return normaliseJob(data.job);
+  try {
+    const res = await fetch(`/api/jobs/${id}`, { credentials: 'include' });
+    if (!res.ok) throw new Error('Failed to fetch job');
+    const data = await res.json() as { job: Job };
+    const job = normaliseJob(data.job);
+    await cacheJob(job).catch(() => undefined);
+    return job;
+  } catch (error) {
+    const cached = await readCachedJob(id).catch(() => null);
+    if (cached) return cached;
+    throw error;
+  }
+}
+
+export async function fetchActiveJobs(query = '', limit = 100): Promise<CachedJobSummary[]> {
+  try {
+    const params = new URLSearchParams({ status: 'active', limit: String(limit) });
+    if (query.trim()) params.set('q', query.trim());
+    const res = await fetch(`/api/jobs/search?${params}`, { credentials: 'include' });
+    if (!res.ok) throw new Error('Failed to fetch active jobs');
+    const data = await res.json() as { jobs?: CachedJobSummary[] } | CachedJobSummary[];
+    const jobs = Array.isArray(data) ? data : (data.jobs ?? []);
+    if (!query.trim()) await cacheActiveJobs(jobs).catch(() => undefined);
+    return jobs;
+  } catch {
+    const jobs = await readCachedActiveJobs().catch(() => []);
+    const q = query.trim().toLowerCase();
+    return q
+      ? jobs.filter((job) => job.name.toLowerCase().includes(q) || (job.jobNumber ?? '').toLowerCase().includes(q))
+      : jobs;
+  }
 }
 
 export async function createJob(payload: {
@@ -122,7 +167,9 @@ export async function createJob(payload: {
     throw new Error(err.error ?? 'Failed to create job');
   }
   const data = await res.json() as { job: Job };
-  return data.job;
+  const job = normaliseJob(data.job);
+  await cacheJob(job).catch(() => undefined);
+  return job;
 }
 
 export async function updateJob(id: number, payload: Partial<{
@@ -154,5 +201,7 @@ export async function updateJob(id: number, payload: Partial<{
     throw new Error(err.error ?? 'Failed to update job');
   }
   const data = await res.json() as { job: Job };
-  return normaliseJob(data.job);
+  const job = normaliseJob(data.job);
+  await cacheJob(job).catch(() => undefined);
+  return job;
 }

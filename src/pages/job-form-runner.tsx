@@ -22,7 +22,7 @@ import { Helmet } from '@dr.pogodin/react-helmet';
 import { Loader2, AlertTriangle, ChevronLeft, CheckCircle2, Pencil, Save, XCircle } from 'lucide-react';
 import FormRunner from '@/components/job/FormRunner';
 import type { FormSubmission } from '@/components/job/form-types';
-import type { Job } from '@/lib/jobs-api';
+import { fetchJob, type Job } from '@/lib/jobs-api';
 import { cacheFormShell, readCachedFormShell } from '@/lib/offlineFormStore';
 interface LocationState {
   returnTo?: string;
@@ -95,15 +95,7 @@ export default function JobFormRunnerPage() {
         setIsReadOnly(completed);
         setIsDone(completed);
         if (jobId && jobId > 0) {
-          const jobRes = await fetch(`/api/jobs/${jobId}`, {
-            credentials: 'include'
-          });
-          if (jobRes.ok) {
-            const jobData = (await jobRes.json()) as {
-              job?: Job;
-            };
-            setJob(jobData.job ?? null);
-          }
+          setJob(await fetchJob(jobId));
         }
       } catch (e) {
         const cached = readCachedFormShell<{ submission: FormSubmission; templateName?: string }>(submissionId);

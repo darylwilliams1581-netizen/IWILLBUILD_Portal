@@ -25,6 +25,7 @@ import { useIosMediaPicker } from '@/hooks/useIosMediaPicker';
 import { IosMediaInputs } from '@/components/IosMediaInputs';
 import PermissionExplainerModal from '@/components/PermissionExplainerModal';
 import { IosPermissionBanner } from '@/components/IosMediaInputs';
+import { fetchActiveJobs } from '@/lib/jobs-api';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -70,18 +71,7 @@ function JobSearchList({
   async function fetchJobs(q: string) {
     setLoading(true);
     try {
-      const params = new URLSearchParams({
-        status: 'active',
-        limit: '40'
-      });
-      if (q) params.set('q', q);
-      const res = await fetch(`/api/jobs/search?${params}`, {
-        credentials: 'include'
-      });
-      const data = (await res.json()) as {
-        jobs?: JobOption[];
-      };
-      setJobs(data.jobs ?? []);
+      setJobs(await fetchActiveJobs(q, 40));
     } catch {
       setJobs([]);
     } finally {

@@ -19,6 +19,7 @@ import { useState, useRef, useCallback, useEffect } from 'react';
 import { Link } from "react-router";
 import { motion, AnimatePresence } from 'motion/react';
 import { Camera, Search, ChevronDown, X, Upload, CheckCircle2, AlertCircle, Loader2, ImagePlus, ExternalLink, RotateCcw } from 'lucide-react';
+import { fetchActiveJobs } from '@/lib/jobs-api';
 function randomUUID(): string {
   return crypto.randomUUID();
 }
@@ -99,18 +100,7 @@ function JobSelector({
   async function fetchJobs(q: string) {
     setLoading(true);
     try {
-      const params = new URLSearchParams({
-        status: 'active',
-        limit: '30'
-      });
-      if (q) params.set('q', q);
-      const res = await fetch(`/api/jobs/search?${params}`, {
-        credentials: 'include'
-      });
-      const data = (await res.json()) as {
-        jobs?: JobOption[];
-      };
-      setJobs(data.jobs ?? []);
+      setJobs(await fetchActiveJobs(q, 30));
     } catch {
       setJobs([]);
     } finally {

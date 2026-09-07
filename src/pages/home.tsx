@@ -20,6 +20,7 @@ import StartDrivingModal from '@/components/fleet/StartDrivingModal';
 import NotificationList from '@/components/NotificationList';
 import MyTasksPanel from '@/components/notes/MyTasksPanel';
 import PagedHomeScreen from '@/components/home/PagedHomeScreen';
+import { fetchActiveJobs } from '@/lib/jobs-api';
 
 import AppPermissionsOnboarding, { hasCompletedOnboarding } from '@/components/AppPermissionsOnboarding';
 import TermsAcceptanceGate, { hasAcceptedTerms } from '@/components/TermsAcceptanceGate';
@@ -128,13 +129,7 @@ function NotesJobPickerSheet({
       return;
     }
     setLoading(true);
-    fetch('/api/jobs/search?status=active&limit=100', {
-      credentials: 'include'
-    }).then(r => r.json()).then((data: {
-      jobs?: JobOption[];
-    } | JobOption[]) => {
-      setJobs(Array.isArray(data) ? data : data.jobs ?? []);
-    }).catch(() => setJobs([])).finally(() => setLoading(false));
+    fetchActiveJobs('', 100).then(setJobs).catch(() => setJobs([])).finally(() => setLoading(false));
   }, [open]);
   const filtered = query.trim() ? jobs.filter(j => j.name.toLowerCase().includes(query.toLowerCase()) || (j.jobNumber ?? '').toLowerCase().includes(query.toLowerCase())) : jobs;
   function handleSelect(job: JobOption) {
@@ -275,14 +270,7 @@ function LogCostSheet({
   useEffect(() => {
     if (!open) return;
     setJobsLoading(true);
-    fetch('/api/jobs/search?status=active&limit=100', {
-      credentials: 'include'
-    }).then(r => r.json()).then((data: {
-      jobs?: JobOption[];
-    } | JobOption[]) => {
-      const list = Array.isArray(data) ? data : data.jobs ?? [];
-      setJobs(list);
-    }).catch(() => setJobs([])).finally(() => setJobsLoading(false));
+    fetchActiveJobs('', 100).then(setJobs).catch(() => setJobs([])).finally(() => setJobsLoading(false));
   }, [open]);
 
   // Reset on close — also revoke any blob URL
@@ -1294,14 +1282,7 @@ function SignInOutSheet({
   useEffect(() => {
     if (!open) return;
     setJobsLoading(true);
-    fetch('/api/jobs/search?status=active&limit=100', {
-      credentials: 'include'
-    }).then(r => r.json()).then((data: {
-      jobs?: JobOption[];
-    } | JobOption[]) => {
-      const list = Array.isArray(data) ? data : data.jobs ?? [];
-      setJobs(list);
-    }).catch(() => setJobs([])).finally(() => setJobsLoading(false));
+    fetchActiveJobs('', 100).then(setJobs).catch(() => setJobs([])).finally(() => setJobsLoading(false));
   }, [open]);
 
   // Reset on close
@@ -1659,14 +1640,7 @@ function CostsJobPickerSheet({
   useEffect(() => {
     if (!open) return;
     setLoading(true);
-    fetch('/api/jobs/search?status=active&limit=100', {
-      credentials: 'include'
-    }).then(r => r.json()).then((data: {
-      jobs?: JobOption[];
-    } | JobOption[]) => {
-      const list = Array.isArray(data) ? data : data.jobs ?? [];
-      setJobs(list);
-    }).catch(() => setJobs([])).finally(() => setLoading(false));
+    fetchActiveJobs('', 100).then(setJobs).catch(() => setJobs([])).finally(() => setLoading(false));
   }, [open]);
   function handleSelect(job: JobOption) {
     onClose();

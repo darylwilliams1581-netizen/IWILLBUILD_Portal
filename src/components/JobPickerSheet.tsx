@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Loader2, X, ChevronRight, Search } from 'lucide-react';
+import { fetchActiveJobs } from '@/lib/jobs-api';
 
 interface JobOption {
   id: number;
@@ -34,11 +35,8 @@ export default function JobPickerSheet({
   useEffect(() => {
     if (!open) { setQuery(''); return; }
     setLoading(true);
-    fetch('/api/jobs/search?status=active&limit=100', { credentials: 'include' })
-      .then(r => r.json())
-      .then((data: { jobs?: JobOption[] } | JobOption[]) => {
-        setJobs(Array.isArray(data) ? data : (data.jobs ?? []));
-      })
+    fetchActiveJobs('', 100)
+      .then(setJobs)
       .catch(() => setJobs([]))
       .finally(() => setLoading(false));
   }, [open]);
