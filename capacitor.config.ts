@@ -40,8 +40,8 @@ import type { CapacitorConfig } from '@capacitor/cli';
 
 // ── SINGLE SOURCE OF TRUTH FOR BUILD NUMBER ───────────────────────────────────
 // Increment this before every App Store / TestFlight upload.
-// Current: 35 (Version 13 offline queue launch hotfix)
-const IOS_BUILD_NUMBER = 35;
+// Current: 36 (Version 13 native Lens hotfix)
+const IOS_BUILD_NUMBER = 36;
 
 const config: CapacitorConfig = {
   // Reverse-domain app identifier — must match your Apple/Google developer account

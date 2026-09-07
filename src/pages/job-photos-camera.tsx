@@ -3,20 +3,12 @@
  * ─────────────────────────────────────────────────────────────────────────────
  * Isolated full-screen camera viewport with watermark compositing.
  *
- * SCOPE — this file only. No changes to:
- *   useIosMediaPicker, usePhotoUploadQueue, imageCompressor, offlinePhotoStore,
- *   JobPhotos.tsx, job-photos-page.tsx (beyond the additive buttons already
- *   added), routes.tsx (beyond the additive route), any DB schema, any API
- *   endpoint, any markup editor, any native config.
- *
- * PERSISTENT PREVIEW — getUserMedia() approach:
- *   Capacitor 8.4.1 WebViewDelegationHandler.swift line 56:
- *     decisionHandler(.grant)   ← auto-grants WKMediaCaptureType requests
- *   CAPBridgeViewController.swift line 122:
- *     allowsInlineMediaPlayback = true
- *   capacitor.config.ts: NSCameraUsageDescription present, server.url is HTTPS
- *   → getUserMedia works in this WKWebView without any native changes.
- *   → Stream stays open between shots; five rapid captures work in locked mode.
+ * NATIVE PREVIEW:
+ *   @capacitor-community/camera-preview owns the AVCaptureSession and renders
+ *   its preview layer behind the transparent lens area. The React chrome stays
+ *   interactive above it. No getUserMedia call is made in this page.
+ *   If native preview cannot start within four seconds, the same shutter uses
+ *   capturePhotoLocally() once so a site photo can still be saved offline.
  *
  * LABEL MODES:
  *   Locked  — label entered once, reused for every shot without prompting.
@@ -34,11 +26,10 @@
  *   Canvas uses the video's natural pixel dimensions, not CSS display size.
  *   JPEG quality 0.88 — matches existing normaliseToJpeg() quality.
  *
- * COMPOSITION FAILURE / HEIC:
- *   getUserMedia delivers raw YUV frames — never HEIC. HEIC is only possible
- *   via the original Camera.getPhoto() path (Take Photo button, unchanged).
- *   If canvas creation or toBlob fails, an error panel is shown with three
- *   options: Retry | Cancel | Use original camera (navigates back to photos).
+ * COMPOSITION FAILURE:
+ *   Native JPEG data is converted to an ImageBitmap, then passed through the
+ *   existing JavaScript compositor so the stamp matches every other photo.
+ *   If canvas creation or toBlob fails, an error panel is shown.
  *   Nothing is uploaded on failure.
  *
  * RULES (from pre-implementation inspection):
@@ -53,10 +44,16 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { useParams, useNavigate, useLocation } from "react-router";
 import { Helmet } from '@dr.pogodin/react-helmet';
+import { CameraPreview } from '@capacitor-community/camera-preview';
 import { ArrowLeft, Settings, X, Check, Loader2, Lock, Unlock, AlertTriangle, Pencil, Zap, ZapOff, FlipHorizontal2 } from 'lucide-react';
 import { usePhotoUploadQueue } from '@/hooks/usePhotoUploadQueue';
 import { useWatermarkSettings } from '@/hooks/useWatermarkSettings';
-import { getCameraPlugin } from '@/lib/capacitor-plugins';
+import { isNative } from '@/lib/capacitor-plugins';
+import {
+  capturePhotoLocally,
+  deleteLocalPhoto,
+  readLocalPhoto,
+} from '@/lib/capturePhotoLocally';
 import { goBack } from '@/lib/navigation';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -69,69 +66,65 @@ interface Job {
   jobNumber?: string | null;
 }
 
-class CameraStartTimeoutError extends Error {
-  constructor(message: string) {
-    super(message);
-    this.name = 'CameraStartTimeoutError';
-  }
+function withTimeout<T>(promise: Promise<T>, timeoutMs: number, message: string): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const timer = window.setTimeout(() => reject(new Error(message)), timeoutMs);
+    promise.then(
+      value => {
+        window.clearTimeout(timer);
+        resolve(value);
+      },
+      error => {
+        window.clearTimeout(timer);
+        reject(error);
+      },
+    );
+  });
 }
 
-type CameraMediaDevices = {
-  getUserMedia?: (constraints?: MediaStreamConstraints) => Promise<MediaStream>;
-};
-
-/**
- * WebKit does not accept an AbortSignal in getUserMedia constraints, so race
- * each startup step against one controller and dispose of a stream that arrives
- * after the attempt has timed out or been replaced by Retry.
- */
-function waitForCameraStep<T>(
-  promise: Promise<T>,
-  timeoutMs: number,
-  controller: AbortController,
-  timeoutMessage: string,
-  onLateResolve?: (value: T) => void
-): Promise<T> {
-  return new Promise<T>((resolve, reject) => {
-    let settled = false;
-    let timer = 0;
-    const cleanup = () => {
-      window.clearTimeout(timer);
-      controller.signal.removeEventListener('abort', handleAbort);
-    };
-    const handleAbort = () => {
-      if (settled) return;
-      settled = true;
-      cleanup();
-      reject(controller.signal.reason instanceof Error
-        ? controller.signal.reason
-        : new DOMException('Camera startup was cancelled.', 'AbortError'));
-    };
-    timer = window.setTimeout(() => {
-      controller.abort(new CameraStartTimeoutError(timeoutMessage));
-    }, timeoutMs);
-
-    controller.signal.addEventListener('abort', handleAbort, { once: true });
-    if (controller.signal.aborted) {
-      handleAbort();
-      return;
+function base64JpegToFile(value: string, fileName: string): File {
+  const base64 = value.includes(',') ? value.slice(value.indexOf(',') + 1) : value;
+  if (!base64) throw new Error('Native camera returned an empty photo.');
+  const decoded = window.atob(base64);
+  const chunks: ArrayBuffer[] = [];
+  const chunkSize = 32_768;
+  for (let offset = 0; offset < decoded.length; offset += chunkSize) {
+    const slice = decoded.slice(offset, offset + chunkSize);
+    const buffer = new ArrayBuffer(slice.length);
+    const bytes = new Uint8Array(buffer);
+    for (let index = 0; index < slice.length; index += 1) {
+      bytes[index] = slice.charCodeAt(index);
     }
+    chunks.push(buffer);
+  }
+  return new File(chunks, fileName, { type: 'image/jpeg', lastModified: Date.now() });
+}
 
-    promise.then(value => {
-      if (settled) {
-        onLateResolve?.(value);
-        return;
-      }
-      settled = true;
-      cleanup();
-      resolve(value);
-    }, error => {
-      if (settled) return;
-      settled = true;
-      cleanup();
-      reject(error);
-    });
-  });
+/** Temporarily reveal the native preview behind WKWebView for this route only. */
+function makeCameraAncestorsTransparent(start: HTMLElement): () => void {
+  const elements: HTMLElement[] = [];
+  let current: HTMLElement | null = start;
+  while (current) {
+    elements.push(current);
+    current = current.parentElement;
+  }
+  if (!elements.includes(document.documentElement)) elements.push(document.documentElement);
+
+  const snapshots = elements.map(element => ({
+    element,
+    value: element.style.getPropertyValue('background-color'),
+    priority: element.style.getPropertyPriority('background-color'),
+  }));
+  for (const { element } of snapshots) {
+    element.style.setProperty('background-color', 'transparent', 'important');
+  }
+
+  return () => {
+    for (const { element, value, priority } of snapshots) {
+      if (value) element.style.setProperty('background-color', value, priority);
+      else element.style.removeProperty('background-color');
+    }
+  };
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -396,7 +389,6 @@ export default function JobPhotosCameraPage() {
   const jobNameOverride = locationState?.jobName;
   const jobId = Number(id);
   const cameraFallback = backPath ?? (Number.isFinite(jobId) && jobId > 0 ? `/jobs/${jobId}/photos` : '/home');
-  const handleBack = useCallback(() => goBack(navigate, cameraFallback), [navigate, cameraFallback]);
 
   // ── Job metadata ────────────────────────────────────────────────────────────
   const [job, setJob] = useState<Job | null>(null);
@@ -439,6 +431,7 @@ export default function JobPhotosCameraPage() {
   const [pendingBitmap, setPendingBitmap] = useState<ImageBitmap | null>(null);
   const [pendingFileName, setPendingFileName] = useState('');
   const [pendingLabel, setPendingLabel] = useState('');
+  const [pendingLocalPath, setPendingLocalPath] = useState<string | null>(null);
   const pendingLabelRef = useRef<HTMLTextAreaElement>(null);
 
   // ── Upload queue ────────────────────────────────────────────────────────────
@@ -450,15 +443,17 @@ export default function JobPhotosCameraPage() {
     jobId,
     uploadEndpoint: uploadEndpointOverride
   });
-  const videoRef = useRef<HTMLVideoElement>(null);
+  const cameraRootRef = useRef<HTMLDivElement>(null);
   const lensRef = useRef<HTMLDivElement>(null);
-  const streamRef = useRef<MediaStream | null>(null);
-  const startControllerRef = useRef<AbortController | null>(null);
-  type CamState = 'loading' | 'ready' | 'error' | 'unavailable';
-  const [camState, setCamState] = useState<CamState>('loading');
+  const previewStartedRef = useRef(false);
+  const previewStartRef = useRef<Promise<void> | null>(null);
+  const previewGenerationRef = useRef(0);
+  type CamState = 'starting' | 'ready' | 'unavailable';
+  const [camState, setCamState] = useState<CamState>('starting');
   const [camErrMsg, setCamErrMsg] = useState('');
   const [capturing, setCapturing] = useState(false);
   const [flashAnim, setFlashAnim] = useState(false);
+  const [composeError, setComposeError] = useState(false);
 
   // ── Last captured thumbnail (gallery button preview) ────────────────────────
   const [lastThumb, setLastThumb] = useState<string | null>(null);
@@ -475,201 +470,164 @@ export default function JobPhotosCameraPage() {
   const facingModeRef = useRef<FacingMode>('environment');
 
   // ── Flash mode ──────────────────────────────────────────────────────────────
-  // 'auto' | 'on' | 'off'  — maps to ImageCapture torch where supported
+  // 'auto' | 'on' | 'off' — passed to the native preview when supported
   type FlashMode = 'auto' | 'on' | 'off';
   const [flashMode, setFlashMode] = useState<FlashMode>('auto');
   const flashModeRef = useRef<FlashMode>('auto');
-  // Whether the device actually supports torch control (detected after stream starts)
+  // Whether the device supports flash control (detected after preview starts)
   const [torchSupported, setTorchSupported] = useState(false);
 
-  /**
-   * Apply the current flash/torch state to the active video track.
-   * Silently no-ops if the track or browser does not support applyConstraints/torch.
-   */
-  const applyFlash = useCallback(async (mode: FlashMode, stream: MediaStream) => {
-    const track = stream.getVideoTracks()[0];
-    if (!track) return;
-    try {
-      // @ts-expect-error — torch is not in the standard TS lib yet
-      const caps = track.getCapabilities?.() as {
-        torch?: boolean;
-      } | undefined;
-      if (!caps?.torch) return;
-      const torch = mode === 'on';
-      // 'auto' is not a valid torch value — treat as off (device handles auto at OS level)
-      // @ts-expect-error
-      await track.applyConstraints({
-        advanced: [{
-          torch
-        }]
-      });
-    } catch {
-      // Torch not supported or permission denied — ignore silently
+  const stopPreview = useCallback(async () => {
+    previewGenerationRef.current += 1;
+    const preview = isNative() ? CameraPreview : null;
+    const pendingStart = previewStartRef.current;
+    previewStartRef.current = null;
+    const wasStarted = previewStartedRef.current;
+    previewStartedRef.current = false;
+    if (!preview) return;
+
+    // If start() is still inside AVFoundation, stop as soon as it resolves.
+    if (pendingStart && !wasStarted) {
+      try {
+        await withTimeout(CameraPreview.stop(), 2_000, 'Camera stop timed out.');
+      } catch {
+        // start() may not have created its session yet; late cleanup below wins.
+      }
+      void pendingStart.then(() => CameraPreview.stop()).catch(() => {});
+      return;
+    }
+    if (wasStarted) {
+      try {
+        await withTimeout(CameraPreview.stop(), 2_000, 'Camera stop timed out.');
+      } catch {
+        // An already-stopped native session needs no further cleanup.
+      }
     }
   }, []);
-  const stopStream = useCallback(() => {
-    startControllerRef.current?.abort();
-    startControllerRef.current = null;
-    streamRef.current?.getTracks().forEach(t => t.stop());
-    streamRef.current = null;
-    if (videoRef.current) videoRef.current.srcObject = null;
-  }, []);
-  const startStream = useCallback(async (facing: FacingMode = facingModeRef.current) => {
-    stopStream();
-    const startController = new AbortController();
-    startControllerRef.current = startController;
-    setCamState('loading');
-    setCamErrMsg('');
 
-    // Final guard: permission, WebKit initialisation, stream acquisition and
-    // playback combined can never leave the UI loading indefinitely.
-    const startupTimer = window.setTimeout(() => {
-      startController.abort(new CameraStartTimeoutError(
-        'Camera startup took too long. Tap Retry to try again.'
-      ));
-    }, 10_000);
+  const startNativePreview = useCallback(async () => {
+    await stopPreview();
+    const generation = previewGenerationRef.current;
+    const preview = isNative() ? CameraPreview : null;
+    const lens = lensRef.current;
+    if (!isNative() || !preview || !lens) {
+      setCamState('unavailable');
+      setCamErrMsg('Native live preview is unavailable. The shutter still opens the iPhone camera.');
+      return;
+    }
+
+    setCamState('starting');
+    setCamErrMsg('');
+    const rect = lens.getBoundingClientRect();
+    const scale = window.devicePixelRatio || 1;
+    const startCall = preview.start({
+      parent: 'iwb-native-lens',
+      // The iOS plugin converts x/y from device pixels but accepts dimensions
+      // in points. These are layout bounds, not capture-resolution requests.
+      x: Math.round(rect.left * scale),
+      y: Math.round(rect.top * scale),
+      width: Math.max(1, Math.round(rect.width)),
+      height: Math.max(1, Math.round(rect.height)),
+      position: 'rear',
+      toBack: true,
+      storeToFile: false,
+      disableAudio: true,
+      rotateWhenOrientationChanged: true,
+    });
+    previewStartRef.current = startCall;
 
     try {
-      // On iOS, ask Capacitor for camera permission before WKWebView starts the
-      // embedded getUserMedia stream. The native prompt can initialise mediaDevices.
-      const camera = getCameraPlugin();
-      if (camera) {
-        const permission = await waitForCameraStep(
-          camera.checkPermissions(),
-          10_000,
-          startController,
-          'Camera permission check took too long. Tap Retry to try again.'
-        );
-        if (permission.camera !== 'granted' && permission.camera !== 'limited') {
-          await waitForCameraStep(
-            camera.requestPermissions({ permissions: ['camera'] }),
-            10_000,
-            startController,
-            'Camera permission request took too long. Tap Retry to try again.'
-          );
-        }
-      }
-
-      // On capacitor://localhost, navigator.mediaDevices may be undefined on the
-      // first tick because WKWebView's secure-context initialisation is async.
-      // Retry for at most one second before showing a recoverable error.
-      let mediaDevices = navigator.mediaDevices as CameraMediaDevices | undefined;
-      if (!mediaDevices?.getUserMedia) {
-        for (let i = 0; i < 20 && !startController.signal.aborted; i++) {
-          await new Promise<void>(r => window.setTimeout(r, 50));
-          mediaDevices = navigator.mediaDevices as CameraMediaDevices | undefined;
-          if (mediaDevices?.getUserMedia) break;
-        }
-      }
-      if (startController.signal.aborted) {
-        throw startController.signal.reason;
-      }
-      if (!mediaDevices?.getUserMedia) {
-        throw new Error('The in-app camera is unavailable. Tap Retry to try again.');
-      }
-
-      const stream = await waitForCameraStep(mediaDevices.getUserMedia({
-        video: {
-          facingMode: {
-            ideal: facing
-          },
-          width: {
-            ideal: 1920
-          },
-          height: {
-            ideal: 1080
-          }
-        },
-        audio: false
-      }), 8_000, startController,
-      'Camera did not start within 8 seconds. Tap Retry to try again.',
-      lateStream => lateStream.getTracks().forEach(track => track.stop()));
-
-      if (startController.signal.aborted) {
-        stream.getTracks().forEach(track => track.stop());
+      await withTimeout(startCall, 4_000, 'Native preview did not start within 4 seconds.');
+      if (previewGenerationRef.current !== generation) {
+        await CameraPreview.stop().catch(() => {});
         return;
       }
-      streamRef.current = stream;
-      const video = videoRef.current;
-      if (!video) throw new Error('Camera preview is not available. Tap Retry to try again.');
-      video.srcObject = stream;
-      await waitForCameraStep(
-        video.play(),
-        3_000,
-        startController,
-        'Camera preview did not start within 3 seconds. Tap Retry to try again.'
+      const status = await withTimeout(
+        preview.isCameraStarted(),
+        750,
+        'Native preview did not report a live session.',
       );
+      if (!status.value) throw new Error('Native preview did not report a live session.');
 
-      // Detect torch support
-      const track = stream.getVideoTracks()[0];
-      // @ts-expect-error
-      const caps = track?.getCapabilities?.() as {
-        torch?: boolean;
-      } | undefined;
-      setTorchSupported(!!caps?.torch);
-
-      // Apply current flash mode to the new stream
-      await waitForCameraStep(
-        applyFlash(flashModeRef.current, stream),
-        1_000,
-        startController,
-        'Camera controls did not finish starting. Tap Retry to try again.'
-      );
+      previewStartRef.current = null;
+      previewStartedRef.current = true;
       setCamState('ready');
-    } catch (err) {
-      // A newer Retry or unmount owns the UI now; the old attempt must stay quiet.
-      if (startControllerRef.current !== startController) return;
-      streamRef.current?.getTracks().forEach(track => track.stop());
-      streamRef.current = null;
-      if (videoRef.current) videoRef.current.srcObject = null;
 
-      const msg = err instanceof Error ? err.message : String(err);
-      if (err instanceof CameraStartTimeoutError) {
-        setCamErrMsg(err.message);
-      } else if (/Permission|NotAllowed|denied/i.test(msg)) {
-        setCamErrMsg('Camera access was denied. Please allow camera access in Settings, then tap Retry.');
-      } else if (/NotFound|DevicesNotFound/i.test(msg)) {
-        setCamErrMsg('No camera found on this device.');
-      } else {
-        setCamErrMsg(msg || 'Could not start the in-app camera. Tap Retry to try again.');
+      try {
+        const { result } = await preview.getSupportedFlashModes();
+        const supported = result.some(mode => mode === 'auto' || mode === 'on' || mode === 'torch');
+        setTorchSupported(supported);
+        if (result.includes('auto')) await preview.setFlashMode({ flashMode: 'auto' });
+      } catch {
+        setTorchSupported(false);
       }
-      setCamState('error');
-    } finally {
-      window.clearTimeout(startupTimer);
-      if (startControllerRef.current === startController) {
-        startControllerRef.current = null;
-      }
+    } catch (error) {
+      if (previewGenerationRef.current !== generation) return;
+      previewStartRef.current = null;
+      previewStartedRef.current = false;
+      const message = error instanceof Error ? error.message : String(error);
+      setCamErrMsg(/permission|denied/i.test(message)
+        ? 'Camera access is off. Allow Camera access in iPhone Settings, then reopen Lens.'
+        : 'Live preview is unavailable. The shutter still opens the iPhone camera.');
+      setCamState('unavailable');
+      // A timed-out start may resolve later. Never leave that session running.
+      void startCall.then(() => CameraPreview.stop()).catch(() => {});
     }
-  }, [stopStream, applyFlash]);
+  }, [stopPreview]);
+
   useEffect(() => {
-    void startStream();
+    if (!isNative()) {
+      setCamState('unavailable');
+      setCamErrMsg('Native live preview is available in the iPhone app.');
+      return;
+    }
+
+    const root = cameraRootRef.current;
+    const restoreBackgrounds = root ? makeCameraAncestorsTransparent(root) : () => {};
+    const frame = window.requestAnimationFrame(() => void startNativePreview());
     return () => {
-      stopStream();
+      window.cancelAnimationFrame(frame);
+      void stopPreview();
+      restoreBackgrounds();
       if (lastThumbRef.current) URL.revokeObjectURL(lastThumbRef.current);
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [startNativePreview, stopPreview]);
+
+  const handleBack = useCallback(async () => {
+    await stopPreview();
+    goBack(navigate, cameraFallback);
+  }, [stopPreview, navigate, cameraFallback]);
 
   // ── Flip camera ─────────────────────────────────────────────────────────────
-  const handleFlip = useCallback(() => {
-    const next: FacingMode = facingModeRef.current === 'environment' ? 'user' : 'environment';
-    facingModeRef.current = next;
-    setFacingMode(next);
-    void startStream(next);
-  }, [startStream]);
+  const handleFlip = useCallback(async () => {
+    if (camState !== 'ready') return;
+    const preview = isNative() ? CameraPreview : null;
+    if (!preview) return;
+    try {
+      await preview.flip();
+      const next: FacingMode = facingModeRef.current === 'environment' ? 'user' : 'environment';
+      facingModeRef.current = next;
+      setFacingMode(next);
+    } catch {
+      setCamErrMsg('Could not switch cameras.');
+    }
+  }, [camState]);
 
-  // ── Cycle flash mode ─────────────────────────────────────────────────────────
+  // ── Cycle flash mode ────────────────────────────────────────────────────────
   const handleFlashCycle = useCallback(async () => {
+    if (camState !== 'ready') return;
+    const preview = isNative() ? CameraPreview : null;
+    if (!preview) return;
     const order: FlashMode[] = ['auto', 'on', 'off'];
     const next = order[(order.indexOf(flashModeRef.current) + 1) % order.length];
-    flashModeRef.current = next;
-    setFlashMode(next);
-    if (streamRef.current) await applyFlash(next, streamRef.current);
-  }, [applyFlash]);
-
-  // ── Composition error state ─────────────────────────────────────────────────
-  const [composeError, setComposeError] = useState(false);
-
+    try {
+      await preview.setFlashMode({ flashMode: next });
+      flashModeRef.current = next;
+      setFlashMode(next);
+    } catch {
+      setTorchSupported(false);
+    }
+  }, [camState]);
   // ── Build watermark opts ────────────────────────────────────────────────────
   const makeOpts = useCallback((resolvedLabel: string): WatermarkOpts => ({
     showLabel: settings.showLabel,
@@ -679,17 +637,31 @@ export default function JobPhotosCameraPage() {
     label: resolvedLabel,
     jobName: jobNameOverride ?? job?.name ?? '',
     orientation: settings.orientation
-  }), [settings, job]);
+  }), [settings, job, jobNameOverride]);
 
   // ── Finalise: composite + enqueue ───────────────────────────────────────────
-  const finalise = useCallback(async (source: HTMLVideoElement | ImageBitmap, resolvedLabel: string, fileName: string): Promise<boolean> => {
+  const finalise = useCallback(async (
+    source: HTMLVideoElement | ImageBitmap,
+    resolvedLabel: string,
+    fileName: string,
+    fallbackLocalPath?: string | null,
+  ): Promise<boolean> => {
     const file = await compositeWatermark(source, makeOpts(resolvedLabel), fileName);
     if (!file) {
       setComposeError(true);
       setCapturing(false);
       return false;
     }
-    void enqueueFiles([file]);
+    try {
+      // Await the existing IndexedDB queue write before deleting a fallback
+      // source. The final JPEG is durable on the phone before upload begins.
+      await enqueueFiles([file]);
+      if (fallbackLocalPath) await deleteLocalPhoto(fallbackLocalPath);
+    } catch {
+      setComposeError(true);
+      setCapturing(false);
+      return false;
+    }
     const thumb = URL.createObjectURL(file);
     setLastThumb(prev => {
       if (prev) URL.revokeObjectURL(prev);
@@ -703,65 +675,102 @@ export default function JobPhotosCameraPage() {
 
   // ── Shutter ─────────────────────────────────────────────────────────────────
   const handleShutter = useCallback(async () => {
-    if (camState !== 'ready' || capturing || !videoRef.current) return;
-    const video = videoRef.current;
-    if (!video.videoWidth || !video.videoHeight) return;
+    if (capturing || sessionLimitReached) return;
     setCapturing(true);
     setFlashAnim(true);
-    setTimeout(() => setFlashAnim(false), 150);
+    window.setTimeout(() => setFlashAnim(false), 150);
+
     const fileName = `job-${jobId}-photo-${Date.now()}.jpg`;
-    if (labelLocked) {
-      // Locked: if label is empty, open the prompt once to obtain it, then lock
-      if (settings.showLabel && !label.trim()) {
-        // Capture bitmap first so the live frame is preserved while user types
-        let bitmap: ImageBitmap;
+    let bitmap: ImageBitmap | null = null;
+    let fallbackLocalPath: string | null = null;
+
+    try {
+      if (camState === 'ready') {
         try {
-          bitmap = await createImageBitmap(video);
+          const result = await withTimeout(
+            CameraPreview.capture({ quality: 88 }),
+            12_000,
+            'Native photo capture timed out.',
+          );
+          bitmap = await createImageBitmap(base64JpegToFile(result.value, fileName));
         } catch {
-          setComposeError(true);
-          setCapturing(false);
+          // The preview session failed after launch. Stop it before opening the
+          // one-shot native fallback so two AVCaptureSessions never compete.
+          await stopPreview();
+          setCamState('unavailable');
+          setCamErrMsg('Live preview stopped. The shutter now uses the iPhone camera.');
+        }
+      }
+
+      if (!bitmap) {
+        const captured = await capturePhotoLocally();
+        fallbackLocalPath = captured.localPath;
+        const localFile = await readLocalPhoto(captured.localPath, fileName, 'image/jpeg');
+        if (!localFile) throw new Error('The captured photo could not be read from this device.');
+        bitmap = await createImageBitmap(localFile);
+      }
+
+      if (labelLocked) {
+        // Locked: if label is empty, open the prompt once to obtain it, then lock.
+        if (settings.showLabel && !label.trim()) {
+          setPendingBitmap(bitmap);
+          setPendingFileName(fileName);
+          setPendingLocalPath(fallbackLocalPath);
+          setPendingLabel('');
           return;
         }
-        setPendingBitmap(bitmap);
-        setPendingFileName(fileName);
-        setPendingLabel('');
-        // Stay in capturing=true; prompt will finalise
+        const saved = await finalise(bitmap, label, fileName, fallbackLocalPath);
+        bitmap.close();
+        if (saved && fallbackLocalPath) {
+          setCamErrMsg('Photo saved on this device. Tap the shutter for another.');
+        }
         return;
       }
-      // Label present (or showLabel off) — composite immediately
-      await finalise(video, label, fileName);
-    } else {
-      // Unlocked: capture bitmap, then prompt
-      let bitmap: ImageBitmap;
-      try {
-        bitmap = await createImageBitmap(video);
-      } catch {
-        setComposeError(true);
-        setCapturing(false);
-        return;
-      }
+
+      // Unlocked: preserve the captured frame while the user enters a label.
       setPendingBitmap(bitmap);
       setPendingFileName(fileName);
-      setPendingLabel(sanitizeLabel(label).slice(0, 120)); // pre-fill with last used value
+      setPendingLocalPath(fallbackLocalPath);
+      setPendingLabel(sanitizeLabel(label).slice(0, 120));
+    } catch (error) {
+      bitmap?.close();
+      const message = error instanceof Error ? error.message : String(error);
+      const cancelled = /cancel|dismiss|no image|user cancelled/i.test(message);
+      setCamErrMsg(cancelled
+        ? 'Camera ready.'
+        : message || 'The photo could not be captured. Check Camera access in iPhone Settings.');
+      setCapturing(false);
     }
-  }, [camState, capturing, jobId, labelLocked, label, settings.showLabel, finalise]);
-
+  }, [
+    capturing,
+    sessionLimitReached,
+    jobId,
+    camState,
+    stopPreview,
+    labelLocked,
+    settings.showLabel,
+    label,
+    finalise,
+  ]);
   // ── Confirm label prompt ────────────────────────────────────────────────────
   const confirmPending = useCallback(async () => {
     if (!pendingBitmap) return;
     const bitmap = pendingBitmap;
     const fileName = pendingFileName;
     const resolved = pendingLabel;
+    const fallbackLocalPath = pendingLocalPath;
     setPendingBitmap(null);
     setPendingFileName('');
+    setPendingLocalPath(null);
 
     // If we arrived here from locked mode with empty label, lock it now
     if (labelLocked) setLabel(resolved);else setLabel(resolved); // remember for next pre-fill
 
-    const ok = await finalise(bitmap, resolved, fileName);
+    const ok = await finalise(bitmap, resolved, fileName, fallbackLocalPath);
     bitmap.close();
     if (!ok) return; // composeError already set
-  }, [pendingBitmap, pendingFileName, pendingLabel, labelLocked, finalise]);
+    if (fallbackLocalPath) setCamErrMsg('Photo saved on this device. Tap the shutter for another.');
+  }, [pendingBitmap, pendingFileName, pendingLabel, pendingLocalPath, labelLocked, finalise]);
 
   // ── Cancel label prompt ─────────────────────────────────────────────────────
   const cancelPending = useCallback(() => {
@@ -769,9 +778,11 @@ export default function JobPhotosCameraPage() {
       pendingBitmap.close();
       setPendingBitmap(null);
     }
+    if (pendingLocalPath) void deleteLocalPhoto(pendingLocalPath);
     setPendingFileName('');
+    setPendingLocalPath(null);
     setCapturing(false);
-  }, [pendingBitmap]);
+  }, [pendingBitmap, pendingLocalPath]);
 
   // ── Watermark popup helpers ─────────────────────────────────────────────────
   const openWatermarkPopup = useCallback(() => {
@@ -797,7 +808,6 @@ export default function JobPhotosCameraPage() {
   if (settings.showTime) previewLine1Parts.push(`${z(now.getHours())}:${z(now.getMinutes())}`);
   const previewLine1 = previewLine1Parts.join('  —  ');
   const previewLabelRows = settings.showLabel && label.trim() ? wrapLabel(label.trim()) : [];
-  const hasPreview = previewLine1.length > 0 || previewLabelRows.length > 0;
 
   // ─────────────────────────────────────────────────────────────────────────
   // Render
@@ -806,7 +816,7 @@ export default function JobPhotosCameraPage() {
   return (
     // No transform/willChange on this container — position:fixed children must
     // not be trapped inside a stacking context created by CSS transforms.
-    <div className="fixed inset-0 z-50 bg-black flex flex-col" style={{
+    <div ref={cameraRootRef} className="fixed inset-0 z-50 bg-transparent flex flex-col" style={{
       userSelect: 'none'
     }}>
       <Helmet>
@@ -823,7 +833,7 @@ export default function JobPhotosCameraPage() {
         paddingBottom: '10px'
       }}>
         {/* Back */}
-        <button onClick={handleBack} className="w-9 h-9 flex items-center justify-center rounded-full bg-black/40 text-white hover:bg-black/60 transition-colors shrink-0" aria-label="Back to photos">
+        <button onClick={() => void handleBack()} className="w-9 h-9 flex items-center justify-center rounded-full bg-black/40 text-white hover:bg-black/60 transition-colors shrink-0" aria-label="Back to photos">
           <ArrowLeft size={18} />
         </button>
 
@@ -841,55 +851,30 @@ export default function JobPhotosCameraPage() {
         </button>
 
         {/* Flip camera */}
-        <button onClick={handleFlip} disabled={camState === 'loading'} className="w-9 h-9 flex items-center justify-center rounded-full bg-black/40 text-white hover:bg-black/60 transition-colors shrink-0 disabled:opacity-40" aria-label={facingMode === 'environment' ? 'Switch to front camera' : 'Switch to rear camera'} title={facingMode === 'environment' ? 'Switch to front camera' : 'Switch to rear camera'}>
+        <button onClick={() => void handleFlip()} disabled={camState !== 'ready'} className="w-9 h-9 flex items-center justify-center rounded-full bg-black/40 text-white hover:bg-black/60 transition-colors shrink-0 disabled:opacity-40" aria-label={facingMode === 'environment' ? 'Switch to front camera' : 'Switch to rear camera'} title={facingMode === 'environment' ? 'Switch to front camera' : 'Switch to rear camera'}>
           <FlipHorizontal2 size={18} />
         </button>
       </div>
 
       {/* ── Lens area — picture frame + live preview ── */}
-      <div ref={lensRef} className="relative flex-1 min-h-0 overflow-hidden camera-lens-frame">
-        {/* Live video */}
-        <video ref={videoRef} className="absolute inset-0 w-full h-full object-cover" autoPlay playsInline muted />
+      <div id="iwb-native-lens" ref={lensRef} className="relative flex-1 min-h-0 overflow-hidden bg-transparent camera-lens-frame">
+        {/* Native AVCapture preview is rendered behind this transparent frame. */}
 
-        {/* getUserMedia unavailable */}
-        {camState === 'unavailable' && <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 bg-black/90 px-8 text-center">
+        {/* Native preview fallback — no retry loop and shutter remains active. */}
+        {camState === 'unavailable' && <div className="absolute inset-x-4 top-4 z-20 flex items-center gap-3 rounded-xl bg-black/70 px-4 py-3 text-left backdrop-blur-sm">
             <AlertTriangle size={36} className="text-yellow-400" />
-            <p className="text-white text-sm font-semibold">
-              Live camera preview is not available on this device.
-            </p>
-            <p className="text-gray-400 text-xs leading-relaxed">
-              Use the <strong className="text-white">Take Photo</strong> button on the photos page instead.
-            </p>
-            <div className="flex gap-2 mt-1">
-              <button onClick={() => void startStream()} className="px-5 py-2.5 bg-white text-black text-sm font-semibold rounded-xl">
-                Retry
-              </button>
-              <button onClick={handleBack} className="px-5 py-2.5 bg-primary text-white text-sm font-semibold rounded-xl">
-                Back to Photos
-              </button>
+            <div>
+              <p className="text-white text-sm font-semibold">{camErrMsg}</p>
+              <p className="mt-0.5 text-gray-300 text-xs leading-relaxed">
+                Tap the shutter to take and save a watermarked photo.
+              </p>
             </div>
           </div>}
 
-        {/* Camera error */}
-        {camState === 'error' && <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-black/88 px-8 text-center">
-            <AlertTriangle size={36} className="text-yellow-400" />
-            <p className="text-white text-sm font-medium leading-relaxed">{camErrMsg}</p>
-            <div className="flex gap-2 mt-1">
-              <button onClick={() => void startStream()} className="px-4 py-2.5 bg-primary text-white text-sm font-semibold rounded-xl">
-                Retry
-              </button>
-              <button onClick={handleBack} className="px-4 py-2.5 bg-white/10 text-white text-sm font-semibold rounded-xl">
-                Back
-              </button>
-            </div>
-            <p className="text-gray-500 text-xs mt-1">
-              Or use <strong className="text-gray-300">Take Photo</strong> on the photos page.
-            </p>
-          </div>}
-
-        {/* Loading */}
-        {camState === 'loading' && <div className="absolute inset-0 flex items-center justify-center bg-black/60">
-            <Loader2 size={32} className="animate-spin text-white/60" />
+        {/* Small status only; chrome and shutter paint immediately. */}
+        {camState === 'starting' && <div className="absolute right-3 top-3 z-20 flex items-center gap-1.5 rounded-full bg-black/55 px-2.5 py-1.5 text-white/80 backdrop-blur-sm">
+            <Loader2 size={13} className="animate-spin" />
+            <span className="text-[10px] font-semibold">Starting camera</span>
           </div>}
 
         {/* Flash animation */}
@@ -926,7 +911,7 @@ export default function JobPhotosCameraPage() {
         <div className="flex items-center justify-between px-6">
 
           {/* Back / gallery thumbnail */}
-          <button onClick={handleBack} className="w-14 h-14 rounded-xl overflow-hidden border-2 border-white/30 bg-white/10 flex items-center justify-center shrink-0 touch-manipulation" aria-label="Back to photos">
+          <button onClick={() => void handleBack()} className="w-14 h-14 rounded-xl overflow-hidden border-2 border-white/30 bg-white/10 flex items-center justify-center shrink-0 touch-manipulation" aria-label="Back to photos">
             {lastThumb ? <img src={lastThumb} alt="Last captured" className="w-full h-full object-cover" /> : <div className="flex flex-col items-center gap-0.5">
                 <ArrowLeft size={16} className="text-white/60" />
                 {queue.length > 0 && <span className="text-[9px] text-white/60 font-bold">{queue.length}</span>}
@@ -942,7 +927,7 @@ export default function JobPhotosCameraPage() {
           </button>
 
           {/* Shutter — dominant centre control */}
-          <button onClick={() => void handleShutter()} disabled={camState !== 'ready' || capturing || sessionLimitReached} className="w-20 h-20 rounded-full border-4 border-white bg-white/20 flex items-center justify-center disabled:opacity-40 touch-manipulation active:scale-95 transition-transform shrink-0" aria-label="Take photo">
+          <button onClick={() => void handleShutter()} disabled={capturing || sessionLimitReached} className="w-20 h-20 rounded-full border-4 border-white bg-white/20 flex items-center justify-center disabled:opacity-40 touch-manipulation active:scale-95 transition-transform shrink-0" aria-label="Take photo">
             {capturing && !pendingBitmap ? <Loader2 size={28} className="animate-spin text-white" /> : <div className="w-14 h-14 rounded-full bg-white" />}
           </button>
 
@@ -1175,7 +1160,7 @@ export default function JobPhotosCameraPage() {
             }} className="w-full py-2.5 rounded-xl border border-white/12 text-sm font-semibold text-gray-400 hover:text-white transition-colors">
                 Cancel
               </button>
-              <button onClick={handleBack} className="w-full py-2.5 rounded-xl border border-white/12 text-sm font-semibold text-gray-400 hover:text-white transition-colors">
+              <button onClick={() => void handleBack()} className="w-full py-2.5 rounded-xl border border-white/12 text-sm font-semibold text-gray-400 hover:text-white transition-colors">
                 Use original camera
               </button>
             </div>
