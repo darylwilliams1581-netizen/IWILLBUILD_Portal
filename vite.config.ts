@@ -1,4 +1,4 @@
-import { defineConfig, type Plugin, type ViteDevServer, mergeConfig as mergeViteConfig } from "vite";
+import { defineConfig, type Plugin, type ViteDevServer } from "vite";
 import react from "@vitejs/plugin-react";
 import path from "path";
 import { URL } from "node:url";
@@ -12,7 +12,6 @@ import { createRequire } from "module";
 // starts. tryLoad() catches the missing-module error and returns null so the
 // rest of the config can guard each usage with a simple truthiness check.
 // ---------------------------------------------------------------------------
-import { devToolsPlugin as _devToolsPlugin } from "./dev-tools/src/vite-plugin";
 const _require = createRequire(import.meta.url);
 function tryLoad(id: string, named?: string): ((...args: unknown[]) => unknown) | null {
   try {
@@ -131,10 +130,7 @@ if (corsOrigins.length === 0) {
 }
 
 // ---------------------------------------------------------------------------
-export default defineConfig(({
-  mode,
-  isSsrBuild
-}) => ((configValue, mergeResolvedConfig) => typeof configValue === "function" ? async (...configArgs) => mergeResolvedConfig(await configValue(...configArgs)) : (async () => mergeResolvedConfig(await configValue))())({
+export default defineConfig(({ mode, isSsrBuild }) => ({
   envPrefix: ["VITE_", "SITE_"],
   define: {
     __APP_VERSION__: JSON.stringify(process.env.npm_package_version ?? '1.0.0')
@@ -823,6 +819,4 @@ export default defineConfig(({
       }
     }
   }
-}, resolvedConfig => mergeViteConfig(resolvedConfig, {
-  plugins: [_devToolsPlugin()]
-})));
+}));
