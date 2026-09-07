@@ -21,7 +21,11 @@ export default function JobPhotosPage() {
     id: string;
   }>();
   const navigate = useNavigate();
-  const openCameraPage = () => navigate(`/jobs/${id}/camera`);
+  const openCameraPage = () => navigate(`/jobs/${id}/camera`, {
+    state: {
+      backPath: `/jobs/${id}/photos`
+    }
+  });
   const handleChangeJob = () => navigate('/home?picker=photos');
   const jobId = Number(id);
   const photosRef = useRef<JobPhotosHandle>(null);

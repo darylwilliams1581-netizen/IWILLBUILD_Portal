@@ -57,6 +57,7 @@ import { ArrowLeft, Settings, X, Check, Loader2, Lock, Unlock, AlertTriangle, Pe
 import { usePhotoUploadQueue } from '@/hooks/usePhotoUploadQueue';
 import { useWatermarkSettings } from '@/hooks/useWatermarkSettings';
 import { getCameraPlugin } from '@/lib/capacitor-plugins';
+import { goBack } from '@/lib/navigation';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types
@@ -391,9 +392,11 @@ export default function JobPhotosCameraPage() {
     jobName?: string;
   } | null;
   const uploadEndpointOverride = locationState?.uploadEndpoint;
-  const backPath = locationState?.backPath;
+  const backPath = typeof locationState?.backPath === 'string' && locationState.backPath.trim() ? locationState.backPath : undefined;
   const jobNameOverride = locationState?.jobName;
   const jobId = Number(id);
+  const cameraFallback = backPath ?? (Number.isFinite(jobId) && jobId > 0 ? `/jobs/${jobId}/photos` : '/home');
+  const handleBack = useCallback(() => goBack(navigate, cameraFallback), [navigate, cameraFallback]);
 
   // ── Job metadata ────────────────────────────────────────────────────────────
   const [job, setJob] = useState<Job | null>(null);
@@ -820,7 +823,7 @@ export default function JobPhotosCameraPage() {
         paddingBottom: '10px'
       }}>
         {/* Back */}
-        <button onClick={() => navigate(backPath ?? `/jobs/${id}?tab=photos`)} className="w-9 h-9 flex items-center justify-center rounded-full bg-black/40 text-white hover:bg-black/60 transition-colors shrink-0" aria-label="Back to photos">
+        <button onClick={handleBack} className="w-9 h-9 flex items-center justify-center rounded-full bg-black/40 text-white hover:bg-black/60 transition-colors shrink-0" aria-label="Back to photos">
           <ArrowLeft size={18} />
         </button>
 
@@ -861,7 +864,7 @@ export default function JobPhotosCameraPage() {
               <button onClick={() => void startStream()} className="px-5 py-2.5 bg-white text-black text-sm font-semibold rounded-xl">
                 Retry
               </button>
-              <button onClick={() => navigate(backPath ?? `/jobs/${id}?tab=photos`)} className="px-5 py-2.5 bg-primary text-white text-sm font-semibold rounded-xl">
+              <button onClick={handleBack} className="px-5 py-2.5 bg-primary text-white text-sm font-semibold rounded-xl">
                 Back to Photos
               </button>
             </div>
@@ -875,7 +878,7 @@ export default function JobPhotosCameraPage() {
               <button onClick={() => void startStream()} className="px-4 py-2.5 bg-primary text-white text-sm font-semibold rounded-xl">
                 Retry
               </button>
-              <button onClick={() => navigate(backPath ?? `/jobs/${id}?tab=photos`)} className="px-4 py-2.5 bg-white/10 text-white text-sm font-semibold rounded-xl">
+              <button onClick={handleBack} className="px-4 py-2.5 bg-white/10 text-white text-sm font-semibold rounded-xl">
                 Back
               </button>
             </div>
@@ -923,7 +926,7 @@ export default function JobPhotosCameraPage() {
         <div className="flex items-center justify-between px-6">
 
           {/* Back / gallery thumbnail */}
-          <button onClick={() => navigate(backPath ?? `/jobs/${id}?tab=photos`)} className="w-14 h-14 rounded-xl overflow-hidden border-2 border-white/30 bg-white/10 flex items-center justify-center shrink-0 touch-manipulation" aria-label="Back to photos">
+          <button onClick={handleBack} className="w-14 h-14 rounded-xl overflow-hidden border-2 border-white/30 bg-white/10 flex items-center justify-center shrink-0 touch-manipulation" aria-label="Back to photos">
             {lastThumb ? <img src={lastThumb} alt="Last captured" className="w-full h-full object-cover" /> : <div className="flex flex-col items-center gap-0.5">
                 <ArrowLeft size={16} className="text-white/60" />
                 {queue.length > 0 && <span className="text-[9px] text-white/60 font-bold">{queue.length}</span>}
@@ -1172,7 +1175,7 @@ export default function JobPhotosCameraPage() {
             }} className="w-full py-2.5 rounded-xl border border-white/12 text-sm font-semibold text-gray-400 hover:text-white transition-colors">
                 Cancel
               </button>
-              <button onClick={() => navigate(backPath ?? `/jobs/${id}?tab=photos`)} className="w-full py-2.5 rounded-xl border border-white/12 text-sm font-semibold text-gray-400 hover:text-white transition-colors">
+              <button onClick={handleBack} className="w-full py-2.5 rounded-xl border border-white/12 text-sm font-semibold text-gray-400 hover:text-white transition-colors">
                 Use original camera
               </button>
             </div>

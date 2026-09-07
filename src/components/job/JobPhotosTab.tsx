@@ -53,7 +53,11 @@ export default function JobPhotosTab({
         </button>
 
         {/* Camera — bigger, purple */}
-        <button onClick={() => navigate(`/jobs/${jobId}/camera`)} disabled={uploading || atLimit} title="Take a photo" className="flex items-center justify-center w-8 h-8 bg-primary hover:bg-violet-700 disabled:opacity-50 text-white rounded-lg transition-colors">
+        <button onClick={() => navigate(`/jobs/${jobId}/camera`, {
+          state: {
+            backPath: `/jobs/${jobId}/photos`
+          }
+        })} disabled={uploading || atLimit} title="Take a photo" className="flex items-center justify-center w-8 h-8 bg-primary hover:bg-violet-700 disabled:opacity-50 text-white rounded-lg transition-colors">
           <Camera size={16} />
         </button>
 
