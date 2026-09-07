@@ -1,34 +1,16 @@
 /**
- * TermsAcceptanceGate.tsx
- * ─────────────────────────────────────────────────────────────────────────────
- * Full-screen modal shown ONCE on first use (web + native) requiring the user
- * to accept the Terms of Use, Fair Use Policy, and Privacy Policy before
- * accessing the app.
- *
- * Persistence:
- *   localStorage key  'iwb_terms_accepted_v2'
- *   Bump the version suffix (v3, v4 …) to force re-acceptance on policy updates.
- *   v2 — bumped 3 Sep 2026 for Terms v2.0 / Privacy v2.0 / new Fair Use &
- *         System Policy pages.
- *
- * Sequence (native):  Terms gate → AppPermissionsOnboarding
- * Sequence (web):     Terms gate → app (no permissions walkthrough)
- *
- * Decline: signs the user out and returns them to the login screen.
+ * TermsAcceptanceGate — compact acknowledgement dialog (web + native).
+ * Shown once. Does not lock html/body height (that blew out dashboard pages).
  */
-
-import { useState, useRef, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Shield, FileText, AlertTriangle, ChevronDown, ExternalLink, Cpu } from 'lucide-react';
+import { Shield, ExternalLink } from 'lucide-react';
 import { authClient } from '@/lib/auth/auth-client';
-
-// ── Persistence ───────────────────────────────────────────────────────────────
 
 const TERMS_KEY = 'iwb_terms_accepted_v2';
 const DEV_TEST_EMAIL = 'support@iwillbuild.com';
 
 export function hasAcceptedTerms(email?: string): boolean {
-  // Developer test account always sees the gate — never skip it
   if (email?.toLowerCase() === DEV_TEST_EMAIL) return false;
   try {
     return localStorage.getItem(TERMS_KEY) === 'true';
@@ -43,50 +25,24 @@ function markTermsAccepted(): void {
   } catch { /* storage unavailable */ }
 }
 
-// ── Types ─────────────────────────────────────────────────────────────────────
-
 interface Props {
   onAccepted: () => void;
   userEmail?: string;
 }
 
-// ── Component ─────────────────────────────────────────────────────────────────
-
 export default function TermsAcceptanceGate({ onAccepted, userEmail }: Props) {
   const isDevAccount = userEmail?.toLowerCase() === DEV_TEST_EMAIL;
-  const [scrolledToBottom, setScrolledToBottom] = useState(false);
   const [declining, setDeclining] = useState(false);
   const [accepted, setAccepted] = useState(false);
-  const scrollRef = useRef<HTMLDivElement>(null);
+  const [checked, setChecked] = useState(false);
 
   useEffect(() => {
-    if (accepted) return;
-    const html = document.documentElement;
-    const body = document.body;
-    const previous = {
-      htmlOverflow: html.style.overflow,
-      htmlHeight: html.style.height,
-      bodyOverflow: body.style.overflow,
-      bodyHeight: body.style.height,
-    };
-    html.style.overflow = 'hidden';
-    html.style.height = '100%';
-    body.style.overflow = 'hidden';
-    body.style.height = '100%';
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
     return () => {
-      html.style.overflow = previous.htmlOverflow;
-      html.style.height = previous.htmlHeight;
-      body.style.overflow = previous.bodyOverflow;
-      body.style.height = previous.bodyHeight;
+      document.body.style.overflow = prev;
     };
-  }, [accepted]);
-
-  function handleScroll() {
-    const el = scrollRef.current;
-    if (!el) return;
-    const atBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 40;
-    if (atBottom) setScrolledToBottom(true);
-  }
+  }, []);
 
   async function handleDecline() {
     setDeclining(true);
@@ -97,10 +53,10 @@ export default function TermsAcceptanceGate({ onAccepted, userEmail }: Props) {
   }
 
   function handleAccept() {
-    // Don't persist acceptance for the dev test account — gate always re-shows
+    if (!checked) return;
     if (!isDevAccount) markTermsAccepted();
     setAccepted(true);
-    setTimeout(() => onAccepted(), 350);
+    setTimeout(() => onAccepted(), 200);
   }
 
   return (
@@ -110,269 +66,101 @@ export default function TermsAcceptanceGate({ onAccepted, userEmail }: Props) {
           key="terms-gate"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
-          exit={{ opacity: 0, scale: 0.97 }}
-          transition={{ duration: 0.25 }}
-          className="fixed inset-0 z-[9999] flex flex-col bg-gray-950"
-          style={{ fontFamily: 'var(--font-sans, system-ui, sans-serif)' }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.2 }}
+          className="fixed inset-0 z-[9999] flex items-end sm:items-center justify-center p-0 sm:p-4"
+          style={{ background: 'rgba(15,17,23,0.55)' }}
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="terms-title"
         >
-          {/* ── Header ── */}
-          <div className="flex-none px-5 pt-safe-top pt-6 pb-4 border-b border-gray-800">
-
-            {/* Developer test account banner */}
-            {isDevAccount && (
-              <div className="mb-3 flex items-center gap-2 rounded-lg bg-amber-500/15 border border-amber-500/40 px-3 py-2">
-                <span className="text-amber-400 text-xs font-bold tracking-wide uppercase shrink-0">
-                  Dev / Test Account
-                </span>
-                <span className="text-amber-300/80 text-xs leading-snug">
-                  This gate always shows for{' '}
-                  <strong className="text-amber-300">support@iwillbuild.com</strong> — acceptance
-                  is not persisted for this account.
-                </span>
+          <motion.div
+            initial={{ y: 24, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            exit={{ y: 16, opacity: 0 }}
+            className="w-full max-w-md bg-white shadow-2xl flex flex-col overflow-hidden rounded-t-3xl sm:rounded-2xl"
+            style={{ maxHeight: 'min(72dvh, 560px)' }}
+          >
+            <div className="flex items-center gap-3 px-5 pt-5 pb-3 border-b border-gray-100 shrink-0">
+              <div className="w-9 h-9 rounded-xl bg-violet-600 flex items-center justify-center shrink-0">
+                <Shield size={16} className="text-white" />
               </div>
+              <div className="min-w-0">
+                <h1 id="terms-title" className="text-base font-semibold text-gray-900 leading-tight">
+                  Terms & privacy
+                </h1>
+                <p className="text-xs text-gray-500">v2.0 · Queensland, Australia</p>
+              </div>
+            </div>
+
+            {isDevAccount && (
+              <p className="mx-5 mt-3 text-[11px] text-amber-800 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+                Dev account — this prompt always shows for support@iwillbuild.com
+              </p>
             )}
 
-            <div className="flex items-center gap-3 max-w-lg mx-auto">
-              <div className="w-9 h-9 rounded-xl bg-violet-600 flex items-center justify-center shrink-0">
-                <Shield size={18} className="text-white" />
-              </div>
-              <div>
-                <h1 className="text-base font-semibold text-white leading-tight">
-                  Terms, Fair Use &amp; Privacy
-                </h1>
-                <p className="text-xs text-gray-400 mt-0.5">
-                  Please read and accept before continuing — v2.0, 3 Sep 2026
-                </p>
-              </div>
-            </div>
-          </div>
-
-          {/* ── Scrollable body ── */}
-          <div
-            ref={scrollRef}
-            onScroll={handleScroll}
-            className="flex-1 overflow-y-auto px-5 py-5"
-          >
-            <div className="max-w-lg mx-auto space-y-6 text-sm text-gray-300 leading-relaxed">
-
-              {/* Intro */}
+            <div className="flex-1 overflow-y-auto px-5 py-4 text-sm text-gray-600 space-y-3 min-h-0">
               <p>
-                By using <strong className="text-white">IWILLBUILD</strong> you agree to the
-                following terms. These apply to all users — company owners, workers and
-                subcontractors — on both the web portal and the mobile app. These terms are
-                governed by the laws of Queensland, Australia. New Zealand consumer law
-                provisions apply where relevant.
+                IWILLBUILD stores jobs, photos, safety records and GPS while you are signed in.
+                By continuing you agree to the Terms of Use, Fair Use, Privacy and System Policy.
               </p>
-
-              {/* Section 1 — What the app does */}
-              <section className="space-y-2">
-                <div className="flex items-center gap-2">
-                  <FileText size={14} className="text-violet-400 shrink-0" />
-                  <h2 className="text-sm font-semibold text-white">What IWILLBUILD does</h2>
-                </div>
-                <ul className="space-y-1.5 pl-4 list-disc marker:text-violet-500">
-                  <li>Manages jobs, quotes, invoices, safety records and documents for trade businesses.</li>
-                  <li>Stores job photos, SWMS, permits and field records in cloud storage.</li>
-                  <li>Uses GPS location for job tracking — only while the app is active and you have granted permission.</li>
-                  <li>Sends push notifications and SMS for job alerts — only with your permission.</li>
-                  <li>Processes payments via Stripe. IWILLBUILD does not store card numbers or CVV values.</li>
-                  <li>Provides AI-assisted tools (Dazza AI) to help search, draft and summarise information you are already authorised to access. AI outputs are suggestions — a competent person must review them before relying on them for safety, legal or compliance decisions.</li>
-                </ul>
-              </section>
-
-              {/* Section 2 — Fair Use */}
-              <section className="space-y-2">
-                <div className="flex items-center gap-2">
-                  <AlertTriangle size={14} className="text-amber-400 shrink-0" />
-                  <h2 className="text-sm font-semibold text-white">Fair Use Policy</h2>
-                </div>
-                <p>You must not use IWILLBUILD to:</p>
-                <ul className="space-y-1.5 pl-4 list-disc marker:text-amber-500">
-                  <li>
-                    <strong className="text-white">Upload, store or share child sexual abuse material (CSAM).</strong>{' '}
-                    This is a zero-tolerance rule. Detected CSAM will be reported to the Australian
-                    Federal Police without notice.
-                  </li>
-                  <li>Upload or share non-consensual intimate images (image-based abuse).</li>
-                  <li>Create, store or share fraudulent safety records, forged signatures or falsified documents.</li>
-                  <li>Harass, threaten, impersonate or discriminate against any person.</li>
-                  <li>Attempt to access accounts, data or systems you are not authorised to use.</li>
-                  <li>Reverse-engineer, scrape or abuse the platform's APIs.</li>
-                  <li>Use the platform for any purpose other than legitimate trade business operations.</li>
-                </ul>
-                <p className="text-gray-400 text-xs mt-1">
-                  Violations may result in immediate account suspension and, where required by law,
-                  disclosure to eSafety, the Australian Federal Police or other authorities.
-                </p>
-              </section>
-
-              {/* Section 3 — Image Safeguard */}
-              <section className="space-y-2">
-                <div className="flex items-center gap-2">
-                  <Shield size={14} className="text-violet-400 shrink-0" />
-                  <h2 className="text-sm font-semibold text-white">Image Safeguard Protocol</h2>
-                </div>
-                <p>
-                  Job photos stored in IWILLBUILD may be included in periodic, bounded Image
-                  Safeguard reviews initiated by an authorised IWILLBUILD platform owner. The
-                  safeguard may detect the apparent presence of a face as a privacy signal for
-                  possible human review by authorised support personnel.
-                </p>
-                <ul className="space-y-1.5 pl-4 list-disc marker:text-violet-500">
-                  <li>The safeguard does not identify people, determine age or prove misconduct.</li>
-                  <li>It does not automatically delete, quarantine or report images based on a signal alone.</li>
-                  <li>Ordinary work photos are not blocked merely because a face may be present.</li>
-                  <li>A sharing acknowledgement may appear before images are emailed or shared.</li>
-                </ul>
-              </section>
-
-              {/* Section 4 — AI tools */}
-              <section className="space-y-2">
-                <div className="flex items-center gap-2">
-                  <Cpu size={14} className="text-violet-400 shrink-0" />
-                  <h2 className="text-sm font-semibold text-white">AI-assisted tools</h2>
-                </div>
-                <ul className="space-y-1.5 pl-4 list-disc marker:text-violet-500">
-                  <li>Dazza AI and other AI tools operate within your existing role permissions.</li>
-                  <li>AI outputs are suggestions only — they may be incomplete or incorrect.</li>
-                  <li>A competent person must review AI-generated SWMS, safety documents and records before use on any worksite.</li>
-                  <li>IWILLBUILD does not use your job records or photos to train public AI models.</li>
-                </ul>
-              </section>
-
-              {/* Section 5 — Safety docs disclaimer */}
-              <section className="space-y-2">
-                <div className="flex items-center gap-2">
-                  <AlertTriangle size={14} className="text-amber-400 shrink-0" />
-                  <h2 className="text-sm font-semibold text-white">Safety documents &amp; professional advice</h2>
-                </div>
-                <p>
-                  Templates, SWMS, risk assessments, permits and safety materials are starting
-                  points only. They must be reviewed, adapted and approved by a competent person
-                  for the actual work, site, jurisdiction and hazards. IWILLBUILD does not provide
-                  legal, engineering, safety or compliance advice. You are solely responsible for
-                  compliance with all applicable laws, codes and regulations.
-                </p>
-              </section>
-
-              {/* Section 6 — Liability */}
-              <section className="space-y-2">
-                <div className="flex items-center gap-2">
-                  <AlertTriangle size={14} className="text-amber-400 shrink-0" />
-                  <h2 className="text-sm font-semibold text-white">Liability &amp; disclaimer</h2>
-                </div>
-                <ul className="space-y-1.5 pl-4 list-disc marker:text-amber-500">
-                  <li>
-                    Nothing in these terms excludes rights that cannot lawfully be excluded,
-                    including rights under the <em>Australian Consumer Law</em> or applicable New
-                    Zealand consumer law.
-                  </li>
-                  <li>
-                    Subject to those non-excludable rights, the platform is provided with
-                    reasonable care and skill but is not warranted to be uninterrupted or
-                    error-free.
-                  </li>
-                  <li>
-                    You are responsible for all activity under your account. Keep your credentials
-                    secure and do not share login access.
-                  </li>
-                  <li>These terms are governed by the laws of Queensland, Australia.</li>
-                </ul>
-              </section>
-
-              {/* Section 7 — Full docs links */}
-              <section className="rounded-lg border border-gray-700 bg-gray-900 px-4 py-3 space-y-2">
-                <p className="text-xs text-gray-400 font-medium">Full policy documents (open in new tab):</p>
-                <div className="grid grid-cols-2 gap-2">
+              <ul className="list-disc pl-4 space-y-1.5 text-[13px]">
+                <li>No CSAM, image-based abuse, or fake safety records.</li>
+                <li>AI (Dazza) is a suggestion — a competent person must review it.</li>
+                <li>Templates are starting points, not legal advice.</li>
+              </ul>
+              <div className="grid grid-cols-2 gap-2 pt-1">
+                {[
+                  ['/terms', 'Terms of Use'],
+                  ['/privacy', 'Privacy'],
+                  ['/fair-use', 'Fair Use'],
+                  ['/system-policy', 'System Policy'],
+                ].map(([href, label]) => (
                   <a
-                    href="/terms"
+                    key={href}
+                    href={href}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="flex items-center gap-1.5 text-violet-400 hover:text-violet-300 transition-colors text-sm"
+                    className="flex items-center gap-1.5 text-violet-600 hover:text-violet-800 text-xs font-medium"
                   >
-                    <ExternalLink size={12} />
-                    Terms of Use
+                    <ExternalLink size={11} />
+                    {label}
                   </a>
-                  <a
-                    href="/privacy"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex items-center gap-1.5 text-violet-400 hover:text-violet-300 transition-colors text-sm"
-                  >
-                    <ExternalLink size={12} />
-                    Privacy Policy
-                  </a>
-                  <a
-                    href="/fair-use"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex items-center gap-1.5 text-violet-400 hover:text-violet-300 transition-colors text-sm"
-                  >
-                    <ExternalLink size={12} />
-                    Fair Use Policy
-                  </a>
-                  <a
-                    href="/system-policy"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex items-center gap-1.5 text-violet-400 hover:text-violet-300 transition-colors text-sm"
-                  >
-                    <ExternalLink size={12} />
-                    System Policy
-                  </a>
-                </div>
-              </section>
-
-              {/* Scroll nudge — hidden once at bottom */}
-              {!scrolledToBottom && (
-                <motion.div
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  className="flex flex-col items-center gap-1 py-2 text-gray-500 text-xs"
-                >
-                  <ChevronDown size={16} className="animate-bounce" />
-                  Scroll to read all terms
-                </motion.div>
-              )}
-
-              {/* Bottom padding so last content clears the fixed footer */}
-              <div className="h-4" />
+                ))}
+              </div>
             </div>
-          </div>
 
-          {/* ── Fixed footer — accept / decline ── */}
-          <div className="flex-none border-t border-gray-800 bg-gray-950 px-5 py-4 pb-safe-bottom">
-            <div className="max-w-lg mx-auto space-y-3">
-
-              {/* Accept button — enabled once scrolled to bottom */}
+            <div className="shrink-0 border-t border-gray-100 px-5 py-4 space-y-3 bg-white">
+              <label className="flex items-start gap-2.5 text-[13px] text-gray-700 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={checked}
+                  onChange={e => setChecked(e.target.checked)}
+                  className="mt-0.5 h-4 w-4 rounded border-gray-300 text-violet-600"
+                />
+                <span>I have read and agree to the Terms, Fair Use, Privacy and System Policy.</span>
+              </label>
               <button
                 onClick={handleAccept}
-                disabled={!scrolledToBottom}
+                disabled={!checked}
                 className={[
-                  'w-full py-3 rounded-xl text-sm font-semibold transition-all duration-200',
-                  scrolledToBottom
-                    ? 'bg-violet-600 hover:bg-violet-500 active:scale-[0.98] text-white shadow-lg shadow-violet-900/40'
-                    : 'bg-gray-800 text-gray-500 cursor-not-allowed',
+                  'w-full py-3 rounded-xl text-sm font-semibold',
+                  checked
+                    ? 'bg-violet-600 hover:bg-violet-500 text-white'
+                    : 'bg-gray-100 text-gray-400 cursor-not-allowed',
                 ].join(' ')}
               >
-                {scrolledToBottom ? 'I agree — continue' : 'Read all terms to continue'}
+                I agree — continue
               </button>
-
-              {/* Decline */}
               <button
                 onClick={handleDecline}
                 disabled={declining}
-                className="w-full py-2.5 rounded-xl text-sm text-gray-500 hover:text-gray-300 transition-colors"
+                className="w-full py-2 text-sm text-gray-500 hover:text-gray-800"
               >
                 {declining ? 'Signing out…' : 'Decline — sign out'}
               </button>
-
-              <p className="text-center text-xs text-gray-600 leading-snug">
-                By tapping "I agree" you confirm you have read and accept the Terms of Use,
-                Fair Use Policy, Privacy Policy and System Policy (v2.0, 3 Sep 2026).
-              </p>
             </div>
-          </div>
+          </motion.div>
         </motion.div>
       )}
     </AnimatePresence>
