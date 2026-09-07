@@ -29,6 +29,7 @@
 		B101000000000000000014 /* JobHomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F101000000000000000014 /* JobHomeView.swift */; };
 		B101000000000000000015 /* SitePrestartView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F101000000000000000015 /* SitePrestartView.swift */; };
 		B101000000000000000016 /* FormsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F101000000000000000016 /* FormsView.swift */; };
+		B101000000000000000017 /* PortalWebView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F101000000000000000017 /* PortalWebView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -140,6 +141,7 @@
 				F1010000000000000000000E /* RootView.swift */,
 				F101000000000000000016 /* FormsView.swift */,
 				F101000000000000000015 /* SitePrestartView.swift */,
+				F101000000000000000017 /* PortalWebView.swift */,
 				F101000000000000000014 /* JobHomeView.swift */,
 			);
 			path = Screens;
@@ -235,6 +237,7 @@
 				B101000000000000000014 /* JobHomeView.swift in Sources */,
 				B101000000000000000015 /* SitePrestartView.swift in Sources */,
 				B101000000000000000016 /* FormsView.swift in Sources */,
+				B101000000000000000017 /* PortalWebView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
