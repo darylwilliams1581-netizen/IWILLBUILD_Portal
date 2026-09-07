@@ -112,17 +112,19 @@ function makeCameraAncestorsTransparent(start: HTMLElement): () => void {
 
   const snapshots = elements.map(element => ({
     element,
-    value: element.style.getPropertyValue('background-color'),
-    priority: element.style.getPropertyPriority('background-color'),
+    value: element.style.getPropertyValue('background'),
+    priority: element.style.getPropertyPriority('background'),
   }));
   for (const { element } of snapshots) {
-    element.style.setProperty('background-color', 'transparent', 'important');
+    // globals.css uses the background shorthand, so background-color alone
+    // cannot expose the native preview UIView behind WKWebView.
+    element.style.setProperty('background', 'transparent', 'important');
   }
 
   return () => {
     for (const { element, value, priority } of snapshots) {
-      if (value) element.style.setProperty('background-color', value, priority);
-      else element.style.removeProperty('background-color');
+      if (value) element.style.setProperty('background', value, priority);
+      else element.style.removeProperty('background');
     }
   };
 }
@@ -519,13 +521,11 @@ export default function JobPhotosCameraPage() {
     setCamState('starting');
     setCamErrMsg('');
     const rect = lens.getBoundingClientRect();
-    const scale = window.devicePixelRatio || 1;
     const startCall = preview.start({
-      parent: 'iwb-native-lens',
-      // The iOS plugin converts x/y from device pixels but accepts dimensions
-      // in points. These are layout bounds, not capture-resolution requests.
-      x: Math.round(rect.left * scale),
-      y: Math.round(rect.top * scale),
+      // The iOS preview UIView uses the same point-space as these CSS bounds.
+      // `parent` is deliberately omitted because it is web-only.
+      x: Math.max(0, Math.round(rect.left)),
+      y: Math.max(0, Math.round(rect.top)),
       width: Math.max(1, Math.round(rect.width)),
       height: Math.max(1, Math.round(rect.height)),
       position: 'rear',
