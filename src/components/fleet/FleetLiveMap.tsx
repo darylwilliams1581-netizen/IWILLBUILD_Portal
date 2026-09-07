@@ -1279,37 +1279,36 @@ export default function FleetLiveMap() {
 
           {/* ── Live mode: GPS status overlay (all drivers have no GPS) ── */}
           {!loading && mapMode === 'live' && withGps.length === 0 && sessions.length > 0 && (
-            <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-10 p-4">
-              <div className="bg-white/95 backdrop-blur-sm border rounded-2xl px-5 py-5 shadow-lg text-center max-w-sm w-full"
+            <div className={`absolute left-3 right-14 pointer-events-none z-20 ${mapEngine === 'osm' && mapError ? 'top-28' : 'top-3'}`}>
+              <div className="bg-white/95 backdrop-blur-sm border rounded-xl px-3 py-2 shadow-sm text-left"
                 style={{ borderColor: noGpsSummary === 'denied' ? '#fca5a5' : '#fcd34d' }}>
-                <div className={[
-                  'w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-3 border',
-                  noGpsSummary === 'denied' ? 'bg-red-50 border-red-200' : 'bg-amber-50 border-amber-200',
-                ].join(' ')}>
+                <div className="flex items-start gap-2">
                   {noGpsSummary === 'denied'
-                    ? <AlertCircle size={22} className="text-red-500" />
-                    : <Crosshair size={22} className="text-amber-500 animate-pulse" />}
+                    ? <AlertCircle size={16} className="text-red-500 shrink-0 mt-0.5" />
+                    : <Crosshair size={16} className="text-amber-500 animate-pulse shrink-0 mt-0.5" />}
+                  <div className="min-w-0">
+                    {noGpsSummary === 'denied' && (
+                      <>
+                        <p className="text-[11px] font-semibold text-red-700">Location access denied</p>
+                        <p className="text-[10px] text-slate-500 leading-snug">Ask the driver to enable location for IWIllBUIlD in Settings.</p>
+                      </>
+                    )}
+                    {noGpsSummary === 'waiting_permission' && (
+                      <>
+                        <p className="text-[11px] font-semibold text-amber-800">Waiting for location permission</p>
+                        <p className="text-[10px] text-slate-500 leading-snug">Ask the driver to tap Enable Location on their Drive screen.</p>
+                      </>
+                    )}
+                    {(noGpsSummary === 'waiting_fix' || noGpsSummary === 'unknown') && (
+                      <>
+                        <p className="text-[11px] font-semibold text-amber-800">Waiting for GPS fix</p>
+                        <p className="text-[10px] text-slate-500 leading-snug">
+                          {sessions.length} driver{sessions.length !== 1 ? 's are' : ' is'} active. Their location will appear when a signal is available.
+                        </p>
+                      </>
+                    )}
+                  </div>
                 </div>
-                {noGpsSummary === 'denied' && (
-                  <>
-                    <p className="text-sm font-bold text-slate-700 mb-1">Location access denied</p>
-                    <p className="text-xs text-slate-500 leading-snug">Ask the driver to open Settings and enable location for IWIllBUIlD.</p>
-                  </>
-                )}
-                {noGpsSummary === 'waiting_permission' && (
-                  <>
-                    <p className="text-sm font-bold text-slate-700 mb-1">Waiting for location permission</p>
-                    <p className="text-xs text-slate-500 leading-snug">Ask the driver to tap "Enable Location" on their Drive screen.</p>
-                  </>
-                )}
-                {(noGpsSummary === 'waiting_fix' || noGpsSummary === 'unknown') && (
-                  <>
-                    <p className="text-sm font-bold text-slate-700 mb-1">Waiting for GPS fix</p>
-                    <p className="text-xs text-slate-500 leading-snug">
-                      {sessions.length} driver{sessions.length !== 1 ? 's are' : ' is'} active. GPS will appear once their device gets a signal.
-                    </p>
-                  </>
-                )}
               </div>
             </div>
           )}
