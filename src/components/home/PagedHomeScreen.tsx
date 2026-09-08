@@ -577,73 +577,72 @@ export default memo(function PagedHomeScreen({
         miscalculate its own width, producing the left-clip / overflow bug. The
         overflow:hidden on the swipe container below is sufficient containment. */}
     <div className="flex flex-col flex-1 min-h-0 w-full max-w-full min-w-0">
-      {/* ── Top bar: two-row stacked layout ──────────────────────────────────── */}
-      {/* Row 1: logo + name (left) + utility buttons (right) */}
-      <div className="flex items-center justify-between shrink-0 px-3 pt-2 pb-1 gap-2">
-        {/* Brand mark — logo asset already contains the IWILLBUILD wordmark; no extra text span */}
-        <div className="flex items-center shrink-0">
+      <div className="shrink-0 bg-[#111827] text-white">
+        {/* ── Top bar: two-row stacked layout ────────────────────────────────── */}
+        {/* Row 1: logo + name (left) + utility buttons (right) */}
+        <div className="flex items-center justify-between px-3 pt-2 pb-1 gap-2">
           <img
-            src="/assets/logo.png"
+            src="/assets/logo-horizontal-dark-transparent.png"
             alt="IWILLBUILD"
-            className="h-7 w-auto max-w-[140px] object-contain"
+            className="h-8 w-auto object-contain shrink-0"
           />
-        </div>
-        {/* Utility buttons — min-w-0 so they can shrink; text hidden below 360 px */}
-        <div className="flex items-center gap-1.5 min-w-0 justify-end">
-          <div className="shrink-0">
-            <NotificationBell />
-          </div>
-          <button
-            onClick={() => navigate('/profile')}
-            className="flex items-center justify-center gap-1.5 h-8 rounded-xl bg-violet-600 border border-violet-500 text-white text-[11px] font-semibold hover:bg-violet-500 active:scale-95 transition-all px-2 shrink-0"
-            aria-label="Profile"
-          >
-            <User size={14} className="text-white shrink-0" />
-            <span className="hidden min-[360px]:inline truncate">Profile</span>
-          </button>
-          <button
-            onClick={async () => { await signOut(); navigate('/login'); }}
-            className="flex items-center justify-center gap-1.5 h-8 rounded-xl bg-slate-700 border border-slate-600 text-slate-200 text-[11px] font-semibold hover:bg-red-600 hover:border-red-500 active:scale-95 transition-all px-2 shrink-0"
-            aria-label="Log out"
-            title="Log out"
-          >
-            <LogOut size={13} className="shrink-0" />
-            <span className="hidden min-[360px]:inline truncate">Sign out</span>
-          </button>
-        </div>
-      </div>
-      {/* Row 1b: greeting + date — compact, only shown when props provided */}
-      {(firstName || dateStr) && (
-        <div className="flex items-center justify-between shrink-0 px-3 pb-1 gap-2">
-          <div className="flex items-baseline gap-1.5 min-w-0">
-            {greeting && (
-              <span className="text-[11px] text-gray-400 font-medium shrink-0">{greeting},</span>
-            )}
-            {firstName && (
-              <span className="text-[13px] font-bold text-gray-800 truncate">{firstName}</span>
-            )}
-          </div>
-          {dateStr && (
-            <span className="text-[10px] text-gray-400 font-medium shrink-0 text-right">{dateStr}</span>
-          )}
-        </div>
-      )}
-      {/* Row 2: page tabs — full width, no scroll, equal-width pills */}
-      <div className="flex items-center shrink-0 px-2 pb-1.5 gap-1.5">
-        {PAGE_LABELS.map((label, i) => {
-          const Icon = PAGE_ICONS[i];
-          const active = page === i;
-          return (
+          {/* Utility buttons — min-w-0 so they can shrink; text hidden below 360 px */}
+          <div className="flex items-center gap-1.5 min-w-0 justify-end">
+            <div className="shrink-0">
+              <NotificationBell />
+            </div>
             <button
-              key={label}
-              onClick={() => setPage(i)}
-              className={`flex-1 flex items-center justify-center gap-1.5 px-2 py-2 rounded-xl text-[12px] font-semibold transition-all duration-200 whitespace-nowrap ${active ? 'bg-violet-600 text-white shadow-sm' : 'bg-white/60 text-gray-500 hover:bg-white/80'}`}
+              onClick={() => navigate('/profile')}
+              className="flex items-center justify-center gap-1.5 h-8 rounded-xl bg-violet-600 border border-violet-500 text-white text-[11px] font-semibold hover:bg-violet-500 active:scale-95 transition-all px-2 shrink-0"
+              aria-label="Profile"
             >
-              <Icon size={13} strokeWidth={2.2} />
-              {label}
+              <User size={14} className="text-white shrink-0" />
+              <span className="hidden min-[360px]:inline truncate">Profile</span>
             </button>
-          );
-        })}
+            <button
+              onClick={async () => { await signOut(); navigate('/login'); }}
+              className="flex items-center justify-center gap-1.5 h-8 rounded-xl bg-slate-700 border border-slate-600 text-slate-200 text-[11px] font-semibold hover:bg-red-600 hover:border-red-500 active:scale-95 transition-all px-2 shrink-0"
+              aria-label="Log out"
+              title="Log out"
+            >
+              <LogOut size={13} className="shrink-0" />
+              <span className="hidden min-[360px]:inline truncate">Sign out</span>
+            </button>
+          </div>
+        </div>
+        {/* Row 1b: greeting + date — compact, only shown when props provided */}
+        {(firstName || dateStr) && (
+          <div className="flex items-center justify-between px-3 pb-1 gap-2">
+            <div className="flex items-baseline gap-1.5 min-w-0">
+              {greeting && (
+                <span className="text-[11px] text-slate-300 font-medium shrink-0">{greeting},</span>
+              )}
+              {firstName && (
+                <span className="text-[13px] font-bold text-white truncate">{firstName}</span>
+              )}
+            </div>
+            {dateStr && (
+              <span className="text-[10px] text-slate-300 font-medium shrink-0 text-right">{dateStr}</span>
+            )}
+          </div>
+        )}
+        {/* Row 2: page tabs — full width, no scroll, equal-width pills */}
+        <div className="flex items-center px-2 pb-1.5 gap-1.5">
+          {PAGE_LABELS.map((label, i) => {
+            const Icon = PAGE_ICONS[i];
+            const active = page === i;
+            return (
+              <button
+                key={label}
+                onClick={() => setPage(i)}
+                className={`flex-1 flex items-center justify-center gap-1.5 px-2 py-2 rounded-xl text-[12px] font-semibold transition-all duration-200 whitespace-nowrap ${active ? 'bg-violet-600 text-white shadow-sm' : 'bg-slate-700 text-slate-100 hover:bg-slate-600'}`}
+              >
+                <Icon size={13} strokeWidth={2.2} />
+                {label}
+              </button>
+            );
+          })}
+        </div>
       </div>
 
       {/* ── Swipe container ──────────────────────────────────────────────────── */}
