@@ -11,9 +11,23 @@ final class NetworkStatus: ObservableObject {
     private var listeners: [() -> Void] = []
     private var started = false
 
+    init() {
+        startIfNeeded()
+    }
+
     func whenOnline(_ block: @escaping () -> Void) {
         listeners.append(block)
         startIfNeeded()
+    }
+
+    func retry() {
+        startIfNeeded()
+        let online = monitor.currentPath.status == .satisfied
+        let becameOnline = online && !isOnline
+        isOnline = online
+        if becameOnline {
+            listeners.forEach { $0() }
+        }
     }
 
     private func startIfNeeded() {

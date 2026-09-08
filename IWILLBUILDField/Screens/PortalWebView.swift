@@ -2,10 +2,12 @@ import SwiftUI
 import WebKit
 
 struct PortalWebView: UIViewRepresentable {
+    var reloadToken: Int
     var onOpenCamera: (Int) -> Void
+    var onLoadFailed: () -> Void
 
     func makeCoordinator() -> Coordinator {
-        Coordinator(onOpenCamera: onOpenCamera)
+        Coordinator(onOpenCamera: onOpenCamera, onLoadFailed: onLoadFailed)
     }
 
     func makeUIView(context: Context) -> WKWebView {
@@ -23,18 +25,30 @@ struct PortalWebView: UIViewRepresentable {
 
     func updateUIView(_ uiView: WKWebView, context: Context) {
         context.coordinator.onOpenCamera = onOpenCamera
+        context.coordinator.onLoadFailed = onLoadFailed
+        if context.coordinator.reloadToken != reloadToken {
+            context.coordinator.reloadToken = reloadToken
+            context.coordinator.reload(uiView)
+        }
     }
 
     final class Coordinator: NSObject, WKNavigationDelegate, WKUIDelegate {
         var onOpenCamera: (Int) -> Void
+        var onLoadFailed: () -> Void
+        var reloadToken = 0
         private weak var webView: WKWebView?
 
-        init(onOpenCamera: @escaping (Int) -> Void) {
+        init(onOpenCamera: @escaping (Int) -> Void, onLoadFailed: @escaping () -> Void) {
             self.onOpenCamera = onOpenCamera
+            self.onLoadFailed = onLoadFailed
         }
 
         func attach(_ webView: WKWebView) {
             self.webView = webView
+            Task { await syncCookiesAndLoad(webView) }
+        }
+
+        func reload(_ webView: WKWebView) {
             Task { await syncCookiesAndLoad(webView) }
         }
 
@@ -62,6 +76,14 @@ struct PortalWebView: UIViewRepresentable {
             decisionHandler(.allow)
         }
 
+        func webView(_ webView: WKWebView, didFailProvisionalNavigation navigation: WKNavigation!, withError error: Error) {
+            onLoadFailed()
+        }
+
+        func webView(_ webView: WKWebView, didFail navigation: WKNavigation!, withError error: Error) {
+            onLoadFailed()
+        }
+
         func webView(_ webView: WKWebView, requestMediaCapturePermissionFor origin: WKSecurityOrigin, initiatedByFrame frame: WKFrameInfo, type: WKMediaCaptureType, decisionHandler: @escaping (WKPermissionDecision) -> Void) {
             if type == .camera || type == .cameraAndMicrophone {
                 decisionHandler(.deny)
@@ -79,7 +101,7 @@ struct PortalWebView: UIViewRepresentable {
             let looksLikeCamera = path.contains("camera") || path.contains("job-photos")
             guard looksLikeCamera else { return nil }
             let parts = url.path.split(separator: "/").map(String.init)
-            if let i = parts.firstIndex(of: "jobs"), i + 1 < parts.count, let id = Int(parts[i + 1]) {
+            if let idx = parts.firstIndex(of: "jobs"), parts.indices.contains(idx + 1), let id = Int(parts[idx + 1]) {
                 return id
             }
             return nil
@@ -89,19 +111,42 @@ struct PortalWebView: UIViewRepresentable {
 
 struct OfficeView: View {
     @EnvironmentObject private var offline: OfflineStore
+    @EnvironmentObject private var net: NetworkStatus
     @State private var cameraJob: Job?
+    @State private var webFailed = false
+    @State private var reloadToken = 0
+
+    private var showOffline: Bool { !net.isOnline || webFailed }
 
     var body: some View {
-        PortalWebView { jobId in
-            if let job = offline.jobs.first(where: { $0.id == jobId }) {
-                cameraJob = job
-            } else {
-                cameraJob = Job(id: jobId, name: "Job \(jobId)", jobNumber: nil, status: nil, address: nil, client: nil)
+        ZStack {
+            PortalWebView(
+                reloadToken: reloadToken,
+                onOpenCamera: { jobId in
+                    if let job = offline.jobs.first(where: { $0.id == jobId }) {
+                        cameraJob = job
+                    } else {
+                        cameraJob = Job(id: jobId, name: "Job \(jobId)", jobNumber: nil, status: nil, address: nil, client: nil)
+                    }
+                },
+                onLoadFailed: { webFailed = true }
+            )
+            .ignoresSafeArea(edges: .bottom)
+            .opacity(showOffline ? 0 : 1)
+
+            if showOffline {
+                OfflineSplashView {
+                    webFailed = false
+                    net.retry()
+                    reloadToken += 1
+                }
             }
         }
-        .ignoresSafeArea(edges: .bottom)
         .fullScreenCover(item: $cameraJob) { job in
             LensView(job: job, initialLabel: "")
+        }
+        .onChange(of: net.isOnline) { _, online in
+            if online { webFailed = false }
         }
     }
 }
