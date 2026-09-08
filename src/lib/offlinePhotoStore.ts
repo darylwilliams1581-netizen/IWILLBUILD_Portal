@@ -80,20 +80,20 @@ const DB_VERSION = 2;
 
 /** Maximum number of pending items per job before new enqueues are rejected.
  *
- * WHY 12:
+ * WHY 20:
  * Each offline photo is a full-resolution JPEG blob held in WKWebView's JS
  * heap via IndexedDB. On a 12MP iPhone at quality 84 that's ~2–4 MB per photo.
- * 12 photos × 4 MB = ~48 MB peak heap pressure — well within the ~200 MB
- * WKWebView budget before iOS starts sending memory warnings.
+ * Library batches are capped at 20 photos. At roughly 2–4 MB per prepared photo,
+ * a full batch remains below the separate 200 MB global storage guard.
  *
  * The previous limit of 50 allowed up to ~200 MB of blobs in the queue at
  * once, which could trigger JETSAM kills on older iPhones (6s/7 with 2 GB RAM)
  * when combined with the rest of the app's memory footprint.
  *
- * Users who need more than 12 offline photos should connect to Wi-Fi to sync
+ * Users who need more than 20 offline photos should connect to Wi-Fi to sync
  * the queue before capturing more. The error message below explains this.
  */
-export const QUEUE_MAX_ITEMS = 12;
+export const QUEUE_MAX_ITEMS = 20;
 /** Maximum total bytes stored across ALL jobs before new enqueues are rejected */
 export const QUEUE_MAX_BYTES = 200 * 1024 * 1024; // 200 MB
 /** Items older than this (ms) with > 5 failed attempts are pruned on open */

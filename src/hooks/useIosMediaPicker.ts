@@ -130,6 +130,11 @@ export interface NativeCameraOptions {
   captureQuality?: number;
 }
 
+export interface NativeLibraryOptions {
+  /** Maximum photos selectable in one library visit. Values above 20 are capped. */
+  maxSelections?: number;
+}
+
 export interface IosMediaPickerState {
   file: File | null;
   /** Safe blob URL for preview — null for HEIC/HEIF (cannot be decoded in WebView) */
@@ -155,7 +160,7 @@ export interface IosMediaPickerState {
    */
   photosLimited: boolean;
   openCamera: (opts?: NativeCameraOptions) => Promise<void>;
-  openLibrary: () => Promise<void>;
+  openLibrary: (opts?: NativeLibraryOptions) => Promise<void>;
   clear: () => void;
   /** Render this inside your component — the hidden file inputs */
   inputsRef: React.RefObject<HTMLDivElement>;
@@ -308,6 +313,13 @@ interface NativeCameraPluginBridge {
     webPath?: string;
     format?: string;
   }>;
+  pickImages?: (opts: Record<string, unknown>) => Promise<{
+    photos?: Array<{
+      path?: string;
+      webPath?: string;
+      format?: string;
+    }>;
+  }>;
   checkPermissions: () => Promise<Record<string, string>>;
   requestPermissions: (opts: { permissions: string[] }) => Promise<Record<string, string>>;
 }
@@ -420,7 +432,10 @@ async function ensurePhotosPermission(): Promise<'granted' | 'limited' | 'denied
 
 // ── Hook ──────────────────────────────────────────────────────────────────────
 
-export function useIosMediaPicker(onChange?: (file: File) => void): IosMediaPickerState {
+export function useIosMediaPicker(
+  onChange?: (file: File) => void,
+  onFilesChange?: (files: File[]) => void,
+): IosMediaPickerState {
   const [file, setFile]                     = useState<File | null>(null);
   const [previewUrl, setPreviewUrl]         = useState<string | null>(null);
   const [isHeic, setIsHeic]                 = useState(false);
@@ -467,12 +482,34 @@ export function useIosMediaPicker(onChange?: (file: File) => void): IosMediaPick
     onChange?.(f);
   }, [onChange]);
 
+  const handleFiles = useCallback((files: File[]) => {
+    if (files.length === 0) return;
+
+    // Preserve the existing single-file preview state while delivering the
+    // complete selection to upload screens that support batches.
+    const last = files[files.length - 1];
+    if (prevUrlRef.current) {
+      URL.revokeObjectURL(prevUrlRef.current);
+      prevUrlRef.current = null;
+    }
+    const heic = fileIsHeic(last);
+    const url = safePreviewUrl(last);
+    prevUrlRef.current = url;
+    setFile(last);
+    setPreviewUrl(url);
+    setIsHeic(heic);
+
+    if (onFilesChange) onFilesChange(files);
+    else files.forEach((selected) => onChange?.(selected));
+  }, [onChange, onFilesChange]);
+
   const handleInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    const f = e.target.files?.[0];
-    if (f) handleFile(f);
+    const files = Array.from(e.target.files ?? []).slice(0, 20);
+    if (files.length > 1) handleFiles(files);
+    else if (files[0]) handleFile(files[0]);
     // Reset so the same file can be re-selected
     e.target.value = '';
-  }, [handleFile]);
+  }, [handleFile, handleFiles]);
 
   // ── Internal: check camera permission + open input ────────────────────────
   const doOpenCamera = useCallback(async (opts?: NativeCameraOptions) => {
@@ -630,13 +667,17 @@ export function useIosMediaPicker(onChange?: (file: File) => void): IosMediaPick
   }, [handleFile]);
 
   // ── Internal: check photos permission + open input ────────────────────────
-  const doOpenLibrary = useCallback(async () => {
+  const doOpenLibrary = useCallback(async (opts?: NativeLibraryOptions) => {
     setDenied(null);
     setCameraError(null);
 
     // ── Web path: click synchronously — same Safari gesture-token rule ────────
     if (!isNative()) {
-      libraryInputRef.current?.click();
+      const input = libraryInputRef.current;
+      if (input) {
+        input.multiple = (opts?.maxSelections ?? 1) > 1;
+        input.click();
+      }
       return;
     }
 
@@ -651,12 +692,55 @@ export function useIosMediaPicker(onChange?: (file: File) => void): IosMediaPick
     // This is the correct pattern for Capacitor + WKWebView photo library access.
     const CameraPlugin = getNativeCameraPlugin();
     if (!CameraPlugin) {
-      libraryInputRef.current?.click();
+      const input = libraryInputRef.current;
+      if (input) {
+        input.multiple = (opts?.maxSelections ?? 1) > 1;
+        input.click();
+      }
       return;
     }
 
     setChecking(true);
     try {
+      const maxSelections = Math.max(1, Math.min(20, Math.floor(opts?.maxSelections ?? 1)));
+
+      // Capacitor's native gallery picker provides the iOS multi-select UI.
+      // Keep the existing getPhoto path below for single selection and as a
+      // compatibility fallback if an older native bridge lacks pickImages.
+      if (maxSelections > 1 && typeof CameraPlugin.pickImages === 'function') {
+        const picked = await CameraPlugin.pickImages({
+          quality: 84,
+          width: 3072,
+          height: 3072,
+          correctOrientation: true,
+          presentationStyle: 'fullscreen',
+          limit: maxSelections,
+        });
+        const selected = (picked.photos ?? []).slice(0, maxSelections);
+        const files: File[] = [];
+        // Resolve one native URL at a time to avoid 20 simultaneous image reads
+        // briefly doubling WKWebView memory usage.
+        for (let index = 0; index < selected.length; index += 1) {
+          const photo = selected[index];
+          const path = photo.webPath ?? photo.path;
+          if (!path) continue;
+          const file = await webPathToFile(
+            path,
+            photo.format ?? 'jpg',
+            `photo_${Date.now()}_${index + 1}`,
+          );
+          if (file) files.push(file);
+        }
+
+        if (files.length > 0) {
+          setPhotosLimited(false);
+          handleFiles(files);
+          return;
+        }
+        setCameraError('Could not load the selected photos. Please try again.');
+        return;
+      }
+
       const baseOpts = {
         quality: 84,
         allowEditing: false,
@@ -745,7 +829,7 @@ export function useIosMediaPicker(onChange?: (file: File) => void): IosMediaPick
     } finally {
       setChecking(false);
     }
-  }, [handleFile]);
+  }, [handleFile, handleFiles]);
 
   // ── Public: openCamera — shows explainer first if not yet seen ────────────
   const openCamera = useCallback(async (opts?: NativeCameraOptions) => {
@@ -769,7 +853,7 @@ export function useIosMediaPicker(onChange?: (file: File) => void): IosMediaPick
   }, [permExplainer, doOpenCamera]);
 
   // ── Public: openLibrary — shows explainer first if not yet seen ───────────
-  const openLibrary = useCallback(async () => {
+  const openLibrary = useCallback(async (opts?: NativeLibraryOptions) => {
     if (isNative() && permExplainer.shouldShow('photos')) {
       setExplainer({
         type: 'photos',
@@ -781,12 +865,12 @@ export function useIosMediaPicker(onChange?: (file: File) => void): IosMediaPick
         onEnable: async () => {
           permExplainer.markShown('photos');
           setExplainer(null);
-          await doOpenLibrary();
+          await doOpenLibrary(opts);
         },
       });
       return;
     }
-    await doOpenLibrary();
+    await doOpenLibrary(opts);
   }, [permExplainer, doOpenLibrary]);
 
   const clear = useCallback(() => {

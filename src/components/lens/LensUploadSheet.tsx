@@ -106,9 +106,14 @@ function UploadPanel({
     }
   }, [enqueueFiles]);
 
-  const picker = useIosMediaPicker((file) => {
-    void enqueueSelected([file]);
-  });
+  const picker = useIosMediaPicker(
+    (file) => {
+      void enqueueSelected([file]);
+    },
+    (files) => {
+      void enqueueSelected(files.slice(0, 20));
+    },
+  );
 
   const hasItems = queue.length > 0;
   const allDone  = hasItems && pendingCount === 0 && failedCount === 0;
@@ -214,12 +219,12 @@ function UploadPanel({
           </button>
           <button
             type="button"
-            onClick={() => void picker.openLibrary()}
+            onClick={() => void picker.openLibrary({ maxSelections: 20 })}
             disabled={picker.checkingPermission}
             className="flex min-h-[54px] flex-col items-center justify-center gap-1 rounded-xl border border-border bg-background px-2 text-[11px] font-semibold text-foreground transition-colors hover:bg-muted disabled:opacity-50"
           >
             <Images size={17} />
-            Photo Library
+            Photo Library (up to 20)
           </button>
         </div>
       </div>
