@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useRef, useEffect, useImperativeHandle, forwardRef, memo } from 'react';
+import React, { useState, useCallback, useRef, useEffect, useImperativeHandle, forwardRef, memo, useMemo } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   Upload,
@@ -19,6 +19,7 @@ import {
   CheckSquare,
   Square,
   Lock,
+  Calendar,
 } from 'lucide-react';
 import { usePhotoUploadQueue } from '@/hooks/usePhotoUploadQueue';
 import PendingPhotoCard from '@/components/PendingPhotoCard';
@@ -76,8 +77,10 @@ export interface JobPhotosHandle {
    * Defaults to false so accidental calls without confirmation are rejected by the server.
    */
   generateShareLink: (acknowledged?: boolean) => void;
-  setViewSize: (size: ViewSize) => void;
-  viewSize: ViewSize;
+  setViewSize: (size: JobPhotosViewSize) => void;
+  viewSize: JobPhotosViewSize;
+  setGroupMode: (mode: JobPhotosGroupMode) => void;
+  groupMode: JobPhotosGroupMode;
   selectMode: boolean;
   setSelectMode: (v: boolean) => void;
   selectedCount: number;
@@ -88,7 +91,8 @@ export interface JobPhotosHandle {
   deleteSelected: () => void;
 }
 
-type ViewSize = 'small' | 'medium' | 'large';
+export type JobPhotosViewSize = 'small' | 'medium' | 'large';
+export type JobPhotosGroupMode = 'all' | 'date' | 'uploader';
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -98,17 +102,17 @@ const PAGE_SIZE = 30;
 const BATCH_LIMIT = 10;
 
 // auto-fill columns — tiles snap to minmax width, no fixed column count
-const VIEW_COLS: Record<ViewSize, string> = {
+const VIEW_COLS: Record<JobPhotosViewSize, string> = {
   small:  '[grid-template-columns:repeat(auto-fill,minmax(80px,1fr))]',
   medium: '[grid-template-columns:repeat(auto-fill,minmax(150px,1fr))]',
   large:  '[grid-template-columns:repeat(auto-fill,minmax(240px,1fr))]',
 };
-const VIEW_GAP: Record<ViewSize, string> = {
+const VIEW_GAP: Record<JobPhotosViewSize, string> = {
   small:  'gap-[2px]',
   medium: 'gap-[8px]',
   large:  'gap-[12px]',
 };
-const VIEW_RADIUS: Record<ViewSize, string> = {
+const VIEW_RADIUS: Record<JobPhotosViewSize, string> = {
   small:  'rounded-sm',
   medium: 'rounded-xl',
   large:  'rounded-xl',
@@ -193,6 +197,72 @@ function formatDateTime(iso: string) {
   return new Date(normalised).toLocaleString('en-AU', {
     day: 'numeric', month: 'short', year: 'numeric',
     hour: '2-digit', minute: '2-digit',
+  });
+}
+
+function photoDayKey(iso: string): string {
+  const match = iso.match(/^(\d{4}-\d{2}-\d{2})/);
+  return match?.[1] ?? 'unknown';
+}
+
+function localDayKey(date: Date): string {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
+function formatPhotoDay(key: string): string {
+  if (key === 'unknown') return 'Unknown date';
+
+  const today = new Date();
+  const yesterday = new Date(today);
+  yesterday.setDate(today.getDate() - 1);
+  if (key === localDayKey(today)) return 'Today';
+  if (key === localDayKey(yesterday)) return 'Yesterday';
+
+  const date = new Date(`${key}T00:00:00`);
+  if (Number.isNaN(date.getTime())) return key;
+  return date.toLocaleDateString('en-AU', {
+    weekday: 'long', day: 'numeric', month: 'long', year: 'numeric',
+  });
+}
+
+interface IndexedJobPhoto {
+  photo: JobPhoto;
+  index: number;
+}
+
+interface JobPhotoGroup {
+  key: string;
+  label: string;
+  photos: IndexedJobPhoto[];
+  latestAt: string;
+}
+
+function buildPhotoGroups(photos: JobPhoto[], mode: Exclude<JobPhotosGroupMode, 'all'>): JobPhotoGroup[] {
+  const groups = new Map<string, JobPhotoGroup>();
+
+  photos.forEach((photo, index) => {
+    const key = mode === 'date'
+      ? photoDayKey(photo.createdAt)
+      : (photo.uploadedByUserId || photo.uploadedByName?.trim() || 'unknown-uploader');
+    const label = mode === 'date'
+      ? formatPhotoDay(key)
+      : (photo.uploadedByName?.trim() || 'Unknown uploader');
+    const group = groups.get(key) ?? { key, label, photos: [], latestAt: photo.createdAt };
+    group.photos.push({ photo, index });
+    if (photo.createdAt > group.latestAt) group.latestAt = photo.createdAt;
+    groups.set(key, group);
+  });
+
+  return Array.from(groups.values()).sort((a, b) => {
+    if (mode === 'date') {
+      if (a.key === 'unknown') return 1;
+      if (b.key === 'unknown') return -1;
+      return b.key.localeCompare(a.key);
+    }
+    return b.latestAt.localeCompare(a.latestAt);
   });
 }
 
@@ -397,7 +467,7 @@ function Lightbox({ photos, index, cacheBust, onClose, onNavigate, onDelete, onE
 interface PhotoCardProps {
   photo: JobPhoto;
   index: number;
-  viewSize: ViewSize;
+  viewSize: JobPhotosViewSize;
   isSelected: boolean;
   selectMode: boolean;
   bust: number | undefined;
@@ -526,7 +596,7 @@ const JobPhotos = forwardRef<JobPhotosHandle, JobPhotosProps>(function JobPhotos
   // Over-limit batch dialog — shown when user selects > BATCH_LIMIT files
   const [overLimitFiles, setOverLimitFiles] = useState<File[] | null>(null);
 
-  const [viewSize, setViewSizeState] = useState<ViewSize>(() => {
+  const [viewSize, setViewSizeState] = useState<JobPhotosViewSize>(() => {
     try {
       const saved = localStorage.getItem('jobPhotosZoom');
       if (saved === 'small' || saved === 'medium' || saved === 'large') return saved;
@@ -534,10 +604,11 @@ const JobPhotos = forwardRef<JobPhotosHandle, JobPhotosProps>(function JobPhotos
     return 'medium';
   });
 
-  const setViewSize = (s: ViewSize) => {
+  const setViewSize = (s: JobPhotosViewSize) => {
     setViewSizeState(s);
     try { localStorage.setItem('jobPhotosZoom', s); } catch (_) {}
   };
+  const [groupMode, setGroupMode] = useState<JobPhotosGroupMode>('all');
 
   const [selectMode, setSelectMode] = useState(false);
   const [selected, setSelected] = useState<Set<number>>(new Set());
@@ -870,6 +941,8 @@ const JobPhotos = forwardRef<JobPhotosHandle, JobPhotosProps>(function JobPhotos
     generateShareLink: (acknowledged = false) => void generateShareLink(acknowledged),
     setViewSize,
     get viewSize() { return viewSize; },
+    setGroupMode,
+    get groupMode() { return groupMode; },
     get selectMode() { return selectMode; },
     setSelectMode,
     get selectedCount() { return selected.size; },
@@ -878,13 +951,41 @@ const JobPhotos = forwardRef<JobPhotosHandle, JobPhotosProps>(function JobPhotos
     downloadSelected,
     exitSelectMode,
     deleteSelected,
-  }), [viewSize, selectMode, selected.size, totalCount, isUploading, generateShareLink, downloadSelected, exitSelectMode, deleteSelected]);
+  }), [viewSize, groupMode, selectMode, selected.size, totalCount, isUploading, generateShareLink, downloadSelected, exitSelectMode, deleteSelected]);
 
   // ── Render ─────────────────────────────────────────────────────────────────
 
   const atLimit = totalCount >= MAX_PHOTOS;
   const remaining = MAX_PHOTOS - totalCount;
   const hasPendingCards = queue.length > 0;
+  const indexedPhotos = useMemo(
+    () => photos.map((photo, index) => ({ photo, index })),
+    [photos],
+  );
+  const groupedPhotos = useMemo(
+    () => groupMode === 'all' ? [] : buildPhotoGroups(photos, groupMode),
+    [photos, groupMode],
+  );
+
+  const renderPhotoGrid = (items: IndexedJobPhoto[]) => (
+    <div className={`grid ${VIEW_GAP[viewSize]} ${VIEW_COLS[viewSize]}`}>
+      {items.map(({ photo, index }) => (
+        <PhotoCard
+          key={photo.id}
+          photo={photo}
+          index={index}
+          viewSize={viewSize}
+          isSelected={selected.has(photo.id)}
+          selectMode={selectMode}
+          bust={cacheBust[photo.id]}
+          onTap={setLightboxIndex}
+          onToggleSelect={toggleSelect}
+          onEdit={setEditorPhoto}
+          onDelete={setDeleteConfirm}
+        />
+      ))}
+    </div>
+  );
 
   return (
     <div
@@ -1028,23 +1129,28 @@ const JobPhotos = forwardRef<JobPhotosHandle, JobPhotosProps>(function JobPhotos
             </div>
           )}
 
-          <div className={`grid ${VIEW_GAP[viewSize]} ${VIEW_COLS[viewSize]}`}>
-            {photos.map((photo, i) => (
-              <PhotoCard
-                key={photo.id}
-                photo={photo}
-                index={i}
-                viewSize={viewSize}
-                isSelected={selected.has(photo.id)}
-                selectMode={selectMode}
-                bust={cacheBust[photo.id]}
-                onTap={setLightboxIndex}
-                onToggleSelect={toggleSelect}
-                onEdit={setEditorPhoto}
-                onDelete={setDeleteConfirm}
-              />
-            ))}
-          </div>
+          {groupMode === 'all' && renderPhotoGrid(indexedPhotos)}
+
+          {groupMode !== 'all' && (
+            <div className="flex flex-col gap-5">
+              {groupedPhotos.map((group) => (
+                <section key={group.key}>
+                  <div className="mb-2 flex items-center gap-2 text-slate-500">
+                    {groupMode === 'date'
+                      ? <Calendar size={14} className="shrink-0" />
+                      : <User size={14} className="shrink-0" />}
+                    <h2 className="min-w-0 truncate text-xs font-semibold uppercase tracking-wide">
+                      {group.label}
+                    </h2>
+                    <span className="shrink-0 text-xs text-slate-400">
+                      · {group.photos.length} photo{group.photos.length === 1 ? '' : 's'}
+                    </span>
+                  </div>
+                  {renderPhotoGrid(group.photos)}
+                </section>
+              ))}
+            </div>
+          )}
 
           {/* Load more */}
           {hasMore && (

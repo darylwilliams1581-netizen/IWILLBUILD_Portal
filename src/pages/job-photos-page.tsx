@@ -1,9 +1,13 @@
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { useParams, useNavigate } from "react-router";
-import { Loader2, Copy, Check, X, ExternalLink, QrCode, Download, Upload, Share2, CheckSquare, Send, Camera, Trash2 } from 'lucide-react';
+import { Loader2, Copy, Check, X, ExternalLink, QrCode, Download, Upload, Share2, CheckSquare, Send, Camera, Trash2, LayoutGrid, Calendar, User, Grid3X3, Grid2X2, Square } from 'lucide-react';
 import { Helmet } from '@dr.pogodin/react-helmet';
 import { motion, AnimatePresence } from 'motion/react';
-import JobPhotos, { type JobPhotosHandle } from '@/components/JobPhotos';
+import JobPhotos, {
+  type JobPhotosGroupMode,
+  type JobPhotosHandle,
+  type JobPhotosViewSize,
+} from '@/components/JobPhotos';
 import JobFeatureShell from '@/components/job/JobFeatureShell';
 // qrcode is loaded lazily (dynamic import) to prevent its module-level
 // constructor code from running on iOS Safari at page parse time, which
@@ -37,7 +41,14 @@ export default function JobPhotosPage() {
   const [uploading, setUploading] = useState(false);
   const [selectMode, setSelectModeLocal] = useState(false);
   const [selectedCount, setSelectedCount] = useState(0);
-  // View size is fixed to 'medium' — grid size picker removed
+  const [viewSize, setViewSizeLocal] = useState<JobPhotosViewSize>(() => {
+    try {
+      const saved = localStorage.getItem('jobPhotosZoom');
+      if (saved === 'small' || saved === 'medium' || saved === 'large') return saved;
+    } catch {/* localStorage unavailable */}
+    return 'medium';
+  });
+  const [groupMode, setGroupModeLocal] = useState<JobPhotosGroupMode>('all');
 
   // Share state
   const [shareUrl, setShareUrl] = useState<string | null>(null);
@@ -180,6 +191,14 @@ export default function JobPhotosPage() {
     photosRef.current?.setSelectMode(v);
     if (!v) setSelectedCount(0);
   };
+  const handleViewSize = (size: JobPhotosViewSize) => {
+    setViewSizeLocal(size);
+    photosRef.current?.setViewSize(size);
+  };
+  const handleGroupMode = (mode: JobPhotosGroupMode) => {
+    setGroupModeLocal(mode);
+    photosRef.current?.setGroupMode(mode);
+  };
   const atLimit = photoCount >= 200;
   const title = job ? `${job.name} — Photos` : 'Job Photos';
   return <div className="portal-page">
@@ -239,6 +258,54 @@ export default function JobPhotosPage() {
         {loading ? <div className="flex items-center justify-center py-20">
             <Loader2 size={24} className="animate-spin text-primary" />
           </div> : <div className="px-2 py-2 pb-28 sm:px-4 sm:py-4 md:pb-6">
+            <div className="mb-3 flex max-w-full flex-wrap items-center justify-between gap-2 border-b border-slate-200 pb-2">
+              <div className="flex max-w-full items-center gap-1 rounded-xl bg-slate-100 p-1" role="group" aria-label="Group job photos">
+                {([
+                  { mode: 'all', label: 'All', Icon: LayoutGrid },
+                  { mode: 'date', label: 'Date', Icon: Calendar },
+                  { mode: 'uploader', label: 'Uploader', Icon: User },
+                ] as const).map(({ mode, label, Icon }) => (
+                  <button
+                    key={mode}
+                    type="button"
+                    onClick={() => handleGroupMode(mode)}
+                    aria-pressed={groupMode === mode}
+                    className={`flex min-h-10 items-center gap-1.5 rounded-lg px-2.5 text-xs font-semibold transition-colors ${
+                      groupMode === mode
+                        ? 'bg-primary text-white shadow-sm'
+                        : 'text-slate-600 hover:bg-white hover:text-slate-800'
+                    }`}
+                  >
+                    <Icon size={14} />
+                    {label}
+                  </button>
+                ))}
+              </div>
+
+              <div className="flex items-center gap-1 rounded-xl border border-slate-200 bg-white p-1" role="group" aria-label="Photo tile size">
+                {([
+                  { size: 'small', label: 'Small tiles', Icon: Grid3X3 },
+                  { size: 'medium', label: 'Medium tiles', Icon: Grid2X2 },
+                  { size: 'large', label: 'Large tiles', Icon: Square },
+                ] as const).map(({ size, label, Icon }) => (
+                  <button
+                    key={size}
+                    type="button"
+                    title={label}
+                    aria-label={label}
+                    aria-pressed={viewSize === size}
+                    onClick={() => handleViewSize(size)}
+                    className={`flex h-9 w-9 items-center justify-center rounded-lg transition-colors ${
+                      viewSize === size
+                        ? 'bg-primary text-white'
+                        : 'text-slate-500 hover:bg-slate-100 hover:text-slate-700'
+                    }`}
+                  >
+                    <Icon size={size === 'small' ? 17 : size === 'medium' ? 18 : 16} />
+                  </button>
+                ))}
+              </div>
+            </div>
             <JobPhotos ref={photosRef} jobId={jobId} onShareLink={handleShareLink} onPhotoCount={setPhotoCount} onUploading={setUploading} onSelectionChange={setSelectedCount} />
           </div>}
 
