@@ -586,12 +586,12 @@ export default memo(function PagedHomeScreen({
         className="flex items-center justify-between shrink-0 px-3 pb-1 gap-2 bg-gray-900"
         style={{ paddingTop: 'max(env(safe-area-inset-top, 0px), 8px)' }}
       >
-        {/* Brand mark — light surface, use base horizontal slot (not /dark variant) */}
+        {/* Brand mark — sized to fill the header row height */}
         <div className="flex items-center shrink-0">
           <img
             src="/assets/logo.png"
             alt="IWILLBUILD"
-            className="h-7 w-auto max-w-[140px] object-contain"
+            className="h-10 w-auto max-w-[200px] object-contain"
             onError={e => {
               // Fallback to text wordmark if logo asset fails to load on device
               const img = e.currentTarget;
