@@ -1,32 +1,22 @@
 /**
- * LensUploadSheet
+ * LensUploadSheet — Website-only upload panel.
  * ─────────────────────────────────────────────────────────────────────────────
- * Lens Phase 2 — Upload photos flow.
+ * WEBSITE ONLY. No Capacitor, no IndexedDB, no offline queue, no native picker.
  *
  * Flow:
- *   1. Job picker (LensJobPickerSheet)
- *   2. File picker opens immediately after job selection
- *   3. Files enqueued into usePhotoUploadQueue → POST /api/jobs/:jobId/photos
- *   4. Queue progress shown inline (PendingPhotoCard)
- *   5. onPhotoSynced fires per-photo → parent refreshes gallery
- *   6. User stays on Lens throughout
+ *   1. Sheet opens → job picker (LensJobPickerSheet)
+ *   2. Job selected → file picker (standard browser <input type="file">)
+ *   3. Files uploaded immediately via XHR → POST /api/jobs/:jobId/photos
+ *   4. Progress shown inline per file
+ *   5. onPhotoSynced fires per confirmed photo → parent refreshes gallery
  *
- * Rules:
- *   - Reuses usePhotoUploadQueue (existing hook, existing endpoint)
- *   - Reuses useIosMediaPicker + IosMediaInputs (iOS/Capacitor safe)
- *   - Reuses PendingPhotoCard for queue display
- *   - No base64 storage, no direct R2 upload, no duplicate records
- *   - Multiple files allowed
- *   - 44×44 px minimum touch targets
+ * Upload: plain XHR with credentials + X-Client-Id header.
+ * No IDB, no CapacitorHttp, no native media library.
  */
 
-import { useState, useCallback, useRef } from 'react';
+import { useState, useRef, useCallback, useEffect } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
-import { X, Upload, CheckCircle2, RotateCcw, ImagePlus } from 'lucide-react';
-import { usePhotoUploadQueue } from '@/hooks/usePhotoUploadQueue';
-import { useIosMediaPicker } from '@/hooks/useIosMediaPicker';
-import { IosMediaInputs, IosPermissionBanner } from '@/components/IosMediaInputs';
-import PendingPhotoCard from '@/components/PendingPhotoCard';
+import { X, Upload, CheckCircle2, RotateCcw, ImagePlus, Loader2 } from 'lucide-react';
 import LensJobPickerSheet, { type LensJobOption, jobLabel } from './LensJobPickerSheet';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -34,16 +24,70 @@ import LensJobPickerSheet, { type LensJobOption, jobLabel } from './LensJobPicke
 interface LensUploadSheetProps {
   open: boolean;
   onClose: () => void;
-  /** Called after each individual photo is confirmed on the server */
   onPhotoSynced: (serverPhotoId: number) => void;
-  /**
-   * When set, skip the job picker and go straight to the upload panel
-   * for this job. Used by the Group-by-Job view where the job is already known.
-   */
   initialJob?: LensJobOption | null;
 }
 
-// ── Inner upload panel (shown after job is selected) ─────────────────────────
+type FileStatus = 'pending' | 'uploading' | 'done' | 'failed';
+
+interface FileItem {
+  id: string;
+  file: File;
+  previewUrl: string | null;
+  status: FileStatus;
+  progress: number;
+  error: string | null;
+  serverId: number | null;
+}
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+
+let _counter = 0;
+function uid() { return `f_${Date.now()}_${++_counter}`; }
+
+function canPreview(f: File) {
+  return ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/gif'].includes(f.type);
+}
+
+function uploadXhr(
+  jobId: number,
+  file: File,
+  clientId: string,
+  onProgress: (pct: number) => void,
+): Promise<number> {
+  return new Promise((resolve, reject) => {
+    const fd = new FormData();
+    fd.append('photos', file);
+    const xhr = new XMLHttpRequest();
+    xhr.open('POST', `/api/jobs/${jobId}/photos`);
+    xhr.withCredentials = true;
+    xhr.setRequestHeader('X-Client-Id', clientId);
+    xhr.upload.addEventListener('progress', (e) => {
+      if (e.lengthComputable) onProgress(Math.round((e.loaded / e.total) * 100));
+    });
+    xhr.addEventListener('load', () => {
+      try {
+        const data = JSON.parse(xhr.responseText) as { photos?: { id: number }[]; error?: string };
+        if (xhr.status >= 200 && xhr.status < 300 && data.photos?.[0]) {
+          resolve(data.photos[0].id);
+        } else {
+          reject(new Error(data.error ?? `Upload failed (${xhr.status})`));
+        }
+      } catch {
+        reject(new Error(
+          xhr.status === 413 ? 'File too large' :
+          xhr.status === 401 ? 'Session expired — please log in again' :
+          `Upload failed (${xhr.status})`
+        ));
+      }
+    });
+    xhr.addEventListener('error', () => reject(new Error('Network error')));
+    xhr.addEventListener('abort', () => reject(new Error('Cancelled')));
+    xhr.send(fd);
+  });
+}
+
+// ── Upload panel ──────────────────────────────────────────────────────────────
 
 function UploadPanel({
   job,
@@ -56,53 +100,84 @@ function UploadPanel({
   onChangeJob: () => void;
   onClose: () => void;
 }) {
+  const [items, setItems] = useState<FileItem[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const activeRef = useRef(0);
+  const itemsRef = useRef<FileItem[]>([]);
+  itemsRef.current = items;
 
-  const {
-    queue,
-    isOnline,
-    enqueueFiles,
-    retryItem,
-    removeItem,
-    clearUploaded,
-    pendingCount,
-    uploadedCount,
-    failedCount,
-  } = usePhotoUploadQueue({
-    jobId: job.id,
-    onPhotoSynced,
-    onBatchComplete: (uploaded, failed) => {
-      if (uploaded > 0 && failed === 0) {
-        // Auto-clear synced items after a short delay so user sees success
-        setTimeout(() => clearUploaded(), 2500);
-      }
-    },
-  });
+  const updateItem = useCallback((id: string, patch: Partial<FileItem>) => {
+    setItems(prev => prev.map(i => i.id === id ? { ...i, ...patch } : i));
+  }, []);
 
-  // iOS-safe multi-file picker
-  const picker = useIosMediaPicker(async (file: File) => {
-    await enqueueFiles([file]);
-  });
+  const processNext = useCallback(() => {
+    const current = itemsRef.current;
+    if (activeRef.current >= 2) return;
+    const next = current.find(i => i.status === 'pending');
+    if (!next) return;
 
-  // Web multi-file input handler
-  function handleWebFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+    activeRef.current += 1;
+    updateItem(next.id, { status: 'uploading', progress: 0 });
+
+    void uploadXhr(job.id, next.file, next.id, (pct) => {
+      updateItem(next.id, { progress: pct });
+    }).then((serverId) => {
+      if (next.previewUrl) URL.revokeObjectURL(next.previewUrl);
+      updateItem(next.id, { status: 'done', progress: 100, serverId, previewUrl: null });
+      onPhotoSynced(serverId);
+    }).catch((err: Error) => {
+      updateItem(next.id, { status: 'failed', error: err.message });
+    }).finally(() => {
+      activeRef.current -= 1;
+      processNext();
+    });
+  }, [job.id, updateItem, onPhotoSynced]);
+
+  // Kick uploads whenever new pending items appear
+  useEffect(() => {
+    const pending = items.filter(i => i.status === 'pending').length;
+    if (pending > 0) processNext();
+  }, [items, processNext]);
+
+  function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const files = Array.from(e.target.files ?? []);
-    if (files.length > 0) void enqueueFiles(files);
-    // Reset so the same files can be re-selected if needed
+    if (!files.length) return;
+    const newItems: FileItem[] = files.map(f => ({
+      id: uid(),
+      file: f,
+      previewUrl: canPreview(f) ? URL.createObjectURL(f) : null,
+      status: 'pending',
+      progress: 0,
+      error: null,
+      serverId: null,
+    }));
+    setItems(prev => [...prev, ...newItems]);
     e.target.value = '';
   }
 
-  function openFilePicker() {
-    // On native iOS use the Capacitor-safe library picker
-    if (picker.openLibrary) {
-      void picker.openLibrary();
-    } else {
-      fileInputRef.current?.click();
-    }
+  function retryItem(id: string) {
+    updateItem(id, { status: 'pending', progress: 0, error: null });
   }
 
-  const hasItems = queue.length > 0;
-  const allDone  = hasItems && pendingCount === 0 && failedCount === 0;
+  function removeItem(id: string) {
+    setItems(prev => {
+      const item = prev.find(i => i.id === id);
+      if (item?.previewUrl) URL.revokeObjectURL(item.previewUrl);
+      return prev.filter(i => i.id !== id);
+    });
+  }
+
+  function clearDone() {
+    setItems(prev => {
+      prev.filter(i => i.status === 'done' && i.previewUrl).forEach(i => URL.revokeObjectURL(i.previewUrl!));
+      return prev.filter(i => i.status !== 'done');
+    });
+  }
+
+  const pendingCount  = items.filter(i => i.status === 'pending' || i.status === 'uploading').length;
+  const doneCount     = items.filter(i => i.status === 'done').length;
+  const failedCount   = items.filter(i => i.status === 'failed').length;
+  const allDone       = items.length > 0 && pendingCount === 0 && failedCount === 0;
 
   return (
     <div className="flex flex-col h-full">
@@ -128,17 +203,7 @@ function UploadPanel({
         </button>
       </div>
 
-      {/* Permission denied banner */}
-      {picker.permissionDenied && (
-        <div className="px-4 pt-3 shrink-0">
-          <IosPermissionBanner type={picker.permissionDenied} />
-        </div>
-      )}
-
-      {/* Hidden inputs (iOS/web) */}
-      <IosMediaInputs picker={picker} accept="image/*" />
-
-      {/* Web multi-file input (hidden) */}
+      {/* Hidden file input — browser native, no Capacitor */}
       <input
         ref={fileInputRef}
         type="file"
@@ -146,12 +211,12 @@ function UploadPanel({
         multiple
         className="hidden"
         aria-hidden="true"
-        onChange={handleWebFileChange}
+        onChange={handleFileChange}
       />
 
       {/* Queue */}
       <div className="flex-1 overflow-y-auto px-4 py-3 flex flex-col gap-2">
-        {!hasItems && (
+        {items.length === 0 && (
           <div className="flex flex-col items-center justify-center py-10 gap-3 text-muted-foreground">
             <ImagePlus size={36} className="opacity-30" />
             <p className="text-sm text-center">
@@ -161,31 +226,90 @@ function UploadPanel({
           </div>
         )}
 
-        {queue.map((item) => (
-          <PendingPhotoCard
-            key={item.clientId}
-            item={item}
-            isOnline={isOnline}
-            onRetry={retryItem}
-            onRemove={removeItem}
-          />
+        {items.map(item => (
+          <div
+            key={item.id}
+            className="flex items-center gap-3 p-3 rounded-xl border border-border bg-card"
+          >
+            {/* Thumbnail */}
+            <div className="w-12 h-12 rounded-lg overflow-hidden bg-muted shrink-0 flex items-center justify-center">
+              {item.previewUrl
+                ? <img src={item.previewUrl} alt="" className="w-full h-full object-cover" />
+                : <ImagePlus size={20} className="text-muted-foreground opacity-40" />
+              }
+            </div>
+
+            {/* Info */}
+            <div className="flex-1 min-w-0">
+              <p className="text-xs font-medium text-foreground truncate">{item.file.name}</p>
+              {item.status === 'uploading' && (
+                <div className="mt-1.5 h-1.5 rounded-full bg-muted overflow-hidden">
+                  <div
+                    className="h-full bg-violet-500 rounded-full transition-all duration-200"
+                    style={{ width: `${item.progress}%` }}
+                  />
+                </div>
+              )}
+              {item.status === 'pending' && (
+                <p className="text-[11px] text-muted-foreground mt-0.5">Waiting…</p>
+              )}
+              {item.status === 'done' && (
+                <p className="text-[11px] text-emerald-600 mt-0.5 flex items-center gap-1">
+                  <CheckCircle2 size={11} /> Uploaded
+                </p>
+              )}
+              {item.status === 'failed' && (
+                <p className="text-[11px] text-destructive mt-0.5 truncate">{item.error}</p>
+              )}
+            </div>
+
+            {/* Actions */}
+            <div className="shrink-0 flex items-center gap-1">
+              {item.status === 'uploading' && (
+                <Loader2 size={16} className="animate-spin text-violet-500" />
+              )}
+              {item.status === 'failed' && (
+                <button
+                  type="button"
+                  onClick={() => retryItem(item.id)}
+                  className="min-w-[36px] min-h-[36px] flex items-center justify-center rounded-lg text-muted-foreground hover:text-foreground transition-colors"
+                  aria-label="Retry"
+                >
+                  <RotateCcw size={14} />
+                </button>
+              )}
+              {(item.status === 'done' || item.status === 'failed') && (
+                <button
+                  type="button"
+                  onClick={() => removeItem(item.id)}
+                  className="min-w-[36px] min-h-[36px] flex items-center justify-center rounded-lg text-muted-foreground hover:text-foreground transition-colors"
+                  aria-label="Remove"
+                >
+                  <X size={14} />
+                </button>
+              )}
+            </div>
+          </div>
         ))}
 
-        {allDone && uploadedCount > 0 && (
-          <div className="flex items-center gap-2 px-3 py-2.5 bg-emerald-50 border border-emerald-200 rounded-xl text-sm text-emerald-700 font-medium">
-            <CheckCircle2 size={16} className="shrink-0 text-emerald-500" />
-            {uploadedCount} photo{uploadedCount !== 1 ? 's' : ''} uploaded to {job.name}
-          </div>
-        )}
-
-        {!isOnline && (
-          <div className="px-3 py-2 bg-amber-50 border border-amber-200 rounded-xl text-xs text-amber-700">
-            You're offline — photos are saved on device and will upload when you reconnect.
+        {allDone && doneCount > 0 && (
+          <div className="flex items-center justify-between px-3 py-2.5 bg-emerald-50 border border-emerald-200 rounded-xl text-sm text-emerald-700 font-medium">
+            <span className="flex items-center gap-2">
+              <CheckCircle2 size={16} className="shrink-0 text-emerald-500" />
+              {doneCount} photo{doneCount !== 1 ? 's' : ''} uploaded
+            </span>
+            <button
+              type="button"
+              onClick={clearDone}
+              className="text-xs text-emerald-600 hover:text-emerald-800 transition-colors"
+            >
+              Clear
+            </button>
           </div>
         )}
       </div>
 
-      {/* Actions */}
+      {/* Footer */}
       <div
         className="px-4 pt-3 pb-4 shrink-0 border-t border-border flex gap-2"
         style={{ paddingBottom: 'max(env(safe-area-inset-bottom), 16px)' }}
@@ -193,7 +317,7 @@ function UploadPanel({
         {failedCount > 0 && (
           <button
             type="button"
-            onClick={() => queue.filter(i => i.status === 'failed').forEach(i => retryItem(i.clientId))}
+            onClick={() => items.filter(i => i.status === 'failed').forEach(i => retryItem(i.id))}
             className="flex items-center gap-1.5 px-3 py-2.5 min-h-[44px] rounded-xl border border-border text-sm font-medium text-foreground hover:bg-muted transition-colors"
           >
             <RotateCcw size={14} />
@@ -202,11 +326,11 @@ function UploadPanel({
         )}
         <button
           type="button"
-          onClick={openFilePicker}
+          onClick={() => fileInputRef.current?.click()}
           className="flex-1 flex items-center justify-center gap-2 min-h-[44px] rounded-xl bg-violet-600 hover:bg-violet-700 active:bg-violet-800 text-white text-sm font-semibold transition-colors"
         >
           <Upload size={16} />
-          {hasItems ? 'Add more photos' : 'Select photos'}
+          {items.length > 0 ? 'Add more photos' : 'Select photos'}
         </button>
       </div>
     </div>
@@ -219,8 +343,13 @@ export default function LensUploadSheet({ open, onClose, onPhotoSynced, initialJ
   const [selectedJob, setSelectedJob] = useState<LensJobOption | null>(null);
   const [showJobPicker, setShowJobPicker] = useState(false);
 
-  // When the sheet opens, decide whether to show job picker or go straight to upload
-  function handleOpen() {
+  // React to open/initialJob changes via useEffect — never call setState in render body
+  useEffect(() => {
+    if (!open) {
+      setSelectedJob(null);
+      setShowJobPicker(false);
+      return;
+    }
     if (initialJob) {
       setSelectedJob(initialJob);
       setShowJobPicker(false);
@@ -228,7 +357,7 @@ export default function LensUploadSheet({ open, onClose, onPhotoSynced, initialJ
       setSelectedJob(null);
       setShowJobPicker(true);
     }
-  }
+  }, [open, initialJob]);
 
   function handleJobSelect(job: LensJobOption) {
     setSelectedJob(job);
@@ -246,19 +375,6 @@ export default function LensUploadSheet({ open, onClose, onPhotoSynced, initialJ
     onClose();
   }
 
-  // Trigger job picker (or direct upload) on open
-  const prevOpen = useRef(false);
-  if (open && !prevOpen.current) {
-    handleOpen();
-  }
-  // If initialJob changes while open, re-run handleOpen so the correct job is pre-seeded
-  const prevInitialJobId = useRef<number | null | undefined>(null);
-  if (open && initialJob?.id !== prevInitialJobId.current) {
-    prevInitialJobId.current = initialJob?.id ?? null;
-    handleOpen();
-  }
-  prevOpen.current = open;
-
   return (
     <>
       {/* Job picker sheet */}
@@ -274,7 +390,6 @@ export default function LensUploadSheet({ open, onClose, onPhotoSynced, initialJ
       <AnimatePresence>
         {open && selectedJob && !showJobPicker && (
           <>
-            {/* Backdrop */}
             <motion.div
               key="upload-backdrop"
               initial={{ opacity: 0 }}
@@ -284,8 +399,6 @@ export default function LensUploadSheet({ open, onClose, onPhotoSynced, initialJ
               className="fixed inset-0 z-40 bg-black/50"
               onClick={handleClose}
             />
-
-            {/* Sheet */}
             <motion.div
               key="upload-sheet"
               initial={{ y: '100%', opacity: 0 }}
@@ -293,15 +406,11 @@ export default function LensUploadSheet({ open, onClose, onPhotoSynced, initialJ
               exit={{ y: '100%', opacity: 0 }}
               transition={{ type: 'spring', damping: 28, stiffness: 320 }}
               className="fixed inset-x-0 bottom-0 z-50 bg-background rounded-t-2xl shadow-2xl flex flex-col md:inset-auto md:top-1/2 md:left-1/2 md:-translate-x-1/2 md:-translate-y-1/2 md:w-[480px] md:max-w-[90vw] md:rounded-2xl"
-              style={{
-                maxHeight: 'min(85vh, 640px)',
-              }}
+              style={{ maxHeight: 'min(85vh, 640px)' }}
             >
-              {/* Handle (mobile only) */}
               <div className="flex justify-center pt-3 pb-0 md:hidden shrink-0">
                 <div className="w-10 h-1 rounded-full bg-muted-foreground/30" />
               </div>
-
               <UploadPanel
                 job={selectedJob}
                 onPhotoSynced={onPhotoSynced}
