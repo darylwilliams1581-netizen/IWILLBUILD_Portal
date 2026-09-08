@@ -1,6 +1,6 @@
 // RootLayout.tsx — IWIllBUIlD Portal
 import { Helmet } from '@dr.pogodin/react-helmet';
-import { type ReactElement, type ReactNode, useEffect, useState } from 'react';
+import { type ReactElement, type ReactNode, useEffect, useLayoutEffect, useState } from 'react';
 import { ScrollRestoration, useLocation } from "react-router";
 import { useSession } from '@/lib/auth/auth-client';
 import SupportModeBanner from '@/components/SupportModeBanner';
@@ -19,6 +19,7 @@ interface RootLayoutProps {
 }
 
 const PUBLIC_ROUTES = new Set(['/', '/login', '/signup', '/check-email', '/verify-email', '/verify-required', '/forgot-password', '/reset-password']);
+const useBrowserLayoutEffect = typeof window === 'undefined' ? useEffect : useLayoutEffect;
 
 function isPublicRoute(pathname: string | undefined): boolean {
   if (!pathname) return false;
@@ -99,11 +100,16 @@ export default function RootLayout({ children }: RootLayoutProps) {
     recordRouteChange(location.pathname);
   }, [location.pathname]);
 
-  // A native camera failure must never leave its transparent WebView state on
-  // another route. The camera page re-adds this class only while it is mounted.
-  useEffect(() => {
-    const isCameraRoute = /^\/(?:jobs|job-cards)\/[^/]+\/camera\/?$/.test(location.pathname);
-    if (!isCameraRoute) document.documentElement.classList.remove('iwb-lens-open');
+  // Strip any camera or modal document state before the destination route
+  // paints. The camera page re-enables only its named transparent lens hole.
+  useBrowserLayoutEffect(() => {
+    const html = document.documentElement;
+    const body = document.body;
+    html.classList.remove('iwb-lens-open');
+    html.style.removeProperty('overflow');
+    html.style.removeProperty('height');
+    body.style.removeProperty('overflow');
+    body.style.removeProperty('height');
   }, [location.pathname]);
 
   // Clear leftover inline locks from the old full-screen terms overlay.

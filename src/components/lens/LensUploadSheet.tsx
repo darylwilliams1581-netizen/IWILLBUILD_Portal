@@ -5,7 +5,7 @@
  *
  * Flow:
  *   1. Job picker (LensJobPickerSheet)
- *   2. User chooses Take Photo, Photo Library, or Browse
+ *   2. User chooses Take Photo or Photo Library
  *   3. Selected files enter usePhotoUploadQueue → POST /api/jobs/:jobId/photos
  *   4. Queue progress shown inline (PendingPhotoCard)
  *   5. onPhotoSynced fires per-photo → parent refreshes gallery
@@ -14,23 +14,23 @@
  * Rules:
  *   - Reuses usePhotoUploadQueue (existing hook, existing endpoint)
  *   - Uses the native-safe iOS picker for Camera and Photo Library
- *   - Keeps Browse as a separate file-input fallback
+ *   - Accepts photos only; there is no file-browser path
  *   - Reuses PendingPhotoCard for queue display
  *   - No base64 storage, no direct R2 upload, no duplicate records
  *   - Multiple files allowed
  *   - 44×44 px minimum touch targets
  */
 
-import { useState, useEffect, useRef, useCallback } from 'react';
-import type { ChangeEvent } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
-import { X, CheckCircle2, RotateCcw, ImagePlus, Camera, Images, FolderOpen, Loader2 } from 'lucide-react';
+import { X, CheckCircle2, RotateCcw, ImagePlus, Camera, Images, Loader2 } from 'lucide-react';
 import { usePhotoUploadQueue } from '@/hooks/usePhotoUploadQueue';
 import { useIosMediaPicker } from '@/hooks/useIosMediaPicker';
 import { IosMediaInputs, IosPermissionBanner } from '@/components/IosMediaInputs';
 import PermissionExplainerModal from '@/components/PermissionExplainerModal';
 import PendingPhotoCard from '@/components/PendingPhotoCard';
-import LensJobPickerSheet, { type LensJobOption, jobLabel } from './LensJobPickerSheet';
+import JobPickerSheet from '@/components/JobPickerSheet';
+import { type LensJobOption, jobLabel } from './LensJobPickerSheet';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -46,6 +46,18 @@ interface LensUploadSheetProps {
   initialJob?: LensJobOption | null;
 }
 
+const ACCEPTED_PHOTO_TYPES = new Set([
+  'image/jpeg',
+  'image/jpg',
+  'image/png',
+  'image/heic',
+  'image/heif',
+  'image/heic-sequence',
+  'image/heif-sequence',
+  'image/webp',
+  'image/gif',
+]);
+
 // ── Inner upload panel (shown after job is selected) ─────────────────────────
 
 function UploadPanel({
@@ -59,7 +71,6 @@ function UploadPanel({
   onChangeJob: () => void;
   onClose: () => void;
 }) {
-  const browseInputRef = useRef<HTMLInputElement>(null);
   const [queueError, setQueueError] = useState<string | null>(null);
 
   const {
@@ -84,9 +95,12 @@ function UploadPanel({
   });
 
   const enqueueSelected = useCallback(async (files: File[]) => {
-    setQueueError(null);
+    const photos = files.filter(file => ACCEPTED_PHOTO_TYPES.has(file.type.toLowerCase()));
+    if (photos.length !== files.length) setQueueError('Photos only');
+    else setQueueError(null);
+    if (photos.length === 0) return;
     try {
-      await enqueueFiles(files);
+      await enqueueFiles(photos);
     } catch (error) {
       setQueueError(error instanceof Error ? error.message : 'The photo could not be saved on this device.');
     }
@@ -96,24 +110,11 @@ function UploadPanel({
     void enqueueSelected([file]);
   });
 
-  function handleBrowseChange(e: ChangeEvent<HTMLInputElement>) {
-    const files = Array.from(e.target.files ?? []);
-    if (files.length > 0) void enqueueSelected(files);
-    // Reset so the same files can be re-selected if needed
-    e.target.value = '';
-  }
-
-  function openBrowse() {
-    // Browse remains a direct user gesture. Camera and Photo Library use the
-    // Capacitor-safe picker above; this input is only the third, explicit door.
-    browseInputRef.current?.click();
-  }
-
   const hasItems = queue.length > 0;
   const allDone  = hasItems && pendingCount === 0 && failedCount === 0;
 
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex min-h-0 flex-col">
       {/* Header */}
       <div className="flex items-center justify-between px-4 pt-4 pb-3 shrink-0 border-b border-border">
         <div className="min-w-0">
@@ -138,17 +139,6 @@ function UploadPanel({
 
       <IosMediaInputs picker={picker} accept="image/*" />
 
-      {/* File browser fallback — separate from native Camera / Photo Library. */}
-      <input
-        ref={browseInputRef}
-        type="file"
-        accept="image/*"
-        multiple
-        className="hidden"
-        aria-hidden="true"
-        onChange={handleBrowseChange}
-      />
-
       {picker.permissionDenied && (
         <div className="px-4 pt-3 shrink-0">
           <IosPermissionBanner type={picker.permissionDenied} />
@@ -162,7 +152,7 @@ function UploadPanel({
       )}
 
       {/* Queue */}
-      <div className="flex-1 overflow-y-auto px-4 py-3 flex flex-col gap-2">
+      <div className="min-h-0 overflow-y-auto px-4 py-3 flex flex-col gap-2">
         {!hasItems && (
           <div className="flex flex-col items-center justify-center py-4 gap-2 text-muted-foreground">
             <ImagePlus size={28} className="opacity-30" />
@@ -197,7 +187,7 @@ function UploadPanel({
         )}
       </div>
 
-      {/* Explicit backup choices. No watermark; every File uses the existing queue. */}
+      {/* Photo-only backup choices. No watermark; both use the existing queue. */}
       <div
         className="px-4 pt-3 pb-4 shrink-0 border-t border-border"
         style={{ paddingBottom: 'max(env(safe-area-inset-bottom), 16px)' }}
@@ -212,7 +202,7 @@ function UploadPanel({
             Retry {failedCount}
           </button>
         </div>}
-        <div className="grid grid-cols-3 gap-2">
+        <div className="grid grid-cols-2 gap-2">
           <button
             type="button"
             onClick={() => void picker.openCamera()}
@@ -230,14 +220,6 @@ function UploadPanel({
           >
             <Images size={17} />
             Photo Library
-          </button>
-          <button
-            type="button"
-            onClick={openBrowse}
-            className="flex min-h-[54px] flex-col items-center justify-center gap-1 rounded-xl border border-border bg-background px-2 text-[11px] font-semibold text-foreground transition-colors hover:bg-muted"
-          >
-            <FolderOpen size={17} />
-            Browse
           </button>
         </div>
       </div>
@@ -261,8 +243,13 @@ export default function LensUploadSheet({ open, onClose, onPhotoSynced, initialJ
   const [selectedJob, setSelectedJob] = useState<LensJobOption | null>(null);
   const [showJobPicker, setShowJobPicker] = useState(false);
 
-  function handleJobSelect(job: LensJobOption) {
-    setSelectedJob(job);
+  function handleJobSelect(job: { id: number; name: string; jobNumber?: string | null }) {
+    setSelectedJob({
+      id: job.id,
+      name: job.name,
+      jobNumber: job.jobNumber ?? null,
+      status: 'active',
+    });
     setShowJobPicker(false);
   }
 
@@ -293,10 +280,13 @@ export default function LensUploadSheet({ open, onClose, onPhotoSynced, initialJ
   return (
     <>
       {/* Job picker sheet */}
-      <LensJobPickerSheet
+      <JobPickerSheet
         open={open && showJobPicker}
         title="Select a job"
         subtitle="Photos will be uploaded to this job"
+        iconBg="bg-violet-100"
+        iconFg="text-violet-600"
+        Icon={ImagePlus}
         onSelect={handleJobSelect}
         onClose={handleClose}
       />
@@ -316,30 +306,29 @@ export default function LensUploadSheet({ open, onClose, onPhotoSynced, initialJ
               onClick={handleClose}
             />
 
-            {/* Sheet */}
-            <motion.div
-              key="upload-sheet"
-              initial={{ y: '100%', opacity: 0 }}
-              animate={{ y: 0, opacity: 1 }}
-              exit={{ y: '100%', opacity: 0 }}
-              transition={{ type: 'spring', damping: 28, stiffness: 320 }}
-              className="fixed inset-x-0 bottom-0 z-50 bg-background rounded-t-2xl shadow-2xl flex flex-col md:inset-auto md:top-1/2 md:left-1/2 md:-translate-x-1/2 md:-translate-y-1/2 md:w-[480px] md:max-w-[90vw] md:rounded-2xl"
-              style={{
-                maxHeight: 'min(62dvh, 520px)',
-              }}
-            >
-              {/* Handle (mobile only) */}
-              <div className="flex justify-center pt-3 pb-0 md:hidden shrink-0">
-                <div className="w-10 h-1 rounded-full bg-muted-foreground/30" />
-              </div>
-
-              <UploadPanel
-                job={selectedJob}
-                onPhotoSynced={onPhotoSynced}
-                onChangeJob={handleChangeJob}
-                onClose={handleClose}
-              />
-            </motion.div>
+            {/* Same mobile/desktop shell used by the sign-in job picker. */}
+            <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center sm:p-4 pointer-events-none">
+              <motion.div
+                key="upload-sheet"
+                initial={{ opacity: 0, y: 40 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: 40 }}
+                transition={{ type: 'spring', damping: 30, stiffness: 340 }}
+                className="pointer-events-auto w-full sm:max-w-sm bg-white rounded-t-3xl sm:rounded-3xl flex flex-col overflow-hidden"
+                style={{
+                  boxShadow: '0 8px 48px rgba(0,0,0,0.18)',
+                  maxHeight: 'min(560px, calc(100dvh - 60px))',
+                }}
+                onClick={e => e.stopPropagation()}
+              >
+                <UploadPanel
+                  job={selectedJob}
+                  onPhotoSynced={onPhotoSynced}
+                  onChangeJob={handleChangeJob}
+                  onClose={handleClose}
+                />
+              </motion.div>
+            </div>
           </>
         )}
       </AnimatePresence>

@@ -19,8 +19,9 @@ import { Helmet } from '@dr.pogodin/react-helmet';
 import { Camera, X, ChevronLeft, ChevronRight, Lock, ImageOff, Loader2, Upload, CheckSquare, Home, LayoutGrid, Briefcase, Calendar, MapPin, ArrowUpDown, User, Clock, Download, Pencil, Trash2, MoreVertical, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import JobPickerSheet from '@/components/JobPickerSheet';
 import LensUploadSheet from '@/components/lens/LensUploadSheet';
-import LensJobPickerSheet, { type LensJobOption } from '@/components/lens/LensJobPickerSheet';
+import { type LensJobOption } from '@/components/lens/LensJobPickerSheet';
 import LensSelectionBar from '@/components/lens/LensSelectionBar';
 import LensGroupByJob from '@/components/lens/LensGroupByJob';
 import LensSortByDate from '@/components/lens/LensSortByDate';
@@ -541,7 +542,7 @@ export default function LensPage() {
   const handlePhotoSynced = useCallback((_id: number) => {
     fetchPhotos(1, true);
   }, [fetchPhotos]);
-  function handleCameraJobSelect(job: LensJobOption) {
+  function handleCameraJobSelect(job: Pick<LensJobOption, 'id'>) {
     setCameraJobPickerOpen(false);
     navigate(`/jobs/${job.id}/camera`, {
       state: {
@@ -726,7 +727,16 @@ export default function LensPage() {
     }} onPhotoSynced={handlePhotoSynced} initialJob={uploadInitialJob} />
 
       {/* Camera job picker (global — used when no job pre-seeded) */}
-      <LensJobPickerSheet open={cameraJobPickerOpen} title="Select a job" subtitle="Camera photos will be saved to this job" onSelect={handleCameraJobSelect} onClose={() => setCameraJobPickerOpen(false)} />
+      <JobPickerSheet
+        open={cameraJobPickerOpen}
+        title="Select a job"
+        subtitle="Camera photos will be saved to this job"
+        iconBg="bg-violet-100"
+        iconFg="text-violet-600"
+        Icon={Camera}
+        onSelect={handleCameraJobSelect}
+        onClose={() => setCameraJobPickerOpen(false)}
+      />
 
       {/* Lightbox */}
       {lightboxIndex !== null && lightboxPhotos.length > 0 && <Lightbox photos={lightboxPhotos} index={lightboxIndex} cacheBust={cacheBust} onClose={closeLightbox} onPrev={prevPhoto} onNext={nextPhoto} onOpenJob={handleOpenJob} onEdit={handleEditPhoto} onDelete={handleRequestDelete} onPhotoUpdated={() => fetchPhotos(1, true)} />}

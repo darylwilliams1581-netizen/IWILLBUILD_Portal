@@ -40,8 +40,8 @@ import type { CapacitorConfig } from '@capacitor/cli';
 
 // ── SINGLE SOURCE OF TRUTH FOR BUILD NUMBER ───────────────────────────────────
 // Increment this before every App Store / TestFlight upload.
-// Current: 44 (Version 13 native photo upload transport)
-const IOS_BUILD_NUMBER = 44;
+// Current: 45 (Version 13 Lens picker and upload sheet sizing)
+const IOS_BUILD_NUMBER = 45;
 
 const config: CapacitorConfig = {
   // Reverse-domain app identifier — must match your Apple/Google developer account
