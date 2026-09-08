@@ -1,9 +1,10 @@
 {
   "logo/horizontal": {
     "mediaType": "logo",
-    "currentUrl": "/airo-assets/uploads/logo-horizontal-9fa95c7f.jpg",
+    "currentUrl": "/airo-assets/uploads/logo-horizontal-d4efee1e.png",
     "searchQuery": "",
     "alternatives": [
+      "/airo-assets/uploads/logo-horizontal-9fa95c7f.jpg",
       "https://isteam.wsimg.com/genai-assistant/logoagent/customer/2c10a6f2-a121-4d80-bae6-8724efd2a190/session/2ba852bd-b863-4b47-91b9-0e7eb7b18367/horizontal-transparent-7ddf0b36-342e-4f85-89b6-9e52aba83909/logo-logo.png",
       "https://isteam.wsimg.com/genai-assistant/logoagent/customer/2c10a6f2-a121-4d80-bae6-8724efd2a190/session/8c90e5c5-e3e0-4c16-86f3-b2b52ef042af/horizontal-transparent-c38cc584-b098-43f4-99c8-38c15f44ecdf/logo-logo.png"
     ],
@@ -99,15 +100,15 @@
     ],
     "userModified": true,
     "createdAt": "2026-06-25T21:51:06.847Z",
-    "lastUpdated": "2026-08-17T03:20:56.851Z",
-    "surfaceMode": "dark",
-    "generatedForSurfaceColor": "#0d1117",
-    "darkSurfaceUrl": "https://isteam.wsimg.com/genai-assistant/logoagent/customer/2c10a6f2-a121-4d80-bae6-8724efd2a190/session/2ba852bd-b863-4b47-91b9-0e7eb7b18367/horizontal-transparent-7ddf0b36-342e-4f85-89b6-9e52aba83909/logo-logo.png",
+    "lastUpdated": "2026-09-08T08:09:41.004Z",
+    "surfaceMode": "light",
     "uploadSources": {
-      "/airo-assets/uploads/logo-horizontal-9fa95c7f.jpg": "f38wenbvln_1786936815751_file_JKbgzPDN9U.jpg"
+      "/airo-assets/uploads/logo-horizontal-9fa95c7f.jpg": "f38wenbvln_1786936815751_file_JKbgzPDN9U.jpg",
+      "/airo-assets/uploads/logo-horizontal-d4efee1e.png": "f38wenbvln_1788854955517_file_8lTey0NJgk.png"
     },
-    "uploadContentHash": "76642edde3efcb44b5d5512ef74084af52ce03c80382f62747719e9fd39634a2",
-    "naturalOrientation": "vertical"
+    "uploadContentHash": "6fd175e8b02c299841e0a456f78ce91fc9c279dd8bf545b10c7afac79bd72fdf",
+    "naturalOrientation": "horizontal",
+    "lightSurfaceUrl": "/airo-assets/uploads/logo-horizontal-d4efee1e.png"
   },
   "pages/home/og-image": {
     "mediaType": "generated",
@@ -561,31 +562,12 @@
   },
   "logo/primary": {
     "mediaType": "logo",
-    "currentUrl": "https://isteam.wsimg.com/genai-assistant/logoagent/customer/2c10a6f2-a121-4d80-bae6-8724efd2a190/session/e55dd25c-768b-48d5-b7bd-5e28465b6126/transparent-6eb18af3-6d12-4612-93b1-ae5c55cf8ed4/logo-logo.png",
+    "currentUrl": "/airo-assets/uploads/logo-primary-2dea1c07.png",
     "searchQuery": "",
     "alternatives": [
+      "https://isteam.wsimg.com/genai-assistant/logoagent/customer/2c10a6f2-a121-4d80-bae6-8724efd2a190/session/e55dd25c-768b-48d5-b7bd-5e28465b6126/transparent-6eb18af3-6d12-4612-93b1-ae5c55cf8ed4/logo-logo.png",
       "https://isteam.wsimg.com/genai-assistant/logoagent/customer/2c10a6f2-a121-4d80-bae6-8724efd2a190/session/23674301-5602-4f5b-8c6b-d4af46427e2d/transparent-1ac7a414-87b6-420e-9fe0-066b8edc331e/logo-logo.png"
     ],
-    "solidUrlMap": {
-      "https://isteam.wsimg.com/genai-assistant/logoagent/customer/2c10a6f2-a121-4d80-bae6-8724efd2a190/session/23674301-5602-4f5b-8c6b-d4af46427e2d/transparent-1ac7a414-87b6-420e-9fe0-066b8edc331e/logo-logo.png": "https://isteam.wsimg.com/genai-assistant/logoagent/customer/2c10a6f2-a121-4d80-bae6-8724efd2a190/session/23674301-5602-4f5b-8c6b-d4af46427e2d/original-1ac7a414-87b6-420e-9fe0-066b8edc331e/logo-logo.png"
-    },
-    "mockupUrlMap": {
-      "https://isteam.wsimg.com/genai-assistant/logoagent/customer/2c10a6f2-a121-4d80-bae6-8724efd2a190/session/23674301-5602-4f5b-8c6b-d4af46427e2d/transparent-1ac7a414-87b6-420e-9fe0-066b8edc331e/logo-logo.png": "https://isteam.wsimg.com/genai-assistant/logoagent/customer/2c10a6f2-a121-4d80-bae6-8724efd2a190/session/23674301-5602-4f5b-8c6b-d4af46427e2d/transparent-1ac7a414-87b6-420e-9fe0-066b8edc331e/logo-logo.png"
-    },
-    "landscapeMockupUrlMap": {},
-    "logoSourceMap": {
-      "https://isteam.wsimg.com/genai-assistant/logoagent/customer/2c10a6f2-a121-4d80-bae6-8724efd2a190/session/e55dd25c-768b-48d5-b7bd-5e28465b6126/transparent-6eb18af3-6d12-4612-93b1-ae5c55cf8ed4/logo-logo.png": {
-        "sessionId": "e55dd25c-768b-48d5-b7bd-5e28465b6126",
-        "logoId": "6eb18af3-6d12-4612-93b1-ae5c55cf8ed4",
-        "groupId": "0fefd9ab-b765-4779-978f-3754b781b8e5"
-      },
-      "https://isteam.wsimg.com/genai-assistant/logoagent/customer/2c10a6f2-a121-4d80-bae6-8724efd2a190/session/23674301-5602-4f5b-8c6b-d4af46427e2d/transparent-1ac7a414-87b6-420e-9fe0-066b8edc331e/logo-logo.png": {
-        "sessionId": "23674301-5602-4f5b-8c6b-d4af46427e2d",
-        "logoId": "1ac7a414-87b6-420e-9fe0-066b8edc331e",
-        "parentUrl": "https://isteam.wsimg.com/genai-assistant/logoagent/customer/2c10a6f2-a121-4d80-bae6-8724efd2a190/session/e55dd25c-768b-48d5-b7bd-5e28465b6126/transparent-6eb18af3-6d12-4612-93b1-ae5c55cf8ed4/logo-logo.png",
-        "groupId": "9502b38e-f039-4417-99fc-a70af5be7206"
-      }
-    },
     "productMockupsMap": {
       "https://isteam.wsimg.com/genai-assistant/logoagent/customer/2c10a6f2-a121-4d80-bae6-8724efd2a190/session/23674301-5602-4f5b-8c6b-d4af46427e2d/transparent-1ac7a414-87b6-420e-9fe0-066b8edc331e/logo-logo.png": [
         {
@@ -612,36 +594,32 @@
     },
     "userModified": true,
     "createdAt": "2026-08-09T22:44:53.604Z",
-    "lastUpdated": "2026-09-02T20:21:23.779Z",
-    "logoGroupId": "0fefd9ab-b765-4779-978f-3754b781b8e5"
+    "lastUpdated": "2026-09-08T08:09:41.005Z",
+    "lightSurfaceUrl": "/airo-assets/uploads/logo-primary-2dea1c07.png",
+    "surfaceMode": "light",
+    "uploadSources": {
+      "/airo-assets/uploads/logo-primary-2dea1c07.png": "f38wenbvln_1788854955517_file_8lTey0NJgk.png"
+    },
+    "uploadContentHash": "6fd175e8b02c299841e0a456f78ce91fc9c279dd8bf545b10c7afac79bd72fdf",
+    "naturalOrientation": "square"
   },
   "logo/favicon": {
     "mediaType": "logo",
-    "currentUrl": "https://isteam.wsimg.com/genai-assistant/logoagent/customer/2c10a6f2-a121-4d80-bae6-8724efd2a190/session/790890aa-1c41-44b6-b1b6-ea50b913c0fb/favicon-transparent-b056b3e1-ca9a-4032-a4c7-b800fd954b95/logo-logo.png",
+    "currentUrl": "/airo-assets/uploads/logo-favicon-af8f7336.png",
     "searchQuery": "",
     "alternatives": [
+      "https://isteam.wsimg.com/genai-assistant/logoagent/customer/2c10a6f2-a121-4d80-bae6-8724efd2a190/session/790890aa-1c41-44b6-b1b6-ea50b913c0fb/favicon-transparent-b056b3e1-ca9a-4032-a4c7-b800fd954b95/logo-logo.png",
       "https://isteam.wsimg.com/genai-assistant/logoagent/customer/2c10a6f2-a121-4d80-bae6-8724efd2a190/session/3f529c23-d12f-4bf3-8c05-7aed6cc0eaf7/favicon-transparent-2d225d53-ff72-4e4a-b8f7-a7af03da9e03/logo-logo.png"
     ],
-    "logoSourceMap": {
-      "https://isteam.wsimg.com/genai-assistant/logoagent/customer/2c10a6f2-a121-4d80-bae6-8724efd2a190/session/790890aa-1c41-44b6-b1b6-ea50b913c0fb/favicon-transparent-b056b3e1-ca9a-4032-a4c7-b800fd954b95/logo-logo.png": {
-        "sessionId": "790890aa-1c41-44b6-b1b6-ea50b913c0fb",
-        "logoId": "b056b3e1-ca9a-4032-a4c7-b800fd954b95",
-        "groupId": "0fefd9ab-b765-4779-978f-3754b781b8e5"
-      },
-      "https://isteam.wsimg.com/genai-assistant/logoagent/customer/2c10a6f2-a121-4d80-bae6-8724efd2a190/session/3f529c23-d12f-4bf3-8c05-7aed6cc0eaf7/favicon-transparent-2d225d53-ff72-4e4a-b8f7-a7af03da9e03/logo-logo.png": {
-        "sessionId": "3f529c23-d12f-4bf3-8c05-7aed6cc0eaf7",
-        "logoId": "2d225d53-ff72-4e4a-b8f7-a7af03da9e03",
-        "groupId": "9502b38e-f039-4417-99fc-a70af5be7206",
-        "parentUrl": "https://isteam.wsimg.com/genai-assistant/logoagent/customer/2c10a6f2-a121-4d80-bae6-8724efd2a190/session/790890aa-1c41-44b6-b1b6-ea50b913c0fb/favicon-transparent-b056b3e1-ca9a-4032-a4c7-b800fd954b95/logo-logo.png"
-      }
-    },
-    "solidUrlMap": {
-      "https://isteam.wsimg.com/genai-assistant/logoagent/customer/2c10a6f2-a121-4d80-bae6-8724efd2a190/session/3f529c23-d12f-4bf3-8c05-7aed6cc0eaf7/favicon-transparent-2d225d53-ff72-4e4a-b8f7-a7af03da9e03/logo-logo.png": "https://isteam.wsimg.com/genai-assistant/logoagent/customer/2c10a6f2-a121-4d80-bae6-8724efd2a190/session/3f529c23-d12f-4bf3-8c05-7aed6cc0eaf7/favicon-original-2d225d53-ff72-4e4a-b8f7-a7af03da9e03/logo-logo.png"
-    },
-    "userModified": false,
+    "userModified": true,
     "createdAt": "2026-08-09T22:44:58.620Z",
-    "lastUpdated": "2026-09-02T20:21:24.151Z",
-    "logoGroupId": "0fefd9ab-b765-4779-978f-3754b781b8e5"
+    "lastUpdated": "2026-09-08T08:09:41.005Z",
+    "lightSurfaceUrl": "/airo-assets/uploads/logo-favicon-af8f7336.png",
+    "surfaceMode": "light",
+    "uploadSources": {
+      "/airo-assets/uploads/logo-favicon-af8f7336.png": "f38wenbvln_1788854955517_file_8lTey0NJgk.png"
+    },
+    "uploadContentHash": "6fd175e8b02c299841e0a456f78ce91fc9c279dd8bf545b10c7afac79bd72fdf"
   },
   "debug/bug-07cfb-back-button": {
     "mediaType": "image",
@@ -673,16 +651,22 @@
   },
   "logo/vertical": {
     "mediaType": "logo",
-    "currentUrl": "/airo-assets/uploads/logo-horizontal-9fa95c7f.jpg",
+    "currentUrl": "/airo-assets/uploads/logo-vertical-cffd7335.png",
     "searchQuery": "",
-    "alternatives": [],
+    "alternatives": [
+      "/airo-assets/uploads/logo-horizontal-9fa95c7f.jpg"
+    ],
     "userModified": true,
     "createdAt": "2026-08-17T03:20:56.851Z",
-    "lastUpdated": "2026-08-17T03:20:56.851Z",
+    "lastUpdated": "2026-09-08T08:09:41.005Z",
     "naturalOrientation": "vertical",
     "uploadSources": {
-      "/airo-assets/uploads/logo-horizontal-9fa95c7f.jpg": "f38wenbvln_1786936815751_file_JKbgzPDN9U.jpg"
-    }
+      "/airo-assets/uploads/logo-horizontal-9fa95c7f.jpg": "f38wenbvln_1786936815751_file_JKbgzPDN9U.jpg",
+      "/airo-assets/uploads/logo-vertical-cffd7335.png": "f38wenbvln_1788854955517_file_8lTey0NJgk.png"
+    },
+    "lightSurfaceUrl": "/airo-assets/uploads/logo-vertical-cffd7335.png",
+    "surfaceMode": "light",
+    "uploadContentHash": "6fd175e8b02c299841e0a456f78ce91fc9c279dd8bf545b10c7afac79bd72fdf"
   },
   "debug/task-modal-off-center": {
     "mediaType": "image",
