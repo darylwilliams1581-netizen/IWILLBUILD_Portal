@@ -43,9 +43,3 @@ export default function AppShell({ children }: AppShellProps) {
     </div>
   );
 }
-      {/* MobileTabBar is rendered by the HomeScreen page itself — it lives inside
-          the page component so it can access page-level state (camera FAB, more sheet).
-          AppShell only provides the structural container. */}
-    </div>
-  );
-}
