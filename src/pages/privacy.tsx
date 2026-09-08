@@ -144,7 +144,7 @@ export default function PrivacyPage() {
                 <li>provide support, investigate faults and communicate about the Service;</li>
                 <li>process subscriptions and maintain financial records;</li>
                 <li>detect and respond to misuse, fraud, security incidents and privacy risks;</li>
-                <li>operate AI-assisted features requested by authorised users;</li>
+                <li>operate internal AI for system monitoring, bug fixes and performance;</li>
                 <li>improve reliability and features using aggregated or de-identified information where practical; and</li>
                 <li>comply with law and establish, exercise or defend legal rights.</li>
               </ul>
@@ -165,11 +165,12 @@ export default function PrivacyPage() {
               <p>Where review identifies a credible concern, access is limited to authorised personnel. We may preserve records or disclose information where required or permitted by law, but the automated signal alone is not treated as proof and does not itself trigger a report to authorities.</p>
             </Section>
 
-            <Section title="8. AI-assisted tools and automated decisions">
-              <p>Dazza AI and similar tools may help authorised users search, draft, extract, classify or summarise information. They operate within platform permissions and their output requires human review.</p>
+            <Section title="8. Artificial intelligence and automated decisions">
+              <p>IWILLBUILD uses AI for system monitoring, bug fixes, and to assist in resolving issues and improving performance. AI is not a customer-facing tool. Customers cannot access it.</p>
+              <p>It must not be relied on as a substitute for a competent person, professional advice, or required sign-off.</p>
               <p>We do not use automated tools alone to hire, fire, discipline, approve credit, determine legal rights or make another decision that could significantly affect a person's rights or interests.</p>
               <p>From 10 December 2026, additional Australian privacy-policy disclosures apply where a computer program uses personal information to make, or do something substantially and directly related to making, a decision reasonably expected to significantly affect a person's rights or interests. If IWILLBUILD introduces such a use, we will update this Policy and provide the required information before relying on it.</p>
-              <p>We do not use customer job photos, SWMS or field records to train public foundation models. Where a third-party AI provider delivers a feature, we seek terms that prevent it from using customer content to train its general models unless the customer has clearly agreed otherwise.</p>
+              <p>We do not use customer job photos, SWMS or field records to train public foundation models. Where a third-party AI provider delivers a platform operations feature, we seek terms that prevent it from using customer content to train its general models unless the customer has clearly agreed otherwise.</p>
             </Section>
 
             <Section title="9. Cookies, analytics and communications">

@@ -131,8 +131,7 @@ export default function TermsPage() {
                 <li>attempt to access another account or organisation without authority;</li>
                 <li>introduce malware, evade security controls, probe the Service without written permission, or interfere with availability;</li>
                 <li>misrepresent identity, authority, qualifications, approvals or records;</li>
-                <li>resell, sublicense, scrape or systematically extract the Service or its data except under a written agreement; or</li>
-                <li>use AI-assisted features or generated material to make high-impact decisions about another person without lawful authority, appropriate notice and competent human review.</li>
+                <li>resell, sublicense, scrape or systematically extract the Service or its data except under a written agreement.</li>
               </ul>
               <p>See also the <Link to="/fair-use" className="text-primary hover:text-primary/80">Fair Use Policy</Link> for detailed platform usage standards and the <Link to="/system-policy" className="text-primary hover:text-primary/80">System Policy</Link> for AI and automated tool rules.</p>
             </Section>
@@ -150,10 +149,10 @@ export default function TermsPage() {
               <p>Where a person reasonably believes content may breach these Terms or the law, IWILLBUILD may preserve relevant records, restrict access, seek information, suspend affected functions or accounts, and make a disclosure where required or permitted by law. Where appropriate and lawful, we will give notice and a reasonable opportunity to respond.</p>
             </Section>
 
-            <Section title="7. AI-assisted features">
-              <p>Dazza AI and other AI-assisted tools may help search, draft, extract, classify or summarise information that a user is already authorised to access. Outputs are suggestions and may be incomplete or incorrect.</p>
-              <p>You must have a competent person review AI-assisted outputs before relying on them for safety, legal, financial, employment, compliance or contractual decisions. IWILLBUILD does not use AI outputs as a substitute for professional advice or required sign-off.</p>
-              <p>See the <Link to="/system-policy" className="text-primary hover:text-primary/80">System Policy</Link> for full AI and automated decision rules.</p>
+            <Section title="7. Artificial intelligence">
+              <p>IWILLBUILD uses AI for system monitoring, bug fixes, and to assist in resolving issues and improving performance. AI is not a customer-facing tool. Customers cannot access it.</p>
+              <p>It must not be relied on as a substitute for a competent person, professional advice, or required sign-off. IWILLBUILD does not use customer job photos, SWMS or field records to train public foundation models.</p>
+              <p>See the <Link to="/system-policy" className="text-primary hover:text-primary/80">System Policy</Link> for full platform system rules.</p>
             </Section>
 
             <Section title="8. Safety documents and professional advice">

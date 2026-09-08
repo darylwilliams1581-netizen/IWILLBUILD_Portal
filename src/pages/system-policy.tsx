@@ -101,26 +101,21 @@ export default function SystemPolicyPage() {
               <p>This Policy applies to all users of the Service and to IWILLBUILD's own operation of platform systems.</p>
             </Section>
 
-            <Section title="2. AI-assisted tools — Dazza AI and related features">
-              <p>IWILLBUILD provides AI-assisted tools (including Dazza AI) to help authorised users search, draft, extract, classify, summarise and analyse information they are already authorised to access.</p>
-              <p><strong className="text-foreground">What AI tools do:</strong></p>
+            <Section title="2. Artificial intelligence">
+              <p>IWILLBUILD uses AI for system monitoring, bug fixes, and to assist in resolving issues and improving performance. AI is not a customer-facing tool. Customers cannot access it.</p>
+              <p>It must not be relied on as a substitute for a competent person, professional advice, or required sign-off.</p>
+              <p><strong className="text-foreground">What internal AI is used for:</strong></p>
               <ul>
-                <li>Generate suggestions, summaries, drafts and analysis based on information in the user's workspace.</li>
-                <li>Assist with document creation, form completion, safety record review and job management tasks.</li>
-                <li>Operate within the user's existing role permissions — AI tools cannot access data the user cannot access.</li>
+                <li>Monitoring platform health, errors and performance.</li>
+                <li>Assisting IWILLBUILD to investigate and resolve faults.</li>
+                <li>Improving reliability of the Service.</li>
               </ul>
-              <p><strong className="text-foreground">What AI tools do not do:</strong></p>
+              <p><strong className="text-foreground">What it does not do:</strong></p>
               <ul>
-                <li>Make final decisions on safety, legal, financial, employment or compliance matters without human review.</li>
+                <li>Provide a customer-facing assistant, chatbot or job-site adviser.</li>
+                <li>Make final decisions on safety, legal, financial, employment or compliance matters.</li>
                 <li>Replace professional advice from qualified lawyers, accountants, engineers or safety professionals.</li>
                 <li>Guarantee accuracy, completeness or suitability of any output.</li>
-                <li>Access data outside the user's authorised workspace.</li>
-              </ul>
-              <p><strong className="text-foreground">User obligations:</strong></p>
-              <ul>
-                <li>A competent person must review all AI-assisted outputs before relying on them for any consequential decision.</li>
-                <li>AI-generated safety documents, SWMS and risk assessments must be reviewed and approved by a qualified person before use on any worksite.</li>
-                <li>Users must not use AI tools to generate content that would breach the <Link to="/fair-use" className="text-primary hover:text-primary/80">Fair Use Policy</Link> or applicable law.</li>
               </ul>
             </Section>
 
@@ -183,7 +178,7 @@ export default function SystemPolicyPage() {
                 <li><strong className="text-foreground">Twilio</strong> — SMS delivery for two-factor authentication and notifications.</li>
                 <li><strong className="text-foreground">Xero / QuickBooks</strong> — accounting integration (enabled by authorised user; data synced at user direction).</li>
                 <li><strong className="text-foreground">Google Maps</strong> — mapping and location features (enabled by authorised user).</li>
-                <li><strong className="text-foreground">OpenAI</strong> — AI-assisted features (customer content is not used to train general models under our terms with the provider).</li>
+                <li><strong className="text-foreground">AI providers</strong> — used only for system monitoring, fault investigation and platform performance. Customer job content is not used to train general models under our terms with the provider.</li>
                 <li><strong className="text-foreground">Cloudflare</strong> — cloud storage, CDN and security infrastructure.</li>
               </ul>
               <p>Each integration is activated only when enabled by an authorised user or as required to operate the Service. Third-party terms and privacy policies apply to their services.</p>

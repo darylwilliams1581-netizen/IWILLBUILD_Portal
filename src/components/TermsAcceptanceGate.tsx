@@ -1,13 +1,14 @@
 /**
- * TermsAcceptanceGate — compact acknowledgement dialog (web + native).
- * Shown once. Does not lock html/body height (that blew out dashboard pages).
+ * TermsAcceptanceGate — one scrollable legal document + sticky acknowledgement.
+ * Does not lock html/body height (that blew out dashboard pages).
  */
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Shield, ExternalLink } from 'lucide-react';
+import { Shield } from 'lucide-react';
 import { authClient } from '@/lib/auth/auth-client';
+import LegalDocument, { LEGAL_VERSION, LEGAL_JURISDICTION } from '@/content/legal/LegalDocument';
 
-const TERMS_KEY = 'iwb_terms_accepted_v2';
+const TERMS_KEY = 'iwb_terms_accepted_v3';
 const DEV_TEST_EMAIL = 'support@iwillbuild.com';
 
 export function hasAcceptedTerms(email?: string): boolean {
@@ -41,6 +42,9 @@ export default function TermsAcceptanceGate({ onAccepted, userEmail }: Props) {
     if (previousBodyOverflow.current === null) return;
     document.body.style.overflow = previousBodyOverflow.current;
     previousBodyOverflow.current = null;
+    document.body.style.removeProperty('height');
+    document.documentElement.style.removeProperty('overflow');
+    document.documentElement.style.removeProperty('height');
   }, []);
 
   useEffect(() => {
@@ -84,8 +88,8 @@ export default function TermsAcceptanceGate({ onAccepted, userEmail }: Props) {
             initial={{ y: 24, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
             exit={{ y: 16, opacity: 0 }}
-            className="w-full max-w-md bg-white shadow-2xl flex flex-col overflow-hidden rounded-t-3xl sm:rounded-2xl"
-            style={{ maxHeight: 'min(72dvh, 560px)' }}
+            className="w-full max-w-lg bg-white shadow-2xl flex flex-col overflow-hidden rounded-t-3xl sm:rounded-2xl"
+            style={{ maxHeight: 'min(90dvh, 720px)' }}
           >
             <div className="flex items-center gap-3 px-5 pt-5 pb-3 border-b border-gray-100 shrink-0">
               <div className="w-9 h-9 rounded-xl bg-violet-600 flex items-center justify-center shrink-0">
@@ -95,45 +99,20 @@ export default function TermsAcceptanceGate({ onAccepted, userEmail }: Props) {
                 <h1 id="terms-title" className="text-base font-semibold text-gray-900 leading-tight">
                   Terms & privacy
                 </h1>
-                <p className="text-xs text-gray-500">v2.0 · Queensland, Australia</p>
+                <p className="text-xs text-gray-500">
+                  {LEGAL_VERSION} · {LEGAL_JURISDICTION}
+                </p>
               </div>
             </div>
 
             {isDevAccount && (
-              <p className="mx-5 mt-3 text-[11px] text-amber-800 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+              <p className="mx-5 mt-3 text-[11px] text-amber-800 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 shrink-0">
                 Dev account — this prompt always shows for support@iwillbuild.com
               </p>
             )}
 
-            <div className="flex-1 overflow-y-auto px-5 py-4 text-sm text-gray-600 space-y-3 min-h-0">
-              <p>
-                IWILLBUILD stores jobs, photos, safety records and GPS while you are signed in.
-                By continuing you agree to the Terms of Use, Fair Use, Privacy and System Policy.
-              </p>
-              <ul className="list-disc pl-4 space-y-1.5 text-[13px]">
-                <li>No CSAM, image-based abuse, or fake safety records.</li>
-                <li>AI (Dazza) is a suggestion — a competent person must review it.</li>
-                <li>Templates are starting points, not legal advice.</li>
-              </ul>
-              <div className="grid grid-cols-2 gap-2 pt-1">
-                {[
-                  ['/terms', 'Terms of Use'],
-                  ['/privacy', 'Privacy'],
-                  ['/fair-use', 'Fair Use'],
-                  ['/system-policy', 'System Policy'],
-                ].map(([href, label]) => (
-                  <a
-                    key={href}
-                    href={href}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex items-center gap-1.5 text-violet-600 hover:text-violet-800 text-xs font-medium"
-                  >
-                    <ExternalLink size={11} />
-                    {label}
-                  </a>
-                ))}
-              </div>
+            <div className="flex-1 overflow-y-auto overscroll-contain px-5 py-4 min-h-0">
+              <LegalDocument />
             </div>
 
             <div className="shrink-0 border-t border-gray-100 px-5 py-4 space-y-3 bg-white">
@@ -142,9 +121,11 @@ export default function TermsAcceptanceGate({ onAccepted, userEmail }: Props) {
                   type="checkbox"
                   checked={checked}
                   onChange={e => setChecked(e.target.checked)}
-                  className="mt-0.5 h-4 w-4 rounded border-gray-300 text-violet-600"
+                  className="mt-0.5 h-4 w-4 rounded border-gray-300 text-violet-600 shrink-0"
                 />
-                <span>I have read and agree to the Terms, Fair Use, Privacy and System Policy.</span>
+                <span>
+                  I have read and agree to the Terms of Use, Fair Use, Privacy and System Policy.
+                </span>
               </label>
               <button
                 onClick={handleAccept}

@@ -109,8 +109,7 @@ export default function FairUsePage() {
                 <li>completing and storing safety documents, SWMS, risk assessments, pre-starts and incident records;</li>
                 <li>capturing, uploading and sharing job-related photos, plans and documents;</li>
                 <li>managing fleet, plant and assets;</li>
-                <li>coordinating team communication and task management; and</li>
-                <li>using AI-assisted tools to support authorised work tasks.</li>
+                <li>coordinating team communication and task management.</li>
               </ul>
             </Section>
 
