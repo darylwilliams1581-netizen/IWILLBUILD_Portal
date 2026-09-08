@@ -578,22 +578,23 @@ export default memo(function PagedHomeScreen({
         overflow:hidden on the swipe container below is sufficient containment. */}
     <div className="flex flex-col flex-1 min-h-0 w-full max-w-full min-w-0">
       {/* ── Top bar: two-row stacked layout ──────────────────────────────────── */}
-      {/* Row 1: logo + name (left) + utility buttons (right)
+      {/* Row 1: wide wordmark (left) + utility buttons (right)
           padding-top = env(safe-area-inset-top) so the row always clears the
-          iPhone status bar regardless of scroll position. bg-gray-900 gives the
-          dark header look that matches the native status bar colour. */}
+          iPhone status bar. Dark header band via bg-gray-900 (matches Daryl's
+          dashboard screenshot). The wordmark is the horizontal transparent PNG —
+          hardhat + buildings + IWILLBUILD text — NOT the round favicon/app-icon. */}
       <div
         className="flex items-center justify-between shrink-0 px-3 pb-1 gap-2 bg-gray-900"
         style={{ paddingTop: 'max(env(safe-area-inset-top, 0px), 8px)' }}
       >
-        {/* Brand mark — sized to fill the header row height */}
+        {/* Wide wordmark — h-8, natural width, no square crop */}
         <div className="flex items-center shrink-0">
           <img
-            src="/assets/logo.png"
+            src="/assets/logo-horizontal-dark-transparent.png"
             alt="IWILLBUILD"
-            className="h-10 w-auto max-w-[200px] object-contain"
+            className="h-8 w-auto object-contain shrink-0"
             onError={e => {
-              // Fallback to text wordmark if logo asset fails to load on device
+              // Fallback text if PNG fails to load
               const img = e.currentTarget;
               img.style.display = 'none';
               const fallback = img.nextElementSibling as HTMLElement | null;
@@ -601,7 +602,7 @@ export default memo(function PagedHomeScreen({
             }}
           />
           <span
-            className="text-sm font-black tracking-tight text-violet-700 hidden"
+            className="text-sm font-black tracking-tight text-white hidden"
             aria-hidden="true"
           >
             IWILLBUILD
