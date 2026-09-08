@@ -578,8 +578,10 @@ export default memo(function PagedHomeScreen({
         overflow:hidden on the swipe container below is sufficient containment. */}
     <div className="flex flex-col flex-1 min-h-0 w-full max-w-full min-w-0">
       {/* ── Top bar: two-row stacked layout ──────────────────────────────────── */}
-      {/* Row 1: logo + name (left) + utility buttons (right) */}
-      <div className="flex items-center justify-between shrink-0 px-3 pt-2 pb-1 gap-2">
+      {/* Row 1: logo + name (left) + utility buttons (right)
+          bg-gray-900 matches the AppShell status-bar spacer above so the two
+          elements appear as one seamless dark header band on iPhone. */}
+      <div className="flex items-center justify-between shrink-0 px-3 pt-2 pb-1 gap-2 bg-gray-900">
         {/* Brand mark — light surface, use base horizontal slot (not /dark variant) */}
         <div className="flex items-center shrink-0">
           <img
@@ -625,15 +627,16 @@ export default memo(function PagedHomeScreen({
           </button>
         </div>
       </div>
-      {/* Row 1b: greeting + date — compact, only shown when props provided */}
+      {/* Row 1b: greeting + date — compact, only shown when props provided
+          Continues the dark header band from Row 1. */}
       {(firstName || dateStr) && (
-        <div className="flex items-center justify-between shrink-0 px-3 pb-1 gap-2">
+        <div className="flex items-center justify-between shrink-0 px-3 pb-1 gap-2 bg-gray-900">
           <div className="flex items-baseline gap-1.5 min-w-0">
             {greeting && (
               <span className="text-[11px] text-gray-400 font-medium shrink-0">{greeting},</span>
             )}
             {firstName && (
-              <span className="text-[13px] font-bold text-gray-800 truncate">{firstName}</span>
+              <span className="text-[13px] font-bold text-gray-100 truncate">{firstName}</span>
             )}
           </div>
           {dateStr && (
@@ -641,8 +644,10 @@ export default memo(function PagedHomeScreen({
           )}
         </div>
       )}
-      {/* Row 2: page tabs — full width, no scroll, equal-width pills */}
-      <div className="flex items-center shrink-0 px-2 pb-1.5 gap-1.5">
+      {/* Row 2: page tabs — full width, no scroll, equal-width pills
+          bg-gray-900 completes the dark header band; pb-2 gives a small gap
+          before the light content area begins. */}
+      <div className="flex items-center shrink-0 px-2 pb-2 pt-0.5 gap-1.5 bg-gray-900">
         {PAGE_LABELS.map((label, i) => {
           const Icon = PAGE_ICONS[i];
           const active = page === i;
@@ -650,7 +655,7 @@ export default memo(function PagedHomeScreen({
             <button
               key={label}
               onClick={() => setPage(i)}
-              className={`flex-1 flex items-center justify-center gap-1.5 px-2 py-2 rounded-xl text-[12px] font-semibold transition-all duration-200 whitespace-nowrap ${active ? 'bg-violet-600 text-white shadow-sm' : 'bg-white/60 text-gray-500 hover:bg-white/80'}`}
+              className={`flex-1 flex items-center justify-center gap-1.5 px-2 py-2 rounded-xl text-[12px] font-semibold transition-all duration-200 whitespace-nowrap ${active ? 'bg-violet-600 text-white shadow-sm' : 'bg-white/10 text-gray-300 hover:bg-white/20'}`}
             >
               <Icon size={13} strokeWidth={2.2} />
               {label}
