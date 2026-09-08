@@ -837,5 +837,19 @@
     },
     "uploadContentHash": "58d8c0f7f248d54b506fed93a48f2b0fa26fabc0b6c8f04426915a247471cd82",
     "caption": "mobile app dashboard with colorful menu options"
+  },
+  "debug/ios-header-overlap": {
+    "mediaType": "image",
+    "currentUrl": "/airo-assets/uploads/debug-ios-header-overlap-73757ebd.jpg",
+    "searchQuery": "mobile app dashboard with job management tools",
+    "alternatives": [],
+    "userModified": true,
+    "createdAt": "2026-09-08T07:33:40.679Z",
+    "lastUpdated": "2026-09-08T07:33:40.679Z",
+    "uploadSources": {
+      "/airo-assets/uploads/debug-ios-header-overlap-73757ebd.jpg": "f38wenbvln_1788852578770_file_0dvG87B7xr.jpg"
+    },
+    "uploadContentHash": "73be4c3af28bf05a76df7c14be269bd5a7f77d55122fa1de381827d8993cac9b",
+    "caption": "mobile app dashboard with job management tools"
   }
 }

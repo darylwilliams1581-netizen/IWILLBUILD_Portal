@@ -579,9 +579,13 @@ export default memo(function PagedHomeScreen({
     <div className="flex flex-col flex-1 min-h-0 w-full max-w-full min-w-0">
       {/* ── Top bar: two-row stacked layout ──────────────────────────────────── */}
       {/* Row 1: logo + name (left) + utility buttons (right)
-          bg-gray-900 matches the AppShell status-bar spacer above so the two
-          elements appear as one seamless dark header band on iPhone. */}
-      <div className="flex items-center justify-between shrink-0 px-3 pt-2 pb-1 gap-2 bg-gray-900">
+          padding-top = env(safe-area-inset-top) so the row always clears the
+          iPhone status bar regardless of scroll position. bg-gray-900 gives the
+          dark header look that matches the native status bar colour. */}
+      <div
+        className="flex items-center justify-between shrink-0 px-3 pb-1 gap-2 bg-gray-900"
+        style={{ paddingTop: 'max(env(safe-area-inset-top, 0px), 8px)' }}
+      >
         {/* Brand mark — light surface, use base horizontal slot (not /dark variant) */}
         <div className="flex items-center shrink-0">
           <img
