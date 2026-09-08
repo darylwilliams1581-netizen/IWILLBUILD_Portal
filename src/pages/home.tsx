@@ -233,7 +233,7 @@ const COST_TYPES = [{
   label: 'Plant / Equipment'
 }, {
   value: 'SUBCONTRACTOR',
-  label: 'Subcontractor'
+  label: 'Contractor'
 }, {
   value: 'RECEIPT',
   label: 'Receipt / Purchase'
@@ -491,7 +491,7 @@ function LogCostSheet({
                       <div>
                         <p className="text-xs font-semibold text-gray-500 mb-2 uppercase tracking-wide">Cost Type</p>
                         <div className="grid grid-cols-3 gap-1.5">
-                          {COST_TYPES.map(t => <button key={t.value} onClick={() => setEventType(t.value)} className={`rounded-xl px-2 py-2 text-xs font-semibold border transition-colors ${eventType === t.value ? 'bg-emerald-500 text-white border-emerald-500' : 'bg-gray-50 text-gray-600 border-gray-200 hover:bg-gray-100'}`}>
+                          {COST_TYPES.map(t => <button key={t.value} onClick={() => setEventType(t.value)} className={`rounded-xl px-1.5 py-2 text-xs font-semibold border leading-tight text-center transition-colors ${eventType === t.value ? 'bg-emerald-500 text-white border-emerald-500' : 'bg-gray-50 text-gray-600 border-gray-200 hover:bg-gray-100'}`}>
                               {t.label}
                             </button>)}
                         </div>

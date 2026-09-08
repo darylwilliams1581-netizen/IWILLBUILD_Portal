@@ -117,7 +117,7 @@ const COST_CATEGORIES = [
   { key: 'MATERIAL',      label: 'Material' },
   { key: 'LABOUR',        label: 'Labour' },
   { key: 'PLANT',         label: 'Plant / Equipment' },
-  { key: 'SUBCONTRACTOR', label: 'Subcontractor' },
+  { key: 'SUBCONTRACTOR', label: 'Contractor' },
   { key: 'RECEIPT',       label: 'Receipt / Purchase' },
   { key: 'ADJUSTMENT',    label: 'Other' },
 ];
