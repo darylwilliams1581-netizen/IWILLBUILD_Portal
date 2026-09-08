@@ -30,6 +30,7 @@ import PhotoEditor, { type EditorConfig } from '@/components/PhotoEditor';
 import PortalSidebar from '@/components/PortalSidebar';
 import { resolveDownloadUrl } from '@/lib/native-api';
 import { useAuthenticatedImageUrl } from '@/hooks/useAuthenticatedImageUrl';
+import LensPhoneUploaderStrip from '@/components/lens/LensPhoneUploaderStrip';
 
 // ── View mode ─────────────────────────────────────────────────────────────────
 
@@ -838,6 +839,8 @@ export default function LensPage() {
         <div className={`max-w-screen-2xl mx-auto px-3 py-3 ${selectionMode ? '' : 'pb-24 md:pb-8'}`} style={selectionMode ? {
         paddingBottom: 'calc(env(safe-area-inset-bottom) + 80px)'
       } : undefined}>
+          <LensPhoneUploaderStrip />
+
           {/* Error */}
           {error && <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700 flex items-center gap-2">
               <X size={15} className="shrink-0" />

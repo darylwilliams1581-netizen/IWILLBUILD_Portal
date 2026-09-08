@@ -43,6 +43,31 @@ export interface StoredPhoto {
   idempotencyKey?: string;
 }
 
+export type PhotoStoreRuntimeStatus = 'saved' | 'preparing' | 'uploading' | 'failed' | 'synced';
+
+export const PHOTO_STORE_CHANGED_EVENT = 'iwb-photo-store-changed';
+
+const runtimeStatuses = new Map<string, PhotoStoreRuntimeStatus>();
+
+function announcePhotoStoreChanged(): void {
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new Event(PHOTO_STORE_CHANGED_EVENT));
+  }
+}
+
+/**
+ * Upload state lives in the active queue hook, while the durable File remains
+ * in IndexedDB. Lens combines both layers to show a live device-uploader strip.
+ */
+export function setPhotoRuntimeStatus(clientId: string, status: PhotoStoreRuntimeStatus): void {
+  runtimeStatuses.set(clientId, status);
+  announcePhotoStoreChanged();
+}
+
+export function getPhotoRuntimeStatus(clientId: string): PhotoStoreRuntimeStatus | undefined {
+  return runtimeStatuses.get(clientId);
+}
+
 const DB_NAME    = 'sos-photo-queue';
 const STORE_NAME = 'pending_photos';
 // v2: adds localPath + idempotencyKey fields (additive — no migration needed)
@@ -194,6 +219,8 @@ export async function savePhoto(photo: StoredPhoto): Promise<boolean> {
     const { store, done } = tx(db, 'readwrite');
     store.put(photo);
     await done;
+    runtimeStatuses.set(photo.clientId, 'saved');
+    announcePhotoStoreChanged();
     return true;
   } catch (e) {
     // Callers must know the device-first write failed so they never start a
@@ -227,6 +254,8 @@ export async function removePhoto(clientId: string): Promise<void> {
     const { store, done } = tx(db, 'readwrite');
     store.delete(clientId);
     await done;
+    runtimeStatuses.delete(clientId);
+    announcePhotoStoreChanged();
   } catch (e) {
     console.warn('[offlinePhotoStore] removePhoto failed:', e);
   }
@@ -259,6 +288,8 @@ export async function clearJobPhotos(jobId: number): Promise<void> {
     );
     keys.forEach((k) => store.delete(k));
     await done;
+    keys.forEach((key) => runtimeStatuses.delete(String(key)));
+    announcePhotoStoreChanged();
   } catch (e) {
     console.warn('[offlinePhotoStore] clearJobPhotos failed:', e);
   }

@@ -26,6 +26,7 @@ import {
   loadPendingPhotos,
   incrementAttempts,
   checkQueueCapacity,
+  setPhotoRuntimeStatus,
 } from '@/lib/offlinePhotoStore';
 import { recordUploadFailure, clearUploadFailure, getStorageWarningMessage } from '@/lib/storageDiagnostics';
 import { useAppLifecycle } from '@/hooks/useAppLifecycle';
@@ -315,6 +316,7 @@ export function usePhotoUploadQueue({ jobId, uploadEndpoint, onBatchComplete, on
   // ── Mutators ───────────────────────────────────────────────────────────────
 
   const updateItem = useCallback((clientId: string, patch: Partial<PendingPhoto>) => {
+    if (patch.status) setPhotoRuntimeStatus(clientId, patch.status);
     setQueue((prev) => {
       const updated = prev.map((item) =>
         item.clientId === clientId ? { ...item, ...patch } : item
@@ -506,6 +508,7 @@ export function usePhotoUploadQueue({ jobId, uploadEndpoint, onBatchComplete, on
   // ── Retry a failed item ────────────────────────────────────────────────────
 
   const retryItem = useCallback((clientId: string) => {
+    setPhotoRuntimeStatus(clientId, 'saved');
     setQueue((prev) => prev.map((item) =>
       item.clientId === clientId && item.status === 'failed'
         ? { ...item, status: 'saved', progress: 0, error: null }
