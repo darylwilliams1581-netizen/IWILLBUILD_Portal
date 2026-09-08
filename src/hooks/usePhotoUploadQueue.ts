@@ -31,6 +31,7 @@ import {
 import { recordUploadFailure, clearUploadFailure, getStorageWarningMessage } from '@/lib/storageDiagnostics';
 import { useAppLifecycle } from '@/hooks/useAppLifecycle';
 import { readLocalPhoto, deleteLocalPhoto } from '@/lib/capturePhotoLocally';
+import { uploadPhotoFile } from '@/lib/photoUploadTransport';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -154,57 +155,6 @@ async function prepareFile(file: File): Promise<File> {
     return normalised ?? file;
   }
   return file;
-}
-
-function uploadFileXhr(
-  jobId: number,
-  file: File,
-  onProgress: (pct: number) => void,
-  clientId: string,
-  uploadEndpoint?: string,
-): Promise<{ id: number }> {
-  return new Promise((resolve, reject) => {
-    const fd = new FormData();
-    fd.append('photos', file);
-
-    const xhr = new XMLHttpRequest();
-    xhr.open('POST', uploadEndpoint ?? `/api/jobs/${jobId}/photos`);
-    xhr.withCredentials = true;
-    // Server uses this to deduplicate retried/replayed requests
-    xhr.setRequestHeader('X-Client-Id', clientId);
-
-    xhr.upload.addEventListener('progress', (e) => {
-      if (e.lengthComputable) {
-        onProgress(Math.round((e.loaded / e.total) * 100));
-      }
-    });
-
-    xhr.addEventListener('load', () => {
-      try {
-        const data = JSON.parse(xhr.responseText) as { photos?: { id: number }[]; error?: string; code?: string };
-        if (xhr.status >= 200 && xhr.status < 300 && data.photos?.[0]) {
-          resolve(data.photos[0]);
-        } else {
-          // Surface the server's error message so it appears in the UI card
-          const serverMsg = data.error ?? data.code ?? null;
-          reject(new Error(serverMsg ?? `Upload failed (${xhr.status})`));
-        }
-      } catch {
-        // Response wasn't JSON — likely a proxy 413/502 or HTML error page
-        const statusHint =
-          xhr.status === 413 ? 'File too large for upload' :
-          xhr.status === 502 || xhr.status === 503 ? 'Server unavailable — will retry' :
-          xhr.status === 401 ? 'Session expired — please log in again' :
-          `Upload failed (${xhr.status})`;
-        reject(new Error(statusHint));
-      }
-    });
-
-    xhr.addEventListener('error', () => reject(new Error('No connection — saved on device')));
-    xhr.addEventListener('abort', () => reject(new Error('Upload cancelled')));
-
-    xhr.send(fd);
-  });
 }
 
 // ── Hook ──────────────────────────────────────────────────────────────────────
@@ -367,13 +317,13 @@ export function usePhotoUploadQueue({ jobId, uploadEndpoint, onBatchComplete, on
         file = await prepareFile(file);
         // Step 2: uploading
         updateItem(clientId, { status: 'uploading', progress: 0, _file: file });
-        const result = await uploadFileXhr(
+        const result = await uploadPhotoFile({
           jobId,
           file,
-          (pct) => updateItem(clientId, { progress: pct }),
           clientId,
           uploadEndpoint,
-        );
+          onProgress: (pct) => updateItem(clientId, { progress: pct }),
+        });
 
         // Revoke blob URL — server is now the source of truth
         const item = queueRef.current.find((i) => i.clientId === clientId);
