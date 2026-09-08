@@ -7,6 +7,7 @@ import PortalSidebar, { MobileMenuButton } from '@/components/PortalSidebar';
 import { getStatusStyle } from '@/lib/jobs-api';
 import { fetchCustomer, type Customer } from '@/lib/customers-api';
 import { useTerminology } from '@/lib/useTerminology';
+import { goBack } from '@/lib/navigation';
 interface LinkedJob {
   id: number;
   job_number: string | null;
@@ -117,7 +118,7 @@ export default function CustomerDetailPage() {
         {/* Back nav */}
         <div className="flex items-center gap-3 mb-5">
           <MobileMenuButton onClick={openMobileMenu} />
-          <button onClick={() => navigate('/customers')} className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors">
+          <button onClick={() => goBack(navigate, '/customers')} className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors">
             <ArrowLeft size={14} />Contacts
           </button>
         </div>

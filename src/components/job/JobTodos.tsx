@@ -21,6 +21,7 @@ import {
   Plus, Trash2, Check, AlertCircle, Calendar, ChevronDown, ChevronUp,
   Pencil, User, Clock, X, CheckCircle2, CircleDashed, Ban, Loader2,
 } from 'lucide-react';
+import { isNative } from '@/lib/capacitor-plugins';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -131,6 +132,7 @@ interface DateFieldProps {
 
 function DateField({ label, value, onChange, optional = true }: DateFieldProps) {
   const warn = yearWarning(value);
+  const native = isNative();
 
   const quickButtons = [
     { label: 'Today',     value: todayStr() },
@@ -140,12 +142,12 @@ function DateField({ label, value, onChange, optional = true }: DateFieldProps) 
   ];
 
   return (
-    <div className="flex flex-col gap-1">
+    <div className="flex min-w-0 max-w-full flex-col gap-1 overflow-hidden">
       <label className="text-xs font-semibold text-muted-foreground">
         {label}{optional && <span className="font-normal text-muted-foreground/60 ml-1">(optional)</span>}
       </label>
       {/* Quick buttons */}
-      <div className="flex flex-wrap gap-1 mb-1">
+      <div className="flex max-w-full flex-wrap gap-1 overflow-hidden mb-1">
         {quickButtons.map((q) => (
           <button
             key={q.label}
@@ -170,12 +172,24 @@ function DateField({ label, value, onChange, optional = true }: DateFieldProps) 
           </button>
         )}
       </div>
-      <input
-        type="date"
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        className="w-full px-3 py-2 border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary bg-white"
-      />
+      {native ? (
+        <div
+          className="flex h-11 min-w-0 max-w-full items-center gap-2 overflow-hidden rounded-lg border border-border bg-white px-3"
+          aria-label={`${label}: ${value ? formatDate(value) : 'No date selected'}`}
+        >
+          <Calendar size={15} className="shrink-0 text-slate-400" />
+          <span className={`min-w-0 flex-1 truncate text-sm ${value ? 'text-slate-700' : 'text-slate-400'}`}>
+            {value ? formatDate(value) : 'Choose with the options above'}
+          </span>
+        </div>
+      ) : (
+        <input
+          type="date"
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          className="h-11 w-full min-w-0 max-w-full overflow-hidden px-3 py-2 border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary bg-white"
+        />
+      )}
       {warn && (
         <p className="text-[11px] text-amber-600 flex items-center gap-1 mt-0.5">
           <AlertCircle size={10} /> {warn}
@@ -234,7 +248,7 @@ function TaskForm({ initial, members, onSave, onCancel, saving, submitLabel = 'A
   }
 
   return (
-    <div className="border border-primary/30 rounded-xl p-4 flex flex-col gap-3 bg-muted/20 shadow-sm">
+    <div className="flex max-w-full min-w-0 flex-col gap-3 overflow-x-hidden rounded-xl border border-primary/30 bg-muted/20 p-4 shadow-sm">
       {/* Title */}
       <div>
         <label className="text-xs font-semibold text-muted-foreground mb-1 block">
@@ -266,7 +280,7 @@ function TaskForm({ initial, members, onSave, onCancel, saving, submitLabel = 'A
       </div>
 
       {/* Dates — side by side on sm+ */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+      <div className="grid min-w-0 max-w-full grid-cols-1 gap-3 overflow-hidden sm:grid-cols-2">
         <DateField label="Start date" value={startDate} onChange={setStartDate} optional />
         <DateField label="Due date"   value={dueDate}   onChange={setDueDate}   optional />
       </div>

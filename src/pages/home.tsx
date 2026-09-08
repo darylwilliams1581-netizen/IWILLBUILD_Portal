@@ -21,6 +21,7 @@ import NotificationList from '@/components/NotificationList';
 import MyTasksPanel from '@/components/notes/MyTasksPanel';
 import PagedHomeScreen from '@/components/home/PagedHomeScreen';
 import { fetchActiveJobs } from '@/lib/jobs-api';
+import { useFieldSheetScrollLock } from '@/lib/useFieldSheetScrollLock';
 
 import AppPermissionsOnboarding, { hasCompletedOnboarding } from '@/components/AppPermissionsOnboarding';
 import TermsAcceptanceGate, { hasAcceptedTerms } from '@/components/TermsAcceptanceGate';
@@ -119,6 +120,7 @@ function NotesJobPickerSheet({
   open: boolean;
   onClose: () => void;
 }) {
+  useFieldSheetScrollLock(open);
   const navigate = useNavigate();
   const [jobs, setJobs] = useState<JobOption[]>([]);
   const [loading, setLoading] = useState(false);
@@ -157,7 +159,7 @@ function NotesJobPickerSheet({
         stiffness: 320
       }} className="fixed bottom-0 left-0 right-0 z-[70] bg-white rounded-t-3xl flex flex-col overflow-hidden" style={{
         boxShadow: '0 -4px 32px rgba(0,0,0,0.12)',
-        maxHeight: 'calc(100dvh - env(safe-area-inset-bottom, 0px) - 4rem)'
+        maxHeight: 'min(560px, calc(100dvh - 60px))'
       }} onClick={e => e.stopPropagation()}>
             <div className="flex justify-center pt-3 pb-1 shrink-0"><div className="w-10 h-1 rounded-full bg-gray-200" /></div>
             <div className="flex items-center justify-between px-5 py-3 border-b border-gray-100 shrink-0">
@@ -246,6 +248,7 @@ function LogCostSheet({
   open: boolean;
   onClose: () => void;
 }) {
+  useFieldSheetScrollLock(open);
   const [jobs, setJobs] = useState<JobOption[]>([]);
   const [jobsLoading, setJobsLoading] = useState(false);
   const [selectedJob, setSelectedJob] = useState<JobOption | null>(null);
@@ -392,7 +395,7 @@ function LogCostSheet({
         stiffness: 320
       }} className="fixed bottom-0 left-0 right-0 z-[70] bg-white rounded-t-3xl flex flex-col overflow-hidden" style={{
         boxShadow: '0 -4px 32px rgba(0,0,0,0.12)',
-        maxHeight: 'calc(100dvh - env(safe-area-inset-bottom, 0px) - 4rem)'
+        maxHeight: 'min(560px, calc(100dvh - 60px))'
       }} onClick={e => e.stopPropagation()}>
             {/* Handle */}
             <div className="flex justify-center pt-3 pb-1 shrink-0">
@@ -1151,6 +1154,7 @@ function PrestartFleetPickerSheet({
   open: boolean;
   onClose: () => void;
 }) {
+  useFieldSheetScrollLock(open);
   const navigate = useNavigate();
   const [assets, setAssets] = useState<FleetOption[]>([]);
   const [loading, setLoading] = useState(false);
@@ -1186,7 +1190,7 @@ function PrestartFleetPickerSheet({
         stiffness: 320
       }} className="fixed bottom-0 left-0 right-0 z-[70] bg-white rounded-t-3xl flex flex-col overflow-hidden" style={{
         boxShadow: '0 -4px 32px rgba(0,0,0,0.12)',
-        maxHeight: 'calc(100dvh - env(safe-area-inset-bottom, 0px) - 4rem)'
+        maxHeight: 'min(560px, calc(100dvh - 60px))'
       }} onClick={e => e.stopPropagation()}>
             <div className="flex justify-center pt-3 pb-1 shrink-0"><div className="w-10 h-1 rounded-full bg-gray-200" /></div>
             <div className="flex items-center justify-between px-5 py-3 border-b border-gray-100 shrink-0">
@@ -1634,6 +1638,7 @@ function CostsJobPickerSheet({
   open: boolean;
   onClose: () => void;
 }) {
+  useFieldSheetScrollLock(open);
   const navigate = useNavigate();
   const [jobs, setJobs] = useState<JobOption[]>([]);
   const [loading, setLoading] = useState(false);
@@ -1667,7 +1672,7 @@ function CostsJobPickerSheet({
         stiffness: 320
       }} className="fixed bottom-0 left-0 right-0 z-[70] bg-white rounded-t-3xl flex flex-col overflow-hidden" style={{
         boxShadow: '0 -4px 32px rgba(0,0,0,0.12)',
-        maxHeight: 'calc(100dvh - env(safe-area-inset-bottom, 0px) - 4rem)'
+        maxHeight: 'min(560px, calc(100dvh - 60px))'
       }} onClick={e => e.stopPropagation()}>
             <div className="flex justify-center pt-3 pb-1 shrink-0">
               <div className="w-10 h-1 rounded-full bg-gray-200" />

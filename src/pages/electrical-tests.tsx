@@ -15,6 +15,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { usePermissions } from '@/lib/usePermissions';
 import ElecTestRecordModal from '@/components/electrical-tests/ElecTestRecordModal';
+import { goBack } from '@/lib/navigation';
 import ElecEquipmentModal from '@/components/electrical-tests/ElecEquipmentModal';
 import ElecSignOffModal from '@/components/electrical-tests/ElecSignOffModal';
 import ElecRetestModal from '@/components/electrical-tests/ElecRetestModal';
@@ -149,7 +150,7 @@ export default function ElectricalTestsPage() {
         <div className="bg-white border-b sticky top-0 z-20 safe-top">
           <div className="max-w-5xl mx-auto px-4 py-3 flex items-center gap-3">
             <button
-              onClick={() => navigate('/home')}
+              onClick={() => goBack(navigate, '/home')}
               className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-500 hover:text-gray-700 transition-colors shrink-0"
               aria-label="Back to Manage"
             >

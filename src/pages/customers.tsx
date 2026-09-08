@@ -2,7 +2,9 @@ import { useState, useEffect, useCallback } from 'react';
 import { Helmet } from '@dr.pogodin/react-helmet';
 import { motion, AnimatePresence } from 'motion/react';
 import { Users, Plus, Search, Loader2, X, Check, AlertCircle, Phone, Mail, MapPin, Building2, ChevronRight, FileText, Briefcase, Tag, MessageSquare, Send, ArrowLeft } from 'lucide-react';
-import { Link } from "react-router";
+import { Link, useNavigate } from "react-router";
+import { goBack } from '@/lib/navigation';
+import { useFieldSheetScrollLock } from '@/lib/useFieldSheetScrollLock';
 // ── SMS compose modal (desktop) ───────────────────────────────────────────────
 function SmsModal({
   to,
@@ -137,6 +139,33 @@ function CustomerFormModal({
   } : EMPTY_FORM);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+  const [visualViewport, setVisualViewport] = useState<{
+    height: number;
+    offsetTop: number;
+  } | null>(null);
+
+  useFieldSheetScrollLock(true);
+
+  useEffect(() => {
+    const viewport = window.visualViewport;
+    if (!viewport) return;
+
+    const updateViewport = () => {
+      setVisualViewport({
+        height: viewport.height,
+        offsetTop: viewport.offsetTop,
+      });
+    };
+
+    updateViewport();
+    viewport.addEventListener('resize', updateViewport);
+    viewport.addEventListener('scroll', updateViewport);
+    return () => {
+      viewport.removeEventListener('resize', updateViewport);
+      viewport.removeEventListener('scroll', updateViewport);
+    };
+  }, []);
+
   const set = (k: keyof typeof EMPTY_FORM, v: string) => setForm(f => ({
     ...f,
     [k]: v
@@ -175,7 +204,15 @@ function CustomerFormModal({
   }
   const lbl = 'block text-xs font-bold text-slate-600 uppercase tracking-wide mb-1.5';
   const inp = 'w-full px-3 py-2.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-colors bg-white';
-  return <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center sm:p-4">
+  const availableHeight = visualViewport ? Math.max(1, visualViewport.height - 60) : null;
+  return <div
+      className="fixed inset-0 z-50 flex items-end justify-center sm:items-center sm:p-4"
+      style={visualViewport ? {
+        top: `${visualViewport.offsetTop}px`,
+        bottom: 'auto',
+        height: `${visualViewport.height}px`,
+      } : undefined}
+    >
       <div className="absolute inset-0 bg-black/60" onClick={onClose} />
       <motion.div initial={{
       opacity: 0,
@@ -189,7 +226,13 @@ function CustomerFormModal({
     }} transition={{
       duration: 0.2,
       ease: 'easeOut' as const
-    }} className="relative bg-white rounded-t-2xl sm:rounded-2xl shadow-2xl w-full sm:max-w-xl max-h-[92vh] flex flex-col">
+    }} className="relative flex min-h-0 w-full flex-col overflow-hidden rounded-t-3xl bg-white shadow-2xl sm:max-w-xl sm:rounded-3xl"
+      style={{
+        maxHeight: availableHeight
+          ? `min(560px, ${availableHeight}px)`
+          : 'min(560px, calc(100dvh - 60px))',
+      }}
+    >
         <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200 shrink-0">
           <div className="flex items-center gap-2.5">
             <div className="p-1.5 bg-violet-50 rounded-md"><Users size={16} className="text-primary" /></div>
@@ -198,7 +241,8 @@ function CustomerFormModal({
           <button onClick={onClose} className="p-1.5 rounded-md text-slate-600 hover:text-slate-800 hover:bg-slate-100 transition-colors"><X size={16} /></button>
         </div>
 
-        <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-6 flex flex-col gap-4">
+        <form onSubmit={handleSubmit} className="flex min-h-0 flex-1 flex-col">
+          <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto p-6">
           {/* Contact type */}
           <div>
             <label className={lbl}>Contact Type <span className="text-red-500">*</span></label>
@@ -270,8 +314,12 @@ function CustomerFormModal({
           {error && <div className="flex items-center gap-2 text-red-700 bg-red-50 border border-red-200 rounded-lg px-3 py-2 text-sm">
               <AlertCircle size={14} className="shrink-0" />{error}
             </div>}
+          </div>
 
-          <div className="flex gap-3 pt-2 border-t border-slate-100">
+          <div
+            className="flex shrink-0 gap-3 border-t border-slate-100 bg-white px-6 pt-4"
+            style={{ paddingBottom: 'max(16px, env(safe-area-inset-bottom, 0px))' }}
+          >
             <button type="button" onClick={onClose} disabled={saving} className="flex-1 px-4 py-2.5 border border-slate-200 rounded-lg text-sm font-semibold text-slate-700 hover:bg-slate-50 transition-colors disabled:opacity-50">Cancel</button>
             <button type="submit" disabled={saving} className="flex-1 px-4 py-2.5 bg-primary hover:bg-violet-700 text-white rounded-lg text-sm font-bold transition-colors disabled:opacity-60 flex items-center justify-center gap-2">
               {saving ? <Loader2 size={14} className="animate-spin" /> : <Check size={14} />}
@@ -332,7 +380,7 @@ function CustomerCard({
 
   return <>
     <div className={`bg-white border rounded-xl transition-colors ${isArchived ? 'border-slate-200 opacity-60' : 'border-slate-200'}`}>
-      {/* ── Main row ── */}
+      {/* ── Contact identity ── */}
       <div className="flex items-center gap-3 px-3 py-3">
 
         {/* Avatar */}
@@ -342,14 +390,25 @@ function CustomerCard({
 
         {/* Name + subtitle */}
         <div className="flex-1 min-w-0">
-          <span className="font-semibold text-sm text-slate-800 truncate block leading-tight">{customer.name}</span>
+          <span
+            className="block break-words text-sm font-semibold leading-tight text-slate-800"
+            style={{
+              display: '-webkit-box',
+              WebkitBoxOrient: 'vertical',
+              WebkitLineClamp: 2,
+              overflow: 'hidden',
+            }}
+          >
+            {customer.name}
+          </span>
           <span className="text-[11px] text-slate-400 truncate block leading-tight">
             {customer.contact_person || (customer as Customer & { stakeholder_type?: string }).stakeholder_type || '\u00a0'}
           </span>
         </div>
+      </div>
 
-        {/* Quick-action buttons */}
-        <div className="flex items-center gap-1.5 shrink-0">
+      {/* ── Quick actions ── */}
+      <div className="flex w-full items-center justify-end gap-1.5 px-3 pb-3">
           {phone && (
             <a
               href={`tel:${phone}`}
@@ -386,9 +445,8 @@ function CustomerCard({
             aria-label={`View ${customer.name}`}
             className="w-9 h-9 rounded-xl bg-slate-100 hover:bg-slate-200 flex items-center justify-center text-slate-500 transition-colors"
           >
-            <ChevronRight size={15} strokeWidth={2.2} />
-          </Link>
-        </div>
+              <ChevronRight size={15} strokeWidth={2.2} />
+            </Link>
       </div>
 
       {/* ── Edit / Archive row — subtle, below the main row ── */}
@@ -423,6 +481,7 @@ function CustomerCard({
 // ── Main page ─────────────────────────────────────────────────────────────────
 
 export default function CustomersPage() {
+  const navigate = useNavigate();
   const {
     workPlural
   } = useTerminology();
@@ -497,9 +556,9 @@ export default function CustomersPage() {
         {/* Page header */}
         <div className="op-page-header flex items-center justify-between gap-3 mb-4">
           <div className="flex items-center gap-3">
-            <Link to="/home" className="flex items-center justify-center w-7 h-7 rounded hover:bg-slate-100 text-slate-500 transition-colors" aria-label="Back to home">
+            <button onClick={() => goBack(navigate, '/home')} className="flex items-center justify-center w-7 h-7 rounded hover:bg-slate-100 text-slate-500 transition-colors" aria-label="Back to home">
               <ArrowLeft size={15} />
-            </Link>
+            </button>
             <Users size={14} className="text-primary shrink-0" />
             <div>
               <h1 className="op-page-title">Contacts</h1>

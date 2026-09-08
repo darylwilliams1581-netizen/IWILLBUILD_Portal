@@ -1,10 +1,12 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Helmet } from '@dr.pogodin/react-helmet';
-import { Link } from "react-router";
+import { useNavigate } from "react-router";
 import { Mail, ArrowRight, CheckCircle, AlertCircle, ArrowLeft, Smartphone } from 'lucide-react';
+import { goBack } from '@/lib/navigation';
 type Mode = 'email' | 'sms';
 export default function ForgotPasswordPage() {
+  const navigate = useNavigate();
   const [mode, setMode] = useState<Mode>('email');
   const [smsAvailable, setSmsAvailable] = useState(false);
 
@@ -272,10 +274,10 @@ export default function ForgotPasswordPage() {
           </div>
 
           <div className="px-8 py-4 bg-black/20 border-t border-white/5 text-center">
-            <Link to="/login" className="inline-flex items-center gap-1.5 text-xs text-white/30 hover:text-primary transition-colors">
+            <button onClick={() => goBack(navigate, '/login')} className="inline-flex items-center gap-1.5 text-xs text-white/30 hover:text-primary transition-colors">
               <ArrowLeft size={13} />
               Back to sign in
-            </Link>
+            </button>
           </div>
         </div>
       </motion.div>

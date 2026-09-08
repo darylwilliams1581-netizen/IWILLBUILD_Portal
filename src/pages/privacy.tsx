@@ -1,6 +1,7 @@
 import { Helmet } from '@dr.pogodin/react-helmet';
-import { Link } from "react-router";
+import { Link, useNavigate } from "react-router";
 import { ArrowLeft, Shield } from 'lucide-react';
+import { goBack } from '@/lib/navigation';
 
 const VERSION = '2.0';
 const EFFECTIVE_DATE = '3 September 2026';
@@ -33,6 +34,7 @@ function PolicyFooter({ active }: { active: string }) {
 }
 
 export default function PrivacyPage() {
+  const navigate = useNavigate();
   return (
     <>
       <Helmet>
@@ -67,9 +69,9 @@ export default function PrivacyPage() {
               <span className="w-8 h-8 rounded-lg flex items-center justify-center text-primary-foreground font-black text-sm shrink-0 bg-primary">IW</span>
               <strong className="text-foreground text-sm">IWILLBUILD</strong>
             </Link>
-            <Link to="/" className="flex items-center gap-1.5 text-muted-foreground no-underline text-sm hover:text-foreground transition-colors">
+            <button onClick={() => goBack(navigate, '/')} className="flex items-center gap-1.5 text-muted-foreground text-sm hover:text-foreground transition-colors">
               <ArrowLeft size={15} />Back to home
-            </Link>
+            </button>
           </div>
         </header>
 

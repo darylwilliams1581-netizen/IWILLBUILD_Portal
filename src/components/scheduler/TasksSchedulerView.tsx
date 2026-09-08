@@ -19,6 +19,8 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { Link } from "react-router";
 import { CheckSquare, AlertTriangle, Loader2, AlertCircle, Calendar, User, Briefcase, ChevronDown, ChevronUp, Check, X, Clock, CircleDashed, CheckCircle2, Ban, Pencil, ExternalLink, Plus, Tag } from 'lucide-react';
+import { isNative } from '@/lib/capacitor-plugins';
+import { useFieldSheetScrollLock } from '@/lib/useFieldSheetScrollLock';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -164,6 +166,7 @@ function DateField({
   onChange: (v: string) => void;
 }) {
   const warn = yearWarning(value);
+  const native = isNative();
   const quick = [{
     label: 'Today',
     value: todayStr()
@@ -177,9 +180,9 @@ function DateField({
     label: 'Next week',
     value: nextSunday()
   }];
-  return <div className="flex flex-col gap-1">
+  return <div className="flex min-w-0 max-w-full flex-col gap-1 overflow-hidden">
       <label className="text-xs font-medium text-slate-500">{label}</label>
-      <div className="flex flex-wrap gap-1 mb-0.5">
+      <div className="flex max-w-full flex-wrap gap-1 overflow-hidden mb-0.5">
         {quick.map(q => <button key={q.label} type="button" onClick={() => onChange(q.value)} className={`px-2 py-0.5 rounded text-[11px] font-medium border transition-colors ${value === q.value ? 'bg-violet-500 text-white border-violet-600' : 'bg-white text-slate-500 border-slate-200 hover:border-violet-300 hover:text-violet-700'}`}>
             {q.label}
           </button>)}
@@ -187,7 +190,20 @@ function DateField({
             <X size={9} /> Clear
           </button>}
       </div>
-      <input type="date" value={value} onChange={e => onChange(e.target.value)} className="w-full px-2.5 py-1.5 border border-slate-200 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-violet-400 bg-white" />
+      {native ? <div
+          className="flex h-11 min-w-0 max-w-full items-center gap-2 overflow-hidden rounded-md border border-slate-200 bg-white px-2.5"
+          aria-label={`${label}: ${value ? formatDateShort(value) : 'No date selected'}`}
+        >
+          <Calendar size={14} className="shrink-0 text-slate-400" />
+          <span className={`min-w-0 flex-1 truncate text-sm ${value ? 'text-slate-700' : 'text-slate-400'}`}>
+            {value ? formatDateShort(value) : 'Choose with the options above'}
+          </span>
+        </div> : <input
+          type="date"
+          value={value}
+          onChange={e => onChange(e.target.value)}
+          className="h-11 w-full min-w-0 max-w-full overflow-hidden rounded-md border border-slate-200 bg-white px-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-violet-400"
+        />}
       {warn && <p className="text-[11px] text-amber-600 flex items-center gap-1">
           <AlertCircle size={10} /> {warn}
         </p>}
@@ -244,6 +260,7 @@ function TaskModal({
   const [completing, setCompleting] = useState(false);
   const [error, setError] = useState('');
   const titleRef = useRef<HTMLInputElement>(null);
+  useFieldSheetScrollLock(true);
 
   // Focus title on open
   useEffect(() => {
@@ -360,7 +377,7 @@ function TaskModal({
   // because the global [role="dialog"] CSS rule caps width to 32rem which would
   // shrink the full-screen backdrop to ~512px and left-align it.
   return createPortal(
-    <div className="fixed inset-0 z-[1200] flex items-center justify-center p-4">
+    <div className="fixed inset-0 z-[1200] flex items-end justify-center sm:items-center sm:p-4">
       {/* Backdrop — click to close */}
       <div aria-hidden="true" className="absolute inset-0 bg-black/50 backdrop-blur-[2px]" onClick={onClose} />
 
@@ -369,8 +386,8 @@ function TaskModal({
         role="dialog"
         aria-modal="true"
         aria-labelledby="scheduler-task-dialog-title"
-        className="relative z-10 w-full max-w-lg bg-white rounded-xl shadow-2xl flex flex-col"
-        style={{ maxHeight: 'min(90vh, 760px)' }}
+        className="relative z-10 flex min-h-0 w-full flex-col overflow-hidden rounded-t-3xl bg-white shadow-2xl sm:max-w-lg sm:rounded-3xl"
+        style={{ maxHeight: 'min(560px, calc(100dvh - 60px))' }}
         onClick={e => e.stopPropagation()}
       >
 
@@ -393,7 +410,7 @@ function TaskModal({
         </div>
 
         {/* ── Scrollable body ── */}
-        <div className="flex-1 overflow-y-auto px-5 py-4 flex flex-col gap-4 min-h-0">
+        <div className="flex min-h-0 max-w-full flex-1 flex-col gap-4 overflow-x-hidden overflow-y-auto px-5 py-4">
 
           {/* Title */}
           <div>
@@ -420,7 +437,7 @@ function TaskModal({
           </div>
 
           {/* Dates — side by side */}
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid min-w-0 max-w-full grid-cols-1 gap-3 overflow-hidden sm:grid-cols-2">
             <DateField label="Start date" value={form.startDate} onChange={v => setForm(f => ({
             ...f,
             startDate: v
@@ -499,7 +516,10 @@ function TaskModal({
         </div>
 
         {/* ── Footer ── */}
-        <div className="shrink-0 px-5 py-3.5 border-t border-slate-100 bg-slate-50/60 rounded-b-xl flex items-center gap-2">
+        <div
+          className="flex shrink-0 items-center gap-2 border-t border-slate-100 bg-slate-50/60 px-5 pt-3.5"
+          style={{ paddingBottom: 'max(14px, env(safe-area-inset-bottom, 0px))' }}
+        >
           {/* Complete — only in edit mode when not already complete */}
           {isEdit && task.status !== 'Completed' && <button type="button" onClick={() => void handleComplete()} disabled={completing || saving} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-emerald-500 text-white hover:bg-emerald-600 disabled:opacity-40 transition-colors">
               {completing ? <Loader2 size={11} className="animate-spin" /> : <Check size={11} />}

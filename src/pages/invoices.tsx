@@ -6,6 +6,7 @@ import { Link, useNavigate } from "react-router";
 import PortalSidebar from '@/components/PortalSidebar';
 import { usePermissions } from '@/lib/usePermissions';
 import { fetchInvoices, fmtMoney, STATUS_LABELS, STATUS_COLORS, type Invoice, type InvoiceStatus } from '@/lib/invoices-api';
+import { goBack } from '@/lib/navigation';
 const STATUS_FILTERS: Array<{
   key: string;
   label: string;
@@ -123,9 +124,9 @@ export default function InvoicesPage() {
             <Receipt size={32} className="text-muted-foreground mx-auto mb-3" />
             <p className="font-bold text-foreground mb-1">No Invoice Access</p>
             <p className="text-sm text-muted-foreground">You don't have permission to view invoices.</p>
-            <Link to="/home" className="mt-4 inline-flex items-center gap-2 text-sm text-primary hover:underline">
+            <button onClick={() => goBack(navigate, '/home')} className="mt-4 inline-flex items-center gap-2 text-sm text-primary hover:underline">
               <ArrowLeft size={14} /> Back to home
-            </Link>
+            </button>
           </div>
         </div>
       </div>;
@@ -153,9 +154,9 @@ export default function InvoicesPage() {
         {/* Header */}
         <div className="flex items-center justify-between gap-3 mb-5">
           <div className="flex items-center gap-3">
-            <Link to="/home" className="flex items-center justify-center w-8 h-8 rounded-lg border border-border hover:bg-muted transition-colors shrink-0" title="Back to home">
+            <button onClick={() => goBack(navigate, '/home')} className="flex items-center justify-center w-8 h-8 rounded-lg border border-border hover:bg-muted transition-colors shrink-0" title="Back to home">
               <ArrowLeft size={15} className="text-muted-foreground" />
-            </Link>
+            </button>
             <div>
               <h1 className="font-heading font-bold text-base text-foreground">Invoices</h1>
               <p className="text-sm text-muted-foreground mt-0.5">{invoices.length} total</p>

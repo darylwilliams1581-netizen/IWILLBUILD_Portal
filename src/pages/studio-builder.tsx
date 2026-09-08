@@ -9,6 +9,7 @@ import { useEffect, useState, useCallback } from 'react';
 import { useParams, useSearchParams, useNavigate } from "react-router";
 import { Helmet } from '@dr.pogodin/react-helmet';
 import { Loader2, AlertCircle } from 'lucide-react';
+import { goBack } from '@/lib/navigation';
 import DocumentBuilder from '@/components/DocumentBuilder';
 import JobContextTab from '@/components/JobContextTab';
 import DazzaBuilderAssistant from '@/components/DazzaBuilderAssistant';
@@ -198,7 +199,7 @@ export default function StudioBuilderPage() {
     }).catch((e: unknown) => setError(e instanceof Error ? e.message : 'Failed to load document')).finally(() => setLoading(false));
   }, [id, isNew]);
   function handleClose() {
-    navigate('/studio/documents');
+    goBack(navigate, '/studio/documents');
   }
   function handleSaved(savedId: number) {
     // If we just created a new doc, update the URL to the real ID

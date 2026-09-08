@@ -6,10 +6,11 @@
  * Renders the document content inline (form answers, PO lines, etc.).
  */
 import { useEffect, useState, useCallback } from 'react';
-import { useParams, Link } from "react-router";
+import { useParams, Link, useNavigate } from "react-router";
 import { Helmet } from '@dr.pogodin/react-helmet';
 import { FileText, Share2, Clock, CheckCircle2, Lock, Unlock, Copy, XCircle, Loader2, AlertTriangle, ChevronLeft, Eye, Download, ClipboardList, History, Activity, ExternalLink, RotateCcw, Link2 } from 'lucide-react';
 import ShareLinkModal, { type ShareTarget } from '@/components/ShareLinkModal';
+import { goBack } from '@/lib/navigation';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -303,6 +304,7 @@ function VersionHistory({
 // ── Main page ─────────────────────────────────────────────────────────────────
 
 export default function DocumentViewerPage() {
+  const navigate = useNavigate();
   const {
     id
   } = useParams<{
@@ -378,9 +380,9 @@ export default function DocumentViewerPage() {
 
       <div className="portal-content max-w-5xl mx-auto px-4 py-6">
         {/* Back nav */}
-        <Link to={backLink} className="inline-flex items-center gap-1.5 text-xs text-slate-500 hover:text-primary mb-5 transition-colors">
+        <button onClick={() => goBack(navigate, backLink)} className="inline-flex items-center gap-1.5 text-xs text-slate-500 hover:text-primary mb-5 transition-colors">
           <ChevronLeft size={13} /> {backLabel}
-        </Link>
+        </button>
 
         {loading && <div className="flex items-center justify-center py-20 gap-3 text-slate-400">
             <Loader2 size={20} className="animate-spin" />

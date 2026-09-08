@@ -21,6 +21,7 @@ import PortalSidebar from '@/components/PortalSidebar';
 import PhotoEditor from '@/components/PhotoEditor';
 import type { EditorConfig } from '@/components/PhotoEditor';
 import type { JobPhoto } from '@/components/JobPhotos';
+import { goBack } from '@/lib/navigation';
 import { usePermissions } from '@/lib/usePermissions';
 import { JOB_CARD_PHOTO_EDITOR_ENABLED } from '@/lib/featureFlags';
 
@@ -1198,7 +1199,7 @@ export default function JobCardDetailPage() {
         <div className="flex-1 flex flex-col items-center justify-center gap-3">
           <AlertCircle size={28} className="text-red-400" />
           <p className="text-gray-600 font-medium">{error || 'Job card not found'}</p>
-          <Link to="/job-cards" className="text-sm text-yellow-600 hover:underline">← Back to Job Cards</Link>
+          <button onClick={() => goBack(navigate, '/job-cards')} className="text-sm text-yellow-600 hover:underline">← Back to Job Cards</button>
         </div>
       </div>;
   }
@@ -1225,10 +1226,10 @@ export default function JobCardDetailPage() {
 
           {/* Row 1: back nav + card number */}
           <div className="flex items-center justify-between gap-2 mb-2">
-            <Link to="/job-cards" className="flex items-center gap-1 text-sm font-semibold text-yellow-600 hover:text-yellow-700 transition-colors">
+            <button onClick={() => goBack(navigate, '/job-cards')} className="flex items-center gap-1 text-sm font-semibold text-yellow-600 hover:text-yellow-700 transition-colors">
               <ChevronLeft size={17} />
               Job Cards
-            </Link>
+            </button>
             <span className="font-mono text-[12px] font-bold text-gray-400 shrink-0">{card.card_number}</span>
           </div>
 

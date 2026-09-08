@@ -1,9 +1,11 @@
 import { useState } from 'react';
 import { Helmet } from '@dr.pogodin/react-helmet';
 import { Mail, RefreshCw, CheckCircle, ArrowLeft } from 'lucide-react';
-import { Link, useLocation } from "react-router";
+import { useLocation, useNavigate } from "react-router";
+import { goBack } from '@/lib/navigation';
 export default function CheckEmailPage() {
   const location = useLocation();
+  const navigate = useNavigate();
   const email = (location.state as {
     email?: string;
   } | null)?.email ?? '';
@@ -126,10 +128,10 @@ export default function CheckEmailPage() {
               </ul>
             </div>
 
-            <Link to="/login" className="inline-flex items-center gap-1.5 text-white/40 hover:text-white/70 text-sm transition-colors">
+            <button onClick={() => goBack(navigate, '/login')} className="inline-flex items-center gap-1.5 text-white/40 hover:text-white/70 text-sm transition-colors">
               <ArrowLeft size={14} />
               Back to login
-            </Link>
+            </button>
           </div>
         </div>
       </div>

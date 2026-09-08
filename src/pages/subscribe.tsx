@@ -1,7 +1,8 @@
-import { Link } from "react-router";
+import { Link, useNavigate } from "react-router";
 import { Helmet } from '@dr.pogodin/react-helmet';
 import { CheckCircle2, ChevronRight, Users, User, Zap, Crown, ArrowLeft } from 'lucide-react';
 import { isNative } from '@/lib/capacitor-plugins';
+import { goBack } from '@/lib/navigation';
 
 // ── Plan data ─────────────────────────────────────────────────────────────────
 
@@ -51,6 +52,7 @@ const PLANS = [{
 // ── Component ─────────────────────────────────────────────────────────────────
 
 export default function SubscribePage() {
+  const navigate = useNavigate();
   const native = isNative();
   return <>
       <Helmet>
@@ -66,9 +68,9 @@ export default function SubscribePage() {
         <div className="flex items-center gap-3 px-5 py-4 border-b border-white/10" style={{
         paddingTop: native ? 'max(env(safe-area-inset-top), 16px)' : undefined
       }}>
-          <Link to="/login" className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center text-white/60 hover:bg-white/20 transition-colors" aria-label="Back to sign in">
+          <button onClick={() => goBack(navigate, '/login')} className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center text-white/60 hover:bg-white/20 transition-colors" aria-label="Back to sign in">
             <ArrowLeft size={16} />
-          </Link>
+          </button>
           <div className="flex items-center gap-2.5">
             <div className="w-8 h-8 rounded-xl bg-primary flex items-center justify-center shrink-0">
               <span className="text-white font-black text-xs">IW</span>

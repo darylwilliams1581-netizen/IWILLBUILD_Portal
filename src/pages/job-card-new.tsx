@@ -6,6 +6,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from "react-router";
 import { Helmet } from '@dr.pogodin/react-helmet';
 import PortalSidebar from '@/components/PortalSidebar';
+import { goBack } from '@/lib/navigation';
 import { ChevronLeft, Zap, Plus, RefreshCw, AlertCircle } from 'lucide-react';
 interface Customer {
   id: number;
@@ -106,7 +107,7 @@ export default function JobCardNewPage() {
         {/* ── Header ── */}
         <div className="bg-white border-b border-gray-100 px-4 lg:px-6 py-4 shrink-0 safe-top">
           <div className="flex items-center gap-3">
-            <button onClick={() => navigate('/job-cards')} className="flex items-center gap-1.5 text-sm font-semibold text-gray-500 hover:text-gray-800 transition-colors">
+            <button onClick={() => goBack(navigate, '/job-cards')} className="flex items-center gap-1.5 text-sm font-semibold text-gray-500 hover:text-gray-800 transition-colors">
               <ChevronLeft size={18} />
               <span>Job Cards</span>
             </button>

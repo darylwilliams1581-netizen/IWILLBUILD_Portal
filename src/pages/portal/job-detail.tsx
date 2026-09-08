@@ -4,10 +4,11 @@
  * and invoices (with Pay Now via Stripe).
  */
 import { useState, useEffect } from 'react';
-import { useParams, useSearchParams, Link } from "react-router";
+import { useParams, useSearchParams, useNavigate } from "react-router";
 import { Helmet } from '@dr.pogodin/react-helmet';
 import { motion, AnimatePresence } from 'motion/react';
 import { HardHat, FileText, Receipt, ChevronLeft, Loader2, AlertCircle, CheckCircle, XCircle, Clock, DollarSign, Check, X, CreditCard, Building2, MapPin, Calendar } from 'lucide-react';
+import { goBack } from '@/lib/navigation';
 interface PortalJob {
   id: number;
   job_number: string;
@@ -112,6 +113,7 @@ const INV_STATUS: Record<string, {
   }
 };
 export default function PortalJobDetailPage() {
+  const navigate = useNavigate();
   const {
     id
   } = useParams<{
@@ -224,9 +226,9 @@ export default function PortalJobDetailPage() {
       <div className="bg-white rounded-2xl border border-red-200 p-8 max-w-sm w-full text-center">
         <AlertCircle size={32} className="text-red-400 mx-auto mb-3" />
         <p className="font-semibold text-slate-700">{error}</p>
-        <Link to={`/portal/dashboard?token=${token}`} className="mt-4 inline-block text-sm text-violet-600 hover:underline">
+        <button onClick={() => goBack(navigate, `/portal/dashboard?token=${token}`)} className="mt-4 inline-block text-sm text-violet-600 hover:underline">
           ← Back to dashboard
-        </Link>
+        </button>
       </div>
     </div>;
   return <>
@@ -241,9 +243,9 @@ export default function PortalJobDetailPage() {
         {/* Header */}
         <header className="bg-white border-b border-slate-200 sticky top-0 z-20 safe-top">
           <div className="max-w-3xl mx-auto px-4 py-4 flex items-center gap-3">
-            <Link to={`/portal/dashboard?token=${token}`} className="flex items-center gap-1.5 text-sm text-slate-500 hover:text-slate-700 transition-colors">
+            <button onClick={() => goBack(navigate, `/portal/dashboard?token=${token}`)} className="flex items-center gap-1.5 text-sm text-slate-500 hover:text-slate-700 transition-colors">
               <ChevronLeft size={16} /> Dashboard
-            </Link>
+            </button>
             <div className="flex-1" />
             <div className="flex items-center gap-2">
               <div className="w-7 h-7 rounded-lg bg-violet-500 flex items-center justify-center">

@@ -17,6 +17,7 @@ import {
   Loader2, ShieldAlert,
 } from 'lucide-react';
 import { usePermissions } from '@/lib/usePermissions';
+import { goBack } from '@/lib/navigation';
 import { formatBytes } from '@/lib/files-api';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -554,7 +555,7 @@ export default function SdsRegisterPage() {
         {/* ── Header ── */}
         <div className="flex items-center gap-3 px-4 py-3 border-b border-border bg-background shrink-0">
           <button
-            onClick={() => navigate('/work?workTab=tools')}
+            onClick={() => goBack(navigate, '/work?workTab=tools')}
             className="flex items-center justify-center w-9 h-9 rounded-xl border border-border hover:bg-muted transition-colors shrink-0"
             aria-label="Back to Tools"
           >

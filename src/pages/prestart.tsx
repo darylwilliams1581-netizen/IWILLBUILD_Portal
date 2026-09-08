@@ -9,11 +9,12 @@
  * Orange theme to match the Prestart icon tile.
  */
 import { useState, useEffect, useCallback } from 'react';
-import { useNavigate, useSearchParams, Link } from "react-router";
+import { useNavigate, useSearchParams } from "react-router";
 import { motion, AnimatePresence } from 'motion/react';
 import { Helmet } from '@dr.pogodin/react-helmet';
 import { ArrowLeft, ClipboardCheck, Loader2, Car, ChevronRight, CheckCircle2, XCircle, AlertTriangle, AlertCircle, Play, X } from 'lucide-react';
 import { hapticSuccess, hapticError } from '@/lib/capacitor-plugins';
+import { goBack } from '@/lib/navigation';
 import { useOfflineQueue } from '@/lib/useOfflineQueue';
 import {
   createOfflineClientId,
@@ -316,9 +317,9 @@ function DoneState({
         <ClipboardCheck size={15} className="text-violet-600" /> Do another prestart
       </button>
 
-      <Link to="/fleet" className="text-gray-400 text-sm hover:text-gray-600 transition-colors">
+      <button onClick={() => goBack(navigate, '/fleet')} className="text-gray-400 text-sm hover:text-gray-600 transition-colors">
         Back to Fleet
-      </Link>
+      </button>
     </motion.div>;
 }
 
@@ -393,7 +394,7 @@ export default function PrestartPage() {
         if (step === 'form') {
           setStep('pick');
           setSelectedVehicle(null);
-        } else navigate('/fleet');
+        } else goBack(navigate, '/fleet');
       }} className="w-9 h-9 rounded-xl bg-gray-100 flex items-center justify-center text-gray-600 hover:bg-gray-200 active:bg-gray-300 transition-colors shrink-0" aria-label="Back">
           <ArrowLeft size={18} />
         </button>

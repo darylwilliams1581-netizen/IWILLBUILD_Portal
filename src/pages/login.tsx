@@ -6,6 +6,7 @@ import { Eye, EyeOff, ArrowRight, Lock, Mail, AlertCircle, Smartphone, KeyRound,
 import { useSession, authClient, signIn, consumeTwoFactorRedirect } from '@/lib/auth/auth-client';
 import { InputOTP, InputOTPGroup, InputOTPSlot } from '@/components/ui/input-otp';
 import ForcedPasswordChangeModal from '@/components/auth/ForcedPasswordChangeModal';
+import { goBack } from '@/lib/navigation';
 
 import { isNativeApp, WEB_PORTAL_URL, openExternalUrl } from '@/lib/native-routing';
 
@@ -960,9 +961,9 @@ export default function LoginPage() {
                 <ExternalLink size={12} />
                 Open web portal
               </button>
-            </> : <Link to="/" className="text-xs text-white/30 hover:text-primary transition-colors">
+            </> : <button onClick={() => goBack(navigate, '/')} className="text-xs text-white/30 hover:text-primary transition-colors">
               &larr; Back to home
-            </Link>}
+            </button>}
         </div>
       </motion.div>
     </div>;

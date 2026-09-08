@@ -15,6 +15,7 @@ import { useState, useEffect, useRef } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
 import { Search, X, ChevronRight, Loader2, HardHat } from 'lucide-react';
 import { fetchActiveJobs } from '@/lib/jobs-api';
+import { useFieldSheetScrollLock } from '@/lib/useFieldSheetScrollLock';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -52,6 +53,8 @@ export default function JobPickerSheet({
   const [jobs, setJobs]       = useState<JobOption[]>([]);
   const [loading, setLoading] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+
+  useFieldSheetScrollLock(open);
 
   // Load active jobs on open
   useEffect(() => {
@@ -104,22 +107,20 @@ export default function JobPickerSheet({
             onClick={onClose}
           />
 
-          {/* Sheet — always centred */}
-          <motion.div
-            key="sheet"
-            initial={{ scale: 0.95, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            exit={{ scale: 0.95, opacity: 0 }}
-            transition={{ type: 'spring', damping: 28, stiffness: 320 }}
-            className="fixed left-1/2 z-50 bg-background rounded-2xl shadow-2xl flex flex-col w-[calc(100vw-2rem)] sm:w-[480px] sm:max-w-[90vw]"
-            style={{
-              translateX: '-50%',
-              translateY: '-50%',
-              top: 'calc(50% + 40px)',
-              maxHeight: 'min(90dvh, 640px)',
-              paddingBottom: 'max(env(safe-area-inset-bottom), 16px)',
-            }}
-          >
+          <div className="pointer-events-none fixed inset-0 z-50 flex items-end justify-center sm:items-center sm:p-4">
+            <motion.div
+              key="sheet"
+              initial={{ opacity: 0, y: 40 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 40 }}
+              transition={{ type: 'spring', damping: 30, stiffness: 340 }}
+              className="pointer-events-auto flex w-full min-h-0 flex-col overflow-hidden rounded-t-3xl bg-background shadow-2xl sm:max-w-[480px] sm:rounded-3xl"
+              style={{
+                maxHeight: 'min(560px, calc(100dvh - 60px))',
+                paddingBottom: 'max(env(safe-area-inset-bottom), 16px)',
+              }}
+              onClick={event => event.stopPropagation()}
+            >
             {/* Header */}
             <div className="flex items-start justify-between px-4 pt-3 pb-2 shrink-0">
               <div>
@@ -165,7 +166,7 @@ export default function JobPickerSheet({
             </div>
 
             {/* Job list */}
-            <div className="flex-1 overflow-y-auto">
+            <div className="min-h-0 flex-1 overflow-y-auto">
               {!loading && jobs.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-12 gap-3 text-muted-foreground">
                   <HardHat size={32} className="opacity-30" />
@@ -195,7 +196,8 @@ export default function JobPickerSheet({
                 ))
               )}
             </div>
-          </motion.div>
+            </motion.div>
+          </div>
         </>
       )}
     </AnimatePresence>

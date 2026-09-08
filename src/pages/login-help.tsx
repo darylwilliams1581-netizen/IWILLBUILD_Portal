@@ -1,6 +1,7 @@
-import { Link } from "react-router";
+import { Link, useNavigate } from "react-router";
 import { Helmet } from '@dr.pogodin/react-helmet';
 import { KeyRound, Mail, HelpCircle, Monitor, RefreshCw, ChevronRight, AlertCircle, CheckCircle2, ExternalLink } from 'lucide-react';
+import { goBack } from '@/lib/navigation';
 const SUPPORT_EMAIL = 'support@iwillbuild.com';
 interface HelpSection {
   icon: React.ReactNode;
@@ -95,6 +96,7 @@ const sections: HelpSection[] = [{
   }]
 }];
 export default function LoginHelpPage() {
+  const navigate = useNavigate();
   return <div className="min-h-screen bg-slate-50">
       <Helmet>
         <title>Login Help — IWIllBUIlD Portal</title>
@@ -110,9 +112,9 @@ export default function LoginHelpPage() {
               <span className="text-violet-600">IWB</span> Portal
             </span>
           </Link>
-          <Link to="/login" className="text-sm text-slate-500 hover:text-violet-600 flex items-center gap-1 transition-colors">
+          <button onClick={() => goBack(navigate, '/login')} className="text-sm text-slate-500 hover:text-violet-600 flex items-center gap-1 transition-colors">
             Back to login <ChevronRight size={14} />
-          </Link>
+          </button>
         </div>
       </div>
 
@@ -191,7 +193,7 @@ export default function LoginHelpPage() {
 
         {/* Footer */}
         <div className="mt-8 text-center text-xs text-slate-400">
-          <Link to="/login" className="hover:text-violet-600 transition-colors">Back to login</Link>
+          <button onClick={() => goBack(navigate, '/login')} className="hover:text-violet-600 transition-colors">Back to login</button>
           {' · '}
           <Link to="/forgot-password" className="hover:text-violet-600 transition-colors">Reset password</Link>
           {' · '}

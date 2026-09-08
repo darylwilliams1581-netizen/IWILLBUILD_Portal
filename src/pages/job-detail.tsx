@@ -30,6 +30,7 @@ import JobAttendanceTab from '@/components/job/JobAttendanceTab';
 import DesktopTopBar from '@/components/DesktopTopBar';
 import DesktopDock from '@/components/DesktopDock';
 import PortalSidebar from '@/components/PortalSidebar';
+import { goBack } from '@/lib/navigation';
 type Tab = 'details' | 'estimates' | 'costs' | 'invoices' | 'purchase-orders' | 'progress' | 'delays' | 'photos' | 'files' | 'forms' | 'notes' | 'safety' | 'drawings' | 'attendance' | 'tasks';
 
 // ── Wrapper components to adapt actual selectors to JobDetailsDashboard interface ──
@@ -529,7 +530,7 @@ export default function JobDetailPage() {
         {/* ── Mobile top bar ── */}
         <header className="md:hidden h-14 bg-white border-b border-gray-200 flex items-center justify-between px-4 shrink-0 sticky top-0 z-30 safe-top">
           <div className="flex items-center gap-2 min-w-0">
-            <button onClick={() => navigate('/jobs')} className="p-1.5 -ml-1 rounded text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors shrink-0" aria-label="Back">
+            <button onClick={() => goBack(navigate, '/jobs')} className="p-1.5 -ml-1 rounded text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors shrink-0" aria-label="Back">
               <ChevronLeft size={18} />
             </button>
             <HardHat size={15} className="text-primary shrink-0" />
@@ -565,7 +566,7 @@ export default function JobDetailPage() {
 
         {/* ── Desktop op-page-header ── */}
         <header className="op-page-header hidden md:flex sticky top-0 z-30">
-          <button onClick={() => navigate('/jobs')} className="p-1 -ml-0.5 rounded text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors shrink-0" aria-label="Back">
+          <button onClick={() => goBack(navigate, '/jobs')} className="p-1 -ml-0.5 rounded text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors shrink-0" aria-label="Back">
             <ChevronLeft size={15} />
           </button>
           <HardHat size={14} className="text-primary shrink-0" />
@@ -605,7 +606,7 @@ export default function JobDetailPage() {
           {error && <div className="flex items-center gap-3 bg-red-50 border border-red-200 rounded-lg px-4 py-3 text-sm text-red-700 max-w-lg m-6">
               <AlertCircle size={16} className="shrink-0" />
               {error}
-              <button onClick={() => navigate('/jobs')} className="ml-auto font-semibold underline">Back to {workPlural}</button>
+              <button onClick={() => goBack(navigate, '/jobs')} className="ml-auto font-semibold underline">Back to {workPlural}</button>
             </div>}
 
           {job && <motion.div initial={{

@@ -691,7 +691,7 @@ export default function OwnerConsolePage() {
             </div>
             <h2 className="text-xl font-black text-slate-900 mb-2">Access Denied</h2>
             <p className="text-sm text-slate-500 mb-6">Platform developer access is required to view the Developer Console.</p>
-            <button onClick={() => navigate('/dashboard')} className="px-5 py-2.5 bg-primary text-white rounded-xl text-sm font-bold hover:bg-violet-700 transition-colors">
+            <button onClick={() => goBack(navigate, '/dashboard')} className="px-5 py-2.5 bg-primary text-white rounded-xl text-sm font-bold hover:bg-violet-700 transition-colors">
               Back to Dashboard
             </button>
           </div>

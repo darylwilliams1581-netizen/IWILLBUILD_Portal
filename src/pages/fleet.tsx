@@ -13,6 +13,7 @@ import { goBack } from '@/lib/navigation';
 import { useViewOnly } from '@/components/ViewOnlyGuard';
 import { usePermissions } from '@/lib/usePermissions';
 import { lazy, Suspense } from 'react';
+import { useFieldSheetScrollLock } from '@/lib/useFieldSheetScrollLock';
 
 // Google Maps-based live map
 const FleetLiveMap = lazy(() => import('@/components/fleet/FleetLiveMap'));
@@ -43,6 +44,8 @@ function NewAssetModal({
   });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+  useFieldSheetScrollLock(true);
+
   const set = (k: keyof CreateAssetPayload, v: string | boolean) => setForm(f => ({
     ...f,
     [k]: v
@@ -65,7 +68,7 @@ function NewAssetModal({
       setSaving(false); // only reset on error so button stays disabled on success
     }
   }
-  return <div className="fixed inset-0 z-50 flex items-center justify-center p-4 lg:pt-[120px]">
+  return <div className="fixed inset-0 z-50 flex items-end justify-center sm:items-center sm:p-4">
       <div className="absolute inset-0 bg-black/60" onClick={onClose} />
       <motion.div initial={{
       opacity: 0,
@@ -78,15 +81,18 @@ function NewAssetModal({
       scale: 0.96
     }} transition={{
       duration: 0.15
-    }} className="relative bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[85dvh] lg:max-h-[calc(100dvh-128px)] overflow-y-auto">
-        <div className="flex items-center justify-between px-6 py-4 border-b border-border">
+    }} className="relative flex min-h-0 w-full flex-col overflow-hidden rounded-t-3xl bg-white shadow-2xl sm:max-w-lg sm:rounded-3xl"
+      style={{ maxHeight: 'min(560px, calc(100dvh - 60px))' }}
+    >
+        <div className="flex shrink-0 items-center justify-between border-b border-border px-6 py-4">
           <h2 className="font-heading font-bold text-base">New Fleet Asset</h2>
           <button onClick={onClose} className="p-1 text-muted-foreground hover:text-foreground transition-colors">
             <X size={18} />
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-6 flex flex-col gap-4">
+        <form onSubmit={handleSubmit} className="flex min-h-0 flex-1 flex-col">
+          <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto p-6">
           {error && <div className="flex items-center gap-2 bg-red-50 border border-red-200 rounded-lg px-3 py-2.5 text-sm text-red-700">
               <AlertCircle size={14} className="shrink-0" />
               {error}
@@ -154,8 +160,12 @@ function NewAssetModal({
               <textarea value={form.notes} onChange={e => set('notes', e.target.value)} rows={3} placeholder="Any additional notes…" className="w-full px-3 py-2.5 border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-colors resize-none" />
             </div>
           </div>
+          </div>
 
-          <div className="flex gap-3 justify-end pt-2">
+          <div
+            className="flex shrink-0 justify-end gap-3 border-t border-slate-100 bg-white px-6 pt-4"
+            style={{ paddingBottom: 'max(16px, env(safe-area-inset-bottom, 0px))' }}
+          >
             <button type="button" onClick={onClose} className="px-4 py-2 text-sm font-semibold text-slate-600 hover:text-slate-800 transition-colors">
               Cancel
             </button>
@@ -211,6 +221,8 @@ const stagger = {
   }
 } as const;
 export default function FleetPage() {
+  const navigate = useNavigate();
+  const location = useLocation();
   const [assets, setAssets] = useState<FleetAsset[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -225,13 +237,35 @@ export default function FleetPage() {
   // Sync view with ?fleetView= URL param so sidebar links can deep-link
   useEffect(() => {
     const param = searchParams.get('fleetView');
-    if (param === 'live-map') setView('live-map');
-    else if (param === 'assets') setView('assets');
+    setView(param === 'live-map' ? 'live-map' : 'assets');
   }, [searchParams]);
 
   function switchView(v: 'assets' | 'live-map') {
+    if (v === view) return;
+
+    if (view === 'live-map' && v === 'assets') {
+      setView('assets');
+      const state = location.state as {
+        fleetLiveMapFromAssets?: boolean;
+      } | null;
+      if (state?.fleetLiveMapFromAssets) {
+        navigate(-1);
+      } else {
+        setSearchParams({ fleetView: 'assets' }, {
+          replace: true,
+          state: {}
+        });
+      }
+      return;
+    }
+
     setView(v);
-    setSearchParams({ fleetView: v }, { replace: true });
+    setSearchParams({ fleetView: v }, {
+      replace: false,
+      state: v === 'live-map' ? {
+        fleetLiveMapFromAssets: true
+      } : {}
+    });
   }
   const {
     isViewOnly
@@ -239,9 +273,6 @@ export default function FleetPage() {
   const {
     isAdmin
   } = usePermissions();
-  const navigate = useNavigate();
-  const location = useLocation();
-
   // Auto-open drive modal when navigated here from prestart completion
   useEffect(() => {
     const state = location.state as {
@@ -280,7 +311,7 @@ export default function FleetPage() {
     'Out of Service': assets.filter(a => a.status === 'Out of Service').length
   };
   const attentionCount = counts.Maintenance + counts['Out of Service'];
-  return <div className="flex-1 bg-gray-50 flex flex-col lg-portal">
+  return <div className="flex h-full min-h-0 flex-1 flex-col overflow-hidden bg-gray-50 lg-portal">
       <PortalSidebar />
       <DesktopTopBar />
       <DesktopDock />
@@ -304,10 +335,10 @@ export default function FleetPage() {
       <PortalErrorBoundary inline>
       <div className="flex flex-col flex-1 min-h-0 overflow-hidden">
         {/* Header — back/title left · view toggle centre · add asset right */}
-        <header className="sticky top-0 z-30 bg-white border-b border-border shrink-0 safe-top">
+        <header className="pointer-events-auto sticky top-0 z-40 shrink-0 border-b border-border bg-white safe-top">
           <div className="flex items-center gap-2 px-3 h-12 min-w-0">
             {/* Left: back + icon — fixed width, never grows */}
-            <button onClick={() => goBack(navigate, '/home')} className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors shrink-0" aria-label="Back to Home">
+            <button onClick={() => view === 'live-map' ? switchView('assets') : goBack(navigate, '/home')} className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors shrink-0" aria-label={view === 'live-map' ? 'Back to Fleet Assets' : 'Back to Home'}>
               <ArrowLeft size={16} />
             </button>
             <Truck size={16} className="text-primary shrink-0" />
@@ -344,18 +375,9 @@ export default function FleetPage() {
         </header>
 
         {/* Content */}
-        <div className="flex-1 overflow-hidden flex flex-col min-h-0">
+        <div className="relative z-0 flex flex-1 min-h-0 flex-col overflow-hidden">
           {/* ── Live Map view ── */}
-          {view === 'live-map' &&
-          // flex-1 + min-h-0 fills remaining space on desktop.
-          // On mobile the flex chain may not have a definite height, so we
-          // also set an explicit dvh-based min-height — the sticky header is
-          // ~48px (h-12) and the page has no bottom bar in map view, so
-          // calc(100dvh - 48px) guarantees a non-zero map height on all
-          // iPhone/tablet viewports regardless of the flex chain.
-          <div className="flex-1 min-h-0 flex flex-col overflow-hidden" style={{
-            minHeight: 'calc(100dvh - 48px)'
-          }}>
+          {view === 'live-map' && <div className="relative z-0 flex flex-1 min-h-0 flex-col overflow-hidden">
               <PortalErrorBoundary inline>
                 <Suspense fallback={<div className="flex items-center justify-center flex-1 gap-2 text-slate-400">
                     <Loader2 size={20} className="animate-spin" />

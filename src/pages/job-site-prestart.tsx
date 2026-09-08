@@ -786,10 +786,10 @@ export default function JobSitePrestartPage() {
   }>();
   const navigate = useNavigate();
   const location = useLocation();
+  const jobId = parseInt(id ?? '0', 10);
   const returnTo: string = (location.state as {
     returnTo?: string;
-  } | null)?.returnTo ?? '/home';
-  const jobId = parseInt(id ?? '0', 10);
+  } | null)?.returnTo ?? (jobId > 0 ? `/jobs/${jobId}` : '/home');
   const [view, setView] = useState<View>('list');
   const [prestart, setPrestart] = useState<SitePrestart | null>(null);
   const [workers, setWorkers] = useState<Worker[]>([]);
@@ -979,7 +979,7 @@ export default function JobSitePrestartPage() {
         <div className="bg-white border-b border-slate-200 sticky top-0 z-20 safe-top">
           <div className="flex items-center gap-3 px-4 pt-3 pb-3">
             <button onClick={() => {
-            if (view === 'form' || view === 'new') setView('list');else navigate(returnTo);
+            if (view === 'form' || view === 'new') setView('list');else goBack(navigate, returnTo);
           }} className="p-2 rounded-xl hover:bg-slate-100 transition-colors" aria-label="Back">
               <ChevronLeft size={20} className="text-slate-600" />
             </button>

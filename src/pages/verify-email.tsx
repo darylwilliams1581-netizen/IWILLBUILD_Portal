@@ -2,6 +2,7 @@ import { useEffect, useState, useRef } from 'react';
 import { Helmet } from '@dr.pogodin/react-helmet';
 import { CheckCircle, XCircle, Loader2, ArrowRight } from 'lucide-react';
 import { Link, useSearchParams, useNavigate } from "react-router";
+import { goBack } from '@/lib/navigation';
 type Status = 'verifying' | 'success' | 'error' | 'invalid';
 const REDIRECT_DELAY = 4; // seconds
 
@@ -157,9 +158,9 @@ export default function VerifyEmailPage() {
                   <Link to="/check-email" className="inline-flex items-center justify-center gap-2 bg-primary hover:bg-violet-700 text-white font-bold text-sm px-6 py-3 rounded-xl transition-colors">
                     Request a new link
                   </Link>
-                  <Link to="/login" className="text-white/40 hover:text-white/70 text-sm transition-colors">
+                  <button onClick={() => goBack(navigate, '/login')} className="text-white/40 hover:text-white/70 text-sm transition-colors">
                     Back to login
-                  </Link>
+                  </button>
                 </div>
               </>}
           </div>

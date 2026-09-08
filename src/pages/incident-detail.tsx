@@ -1077,7 +1077,7 @@ export default function IncidentDetailPage() {
             {!isClosed && <button type="button" onClick={handleSave} disabled={saving} className="flex-1 py-3 rounded-xl bg-red-600 text-white text-sm font-bold flex items-center justify-center gap-2">
                 {saving ? <Loader2 size={16} className="animate-spin" /> : <><Save size={15} /> {isNew ? 'Create Incident' : 'Save'}</>}
               </button>}
-            {isClosed && <button type="button" onClick={() => navigate(returnTo)} className="flex-1 py-3 rounded-xl bg-slate-100 text-slate-600 text-sm font-semibold">
+            {isClosed && <button type="button" onClick={() => goBack(navigate, returnTo)} className="flex-1 py-3 rounded-xl bg-slate-100 text-slate-600 text-sm font-semibold">
                 Back to register
               </button>}
           </div>

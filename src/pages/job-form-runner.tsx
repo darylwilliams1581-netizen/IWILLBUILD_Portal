@@ -17,13 +17,14 @@
  * is the sole entry point to PDF/Email/Share on completed forms.
  */
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { useParams, useLocation } from "react-router";
+import { useParams, useLocation, useNavigate } from "react-router";
 import { Helmet } from '@dr.pogodin/react-helmet';
 import { Loader2, AlertTriangle, ChevronLeft, CheckCircle2, Pencil, Save, XCircle } from 'lucide-react';
 import FormRunner from '@/components/job/FormRunner';
 import type { FormSubmission } from '@/components/job/form-types';
 import { fetchJob, type Job } from '@/lib/jobs-api';
 import { cacheFormShell, readCachedFormShell } from '@/lib/offlineFormStore';
+import { goBack } from '@/lib/navigation';
 interface LocationState {
   returnTo?: string;
 }
@@ -36,6 +37,7 @@ export default function JobFormRunnerPage() {
     formInstanceId: string;
   }>();
   const location = useLocation();
+  const navigate = useNavigate();
   const jobId = Number(id);
   const submissionId = Number(formInstanceId);
   const locationState = (location.state ?? {}) as LocationState;
@@ -115,19 +117,11 @@ export default function JobFormRunnerPage() {
     void load();
   }, [jobId, submissionId]);
   function handleBack() {
-    // Resolve destination at click time so isDone is current.
-    // Explicit returnTo from navigation state (e.g. Job Forms tab) takes priority.
-    // Otherwise: completed forms → Submissions tab; active forms → Forms tab.
-    let dest: string;
-    if (explicitReturnTo) {
-      dest = explicitReturnTo;
-    } else {
-      // No explicit returnTo — fall back to the app home dashboard
-      dest = '/home';
-    }
-    // Hard navigation guarantees the Form Runner unmounts and the destination
-    // page renders correctly, regardless of how the router shell is structured.
-    window.location.assign(dest);
+    const parentFallback = Number.isFinite(jobId) && jobId > 0 ? `/jobs/${jobId}` : '/home';
+    const fallback = explicitReturnTo?.startsWith('/') && !explicitReturnTo.startsWith('//')
+      ? explicitReturnTo
+      : parentFallback;
+    goBack(navigate, fallback);
   }
   const handleReopen = useCallback(async () => {
     if (!submission) return;

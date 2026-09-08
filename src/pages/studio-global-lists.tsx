@@ -7,6 +7,7 @@ import { Helmet } from '@dr.pogodin/react-helmet';
 import { ArrowLeft, List, Plus, Trash2, GripVertical, ChevronDown, ChevronUp, Pencil, Check, X, Loader2 } from 'lucide-react';
 import DesktopTopBar from '@/components/DesktopTopBar';
 import DesktopDock from '@/components/DesktopDock';
+import { goBack } from '@/lib/navigation';
 import PortalSidebar from '@/components/PortalSidebar';
 interface GlobalList {
   id: number;
@@ -257,7 +258,7 @@ export default function StudioGlobalListsPage() {
 
       {/* Header */}
       <header className="sticky top-0 z-30 h-12 bg-white border-b border-border flex items-center px-4 shrink-0 gap-2 safe-top">
-        <button onClick={() => navigate('/studio/forms')} className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors shrink-0" aria-label="Back to Forms">
+        <button onClick={() => goBack(navigate, '/studio/forms')} className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors shrink-0" aria-label="Back to Forms">
           <ArrowLeft size={16} />
           <span className="hidden sm:inline">Forms</span>
         </button>

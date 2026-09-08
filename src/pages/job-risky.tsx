@@ -12,6 +12,7 @@ import { Helmet } from '@dr.pogodin/react-helmet';
 import { ChevronLeft, ChevronDown, Plus, ShieldAlert, CheckCircle2, AlertTriangle, Pencil, Lock, FileText, Users, ClipboardCheck, X, Loader2, FileWarning } from 'lucide-react';
 import FormSection from '@/components/FormSection';
 import MobileOverflowMenu from '@/components/MobileOverflowMenu';
+import { goBack } from '@/lib/navigation';
 // ── Types ─────────────────────────────────────────────────────────────────────
 
 interface RiskyAssessment {
@@ -614,10 +615,10 @@ export default function JobRiskyPage() {
   }>();
   const navigate = useNavigate();
   const location = useLocation();
+  const jobId = parseInt(id ?? '0', 10);
   const returnTo: string = (location.state as {
     returnTo?: string;
-  } | null)?.returnTo ?? '/home';
-  const jobId = parseInt(id ?? '0', 10);
+  } | null)?.returnTo ?? (jobId > 0 ? `/jobs/${jobId}` : '/home');
   const [view, setView] = useState<View>('list');
   const [assessments, setAssessments] = useState<RiskyAssessment[]>([]);
   const [activeAssessment, setActiveAssessment] = useState<RiskyAssessment | null>(null);
@@ -1130,7 +1131,7 @@ export default function JobRiskyPage() {
       </Helmet>
       <div className="flex flex-col min-h-dvh bg-slate-50">
         <div className="bg-rose-700 text-white px-4 safe-top pb-3 flex items-center gap-3">
-          <button type="button" onClick={() => navigate(returnTo)} className="p-1.5 rounded-lg bg-white/20">
+          <button type="button" onClick={() => goBack(navigate, returnTo)} className="p-1.5 rounded-lg bg-white/20">
             <ChevronLeft size={20} />
           </button>
           <div className="flex-1 min-w-0">

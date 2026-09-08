@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { useParams, useNavigate, Link } from "react-router";
+import { useParams, useNavigate } from "react-router";
 import { motion, AnimatePresence } from 'motion/react';
 import { Helmet } from '@dr.pogodin/react-helmet';
 import { Truck, ChevronLeft, Edit2, Check, X, Loader2, AlertCircle, ClipboardList, Calendar as _Calendar, Wrench, Archive, CheckCircle2, XCircle, AlertTriangle, Plus, Clock, FolderOpen, Car, StopCircle, Trash2, Gauge, Bell, ChevronDown, ChevronUp, ArrowLeft } from 'lucide-react';
@@ -7,6 +7,7 @@ import PortalErrorBoundary from '@/components/PortalErrorBoundary';
 import FilePanel from '@/components/FilePanel';
 import { usePermissions } from '@/lib/usePermissions';
 import NotesPanel from '@/components/notes/NotesPanel';
+import { goBack } from '@/lib/navigation';
 import { fetchAsset, updateAsset, deleteAsset, fetchPrestarts, submitPrestart, ASSET_TYPES, ASSET_STATUSES, getAssetStatusStyle, type FleetAsset, type FleetPrestart, type CreateAssetPayload } from '@/lib/fleet-api';
 type Tab = 'details' | 'prestarts' | 'maintenance' | 'history' | 'files' | 'notes';
 
@@ -716,10 +717,10 @@ export default function FleetDetailPage() {
             <span className="hidden sm:inline">Home</span>
           </button>
           <span className="text-gray-300 text-xs">|</span>
-          <Link to="/fleet" className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors shrink-0">
+          <button onClick={() => goBack(navigate, '/fleet')} className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors shrink-0">
             <ChevronLeft size={13} />
             <span className="hidden sm:inline">Fleet</span>
-          </Link>
+          </button>
           <span className="text-slate-300 text-xs hidden sm:inline">/</span>
           <div className="flex items-center gap-1.5 min-w-0">
             <Truck size={14} className="text-primary shrink-0" />
@@ -739,7 +740,7 @@ export default function FleetDetailPage() {
           {error && <div className="flex items-center gap-3 bg-red-50 border border-red-200 rounded-lg px-4 py-3 text-sm text-red-700 max-w-lg">
               <AlertCircle size={16} className="shrink-0" />
               {error}
-              <button onClick={() => navigate('/fleet')} className="ml-auto font-semibold underline">Back to Fleet</button>
+              <button onClick={() => goBack(navigate, '/fleet')} className="ml-auto font-semibold underline">Back to Fleet</button>
             </div>}
 
           {asset && <motion.div initial={{

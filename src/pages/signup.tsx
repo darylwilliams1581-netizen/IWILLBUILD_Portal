@@ -5,6 +5,7 @@ import { Link, useNavigate } from "react-router";
 import { Eye, EyeOff, Lock, Mail, User, AlertCircle, CheckCircle2, Building2, ChevronRight, Users, Zap, Crown, Gift } from 'lucide-react';
 import { signIn } from '@/lib/auth/auth-client';
 import { INDUSTRY_LIST, type IndustryId } from '@/lib/industry-config';
+import { goBack } from '@/lib/navigation';
 
 // ── Password policy ───────────────────────────────────────────────────────────
 function getPasswordStrength(pw: string) {
@@ -615,9 +616,9 @@ export default function SignupPage() {
         </div>
 
         <div className="mt-4 text-center">
-          <Link to="/" className="text-xs text-white/30 hover:text-primary transition-colors duration-150">
+          <button onClick={() => goBack(navigate, '/')} className="text-xs text-white/30 hover:text-primary transition-colors duration-150">
             &larr; Back to home
-          </Link>
+          </button>
         </div>
       </motion.div>
     </div>;

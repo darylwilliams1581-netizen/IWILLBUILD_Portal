@@ -3,6 +3,7 @@ import { motion } from 'motion/react';
 import { Helmet } from '@dr.pogodin/react-helmet';
 import { Link, useNavigate } from "react-router";
 import { Lock, Eye, EyeOff, CheckCircle, AlertCircle, ArrowLeft, ShieldAlert } from 'lucide-react';
+import { goBack } from '@/lib/navigation';
 function PasswordStrength({
   password
 }: {
@@ -206,10 +207,10 @@ export default function ResetPasswordPage() {
           </div>
 
           <div className="px-8 py-4 bg-black/20 border-t border-white/5 text-center">
-            <Link to="/login" className="inline-flex items-center gap-1.5 text-xs text-white/30 hover:text-primary transition-colors">
+            <button onClick={() => goBack(navigate, '/login')} className="inline-flex items-center gap-1.5 text-xs text-white/30 hover:text-primary transition-colors">
               <ArrowLeft size={13} />
               Back to sign in
-            </Link>
+            </button>
           </div>
         </div>
       </motion.div>
