@@ -25,6 +25,7 @@ import { usePhotoUploadQueue } from '@/hooks/usePhotoUploadQueue';
 import PendingPhotoCard from '@/components/PendingPhotoCard';
 import BatchUploadSummary from '@/components/BatchUploadSummary';
 import PhotoEditor from '@/components/PhotoEditor';
+import { resolveDownloadUrl } from '@/lib/native-api';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -87,6 +88,7 @@ export interface JobPhotosHandle {
   photoCount: number;
   uploading: boolean;
   downloadSelected: () => void;
+  getSelectedPhotoFiles: () => Promise<File[]>;
   exitSelectMode: () => void;
   deleteSelected: () => void;
 }
@@ -136,31 +138,40 @@ const CACHE_TTL_MS = 30_000; // 30 s stale window
 // Fetch-based download — sends session cookies so the auth-gated download
 // endpoint does not return 401. The browser native <a download> omits cookies
 // on some browsers, causing "Needs authorization" errors in the downloads panel.
-async function downloadPhoto(photo: JobPhoto): Promise<void> {
-  const url = `/api/jobs/${photo.jobId}/photos/${photo.id}/download`;
-  const res = await fetch(url, { credentials: 'include' });
-  if (!res.ok) throw new Error(`Download failed: ${res.status}`);
-
-  // Read the filename the server set in Content-Disposition.
-  // Prefer filename* (RFC 5987 UTF-8) over the plain filename parameter.
-  const cd = res.headers.get('Content-Disposition') ?? '';
-  let name = '';
+function responseFilename(response: Response, photo: JobPhoto): string {
+  const cd = response.headers.get('Content-Disposition') ?? '';
   const utf8Match = cd.match(/filename\*=UTF-8''([^;]+)/i);
   if (utf8Match) {
-    try { name = decodeURIComponent(utf8Match[1]); } catch { /* ignore */ }
+    try { return decodeURIComponent(utf8Match[1]); } catch { /* use next option */ }
   }
-  if (!name) {
-    const plainMatch = cd.match(/filename="?([^";]+)"?/i);
-    if (plainMatch) name = plainMatch[1].trim();
-  }
-  // Final fallback — use label or originalName from the photo object
-  if (!name) name = photo.label ?? photo.originalName ?? `job-${photo.jobId}-photo-${photo.id}.jpg`;
+
+  const plainMatch = cd.match(/filename="?([^";]+)"?/i);
+  if (plainMatch) return plainMatch[1].trim();
+  return photo.originalName ?? photo.filename ?? `job-${photo.jobId}-photo-${photo.id}.jpg`;
+}
+
+async function fetchPhotoFile(photo: JobPhoto): Promise<File> {
+  const url = `/api/jobs/${photo.jobId}/photos/${photo.id}/download`;
+  const res = await fetch(resolveDownloadUrl(url), { credentials: 'include' });
+  if (!res.ok) throw new Error(`Download failed: ${res.status}`);
 
   const blob = await res.blob();
-  const objectUrl = URL.createObjectURL(blob);
+  const contentType = (blob.type || res.headers.get('Content-Type') || photo.mimeType || 'image/jpeg').toLowerCase();
+  if (!blob.size || contentType.includes('application/json') || contentType.includes('text/html')) {
+    throw new Error('The server did not return a valid photo.');
+  }
+
+  return new File([blob], responseFilename(res, photo), {
+    type: contentType.startsWith('image/') ? contentType : (photo.mimeType || 'image/jpeg'),
+  });
+}
+
+async function downloadPhoto(photo: JobPhoto): Promise<void> {
+  const file = await fetchPhotoFile(photo);
+  const objectUrl = URL.createObjectURL(file);
   const a = document.createElement('a');
   a.href = objectUrl;
-  a.download = name;
+  a.download = file.name;
   document.body.appendChild(a);
   a.click();
   document.body.removeChild(a);
@@ -898,6 +909,13 @@ const JobPhotos = forwardRef<JobPhotosHandle, JobPhotosProps>(function JobPhotos
     });
   }, [photos, selected]);
 
+  const getSelectedPhotoFiles = useCallback(async () => {
+    const targets = photos.filter((photo) => selected.has(photo.id));
+    const files: File[] = [];
+    for (const photo of targets) files.push(await fetchPhotoFile(photo));
+    return files;
+  }, [photos, selected]);
+
   /** Trigger the delete-confirm dialog for each selected photo in sequence */
   const deleteSelected = useCallback(() => {
     const targets = photos.filter((p) => selected.has(p.id) && p.status !== 'locked');
@@ -949,9 +967,10 @@ const JobPhotos = forwardRef<JobPhotosHandle, JobPhotosProps>(function JobPhotos
     get photoCount() { return totalCount; },
     get uploading() { return isUploading; },
     downloadSelected,
+    getSelectedPhotoFiles,
     exitSelectMode,
     deleteSelected,
-  }), [viewSize, groupMode, selectMode, selected.size, totalCount, isUploading, generateShareLink, downloadSelected, exitSelectMode, deleteSelected]);
+  }), [viewSize, groupMode, selectMode, selected.size, totalCount, isUploading, generateShareLink, downloadSelected, getSelectedPhotoFiles, exitSelectMode, deleteSelected]);
 
   // ── Render ─────────────────────────────────────────────────────────────────
 

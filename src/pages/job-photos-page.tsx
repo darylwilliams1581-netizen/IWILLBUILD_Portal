@@ -9,6 +9,7 @@ import JobPhotos, {
   type JobPhotosViewSize,
 } from '@/components/JobPhotos';
 import JobFeatureShell from '@/components/job/JobFeatureShell';
+import { shareImageFiles } from '@/lib/share-image-files';
 // qrcode is loaded lazily (dynamic import) to prevent its module-level
 // constructor code from running on iOS Safari at page parse time, which
 // causes "o is not a constructor" in the minified bundle.
@@ -41,6 +42,7 @@ export default function JobPhotosPage() {
   const [uploading, setUploading] = useState(false);
   const [selectMode, setSelectModeLocal] = useState(false);
   const [selectedCount, setSelectedCount] = useState(0);
+  const [sendingSelected, setSendingSelected] = useState(false);
   const [viewSize, setViewSizeLocal] = useState<JobPhotosViewSize>(() => {
     try {
       const saved = localStorage.getItem('jobPhotosZoom');
@@ -143,47 +145,25 @@ export default function JobPhotosPage() {
     photosRef.current?.downloadSelected();
   }, []);
 
-  /**
-   * Send selected photos via Web Share API (iOS/Android native share sheet).
-   * Falls back to copying the job share link if Web Share is unavailable.
-   */
+  /** Send selected photos as real image attachments. */
   const handleSendSelected = useCallback(async () => {
     setSendMsg(null);
-    // Try Web Share API first (works on iOS Safari 15+, Android Chrome)
-    if (typeof navigator.share === 'function') {
-      try {
-        await navigator.share({
-          title: `${job?.name ?? 'Job'} — Photos`,
-          text: `View photos for ${job?.name ?? 'this job'} on IWIllBUIlD`,
-          url: window.location.href
-        });
-        return;
-      } catch {
-        // User cancelled or share failed — fall through to copy
-      }
-    }
-    // Fallback: generate a share link and copy it
+    setSendingSelected(true);
     try {
-      const res = await fetch(`/api/jobs/${jobId}/photos/share`, {
-        method: 'POST',
-        credentials: 'include',
-        headers: {
-          'Content-Type': 'application/json'
-        }
-      });
-      const data = (await res.json()) as {
-        shareUrl?: string;
-      };
-      if (data.shareUrl) {
-        await navigator.clipboard.writeText(data.shareUrl).catch(() => {});
-        setSendMsg('Share link copied to clipboard');
+      const files = await photosRef.current?.getSelectedPhotoFiles() ?? [];
+      const result = await shareImageFiles(files, `${job?.name ?? 'Job'} — Photos`);
+      if (result === 'saved') setSendMsg('Photos saved to Camera Roll');
+      if (result === 'downloaded') setSendMsg('Photos downloaded');
+      if (result === 'saved' || result === 'downloaded') {
         setTimeout(() => setSendMsg(null), 3000);
       }
-    } catch {
-      setSendMsg('Could not generate share link');
+    } catch (error) {
+      setSendMsg(error instanceof Error ? error.message : 'Could not share the selected photos');
       setTimeout(() => setSendMsg(null), 3000);
+    } finally {
+      setSendingSelected(false);
     }
-  }, [job, jobId]);
+  }, [job]);
 
   // Sync select mode changes back to the handle
   const handleSetSelectMode = (v: boolean) => {
@@ -243,8 +223,8 @@ export default function JobPhotosPage() {
                 <button onClick={handleDownloadSelected} className="flex items-center gap-1.5 px-2.5 py-1 bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-semibold rounded transition-colors">
                   <Download size={12} /> Download
                 </button>
-                <button onClick={() => void handleSendSelected()} className="flex items-center gap-1.5 px-2.5 py-1 bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-semibold rounded transition-colors">
-                  <Send size={12} /> Send
+                <button onClick={() => void handleSendSelected()} disabled={sendingSelected} className="flex items-center gap-1.5 px-2.5 py-1 bg-gray-100 hover:bg-gray-200 disabled:opacity-50 text-gray-700 text-xs font-semibold rounded transition-colors">
+                  {sendingSelected ? <Loader2 size={12} className="animate-spin" /> : <Send size={12} />} Send
                 </button>
               </>}
               {/* Share */}
@@ -376,8 +356,8 @@ export default function JobPhotosPage() {
               </button>
 
               {/* Send selected */}
-              <button onClick={() => void handleSendSelected()} disabled={selectedCount === 0} className="flex flex-col items-center justify-center gap-0.5 px-3 py-2 rounded-lg border border-gray-200 bg-gray-50 hover:bg-gray-100 disabled:opacity-40 text-gray-600 transition-colors touch-manipulation shrink-0">
-                <Send size={16} />
+              <button onClick={() => void handleSendSelected()} disabled={selectedCount === 0 || sendingSelected} className="flex flex-col items-center justify-center gap-0.5 px-3 py-2 rounded-lg border border-gray-200 bg-gray-50 hover:bg-gray-100 disabled:opacity-40 text-gray-600 transition-colors touch-manipulation shrink-0">
+                {sendingSelected ? <Loader2 size={16} className="animate-spin" /> : <Send size={16} />}
                 <span className="text-[10px] font-semibold leading-none">Send</span>
               </button>
             </div>
