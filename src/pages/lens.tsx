@@ -29,6 +29,7 @@ import { type LensPhoto, type LensResponse } from '@/components/lens/lensTypes';
 import PhotoEditor, { type EditorConfig } from '@/components/PhotoEditor';
 import PortalSidebar from '@/components/PortalSidebar';
 import { resolveDownloadUrl } from '@/lib/native-api';
+import { useAuthenticatedImageUrl } from '@/hooks/useAuthenticatedImageUrl';
 
 // ── View mode ─────────────────────────────────────────────────────────────────
 
@@ -63,6 +64,11 @@ function formatDateTime(iso: string): string {
 }
 function photoLabel(p: LensPhoto): string {
   return p.label ?? p.caption ?? p.originalName ?? `Photo ${p.id}`;
+}
+
+function withCacheBust(url: string, value?: number): string {
+  if (!value) return url;
+  return `${url}${url.includes('?') ? '&' : '?'}_cb=${value}`;
 }
 
 // ── Delete confirmation modal ─────────────────────────────────────────────────
@@ -135,7 +141,9 @@ function Lightbox({
   onDelete
 }: LightboxProps) {
   const photo = photos[index];
-  if (!photo) return null;
+  const bust = photo ? cacheBust[photo.id] : undefined;
+  const imageRequestUrl = photo ? withCacheBust(photo.downloadUrl, bust) : null;
+  const lightboxImage = useAuthenticatedImageUrl(imageRequestUrl);
   useEffect(() => {
     function handler(e: KeyboardEvent) {
       if (e.key === 'Escape') onClose();
@@ -145,13 +153,9 @@ function Lightbox({
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
   }, [onClose, onPrev, onNext]);
+  if (!photo) return null;
   const isLocked = photo.status === 'locked';
   const jobLabel = photo.jobNumber ? `#${photo.jobNumber} — ${photo.jobName}` : photo.jobName;
-
-  // Cache-bust the image URL after an edit
-  const bust = cacheBust[photo.id];
-  const resolvedDownloadUrl = resolveDownloadUrl(photo.downloadUrl);
-  const imgSrc = bust ? `${resolvedDownloadUrl}${resolvedDownloadUrl.includes('?') ? '&' : '?'}_cb=${bust}` : resolvedDownloadUrl;
   return <div className="fixed inset-0 z-50 flex bg-black/95" style={{
     paddingTop: 'env(safe-area-inset-top)',
     paddingBottom: 'env(safe-area-inset-bottom)'
@@ -197,9 +201,12 @@ function Lightbox({
               <ChevronLeft size={24} />
             </button>}
 
-          <img key={`${photo.id}-${bust ?? 0}`} src={imgSrc} alt={photoLabel(photo)} className="max-w-full max-h-full object-contain" style={{
-          maxHeight: 'calc(100vh - 120px)'
-        }} loading="eager" />
+          {lightboxImage.error ? <div className="flex flex-col items-center gap-2 text-white/55">
+              <ImageOff size={32} />
+              <span className="text-xs">Photo could not be loaded</span>
+            </div> : lightboxImage.src ? <img key={`${photo.id}-${bust ?? 0}`} src={lightboxImage.src} alt={photoLabel(photo)} className="max-w-full max-h-full object-contain" style={{
+            maxHeight: 'calc(100vh - 120px)'
+          }} loading="eager" /> : <Loader2 size={28} className="animate-spin text-white/50" />}
 
           {index < photos.length - 1 && <button onClick={onNext} className="absolute right-2 md:right-4 z-10 bg-black/50 hover:bg-black/70 text-white rounded-full p-2 transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center" aria-label="Next photo">
               <ChevronRight size={24} />
@@ -325,16 +332,17 @@ function PhotoCard({
   const [imgError, setImgError] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const isLocked = photo.status === 'locked';
-  const resolvedThumbnailUrl = resolveDownloadUrl(photo.thumbnailUrl);
-  const thumbSrc = cacheBust ? `${resolvedThumbnailUrl}${resolvedThumbnailUrl.includes('?') ? '&' : '?'}_cb=${cacheBust}` : resolvedThumbnailUrl;
+  const thumbRequestUrl = withCacheBust(photo.thumbnailUrl, cacheBust);
+  const authenticatedThumb = useAuthenticatedImageUrl(thumbRequestUrl);
+  useEffect(() => setImgError(false), [authenticatedThumb.src]);
   function handleClick() {
     if (menuOpen) return;
     if (selectionMode) onToggleSelect(photo.id);else onOpen();
   }
   return <div className={`group relative aspect-square overflow-hidden rounded-sm cursor-pointer bg-slate-200 ${selectionMode && selected ? 'ring-2 ring-violet-500 ring-offset-1' : ''}`} onClick={handleClick}>
-      {imgError ? <div className="absolute inset-0 flex items-center justify-center text-slate-400">
+      {imgError || authenticatedThumb.error ? <div className="absolute inset-0 flex items-center justify-center text-slate-400">
           <ImageOff size={24} />
-        </div> : <img key={`${photo.id}-${cacheBust}`} src={thumbSrc} alt={photoLabel(photo)} loading="lazy" className={`w-full h-full object-cover transition-transform duration-200 ${!selectionMode ? 'hover:scale-105' : ''}`} onError={() => setImgError(true)} />}
+        </div> : authenticatedThumb.src ? <img key={`${photo.id}-${cacheBust}`} src={authenticatedThumb.src} alt={photoLabel(photo)} loading="lazy" className={`w-full h-full object-cover transition-transform duration-200 ${!selectionMode ? 'hover:scale-105' : ''}`} onError={() => setImgError(true)} /> : <div className="absolute inset-0 animate-pulse bg-slate-200" />}
 
       {/* Lock badge */}
       {isLocked && <div className="absolute top-1 right-1 bg-black/60 text-white rounded-full p-1 pointer-events-none">

@@ -1,5 +1,6 @@
 import AVFoundation
 import Capacitor
+import ImageIO
 import UIKit
 
 @objc(IWBNativeLensPlugin)
@@ -110,10 +111,22 @@ public final class IWBNativeLensPlugin: CAPPlugin, CAPBridgedPlugin {
     }
 
     @objc func capture(_ call: CAPPluginCall) {
+        let quality = CGFloat(max(1, min(100, call.getInt("quality") ?? 88))) / 100.0
         camera.capture { result in
             switch result {
             case .success(let jpeg):
-                call.resolve(["value": jpeg.base64EncodedString()])
+                // Downsample before crossing the Capacitor bridge. Returning a
+                // 12 MP base64 string made WKWebView hold the original JPEG,
+                // decoded bitmap and watermark canvas at once, which could end
+                // the app while saving. ImageIO decodes directly to the target.
+                DispatchQueue.global(qos: .userInitiated).async {
+                    guard let prepared = Self.downsampledJpeg(jpeg, maxPixelSize: 1920, quality: quality) else {
+                        DispatchQueue.main.async { call.reject("The camera photo could not be prepared.") }
+                        return
+                    }
+                    let value = prepared.base64EncodedString()
+                    DispatchQueue.main.async { call.resolve(["value": value]) }
+                }
             case .failure(let error):
                 call.reject(error.localizedDescription)
             }
@@ -172,6 +185,7 @@ public final class IWBNativeLensPlugin: CAPPlugin, CAPBridgedPlugin {
                 call?.resolve()
             case .failure(let error):
                 self.removePreviewView()
+                self.clearLensDomState()
                 self.restoreWebViewAppearance()
                 call?.reject(error.localizedDescription)
             }
@@ -186,6 +200,7 @@ public final class IWBNativeLensPlugin: CAPPlugin, CAPBridgedPlugin {
         pendingStartCall?.reject(reason)
         pendingStartCall = nil
         removePreviewView()
+        clearLensDomState()
         restoreWebViewAppearance()
         camera.stop(completion: completion)
     }
@@ -202,6 +217,31 @@ public final class IWBNativeLensPlugin: CAPPlugin, CAPBridgedPlugin {
         webView.backgroundColor = saved.background
         webView.scrollView.backgroundColor = saved.scrollBackground
         savedWebViewAppearance = nil
+    }
+
+    private func clearLensDomState() {
+        webView?.evaluateJavaScript(
+            "document.documentElement.classList.remove('iwb-lens-open')",
+            completionHandler: nil
+        )
+    }
+
+    private static func downsampledJpeg(
+        _ data: Data,
+        maxPixelSize: Int,
+        quality: CGFloat
+    ) -> Data? {
+        guard let source = CGImageSourceCreateWithData(data as CFData, nil) else { return nil }
+        let options: [CFString: Any] = [
+            kCGImageSourceCreateThumbnailFromImageAlways: true,
+            kCGImageSourceCreateThumbnailWithTransform: true,
+            kCGImageSourceThumbnailMaxPixelSize: maxPixelSize,
+            kCGImageSourceShouldCacheImmediately: false
+        ]
+        guard let image = CGImageSourceCreateThumbnailAtIndex(source, 0, options as CFDictionary) else {
+            return nil
+        }
+        return UIImage(cgImage: image).jpegData(compressionQuality: quality)
     }
 }
 

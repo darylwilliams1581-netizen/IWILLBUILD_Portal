@@ -17,7 +17,7 @@ import {
 } from 'lucide-react';
 import { type LensPhoto } from './lensTypes';
 import { type LensJobOption } from './LensJobPickerSheet';
-import { resolveDownloadUrl } from '@/lib/native-api';
+import { useAuthenticatedImageUrl } from '@/hooks/useAuthenticatedImageUrl';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -89,6 +89,7 @@ interface ThumbProps {
 
 function Thumb({ photo, onOpen, selectionMode, selected, onToggleSelect }: ThumbProps) {
   const [imgError, setImgError] = useState(false);
+  const authenticatedThumb = useAuthenticatedImageUrl(photo.thumbnailUrl);
 
   function handleClick() {
     if (selectionMode) onToggleSelect(photo.id);
@@ -102,19 +103,19 @@ function Thumb({ photo, onOpen, selectionMode, selected, onToggleSelect }: Thumb
       }`}
       onClick={handleClick}
     >
-      {imgError ? (
+      {imgError || authenticatedThumb.error ? (
         <div className="absolute inset-0 flex items-center justify-center text-slate-400">
           <ImageOff size={20} />
         </div>
-      ) : (
+      ) : authenticatedThumb.src ? (
         <img
-          src={resolveDownloadUrl(photo.thumbnailUrl)}
+          src={authenticatedThumb.src}
           alt={photoAlt(photo)}
           loading="lazy"
           className="w-full h-full object-cover"
           onError={() => setImgError(true)}
         />
-      )}
+      ) : <div className="absolute inset-0 animate-pulse bg-slate-200" />}
 
       {selectionMode && (
         <div className="absolute inset-0 pointer-events-none">

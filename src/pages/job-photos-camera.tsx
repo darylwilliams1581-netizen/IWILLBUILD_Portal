@@ -471,6 +471,10 @@ export default function JobPhotosCameraPage() {
 
   const startNativePreview = useCallback(async () => {
     await stopPreview();
+    // stop() deliberately clears every trace of the previous native session.
+    // Re-open the single transparent Lens hole before measuring and starting a
+    // fresh session (including after the app returns from the background).
+    if (pageActiveRef.current) document.documentElement.classList.add('iwb-lens-open');
     const generation = previewGenerationRef.current;
     const preview = isNative() ? NativeLensPreview : null;
     const lens = lensRef.current;
@@ -801,8 +805,10 @@ export default function JobPhotosCameraPage() {
   return (
     // No transform/willChange on this container — position:fixed children must
     // not be trapped inside a stacking context created by CSS transforms.
-    <div className="fixed inset-0 z-50 bg-transparent flex flex-col" style={{
-      userSelect: 'none'
+    <div className="fixed inset-0 z-50 flex h-full max-h-full min-h-0 flex-col overflow-hidden bg-transparent" style={{
+      userSelect: 'none',
+      height: '100%',
+      maxHeight: '100%',
     }}>
       <Helmet>
         <title>Camera — IWIllBUIlD</title>

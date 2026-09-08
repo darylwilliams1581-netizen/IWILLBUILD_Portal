@@ -188,15 +188,18 @@ export async function checkQueueCapacity(
 }
 
 /** Save a photo to the offline store immediately on capture. */
-export async function savePhoto(photo: StoredPhoto): Promise<void> {
+export async function savePhoto(photo: StoredPhoto): Promise<boolean> {
   try {
     const db = await openDb();
     const { store, done } = tx(db, 'readwrite');
     store.put(photo);
     await done;
+    return true;
   } catch (e) {
-    // IDB unavailable (private browsing on some iOS) — degrade gracefully
+    // Callers must know the device-first write failed so they never start a
+    // network upload while incorrectly reporting that the photo is safe.
     console.warn('[offlinePhotoStore] savePhoto failed:', e);
+    return false;
   }
 }
 

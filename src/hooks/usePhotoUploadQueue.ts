@@ -315,9 +315,13 @@ export function usePhotoUploadQueue({ jobId, uploadEndpoint, onBatchComplete, on
   // ── Mutators ───────────────────────────────────────────────────────────────
 
   const updateItem = useCallback((clientId: string, patch: Partial<PendingPhoto>) => {
-    setQueue((prev) => prev.map((item) =>
-      item.clientId === clientId ? { ...item, ...patch } : item
-    ));
+    setQueue((prev) => {
+      const updated = prev.map((item) =>
+        item.clientId === clientId ? { ...item, ...patch } : item
+      );
+      queueRef.current = updated;
+      return updated;
+    });
   }, []);
 
   const removeItem = useCallback((clientId: string) => {
@@ -351,27 +355,16 @@ export function usePhotoUploadQueue({ jobId, uploadEndpoint, onBatchComplete, on
     void incrementAttempts(clientId);
 
     void (async () => {
-      let file: File | null = next._file;
-      if (!file && next.localPath) {
-        file = await readLocalPhoto(next.localPath, next.fileName, next.mimeType);
-      }
-      if (!file) {
-        updateItem(clientId, { status: 'failed', error: 'File missing — please retry' });
-        activeRef.current -= 1;
-        processNext();
-        return;
-      }
-
       try {
+        let file: File | null = next._file;
+        if (!file && next.localPath) {
+          file = await readLocalPhoto(next.localPath, next.fileName, next.mimeType);
+        }
+        if (!file) throw new Error('File missing — please retry');
+
         file = await prepareFile(file);
-      } catch {
-        // If prepare fails, use raw file
-      }
-
-      // Step 2: uploading
-      updateItem(clientId, { status: 'uploading', progress: 0, _file: file });
-
-      try {
+        // Step 2: uploading
+        updateItem(clientId, { status: 'uploading', progress: 0, _file: file });
         const result = await uploadFileXhr(
           jobId,
           file,
@@ -400,7 +393,7 @@ export function usePhotoUploadQueue({ jobId, uploadEndpoint, onBatchComplete, on
         });
 
         // Notify immediately — grid refreshes per-photo, not just at batch end
-        onPhotoSynced?.(result.id);
+        try { onPhotoSynced?.(result.id); } catch { /* gallery refresh is non-fatal */ }
       } catch (e) {
         const msg = e instanceof Error ? e.message : 'Upload failed';
         // Record failure timestamp for diagnostics
@@ -426,9 +419,12 @@ export function usePhotoUploadQueue({ jobId, uploadEndpoint, onBatchComplete, on
           }
         }
 
-        processNext();
+        window.setTimeout(() => processNext(), 0);
       }
-    })();
+    })().catch(() => {
+      // Every failure is converted to a queue state above. This final guard
+      // prevents a rejected background task from reaching React's boundary.
+    });
 
     // Note: do NOT call processNext() here again — the finally block above already
     // chains the next item. Calling it here races against the async state update
@@ -458,7 +454,7 @@ export function usePhotoUploadQueue({ jobId, uploadEndpoint, onBatchComplete, on
       const localPreviewUrl = isPreviewable ? URL.createObjectURL(file) : null;
 
       // Save to IDB immediately — photo is safe on device before any upload
-      await savePhoto({
+      const savedOnDevice = await savePhoto({
         clientId,
         jobId,
         fileName:   file.name,
@@ -469,6 +465,10 @@ export function usePhotoUploadQueue({ jobId, uploadEndpoint, onBatchComplete, on
         localPath: fileOptions.localPath,
         idempotencyKey: fileOptions.idempotencyKey,
       });
+      if (!savedOnDevice) {
+        if (localPreviewUrl) URL.revokeObjectURL(localPreviewUrl);
+        throw new Error('The photo could not be saved on this device. Free some storage and try again.');
+      }
 
       newItems.push({
         clientId,
@@ -488,7 +488,11 @@ export function usePhotoUploadQueue({ jobId, uploadEndpoint, onBatchComplete, on
 
     if (newItems.length === 0) return;
 
-    setQueue((prev) => [...prev, ...newItems]);
+    setQueue((prev) => {
+      const updated = [...prev, ...newItems];
+      queueRef.current = updated;
+      return updated;
+    });
 
     // Check storage health after enqueue — show warning if low
     void getStorageWarningMessage().then(msg => {
@@ -497,7 +501,7 @@ export function usePhotoUploadQueue({ jobId, uploadEndpoint, onBatchComplete, on
 
     // Upload kick is handled by the useEffect that watches for new 'saved'
     // items — it fires after the setQueue state flush so queueRef is current.
-  }, [jobId, processNext]);
+  }, [jobId]);
 
   // ── Retry a failed item ────────────────────────────────────────────────────
 

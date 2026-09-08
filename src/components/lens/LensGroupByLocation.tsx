@@ -10,7 +10,7 @@ import {
   ChevronDown, ChevronRight, MapPin, ImageOff, CheckSquare, Square, ExternalLink,
 } from 'lucide-react';
 import { type LensPhoto } from './lensTypes';
-import { resolveDownloadUrl } from '@/lib/native-api';
+import { useAuthenticatedImageUrl } from '@/hooks/useAuthenticatedImageUrl';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -63,6 +63,7 @@ interface ThumbProps {
 
 function Thumb({ photo, onOpen, selectionMode, selected, onToggleSelect }: ThumbProps) {
   const [imgError, setImgError] = useState(false);
+  const authenticatedThumb = useAuthenticatedImageUrl(photo.thumbnailUrl);
   const alt = photo.label ?? photo.caption ?? photo.originalName ?? `Photo ${photo.id}`;
 
   function handleClick() {
@@ -77,19 +78,19 @@ function Thumb({ photo, onOpen, selectionMode, selected, onToggleSelect }: Thumb
       }`}
       onClick={handleClick}
     >
-      {imgError ? (
+      {imgError || authenticatedThumb.error ? (
         <div className="absolute inset-0 flex items-center justify-center text-slate-400">
           <ImageOff size={20} />
         </div>
-      ) : (
+      ) : authenticatedThumb.src ? (
         <img
-          src={resolveDownloadUrl(photo.thumbnailUrl)}
+          src={authenticatedThumb.src}
           alt={alt}
           loading="lazy"
           className="w-full h-full object-cover"
           onError={() => setImgError(true)}
         />
-      )}
+      ) : <div className="absolute inset-0 animate-pulse bg-slate-200" />}
 
       {selectionMode && (
         <div className="absolute inset-0 pointer-events-none">

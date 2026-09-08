@@ -99,6 +99,13 @@ export default function RootLayout({ children }: RootLayoutProps) {
     recordRouteChange(location.pathname);
   }, [location.pathname]);
 
+  // A native camera failure must never leave its transparent WebView state on
+  // another route. The camera page re-adds this class only while it is mounted.
+  useEffect(() => {
+    const isCameraRoute = /^\/(?:jobs|job-cards)\/[^/]+\/camera\/?$/.test(location.pathname);
+    if (!isCameraRoute) document.documentElement.classList.remove('iwb-lens-open');
+  }, [location.pathname]);
+
   // Clear leftover inline locks from the old full-screen terms overlay.
   useEffect(() => {
     const html = document.documentElement;
@@ -110,7 +117,7 @@ export default function RootLayout({ children }: RootLayoutProps) {
   }, []);
 
   return (
-    <div suppressHydrationWarning className="h-full bg-background text-foreground flex flex-col">
+    <div suppressHydrationWarning className="iwb-root-layout h-full bg-background text-foreground flex flex-col">
       <Helmet>
         <title>IWIllBUIlD Portal</title>
         <meta name="description" content="IWIllBUIlD manages the work — jobs, estimates, forms, photos, fleet, safety and files — in one clean construction portal." />

@@ -41,7 +41,7 @@ import type { CapacitorConfig } from '@capacitor/cli';
 // ── SINGLE SOURCE OF TRUTH FOR BUILD NUMBER ───────────────────────────────────
 // Increment this before every App Store / TestFlight upload.
 // Current: 41 (Version 13 iOS OSM-only Live Map)
-const IOS_BUILD_NUMBER = 41;
+const IOS_BUILD_NUMBER = 42;
 
 const config: CapacitorConfig = {
   // Reverse-domain app identifier — must match your Apple/Google developer account

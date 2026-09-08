@@ -21,7 +21,7 @@
  *   - 44×44 px minimum touch targets
  */
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import type { ChangeEvent } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
 import { X, CheckCircle2, RotateCcw, ImagePlus, Camera, Images, FolderOpen, Loader2 } from 'lucide-react';
@@ -60,6 +60,7 @@ function UploadPanel({
   onClose: () => void;
 }) {
   const browseInputRef = useRef<HTMLInputElement>(null);
+  const [queueError, setQueueError] = useState<string | null>(null);
 
   const {
     queue,
@@ -82,13 +83,22 @@ function UploadPanel({
     },
   });
 
+  const enqueueSelected = useCallback(async (files: File[]) => {
+    setQueueError(null);
+    try {
+      await enqueueFiles(files);
+    } catch (error) {
+      setQueueError(error instanceof Error ? error.message : 'The photo could not be saved on this device.');
+    }
+  }, [enqueueFiles]);
+
   const picker = useIosMediaPicker((file) => {
-    void enqueueFiles([file]);
+    void enqueueSelected([file]);
   });
 
   function handleBrowseChange(e: ChangeEvent<HTMLInputElement>) {
     const files = Array.from(e.target.files ?? []);
-    if (files.length > 0) void enqueueFiles(files);
+    if (files.length > 0) void enqueueSelected(files);
     // Reset so the same files can be re-selected if needed
     e.target.value = '';
   }
@@ -145,17 +155,17 @@ function UploadPanel({
         </div>
       )}
 
-      {picker.cameraError && (
+      {(picker.cameraError || queueError) && (
         <div className="mx-4 mt-3 rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700">
-          {picker.cameraError}
+          {picker.cameraError ?? queueError}
         </div>
       )}
 
       {/* Queue */}
       <div className="flex-1 overflow-y-auto px-4 py-3 flex flex-col gap-2">
         {!hasItems && (
-          <div className="flex flex-col items-center justify-center py-10 gap-3 text-muted-foreground">
-            <ImagePlus size={36} className="opacity-30" />
+          <div className="flex flex-col items-center justify-center py-4 gap-2 text-muted-foreground">
+            <ImagePlus size={28} className="opacity-30" />
             <p className="text-sm text-center">
               Select photos to upload to<br />
               <span className="font-semibold text-foreground">{job.name}</span>
@@ -234,6 +244,7 @@ function UploadPanel({
 
       {picker.explainer && (
         <PermissionExplainerModal
+          open={true}
           type={picker.explainer.type}
           denied={picker.explainer.denied}
           onNotNow={picker.explainer.onNotNow}
@@ -314,7 +325,7 @@ export default function LensUploadSheet({ open, onClose, onPhotoSynced, initialJ
               transition={{ type: 'spring', damping: 28, stiffness: 320 }}
               className="fixed inset-x-0 bottom-0 z-50 bg-background rounded-t-2xl shadow-2xl flex flex-col md:inset-auto md:top-1/2 md:left-1/2 md:-translate-x-1/2 md:-translate-y-1/2 md:w-[480px] md:max-w-[90vw] md:rounded-2xl"
               style={{
-                maxHeight: 'min(85vh, 640px)',
+                maxHeight: 'min(62dvh, 520px)',
               }}
             >
               {/* Handle (mobile only) */}

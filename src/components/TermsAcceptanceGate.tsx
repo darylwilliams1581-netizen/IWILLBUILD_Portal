@@ -2,7 +2,7 @@
  * TermsAcceptanceGate — compact acknowledgement dialog (web + native).
  * Shown once. Does not lock html/body height (that blew out dashboard pages).
  */
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Shield, ExternalLink } from 'lucide-react';
 import { authClient } from '@/lib/auth/auth-client';
@@ -35,14 +35,19 @@ export default function TermsAcceptanceGate({ onAccepted, userEmail }: Props) {
   const [declining, setDeclining] = useState(false);
   const [accepted, setAccepted] = useState(false);
   const [checked, setChecked] = useState(false);
+  const previousBodyOverflow = useRef<string | null>(null);
+
+  const restoreBodyOverflow = useCallback(() => {
+    if (previousBodyOverflow.current === null) return;
+    document.body.style.overflow = previousBodyOverflow.current;
+    previousBodyOverflow.current = null;
+  }, []);
 
   useEffect(() => {
-    const prev = document.body.style.overflow;
+    previousBodyOverflow.current = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
-    return () => {
-      document.body.style.overflow = prev;
-    };
-  }, []);
+    return restoreBodyOverflow;
+  }, [restoreBodyOverflow]);
 
   async function handleDecline() {
     setDeclining(true);
@@ -55,6 +60,7 @@ export default function TermsAcceptanceGate({ onAccepted, userEmail }: Props) {
   function handleAccept() {
     if (!checked) return;
     if (!isDevAccount) markTermsAccepted();
+    restoreBodyOverflow();
     setAccepted(true);
     setTimeout(() => onAccepted(), 200);
   }

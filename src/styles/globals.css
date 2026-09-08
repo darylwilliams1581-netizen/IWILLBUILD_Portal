@@ -1388,22 +1388,15 @@ textarea {
 }
 
 /* The app-local native Lens view sits below WKContentView and is bounded to the
-   measured #iwb-native-lens rectangle. While this route is open, remove opaque
-   root backgrounds so that clipped native glass is visible. Camera chrome has
-   its own opaque backgrounds and stays interactive above the preview. */
+   measured #iwb-native-lens rectangle. Only the WebView background, the named
+   RootLayout surface and the lens hole are transparent while this route is
+   open. Broad child selectors previously leaked transparency into later pages. */
 html.iwb-lens-open,
 html.iwb-lens-open body,
-html.iwb-lens-open #app,
-html.iwb-lens-open #app > *,
-html.iwb-lens-open #sos-root,
-html.iwb-lens-open #sos-root > * {
+html.iwb-lens-open .iwb-root-layout,
+html.iwb-lens-open #iwb-native-lens {
   background: transparent !important;
   background-color: transparent !important;
-}
-
-html.iwb-lens-open ion-app,
-html.iwb-lens-open .ion-page {
-  background: transparent !important;
 }
 
 /* Sidebar company name fade-out mask — uses white as the sidebar bg is always white */
