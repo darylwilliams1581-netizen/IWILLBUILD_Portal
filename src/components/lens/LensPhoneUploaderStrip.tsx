@@ -39,6 +39,7 @@ export default function LensPhoneUploaderStrip() {
   const [deleting, setDeleting] = useState(false);
   const previewUrlsRef = useRef<string[]>([]);
   const loadGenerationRef = useRef(0);
+  const loadTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const loadPhonePhotos = useCallback(async () => {
     const generation = ++loadGenerationRef.current;
@@ -83,9 +84,17 @@ export default function LensPhoneUploaderStrip() {
     setItems(nextItems);
   }, []);
 
+  const schedulePhonePhotosLoad = useCallback(() => {
+    if (loadTimerRef.current) window.clearTimeout(loadTimerRef.current);
+    loadTimerRef.current = window.setTimeout(() => {
+      loadTimerRef.current = null;
+      void loadPhonePhotos();
+    }, 350);
+  }, [loadPhonePhotos]);
+
   useEffect(() => {
-    void loadPhonePhotos();
-    const refresh = () => void loadPhonePhotos();
+    schedulePhonePhotosLoad();
+    const refresh = () => schedulePhonePhotosLoad();
     const refreshWhenVisible = () => {
       if (document.visibilityState === 'visible') refresh();
     };
@@ -94,13 +103,15 @@ export default function LensPhoneUploaderStrip() {
     document.addEventListener('visibilitychange', refreshWhenVisible);
     return () => {
       loadGenerationRef.current += 1;
+      if (loadTimerRef.current) window.clearTimeout(loadTimerRef.current);
+      loadTimerRef.current = null;
       window.removeEventListener(PHOTO_STORE_CHANGED_EVENT, refresh);
       window.removeEventListener('focus', refresh);
       document.removeEventListener('visibilitychange', refreshWhenVisible);
       previewUrlsRef.current.forEach((url) => URL.revokeObjectURL(url));
       previewUrlsRef.current = [];
     };
-  }, [loadPhonePhotos]);
+  }, [schedulePhonePhotosLoad]);
 
   const confirmRemove = useCallback(async () => {
     if (!deleteTarget || deleteTarget.status === 'sending') return;
@@ -112,13 +123,13 @@ export default function LensPhoneUploaderStrip() {
         await deleteLocalPhoto(deleteTarget.stored.localPath);
       }
       setDeleteTarget(null);
-      await loadPhonePhotos();
+      schedulePhonePhotosLoad();
     } catch (error) {
       setDeleteError(error instanceof Error ? error.message : 'Could not remove this photo');
     } finally {
       setDeleting(false);
     }
-  }, [deleteTarget, loadPhonePhotos]);
+  }, [deleteTarget, schedulePhonePhotosLoad]);
 
   if (items.length === 0) return null;
   const isSending = items.some((item) => item.status === 'sending');

@@ -1,4 +1,3 @@
-import { CapacitorHttp } from '@capacitor/core';
 import { isNative } from '@/lib/capacitor-plugins';
 import { resolveDownloadUrl } from '@/lib/native-api';
 
@@ -35,22 +34,6 @@ function parseResponse(value: unknown): UploadResponse | null {
   }
 }
 
-/**
- * Encode a File without FileReader.readAsBinaryString(). Capacitor's patched
- * XMLHttpRequest uses that legacy API for FormData files; WKWebView can reject
- * native-backed camera/library Files with "The object could not be found".
- */
-export async function fileToBase64(file: File): Promise<string> {
-  const bytes = new Uint8Array(await file.arrayBuffer());
-  const chunkSize = 0x8000;
-  let binary = '';
-  for (let offset = 0; offset < bytes.length; offset += chunkSize) {
-    const chunk = bytes.subarray(offset, Math.min(offset + chunkSize, bytes.length));
-    binary += String.fromCharCode(...chunk);
-  }
-  return globalThis.btoa(binary);
-}
-
 async function uploadNative({
   jobId,
   file,
@@ -61,35 +44,36 @@ async function uploadNative({
   const endpoint = resolveDownloadUrl(uploadEndpoint ?? `/api/jobs/${jobId}/photos`);
   onProgress(5);
 
-  let base64: string;
+  let uploadFile: File;
   try {
-    base64 = await fileToBase64(file);
+    const buffer = await file.arrayBuffer();
+    uploadFile = new File(
+      [buffer],
+      file.name || `job-${jobId}-photo.jpg`,
+      { type: 'image/jpeg', lastModified: file.lastModified || Date.now() },
+    );
   } catch {
     throw new Error('Photo file could not be read — saved on this device');
   }
 
   onProgress(20);
-  const response = await CapacitorHttp.request({
-    url: endpoint,
-    method: 'POST',
-    headers: {
-      'X-Client-Id': clientId,
-    },
-    dataType: 'formData',
-    data: [{
-      key: 'photos',
-      value: base64,
-      type: 'base64File',
-      contentType: file.type || 'image/jpeg',
-      fileName: file.name || `job-${jobId}-photo.jpg`,
-    }],
-    connectTimeout: 20_000,
-    readTimeout: 120_000,
-    responseType: 'json',
-  });
+  const form = new FormData();
+  form.append('photos', uploadFile);
 
-  const data = parseResponse(response.data);
-  if (response.status >= 200 && response.status < 300 && data?.photos?.[0]) {
+  let response: Response;
+  try {
+    response = await fetch(endpoint, {
+      method: 'POST',
+      credentials: 'include',
+      headers: { 'X-Client-Id': clientId },
+      body: form,
+    });
+  } catch {
+    throw new Error('No connection — saved on device');
+  }
+
+  const data = parseResponse(await response.text());
+  if (response.ok && data?.photos?.[0]) {
     onProgress(100);
     return data.photos[0];
   }

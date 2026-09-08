@@ -60,8 +60,11 @@ function announcePhotoStoreChanged(): void {
  * in IndexedDB. Lens combines both layers to show a live device-uploader strip.
  */
 export function setPhotoRuntimeStatus(clientId: string, status: PhotoStoreRuntimeStatus): void {
+  if (runtimeStatuses.get(clientId) === status) return;
   runtimeStatuses.set(clientId, status);
-  announcePhotoStoreChanged();
+  if (status === 'saved' || status === 'failed' || status === 'synced') {
+    announcePhotoStoreChanged();
+  }
 }
 
 export function getPhotoRuntimeStatus(clientId: string): PhotoStoreRuntimeStatus | undefined {

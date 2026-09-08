@@ -1,12 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => ({
-  request: vi.fn(),
+  fetch: vi.fn(),
   isNative: vi.fn(() => true),
-}));
-
-vi.mock('@capacitor/core', () => ({
-  CapacitorHttp: { request: mocks.request },
 }));
 
 vi.mock('@/lib/capacitor-plugins', () => ({ isNative: mocks.isNative }));
@@ -14,31 +10,25 @@ vi.mock('@/lib/native-api', () => ({
   resolveDownloadUrl: (url: string) => `https://iwillbuild.com${url}`,
 }));
 
-import { fileToBase64, uploadPhotoFile } from '@/lib/photoUploadTransport';
+import { uploadPhotoFile } from '@/lib/photoUploadTransport';
 
 describe('native photo upload transport', () => {
   beforeEach(() => {
-    mocks.request.mockReset();
+    mocks.fetch.mockReset();
     mocks.isNative.mockReturnValue(true);
+    vi.stubGlobal('fetch', mocks.fetch);
   });
 
-  it('encodes binary bytes without FileReader', async () => {
-    const file = new File([new Uint8Array([0, 1, 2, 253, 254, 255])], 'site.jpg', {
-      type: 'image/jpeg',
-    });
-
-    await expect(fileToBase64(file)).resolves.toBe('AAEC/f7/');
-  });
-
-  it('sends the native form-data shape supported by CapacitorHttp', async () => {
-    mocks.request.mockResolvedValue({
+  it('copies native bytes into a real JPEG File and posts credentialed FormData', async () => {
+    mocks.fetch.mockResolvedValue({
+      ok: true,
       status: 201,
-      data: { photos: [{ id: 72 }] },
-      headers: {},
-      url: 'https://iwillbuild.com/api/jobs/9/photos',
+      text: vi.fn().mockResolvedValue(JSON.stringify({ photos: [{ id: 72 }] })),
     });
     const progress: number[] = [];
-    const file = new File(['jpeg'], 'capture.jpg', { type: 'image/jpeg' });
+    const file = new File([new Uint8Array([0, 1, 2, 253, 254, 255])], 'capture.png', {
+      type: 'image/png',
+    });
 
     await expect(uploadPhotoFile({
       jobId: 9,
@@ -47,28 +37,32 @@ describe('native photo upload transport', () => {
       onProgress: (value) => progress.push(value),
     })).resolves.toEqual({ id: 72 });
 
-    expect(mocks.request).toHaveBeenCalledWith(expect.objectContaining({
-      url: 'https://iwillbuild.com/api/jobs/9/photos',
+    expect(mocks.fetch).toHaveBeenCalledWith('https://iwillbuild.com/api/jobs/9/photos', expect.objectContaining({
       method: 'POST',
-      dataType: 'formData',
+      credentials: 'include',
       headers: expect.objectContaining({ 'X-Client-Id': 'client-9' }),
-      data: [expect.objectContaining({
-        key: 'photos',
-        type: 'base64File',
-        fileName: 'capture.jpg',
-        contentType: 'image/jpeg',
-      })],
     }));
-    expect(mocks.request.mock.calls[0]?.[0]?.headers).not.toHaveProperty('Content-Type');
+    const request = mocks.fetch.mock.calls[0]?.[1] as {
+      headers?: Record<string, string>;
+      body?: unknown;
+    };
+    expect(request.headers).not.toHaveProperty('Content-Type');
+    expect(request.body).toBeInstanceOf(FormData);
+    const uploaded = (request.body as FormData).get('photos');
+    expect(uploaded).toBeInstanceOf(File);
+    expect((uploaded as File).name).toBe('capture.png');
+    expect((uploaded as File).type).toBe('image/jpeg');
+    expect(new Uint8Array(await (uploaded as File).arrayBuffer())).toEqual(
+      new Uint8Array([0, 1, 2, 253, 254, 255]),
+    );
     expect(progress).toEqual([5, 20, 100]);
   });
 
   it('keeps the server error for the retry card', async () => {
-    mocks.request.mockResolvedValue({
+    mocks.fetch.mockResolvedValue({
+      ok: false,
       status: 401,
-      data: { error: 'Session expired' },
-      headers: {},
-      url: 'https://iwillbuild.com/api/jobs/9/photos',
+      text: vi.fn().mockResolvedValue(JSON.stringify({ error: 'Session expired' })),
     });
 
     await expect(uploadPhotoFile({

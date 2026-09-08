@@ -275,7 +275,10 @@ export default function LensUploadSheet({ open, onClose, onPhotoSynced, initialJ
       setSelectedJob(null);
       setShowJobPicker(true);
     }
-  }, [open, initialJob]);
+  // The parent may recreate the job object while upload progress rerenders Lens.
+  // Only a changed job ID should reinitialise this sheet.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, initialJob?.id]);
 
   return (
     <>
