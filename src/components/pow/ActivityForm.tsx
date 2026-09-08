@@ -4,9 +4,10 @@
  * Does NOT accept Quantity, Unit, or Rate.
  */
 import { useState, useEffect } from 'react';
-import { AlertCircle, Calendar, Check, X } from 'lucide-react';
-import type { ProgressSection, ProgressActivity } from '@/lib/pow-types';
+import { AlertCircle, Check } from 'lucide-react';
+import type { ProgressSection } from '@/lib/pow-types';
 import { calcDuration, fmtDuration } from '@/lib/pow-types';
+import DateField from '@/components/DateField';
 
 export interface ActivityFormValues {
   description: string;
@@ -70,7 +71,7 @@ export default function ActivityForm({ sections, initial, saving, error, onSave,
   const displayError = validationError || error;
 
   return (
-    <div className="flex flex-col gap-3">
+    <div className="flex min-w-0 max-w-full flex-col gap-3 overflow-x-hidden">
       {displayError && (
         <p className="text-xs text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2 flex items-center gap-2">
           <AlertCircle size={12} /> {displayError}
@@ -123,29 +124,17 @@ export default function ActivityForm({ sections, initial, saving, error, onSave,
       </div>
 
       {/* Dates row */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-        <div>
-          <label className="block text-xs font-semibold text-muted-foreground mb-1 flex items-center gap-1">
-            <Calendar size={10} /> Start date
-          </label>
-          <input
-            type="date"
-            value={form.startDate}
-            onChange={(e) => setForm((f) => ({ ...f, startDate: e.target.value }))}
-            className="w-full px-3 py-2 border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
-          />
-        </div>
-        <div>
-          <label className="block text-xs font-semibold text-muted-foreground mb-1 flex items-center gap-1">
-            <Calendar size={10} /> Finish date
-          </label>
-          <input
-            type="date"
-            value={form.endDate}
-            onChange={(e) => setForm((f) => ({ ...f, endDate: e.target.value }))}
-            className="w-full px-3 py-2 border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
-          />
-        </div>
+      <div className="grid min-w-0 max-w-full grid-cols-1 gap-3 overflow-hidden sm:grid-cols-3">
+        <DateField
+          label="Start date"
+          value={form.startDate}
+          onChange={(startDate) => setForm((current) => ({ ...current, startDate }))}
+        />
+        <DateField
+          label="Finish date"
+          value={form.endDate}
+          onChange={(endDate) => setForm((current) => ({ ...current, endDate }))}
+        />
         <div>
           <label className="block text-xs font-semibold text-muted-foreground mb-1">Duration</label>
           <div className="px-3 py-2 border border-border rounded-lg text-sm bg-muted/30 text-muted-foreground">

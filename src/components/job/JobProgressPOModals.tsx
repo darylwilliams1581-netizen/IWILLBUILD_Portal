@@ -1,9 +1,11 @@
 import { useState } from 'react';
-import { motion, AnimatePresence } from 'motion/react';
+import type { ReactNode } from 'react';
+import { motion } from 'motion/react';
 import { useBodyScrollLock } from '@/lib/useBodyScrollLock';
+import DateField from '@/components/DateField';
 import {
   AlertCircle, FileText, Download, ChevronDown, X, Loader2,
-  CheckCircle2, Clock, Send, DollarSign, Ban, Pencil,
+  CheckCircle2, Send, DollarSign, Ban, Pencil,
   Users, HardHat, Wrench, Calendar, MessageSquare, Trash2,
 } from 'lucide-react';
 
@@ -90,7 +92,7 @@ export const TRADE_TYPES = [
   'Steel / Structural', 'Tiling', 'Waterproofing', 'Other',
 ];
 
-export const PO_STATUS_CONFIG: Record<string, { label: string; color: string; bg: string; icon: React.ReactNode }> = {
+export const PO_STATUS_CONFIG: Record<string, { label: string; color: string; bg: string; icon: ReactNode }> = {
   draft:     { label: 'Draft',     color: 'text-slate-600',   bg: 'bg-slate-100',  icon: <Pencil size={10} /> },
   sent:      { label: 'Sent',      color: 'text-blue-700',    bg: 'bg-blue-50',    icon: <Send size={10} /> },
   completed: { label: 'Completed', color: 'text-emerald-700', bg: 'bg-emerald-50', icon: <CheckCircle2 size={10} /> },
@@ -192,7 +194,7 @@ export function CreatePOModal({ jobId, selectedLines, contractors, onClose, onCr
         </div>
 
         {/* Scrollable body */}
-        <div className="overflow-y-auto overscroll-contain flex-1 px-5 py-4 flex flex-col gap-4">
+        <div className="flex max-w-full flex-1 flex-col gap-4 overflow-x-hidden overflow-y-auto overscroll-contain px-5 py-4">
           {error && <div className="flex items-center gap-2 bg-red-50 border border-red-200 rounded-lg px-3 py-2 text-xs text-red-700"><AlertCircle size={12} />{error}</div>}
           <div>
             <label className="block text-xs font-semibold text-muted-foreground mb-2">Assign To</label>
@@ -232,15 +234,9 @@ export function CreatePOModal({ jobId, selectedLines, contractors, onClose, onCr
             <label className="block text-xs font-semibold text-muted-foreground mb-1.5">PO Title (optional)</label>
             <input type="text" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="e.g. Concrete slab pour — Stage 1" className="w-full border border-border rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30" />
           </div>
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="block text-xs font-semibold text-muted-foreground mb-1.5">Start Date</label>
-              <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} className="w-full border border-border rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30" />
-            </div>
-            <div>
-              <label className="block text-xs font-semibold text-muted-foreground mb-1.5">Finish Date</label>
-              <input type="date" value={finishDate} onChange={(e) => setFinishDate(e.target.value)} className="w-full border border-border rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30" />
-            </div>
+          <div className="grid min-w-0 max-w-full grid-cols-1 gap-3 overflow-hidden sm:grid-cols-2">
+            <DateField label="Start Date" value={startDate} onChange={setStartDate} />
+            <DateField label="Finish Date" value={finishDate} onChange={setFinishDate} />
           </div>
           <div>
             <label className="block text-xs font-semibold text-muted-foreground mb-1.5">Instructions / Comments</label>
@@ -316,7 +312,7 @@ export function PODetailModal({ po, jobId, onClose, onUpdated, onDeleted }: PODe
   }
 
   async function handleDelete() {
-    if (!confirm(`Delete ${po.po_number}? This cannot be undone.`)) return;
+    if (!window.confirm(`Delete ${po.po_number}? This cannot be undone.`)) return;
     setSaving(true);
     try {
       const res = await fetch(`/api/jobs/${jobId}/purchase-orders/${po.id}`, { method: 'DELETE', credentials: 'include' });

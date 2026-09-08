@@ -4,12 +4,12 @@
  * Zero financial fields, zero permSeeDollars dependency.
  */
 import { useState, useEffect, useCallback } from 'react';
-import { AlertCircle, Download, FileText } from 'lucide-react';
+import { AlertCircle, Download, FileText, Loader2 } from 'lucide-react';
 import type { ProgressSection, ProgressActivity } from '@/lib/pow-types';
 import type { ActivityFormValues } from '@/components/pow/ActivityForm';
 import type { SectionFormValues } from '@/components/pow/SectionForm';
 import ProgramOfWorksView from '@/components/pow/ProgramOfWorksView';
-import { resolveDownloadUrl } from '@/lib/native-api';
+import { saveAuthenticatedExport, type ExportFileType } from '@/lib/authenticated-export';
 
 interface Props { jobId: number; }
 
@@ -18,6 +18,8 @@ export default function JobProgress({ jobId }: Props) {
   const [activities, setActivities] = useState<ProgressActivity[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [exporting, setExporting] = useState<ExportFileType | null>(null);
+  const [exportError, setExportError] = useState('');
 
   // ── Load ──────────────────────────────────────────────────────────────────────
 
@@ -157,6 +159,27 @@ export default function JobProgress({ jobId }: Props) {
     setActivities(data.activities);
   }
 
+  async function handleExport(fileType: ExportFileType) {
+    setExportError('');
+    setExporting(fileType);
+    try {
+      await saveAuthenticatedExport({
+        url: fileType === 'csv'
+          ? `/api/jobs/${jobId}/progress/export-csv`
+          : `/api/jobs/${jobId}/progress/report/pdf`,
+        filename: fileType === 'csv'
+          ? `job-${jobId}-program-of-works.csv`
+          : `job-${jobId}-program-of-works.pdf`,
+        fileType,
+        title: fileType === 'csv' ? 'Progress CSV' : 'Progress PDF report',
+      });
+    } catch (exportFailure) {
+      setExportError(exportFailure instanceof Error ? exportFailure.message : 'Export failed');
+    } finally {
+      setExporting(null);
+    }
+  }
+
   // ── Render ────────────────────────────────────────────────────────────────────
 
   if (error) {
@@ -171,24 +194,32 @@ export default function JobProgress({ jobId }: Props) {
   return (
     <div className="flex flex-col gap-4">
       {/* Toolbar */}
-      <div className="flex items-center justify-between gap-2 flex-wrap">
+      <div className="flex items-start justify-between gap-2 flex-wrap">
         <h2 className="text-base font-bold text-foreground">Program of Works</h2>
-        <div className="flex items-center gap-2">
-          <a
-            href={resolveDownloadUrl(`/api/jobs/${jobId}/progress/export-csv`)}
-            download
-            className="flex items-center gap-1.5 px-3 py-1.5 border border-border rounded-lg text-xs font-semibold hover:bg-muted transition-colors"
-          >
-            <Download size={13} /> CSV
-          </a>
-          <a
-            href={resolveDownloadUrl(`/api/jobs/${jobId}/progress/report/pdf`)}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex items-center gap-1.5 px-3 py-1.5 border border-border rounded-lg text-xs font-semibold hover:bg-muted transition-colors"
-          >
-            <FileText size={13} /> PDF Report
-          </a>
+        <div className="flex flex-col items-end gap-2">
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => void handleExport('csv')}
+              disabled={exporting !== null}
+              className="flex items-center gap-1.5 px-3 py-1.5 border border-border rounded-lg text-xs font-semibold hover:bg-muted transition-colors disabled:opacity-60"
+            >
+              {exporting === 'csv' ? <Loader2 size={13} className="animate-spin" /> : <Download size={13} />} CSV
+            </button>
+            <button
+              type="button"
+              onClick={() => void handleExport('pdf')}
+              disabled={exporting !== null}
+              className="flex items-center gap-1.5 px-3 py-1.5 border border-border rounded-lg text-xs font-semibold hover:bg-muted transition-colors disabled:opacity-60"
+            >
+              {exporting === 'pdf' ? <Loader2 size={13} className="animate-spin" /> : <FileText size={13} />} PDF Report
+            </button>
+          </div>
+          {exportError && (
+            <p className="flex items-center gap-1.5 text-xs text-red-600" role="alert">
+              <AlertCircle size={13} /> {exportError}
+            </p>
+          )}
         </div>
       </div>
 

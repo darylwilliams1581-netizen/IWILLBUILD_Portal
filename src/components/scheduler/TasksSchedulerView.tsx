@@ -16,11 +16,12 @@
  *  - Saves via PUT /api/tasks/:id  (works for both job-linked and general tasks)
  */
 import { useState, useEffect, useCallback, useRef } from 'react';
+import type { ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { Link } from "react-router";
 import { CheckSquare, AlertTriangle, Loader2, AlertCircle, Calendar, User, Briefcase, ChevronDown, ChevronUp, Check, X, Clock, CircleDashed, CheckCircle2, Ban, Pencil, ExternalLink, Plus, Tag } from 'lucide-react';
-import { isNative } from '@/lib/capacitor-plugins';
 import { useFieldSheetScrollLock } from '@/lib/useFieldSheetScrollLock';
+import DateField from '@/components/DateField';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -61,20 +62,6 @@ function addDays(n: number): string {
   d.setDate(d.getDate() + n);
   return d.toISOString().slice(0, 10);
 }
-function thisSunday(): string {
-  const d = new Date();
-  const day = d.getDay();
-  const diff = day === 0 ? 0 : 7 - day;
-  d.setDate(d.getDate() + diff);
-  return d.toISOString().slice(0, 10);
-}
-function nextSunday(): string {
-  const d = new Date();
-  const day = d.getDay();
-  const diff = day === 0 ? 7 : 14 - day;
-  d.setDate(d.getDate() + diff);
-  return d.toISOString().slice(0, 10);
-}
 function formatDate(d: string): string {
   const [y, m, day] = d.split('-').map(Number);
   if (!y || !m || !day) return d;
@@ -102,15 +89,6 @@ function isDueToday(dueDate: string | null, status: TaskStatus): boolean {
   if (!dueDate || status === 'Completed' || status === 'Cancelled') return false;
   return dueDate === todayStr();
 }
-function yearWarning(dateStr: string): string | null {
-  if (!dateStr) return null;
-  const year = parseInt(dateStr.slice(0, 4), 10);
-  if (isNaN(year)) return null;
-  const currentYear = new Date().getFullYear();
-  if (year < currentYear) return `Year ${year} is in the past`;
-  if (year > currentYear + 2) return `Year ${year} is more than 2 years away`;
-  return null;
-}
 
 /** The "anchor date" for sorting/grouping: prefer dueDate, fall back to startDate */
 function anchorDate(t: SchedulerTask): string | null {
@@ -118,7 +96,7 @@ function anchorDate(t: SchedulerTask): string | null {
 }
 const STATUS_META: Record<TaskStatus, {
   label: string;
-  icon: React.ReactNode;
+  icon: ReactNode;
   colour: string;
   bg: string;
   border: string;
@@ -153,62 +131,6 @@ const STATUS_META: Record<TaskStatus, {
   }
 };
 const ALL_STATUSES: TaskStatus[] = ['Open', 'In Progress', 'Completed', 'Cancelled'];
-
-// ─── Date quick-button field ──────────────────────────────────────────────────
-
-function DateField({
-  label,
-  value,
-  onChange
-}: {
-  label: string;
-  value: string;
-  onChange: (v: string) => void;
-}) {
-  const warn = yearWarning(value);
-  const native = isNative();
-  const quick = [{
-    label: 'Today',
-    value: todayStr()
-  }, {
-    label: 'Tomorrow',
-    value: addDays(1)
-  }, {
-    label: 'This week',
-    value: thisSunday()
-  }, {
-    label: 'Next week',
-    value: nextSunday()
-  }];
-  return <div className="flex min-w-0 max-w-full flex-col gap-1 overflow-hidden">
-      <label className="text-xs font-medium text-slate-500">{label}</label>
-      <div className="flex max-w-full flex-wrap gap-1 overflow-hidden mb-0.5">
-        {quick.map(q => <button key={q.label} type="button" onClick={() => onChange(q.value)} className={`px-2 py-0.5 rounded text-[11px] font-medium border transition-colors ${value === q.value ? 'bg-violet-500 text-white border-violet-600' : 'bg-white text-slate-500 border-slate-200 hover:border-violet-300 hover:text-violet-700'}`}>
-            {q.label}
-          </button>)}
-        {value && <button type="button" onClick={() => onChange('')} className="px-2 py-0.5 rounded text-[11px] font-medium border border-slate-200 text-slate-400 hover:text-red-500 hover:border-red-200 transition-colors flex items-center gap-0.5">
-            <X size={9} /> Clear
-          </button>}
-      </div>
-      {native ? <div
-          className="flex h-11 min-w-0 max-w-full items-center gap-2 overflow-hidden rounded-md border border-slate-200 bg-white px-2.5"
-          aria-label={`${label}: ${value ? formatDateShort(value) : 'No date selected'}`}
-        >
-          <Calendar size={14} className="shrink-0 text-slate-400" />
-          <span className={`min-w-0 flex-1 truncate text-sm ${value ? 'text-slate-700' : 'text-slate-400'}`}>
-            {value ? formatDateShort(value) : 'Choose with the options above'}
-          </span>
-        </div> : <input
-          type="date"
-          value={value}
-          onChange={e => onChange(e.target.value)}
-          className="h-11 w-full min-w-0 max-w-full overflow-hidden rounded-md border border-slate-200 bg-white px-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-violet-400"
-        />}
-      {warn && <p className="text-[11px] text-amber-600 flex items-center gap-1">
-          <AlertCircle size={10} /> {warn}
-        </p>}
-    </div>;
-}
 
 // ─── Task form state ──────────────────────────────────────────────────────────
 
@@ -270,7 +192,7 @@ function TaskModal({
 
   // Close on Escape
   useEffect(() => {
-    function onKey(e: KeyboardEvent) {
+    function onKey(e: globalThis.KeyboardEvent) {
       if (e.key === 'Escape') onClose();
     }
     window.addEventListener('keydown', onKey);
@@ -438,11 +360,11 @@ function TaskModal({
 
           {/* Dates — side by side */}
           <div className="grid min-w-0 max-w-full grid-cols-1 gap-3 overflow-hidden sm:grid-cols-2">
-            <DateField label="Start date" value={form.startDate} onChange={v => setForm(f => ({
+            <DateField label="Start date" value={form.startDate} quickActions onChange={v => setForm(f => ({
             ...f,
             startDate: v
           }))} />
-            <DateField label="Due date" value={form.dueDate} onChange={v => setForm(f => ({
+            <DateField label="Due date" value={form.dueDate} quickActions onChange={v => setForm(f => ({
             ...f,
             dueDate: v
           }))} />

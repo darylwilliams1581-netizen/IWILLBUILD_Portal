@@ -17,11 +17,12 @@
  *  - Existing records (old schema: no description/assignee/startDate) load fine
  */
 import { useState, useEffect, useCallback, useRef } from 'react';
+import type { ReactNode } from 'react';
 import {
   Plus, Trash2, Check, AlertCircle, Calendar, ChevronDown, ChevronUp,
-  Pencil, User, Clock, X, CheckCircle2, CircleDashed, Ban, Loader2,
+  Pencil, User, Clock, CheckCircle2, CircleDashed, Ban, Loader2,
 } from 'lucide-react';
-import { isNative } from '@/lib/capacitor-plugins';
+import DateField from '@/components/DateField';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -57,30 +58,6 @@ function todayStr() {
   return new Date().toISOString().slice(0, 10);
 }
 
-function addDays(n: number): string {
-  const d = new Date();
-  d.setDate(d.getDate() + n);
-  return d.toISOString().slice(0, 10);
-}
-
-/** Sunday of the current week */
-function thisSunday(): string {
-  const d = new Date();
-  const day = d.getDay();
-  const diff = day === 0 ? 0 : 7 - day;
-  d.setDate(d.getDate() + diff);
-  return d.toISOString().slice(0, 10);
-}
-
-/** Sunday of next week */
-function nextSunday(): string {
-  const d = new Date();
-  const day = d.getDay();
-  const diff = day === 0 ? 7 : 14 - day;
-  d.setDate(d.getDate() + diff);
-  return d.toISOString().slice(0, 10);
-}
-
 function formatDate(d: string): string {
   const [y, m, day] = d.split('-').map(Number);
   if (!y || !m || !day) return d; // malformed — show raw
@@ -99,20 +76,7 @@ function isDueToday(dueDate: string | null, status: TaskStatus): boolean {
   return dueDate === todayStr();
 }
 
-/**
- * Returns a warning string if the year looks suspicious, otherwise null.
- */
-function yearWarning(dateStr: string): string | null {
-  if (!dateStr) return null;
-  const year = parseInt(dateStr.slice(0, 4), 10);
-  if (isNaN(year)) return null;
-  const currentYear = new Date().getFullYear();
-  if (year < currentYear) return `Year ${year} is in the past — is that right?`;
-  if (year > currentYear + 2) return `Year ${year} is more than 2 years away — is that right?`;
-  return null;
-}
-
-const STATUS_META: Record<TaskStatus, { label: string; icon: React.ReactNode; colour: string; bg: string; border: string }> = {
+const STATUS_META: Record<TaskStatus, { label: string; icon: ReactNode; colour: string; bg: string; border: string }> = {
   'Open':        { label: 'Open',        icon: <CircleDashed size={12} />,  colour: 'text-slate-600',  bg: 'bg-slate-50',   border: 'border-slate-200' },
   'In Progress': { label: 'In Progress', icon: <Clock size={12} />,         colour: 'text-blue-700',   bg: 'bg-blue-50',    border: 'border-blue-200'  },
   'Completed':   { label: 'Completed',   icon: <CheckCircle2 size={12} />,  colour: 'text-emerald-700',bg: 'bg-emerald-50', border: 'border-emerald-200'},
@@ -120,84 +84,6 @@ const STATUS_META: Record<TaskStatus, { label: string; icon: React.ReactNode; co
 };
 
 const ALL_STATUSES: TaskStatus[] = ['Open', 'In Progress', 'Completed', 'Cancelled'];
-
-// ─── Date field with quick-buttons ────────────────────────────────────────────
-
-interface DateFieldProps {
-  label: string;
-  value: string;
-  onChange: (v: string) => void;
-  optional?: boolean;
-}
-
-function DateField({ label, value, onChange, optional = true }: DateFieldProps) {
-  const warn = yearWarning(value);
-  const native = isNative();
-
-  const quickButtons = [
-    { label: 'Today',     value: todayStr() },
-    { label: 'Tomorrow',  value: addDays(1) },
-    { label: 'This week', value: thisSunday() },
-    { label: 'Next week', value: nextSunday() },
-  ];
-
-  return (
-    <div className="flex min-w-0 max-w-full flex-col gap-1 overflow-hidden">
-      <label className="text-xs font-semibold text-muted-foreground">
-        {label}{optional && <span className="font-normal text-muted-foreground/60 ml-1">(optional)</span>}
-      </label>
-      {/* Quick buttons */}
-      <div className="flex max-w-full flex-wrap gap-1 overflow-hidden mb-1">
-        {quickButtons.map((q) => (
-          <button
-            key={q.label}
-            type="button"
-            onClick={() => onChange(q.value)}
-            className={`px-2 py-0.5 rounded text-[11px] font-medium border transition-colors ${
-              value === q.value
-                ? 'bg-primary text-white border-primary'
-                : 'bg-white text-slate-600 border-slate-200 hover:border-primary/50 hover:text-primary'
-            }`}
-          >
-            {q.label}
-          </button>
-        ))}
-        {value && (
-          <button
-            type="button"
-            onClick={() => onChange('')}
-            className="px-2 py-0.5 rounded text-[11px] font-medium border border-slate-200 text-slate-400 hover:text-red-500 hover:border-red-200 transition-colors flex items-center gap-0.5"
-          >
-            <X size={9} /> Clear
-          </button>
-        )}
-      </div>
-      {native ? (
-        <div
-          className="flex h-11 min-w-0 max-w-full items-center gap-2 overflow-hidden rounded-lg border border-border bg-white px-3"
-          aria-label={`${label}: ${value ? formatDate(value) : 'No date selected'}`}
-        >
-          <Calendar size={15} className="shrink-0 text-slate-400" />
-          <span className={`min-w-0 flex-1 truncate text-sm ${value ? 'text-slate-700' : 'text-slate-400'}`}>
-            {value ? formatDate(value) : 'Choose with the options above'}
-          </span>
-        </div>
-      ) : (
-        <input
-          type="date"
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
-          className="h-11 w-full min-w-0 max-w-full overflow-hidden px-3 py-2 border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary bg-white"
-        />
-      )}
-      {warn && (
-        <p className="text-[11px] text-amber-600 flex items-center gap-1 mt-0.5">
-          <AlertCircle size={10} /> {warn}
-        </p>
-      )}
-    </div>
-  );
-}
 
 // ─── Task form (create or edit) ───────────────────────────────────────────────
 
@@ -281,8 +167,8 @@ function TaskForm({ initial, members, onSave, onCancel, saving, submitLabel = 'A
 
       {/* Dates — side by side on sm+ */}
       <div className="grid min-w-0 max-w-full grid-cols-1 gap-3 overflow-hidden sm:grid-cols-2">
-        <DateField label="Start date" value={startDate} onChange={setStartDate} optional />
-        <DateField label="Due date"   value={dueDate}   onChange={setDueDate}   optional />
+        <DateField label="Start date" value={startDate} onChange={setStartDate} optional quickActions />
+        <DateField label="Due date" value={dueDate} onChange={setDueDate} optional quickActions />
       </div>
 
       {/* Status + Assignee — side by side on sm+ */}
@@ -597,7 +483,7 @@ export default function JobTodos({ jobId }: Props) {
 
   // ── Delete ──────────────────────────────────────────────────────────────────
   async function handleDelete(id: number) {
-    if (!confirm('Delete this task?')) return;
+    if (!window.confirm('Delete this task?')) return;
     try {
       const res = await fetch(`/api/jobs/${jobId}/todos/${id}`, {
         method: 'DELETE',
