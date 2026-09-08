@@ -59,6 +59,7 @@ describe('native photo upload transport', () => {
         contentType: 'image/jpeg',
       })],
     }));
+    expect(mocks.request.mock.calls[0]?.[0]?.headers).not.toHaveProperty('Content-Type');
     expect(progress).toEqual([5, 20, 100]);
   });
 

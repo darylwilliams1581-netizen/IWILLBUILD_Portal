@@ -52,7 +52,7 @@
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>IWIllBUIlD uses your photo library so you can upload job photos, receipts, and site evidence.</string>
 	<key>NSPhotoLibraryAddUsageDescription</key>
-	<string>IWIllBUIlD saves captured photos to your photo library.</string>
+	<string>IWILLBUILD saves a watermarked copy of job photos to your Camera Roll as a backup.</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>IWIllBUIlD uses your location for job travel, fleet tracking, and site attendance records.</string>
 	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>

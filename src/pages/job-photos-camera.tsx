@@ -45,11 +45,13 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { useParams, useNavigate, useLocation } from "react-router";
 import { Helmet } from '@dr.pogodin/react-helmet';
-import { ArrowLeft, Settings, X, Check, Loader2, Lock, Unlock, AlertTriangle, Pencil, Zap, ZapOff, FlipHorizontal2 } from 'lucide-react';
+import { Media } from '@capacitor-community/media';
+import { ArrowLeft, Settings, X, Check, Loader2, Lock, Unlock, AlertTriangle, Pencil, Zap, ZapOff, FlipHorizontal2, Images } from 'lucide-react';
 import { usePhotoUploadQueue } from '@/hooks/usePhotoUploadQueue';
 import { useWatermarkSettings } from '@/hooks/useWatermarkSettings';
 import { useAppLifecycle } from '@/hooks/useAppLifecycle';
 import { isNative } from '@/lib/capacitor-plugins';
+import { useSession } from '@/lib/auth/auth-client';
 import {
   capturePhotoLocally,
   deleteLocalPhoto,
@@ -100,6 +102,16 @@ function base64JpegToFile(value: string, fileName: string): File {
     chunks.push(buffer);
   }
   return new File(chunks, fileName, { type: 'image/jpeg', lastModified: Date.now() });
+}
+
+async function fileToDataUrl(file: File): Promise<string> {
+  const bytes = new Uint8Array(await file.arrayBuffer());
+  const chunkSize = 32_768;
+  let binary = '';
+  for (let offset = 0; offset < bytes.length; offset += chunkSize) {
+    binary += String.fromCharCode(...bytes.subarray(offset, offset + chunkSize));
+  }
+  return `data:${file.type || 'image/jpeg'};base64,${window.btoa(binary)}`;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -352,6 +364,7 @@ export default function JobPhotosCameraPage() {
   }>();
   const navigate = useNavigate();
   const location = useLocation();
+  const { user } = useSession();
 
   // Optional overrides passed via navigate state (e.g. from job-card-detail)
   const locationState = location.state as {
@@ -429,6 +442,65 @@ export default function JobPhotosCameraPage() {
   const [capturing, setCapturing] = useState(false);
   const [flashAnim, setFlashAnim] = useState(false);
   const [composeError, setComposeError] = useState(false);
+
+  // ── Watermarked Camera Roll backup ─────────────────────────────────────────
+  // This setting belongs only to the live Lens camera. Upload/Library photos are
+  // already in the user's library and never pass through this save path.
+  const rollStorageKey = `iwb_camera_roll_backup_v1:${user?.id ?? 'anonymous'}`;
+  const [rollEnabled, setRollEnabled] = useState(true);
+  const rollEnabledRef = useRef(true);
+  const [rollNotice, setRollNotice] = useState('');
+  const rollNoticeShownRef = useRef(false);
+
+  useEffect(() => {
+    let enabled = true;
+    try {
+      enabled = window.localStorage.getItem(rollStorageKey) !== 'off';
+    } catch {
+      // Storage can be unavailable in a restricted WebView; default remains ON.
+    }
+    rollEnabledRef.current = enabled;
+    setRollEnabled(enabled);
+    setRollNotice('');
+    rollNoticeShownRef.current = false;
+  }, [rollStorageKey]);
+
+  const persistRollSetting = useCallback((enabled: boolean) => {
+    rollEnabledRef.current = enabled;
+    setRollEnabled(enabled);
+    try {
+      window.localStorage.setItem(rollStorageKey, enabled ? 'on' : 'off');
+    } catch {
+      // The control still works for this session when storage is unavailable.
+    }
+  }, [rollStorageKey]);
+
+  const handleRollToggle = useCallback(() => {
+    const enabled = !rollEnabledRef.current;
+    persistRollSetting(enabled);
+    if (enabled) setRollNotice('');
+  }, [persistRollSetting]);
+
+  const saveStampedBackup = useCallback((file: File) => {
+    if (!isNative() || !rollEnabledRef.current) return;
+    void (async () => {
+      try {
+        // With no album identifier the Media plugin requests PHPhotoLibrary
+        // add-only access on iOS 14+, then writes this already-watermarked JPEG.
+        await Media.savePhoto({ path: await fileToDataUrl(file) });
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        if (/photos? not allowed|permission|denied|authori[sz]/i.test(message)) {
+          persistRollSetting(false);
+          if (!rollNoticeShownRef.current && pageActiveRef.current) {
+            rollNoticeShownRef.current = true;
+            setRollNotice('Allow Photos to save a backup');
+          }
+        }
+        // Camera Roll is a spare copy. The durable job queue remains successful.
+      }
+    })();
+  }, [persistRollSetting]);
 
   // ── Last captured thumbnail (gallery button preview) ────────────────────────
   const [lastThumb, setLastThumb] = useState<string | null>(null);
@@ -645,6 +717,7 @@ export default function JobPhotosCameraPage() {
       // Await the existing IndexedDB queue write before deleting a fallback
       // source. The final JPEG is durable on the phone before upload begins.
       await enqueueFiles([file]);
+      saveStampedBackup(file);
       if (fallbackLocalPath) await deleteLocalPhoto(fallbackLocalPath);
     } catch {
       setComposeError(true);
@@ -660,7 +733,7 @@ export default function JobPhotosCameraPage() {
     setSessionCount(n => n + 1);
     setCapturing(false);
     return true;
-  }, [makeOpts, enqueueFiles]);
+  }, [makeOpts, enqueueFiles, saveStampedBackup]);
 
   // ── Shutter ─────────────────────────────────────────────────────────────────
   const handleShutter = useCallback(async () => {
@@ -841,6 +914,14 @@ export default function JobPhotosCameraPage() {
           </span>
         </button>
 
+        {/* Optional stamped backup to the user's Camera Roll */}
+        <button onClick={handleRollToggle} className={`flex h-9 shrink-0 items-center gap-1 rounded-full px-2 transition-colors ${rollEnabled ? 'bg-primary/80 text-white' : 'bg-black/40 text-white/45'}`} aria-pressed={rollEnabled} aria-label={`Camera Roll backup ${rollEnabled ? 'on' : 'off'}`} title="Save a watermarked backup to Camera Roll">
+          <Images size={15} />
+          <span className="text-[9px] font-bold leading-none tracking-wide">
+            ROLL {rollEnabled ? 'ON' : 'OFF'}
+          </span>
+        </button>
+
         {/* Flip camera */}
         <button onClick={() => void handleFlip()} disabled={camState !== 'ready'} className="w-9 h-9 flex items-center justify-center rounded-full bg-black/40 text-white hover:bg-black/60 transition-colors shrink-0 disabled:opacity-40" aria-label={facingMode === 'environment' ? 'Switch to front camera' : 'Switch to rear camera'} title={facingMode === 'environment' ? 'Switch to front camera' : 'Switch to rear camera'}>
           <FlipHorizontal2 size={18} />
@@ -866,6 +947,10 @@ export default function JobPhotosCameraPage() {
         {camState === 'starting' && <div className="absolute right-3 top-3 z-20 flex items-center gap-1.5 rounded-full bg-black/55 px-2.5 py-1.5 text-white/80 backdrop-blur-sm">
             <Loader2 size={13} className="animate-spin" />
             <span className="text-[10px] font-semibold">Starting camera</span>
+          </div>}
+
+        {rollNotice && <div className="absolute inset-x-4 top-14 z-20 rounded-xl bg-amber-500/90 px-3 py-2 text-center text-xs font-semibold text-black shadow-lg" role="status">
+            {rollNotice}
           </div>}
 
         {/* Flash animation */}

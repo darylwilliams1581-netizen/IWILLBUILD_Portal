@@ -40,8 +40,8 @@ import type { CapacitorConfig } from '@capacitor/cli';
 
 // ── SINGLE SOURCE OF TRUTH FOR BUILD NUMBER ───────────────────────────────────
 // Increment this before every App Store / TestFlight upload.
-// Current: 45 (Version 13 Lens picker and upload sheet sizing)
-const IOS_BUILD_NUMBER = 45;
+// Current: 46 (Version 13 optional stamped Camera Roll backup)
+const IOS_BUILD_NUMBER = 46;
 
 const config: CapacitorConfig = {
   // Reverse-domain app identifier — must match your Apple/Google developer account
@@ -99,7 +99,7 @@ const config: CapacitorConfig = {
 
       // Photo library write — save captured photos back to the camera roll
       NSPhotoLibraryAddUsageDescription:
-        'IWIllBUIlD saves captured photos to your photo library.',
+        'IWILLBUILD saves a watermarked copy of job photos to your Camera Roll as a backup.',
 
       // Location while in use — attendance, job travel, fleet tracking
       NSLocationWhenInUseUsageDescription:

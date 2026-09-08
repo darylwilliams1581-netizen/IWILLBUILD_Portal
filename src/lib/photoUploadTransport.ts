@@ -73,7 +73,6 @@ async function uploadNative({
     url: endpoint,
     method: 'POST',
     headers: {
-      'Content-Type': 'multipart/form-data',
       'X-Client-Id': clientId,
     },
     dataType: 'formData',
