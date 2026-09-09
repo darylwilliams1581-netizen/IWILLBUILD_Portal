@@ -126,9 +126,9 @@ export function ReadOnlyAnswer({ field, value }: { field: FormField; value: Answ
       display = photoUrls.length > 0 ? (
         <div className="flex flex-wrap gap-2">
           {photoUrls.map((url, idx) => (
-            <a key={idx} href={url} target="_blank" rel="noopener noreferrer" className="block w-20 h-20 rounded-xl overflow-hidden border border-slate-200 bg-slate-100 shrink-0 hover:opacity-90 transition-opacity">
-              <AuthThumb src={url} alt={`Photo ${idx + 1}`} className="w-full h-full" />
-            </a>
+            <div key={idx} className="block w-20 h-20 rounded-xl overflow-hidden border border-slate-200 bg-slate-100 shrink-0">
+              <AuthThumb src={url} alt={`Photo ${idx + 1}`} className="w-full h-full" fallbackHref={url} />
+            </div>
           ))}
         </div>
       ) : <span className="text-sm text-slate-400 italic">No photo</span>;
@@ -268,11 +268,42 @@ function LinkDropdown({
 
 // ── Authenticated thumbnail — fetches /api/ URLs with session cookie ─────────
 
-function AuthThumb({ src, alt, className }: { src: string; alt: string; className?: string }) {
-  const { blobUrl, loading } = useAuthImage(src.startsWith('/api/') ? src : undefined);
-  const displaySrc = src.startsWith('/api/') ? (blobUrl ?? undefined) : src;
-  if (loading) return <div className={`${className ?? ''} bg-slate-100 animate-pulse`} />;
-  if (!displaySrc) return <div className={`${className ?? ''} bg-slate-100 flex items-center justify-center`}><ImagePlus size={14} className="text-slate-300" /></div>;
+function AuthThumb({
+  src,
+  alt,
+  className,
+  fallbackHref,
+}: {
+  src: string;
+  alt: string;
+  className?: string;
+  /** Raw URL to open in a new tab when the image fails to load */
+  fallbackHref?: string;
+}) {
+  const isApi = src.startsWith('/api/');
+  const { blobUrl, loading, failed } = useAuthImage(isApi ? src : undefined);
+  const displaySrc = isApi ? (blobUrl ?? undefined) : src;
+
+  if (loading) {
+    return <div className={`${className ?? ''} bg-slate-100 animate-pulse`} />;
+  }
+
+  if (failed || (!loading && !displaySrc)) {
+    // Broken-photo state — tap/click opens the raw URL in a new tab
+    return (
+      <a
+        href={fallbackHref ?? src}
+        target="_blank"
+        rel="noopener noreferrer"
+        className={`${className ?? ''} bg-slate-100 flex flex-col items-center justify-center gap-1 hover:bg-slate-200 transition-colors`}
+        title="Tap to open file"
+      >
+        <ImagePlus size={14} className="text-slate-400" />
+        <span className="text-[9px] text-slate-400 font-medium leading-none">Open</span>
+      </a>
+    );
+  }
+
   return <img src={displaySrc} alt={alt} className={`${className ?? ''} object-cover`} />;
 }
 

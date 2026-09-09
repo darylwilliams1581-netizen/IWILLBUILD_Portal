@@ -87,11 +87,16 @@ export default function FormDocumentActionsModal({
     }
   }
 
-  /** Desktop: open the PDF inline in a new tab — browser provides Print + Save. */
+  /** Desktop/web: open the PDF inline — browser provides Print + Save.
+   *  window.open can be blocked by mobile Safari's popup guard when called
+   *  from inside an async function, so fall back to same-tab navigation. */
   function handlePdfDesktop() {
-    // Open inline so the browser PDF viewer is shown with its native Print/Save toolbar.
     const url = `/api/job-forms/${submissionId}/export-pdf?action=view`;
-    window.open(url, '_blank', 'noopener,noreferrer');
+    const win = window.open(url, '_blank', 'noopener,noreferrer');
+    if (!win) {
+      // Popup was blocked — open in the same tab
+      window.location.assign(url);
+    }
     onClose();
   }
 

@@ -16,13 +16,17 @@
  * page via DocumentActionsWidget's pathname guard. The FileDown header button
  * is the sole entry point to PDF/Email/Share on completed forms.
  */
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback, lazy, Suspense } from 'react';
 import { useParams, useLocation } from "react-router";
 import { Helmet } from '@dr.pogodin/react-helmet';
-import { Loader2, AlertTriangle, ChevronLeft, CheckCircle2, Pencil, Save } from 'lucide-react';
+import { Loader2, AlertTriangle, ChevronLeft, CheckCircle2, Pencil, Save, FileDown } from 'lucide-react';
 import FormRunner from '@/components/job/FormRunner';
 import type { FormSubmission } from '@/components/job/form-types';
 import type { Job } from '@/lib/jobs-api';
+
+const FormDocumentActionsModal = lazy(
+  () => import('@/components/job/FormDocumentActionsModal'),
+);
 interface LocationState {
   returnTo?: string;
 }
@@ -62,6 +66,7 @@ export default function JobFormRunnerPage() {
   const [shellCompleting, setShellCompleting] = useState(false);
   const [shellReopening, setShellReopening] = useState(false);
   const [actionError, setActionError] = useState('');
+  const [docActionsOpen, setDocActionsOpen] = useState(false);
   const saveRef = useRef<(() => Promise<void>) | null>(null);
   const completeRef = useRef<(() => Promise<void>) | null>(null);
   useEffect(() => {
@@ -246,6 +251,18 @@ export default function JobFormRunnerPage() {
             })}
               </span>}
 
+            {/* PDF / Email / Share — completed forms only */}
+            {isReadOnly && isDone && (
+              <button
+                onClick={() => setDocActionsOpen(true)}
+                className="flex items-center gap-1.5 h-8 px-3 rounded-xl bg-violet-600 hover:bg-violet-700 active:bg-violet-800 text-white text-xs font-bold transition-colors shrink-0 shadow-sm"
+                aria-label="PDF, Email or Share"
+              >
+                <FileDown size={14} />
+                <span className="hidden sm:inline">Export</span>
+              </button>
+            )}
+
 
           </div>
 
@@ -304,5 +321,18 @@ export default function JobFormRunnerPage() {
           </div>
         </footer>
       </div>
+
+      {/* ── Document Actions modal (PDF / Email / Share) ──────────────────────── */}
+      {docActionsOpen && submission && (
+        <Suspense fallback={null}>
+          <FormDocumentActionsModal
+            submissionId={submission.id}
+            templateName={templateName}
+            jobId={jobId && jobId > 0 ? jobId : undefined}
+            job={job}
+            onClose={() => setDocActionsOpen(false)}
+          />
+        </Suspense>
+      )}
     </>;
 }
