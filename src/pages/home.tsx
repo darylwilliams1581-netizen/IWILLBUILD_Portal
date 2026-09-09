@@ -23,7 +23,6 @@ import PagedHomeScreen from '@/components/home/PagedHomeScreen';
 import { fetchActiveJobs } from '@/lib/jobs-api';
 import { useFieldSheetScrollLock } from '@/lib/useFieldSheetScrollLock';
 
-import AppPermissionsOnboarding, { hasCompletedOnboarding } from '@/components/AppPermissionsOnboarding';
 import TermsAcceptanceGate, { hasAcceptedTerms } from '@/components/TermsAcceptanceGate';
 import { isNative } from '@/lib/capacitor-plugins';
 import { useOfflineQueue } from '@/lib/useOfflineQueue';
@@ -1853,17 +1852,6 @@ export default function HomeScreen() {
     setShowTermsGate(!hasAcceptedTerms(email));
   }, [email, loading, nativeDashboardReady]);
 
-  // Show permissions onboarding AFTER terms are accepted (native only)
-  const [showPermOnboarding, setShowPermOnboarding] = useState(false);
-  useEffect(() => {
-    if (!isNative() || hasCompletedOnboarding()) return;
-    if (!nativeDashboardReady) return;
-    // Only start the timer once terms have been accepted
-    if (showTermsGate) return;
-    const t = setTimeout(() => setShowPermOnboarding(true), 1500);
-    return () => clearTimeout(t);
-  }, [showTermsGate, nativeDashboardReady]);
-
   // ── Home icon permissions ──────────────────────────────────────────────────
   const [iconPermissions, setIconPermissions] = useState<string[] | null>(null);
   useEffect(() => {
@@ -1999,9 +1987,6 @@ export default function HomeScreen() {
           userEmail={email}
         />
       )}
-
-      {/* Permissions onboarding — shown once on native after terms accepted */}
-      {showPermOnboarding && <AppPermissionsOnboarding onDone={() => setShowPermOnboarding(false)} />}
 
       <div className="flex-1 flex flex-col relative overflow-hidden min-h-0 w-full max-w-full min-w-0" style={{
       background: '#edf0f5'
