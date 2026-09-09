@@ -580,11 +580,14 @@ export default memo(function PagedHomeScreen({
       <div className="shrink-0 bg-[#111827] text-white">
         {/* ── Top bar: two-row stacked layout ────────────────────────────────── */}
         {/* Row 1: logo + name (left) + utility buttons (right) */}
-        <div className="flex items-center justify-between px-3 pt-2 pb-1 gap-2">
+        <div
+          className="flex items-center justify-between px-3 pb-1 gap-2"
+          style={{ paddingTop: 'max(env(safe-area-inset-top, 0px), 12px)' }}
+        >
           <img
             src="/assets/logo-horizontal-dark-transparent.png"
             alt="IWILLBUILD"
-            className="h-8 w-auto object-contain shrink-0"
+            className="h-8 w-auto max-w-[140px] object-contain shrink-0"
           />
           {/* Utility buttons — min-w-0 so they can shrink; text hidden below 360 px */}
           <div className="flex items-center gap-1.5 min-w-0 justify-end">

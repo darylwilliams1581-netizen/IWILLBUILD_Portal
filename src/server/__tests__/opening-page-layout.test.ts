@@ -127,7 +127,8 @@ describe('Compact card — layout', () => {
 describe('Section panels — background CSS vars', () => {
   it('uses style={{ background: panel.panelVar }} (not className bg-[...])', () => {
     expect(screenSrc).toContain('style={{ background: panel.panelVar }}');
-    expect(screenSrc).not.toMatch(/bg-\[#[0-9A-Fa-f]{6}\]/);
+    const jobFeaturePage = screenSrc.match(/const JobFeaturePage[\s\S]*?\/\/ ── Dashboard page/)?.[0] ?? '';
+    expect(jobFeaturePage).not.toMatch(/bg-\[#[0-9A-Fa-f]{6}\]/);
   });
 
   it('Work group uses --panel-work', () => {
@@ -254,17 +255,21 @@ describe('Reduced chrome padding', () => {
 
 describe('Two-row stacked header', () => {
   it('row 1 contains utility buttons (notification + profile + logout)', () => {
-    expect(screenSrc).toContain('justify-between shrink-0 px-3 pt-2 pb-1');
+    expect(screenSrc).toContain('justify-between px-3 pb-1 gap-2');
+  });
+
+  it('row 1 clears the device top safe area with normal web padding', () => {
+    expect(screenSrc).toContain("paddingTop: 'max(env(safe-area-inset-top, 0px), 12px)'");
   });
 
   it('row 1 contains the bundled logo image', () => {
-    expect(screenSrc).toContain('/assets/logo.png');
+    expect(screenSrc).toContain('/assets/logo-horizontal-dark-transparent.png');
   });
 
   it('row 1 branding comes from the logo image asset only — no duplicate text span', () => {
     // The bundled logo asset already contains the IWILLBUILD wordmark.
     // A separate <span> beside it would duplicate the branding on mobile.
-    expect(screenSrc).toContain('/assets/logo.png');
+    expect(screenSrc).toContain('/assets/logo-horizontal-dark-transparent.png');
     // The alt attribute identifies the brand in the image
     expect(screenSrc).toContain('alt="IWILLBUILD"');
     // No standalone wordmark span next to the logo

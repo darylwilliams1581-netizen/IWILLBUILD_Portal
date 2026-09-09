@@ -120,6 +120,10 @@ describe('iOS layout — home.tsx top bar', () => {
 describe('iOS layout — safe-area insets', () => {
   const phs = readSrc('components/home/PagedHomeScreen.tsx');
 
+  it('10. Top bar clears the device status area', () => {
+    expect(phs).toMatch(/paddingTop:\s*['"]max\(env\(safe-area-inset-top, 0px\), 12px\)['"]/);
+  });
+
   it('10. Bottom padding uses env(safe-area-inset-bottom)', () => {
     expect(phs).toMatch(/env\(safe-area-inset-bottom\)/);
   });
