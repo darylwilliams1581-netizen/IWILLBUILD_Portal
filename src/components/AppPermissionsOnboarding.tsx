@@ -150,9 +150,9 @@ async function requestNotifications(): Promise<boolean> {
       if (!('Notification' in window)) return false;
       try {
         const result = await withTimeout(
-          Notification.requestPermission(),
+          window.Notification.requestPermission(),
           8000,
-          'denied' as NotificationPermission
+          'denied' as 'default' | 'denied' | 'granted'
         );
         return result === 'granted';
       } catch {
@@ -237,9 +237,23 @@ export default function AppPermissionsOnboarding({ onDone }: Props) {
   const Icon = currentStep.icon;
 
   return (
-    <div className="fixed inset-0 z-[200] flex flex-col bg-gray-950">
+    <div
+      className="fixed inset-0 z-[200] flex w-full max-w-full flex-col overflow-hidden bg-gray-950"
+      style={{
+        maxWidth: 'none',
+        maxHeight: '100dvh',
+        WebkitTextSizeAdjust: '100%',
+        textSizeAdjust: '100%',
+      }}
+      role="dialog"
+      aria-modal="true"
+      aria-label="App permission setup"
+    >
       {/* Dismiss */}
-      <div className="flex justify-end px-5 pt-14 pb-2">
+      <div
+        className="flex shrink-0 justify-end px-4 pb-1"
+        style={{ paddingTop: 'max(env(safe-area-inset-top), 12px)' }}
+      >
         <button
           onClick={handleDismissAll}
           className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center text-white/60 hover:bg-white/20 transition-colors"
@@ -250,7 +264,7 @@ export default function AppPermissionsOnboarding({ onDone }: Props) {
       </div>
 
       {/* Progress dots */}
-      <div className="flex justify-center gap-2 pb-6">
+      <div className="flex shrink-0 justify-center gap-2 pb-2">
         {STEPS.map((s, i) => (
           <div
             key={s.id}
@@ -266,7 +280,7 @@ export default function AppPermissionsOnboarding({ onDone }: Props) {
       </div>
 
       {/* Step card */}
-      <div className="flex-1 flex flex-col items-center justify-center px-6 pb-8">
+      <div className="flex min-h-0 flex-1 flex-col overflow-y-auto px-4 py-2">
         <AnimatePresence mode="wait">
           <motion.div
             key={currentStep.id}
@@ -274,37 +288,37 @@ export default function AppPermissionsOnboarding({ onDone }: Props) {
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -16 }}
             transition={{ duration: 0.28, ease: 'easeOut' as const }}
-            className="w-full max-w-sm flex flex-col items-center text-center gap-6"
+            className="mx-auto my-auto flex w-full max-w-sm flex-col items-center gap-3 py-2 text-center"
           >
             {/* Icon */}
-            <div className={`w-24 h-24 rounded-3xl ${currentStep.iconBg} flex items-center justify-center shadow-2xl`}>
+            <div className={`flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl ${currentStep.iconBg} shadow-xl`}>
               {state === 'granted' ? (
-                <CheckCircle2 size={44} className="text-white" />
+                <CheckCircle2 size={30} className="text-white" />
               ) : (
-                <Icon size={44} className="text-white" />
+                <Icon size={30} className="text-white" />
               )}
             </div>
 
             {/* Text */}
-            <div className="space-y-2">
-              <p className="text-xs font-semibold text-violet-400 uppercase tracking-widest">
+            <div className="w-full min-w-0 space-y-1.5">
+              <p className="text-[11px] font-semibold uppercase tracking-widest text-violet-400">
                 Step {stepIndex + 1} of {STEPS.length}
               </p>
-              <h2 className="text-2xl font-black text-white leading-tight">
+              <h2 className="break-words text-xl font-black leading-tight text-white">
                 {currentStep.title}
               </h2>
-              <p className="text-sm font-semibold text-violet-300">
+              <p className="break-words text-xs font-semibold text-violet-300">
                 {currentStep.why}
               </p>
-              <p className="text-sm text-white/50 leading-relaxed mt-2">
+              <p className="mt-1 break-words text-xs leading-relaxed text-white/55">
                 {currentStep.detail}
               </p>
             </div>
 
             {/* Privacy note */}
-            <div className="flex items-center gap-2 bg-white/5 rounded-xl px-4 py-3 w-full">
-              <Shield size={14} className="text-green-400 shrink-0" />
-              <p className="text-xs text-white/40 text-left">
+            <div className="flex w-full min-w-0 items-center gap-2 rounded-xl bg-white/5 px-3 py-2.5">
+              <Shield size={13} className="shrink-0 text-green-400" />
+              <p className="min-w-0 break-words text-left text-[11px] leading-relaxed text-white/45">
                 Your data stays within your company account and is never sold or shared.
               </p>
             </div>
@@ -313,12 +327,15 @@ export default function AppPermissionsOnboarding({ onDone }: Props) {
       </div>
 
       {/* Actions */}
-      <div className="px-6 pb-12 space-y-3">
+      <div
+        className="shrink-0 space-y-1.5 px-4 pt-2"
+        style={{ paddingBottom: 'max(env(safe-area-inset-bottom), 12px)' }}
+      >
         <button
           onClick={handleEnable}
           disabled={state === 'requesting' || state === 'granted'}
           className={[
-            'w-full flex items-center justify-center gap-2 py-4 rounded-2xl font-bold text-base text-white transition-all disabled:opacity-70',
+            'flex w-full items-center justify-center gap-2 rounded-xl py-3 text-sm font-bold text-white transition-all disabled:opacity-70',
             state === 'granted' ? 'bg-green-600' : 'bg-primary hover:bg-primary/90',
           ].join(' ')}
         >
@@ -342,7 +359,7 @@ export default function AppPermissionsOnboarding({ onDone }: Props) {
 
         <button
           onClick={handleSkip}
-          className="w-full py-3 text-sm font-semibold text-white/40 hover:text-white/60 transition-colors"
+          className="w-full py-2 text-xs font-semibold text-white/40 transition-colors hover:text-white/60"
         >
           {isLastStep ? 'Skip and go to app' : 'Skip for now'}
         </button>

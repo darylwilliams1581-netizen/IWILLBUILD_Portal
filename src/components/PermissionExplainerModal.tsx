@@ -150,27 +150,34 @@ export default function PermissionExplainerModal({
   return (
     /* Backdrop */
     <div
-      className="fixed inset-0 z-[9999] flex items-end sm:items-center justify-center"
-      style={{ backgroundColor: 'rgba(0,0,0,0.55)' }}
+      className="fixed inset-0 z-[9999] flex items-end justify-center overflow-hidden p-3 sm:items-center"
+      style={{
+        backgroundColor: 'rgba(0,0,0,0.65)',
+        paddingBottom: 'max(env(safe-area-inset-bottom), 12px)',
+        WebkitTextSizeAdjust: '100%',
+        textSizeAdjust: '100%',
+      }}
       onClick={onNotNow}
     >
       {/* Sheet / dialog — stop propagation so tapping inside doesn't close */}
       <div
-        className="
-          relative w-full sm:max-w-sm mx-auto
-          bg-white
-          rounded-t-3xl sm:rounded-3xl
-          shadow-2xl
-          overflow-hidden
-          animate-in slide-in-from-bottom-4 sm:zoom-in-95 duration-200
-        "
+        className="relative mx-auto flex w-full flex-col rounded-2xl bg-white shadow-2xl animate-in slide-in-from-bottom-4 sm:zoom-in-95 duration-200"
+        style={{
+          width: 'min(calc(100vw - 24px), 24rem)',
+          maxWidth: '24rem',
+          maxHeight: 'min(calc(100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom) - 24px), 480px)',
+          overflow: 'hidden',
+        }}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={`permission-title-${type}`}
         onClick={(e) => e.stopPropagation()}
       >
         {/* Close button */}
         <button
           onClick={onNotNow}
           aria-label="Close"
-          className="absolute top-4 right-4 w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center text-gray-500 hover:bg-gray-200 active:bg-gray-300 transition-colors z-10"
+          className="absolute right-3 top-3 z-10 flex h-8 w-8 items-center justify-center rounded-full bg-gray-100 text-gray-500 transition-colors hover:bg-gray-200 active:bg-gray-300"
         >
           <X size={16} />
         </button>
@@ -181,42 +188,42 @@ export default function PermissionExplainerModal({
         </div>
 
         {/* Content */}
-        <div className="px-6 pt-4 pb-2">
+        <div className="min-h-0 overflow-y-auto px-4 pb-2 pt-3">
           {/* Icon */}
-          <div className={`w-16 h-16 rounded-2xl ${c.iconBg} flex items-center justify-center mb-4 ${c.iconColor}`}>
+          <div className={`mb-3 flex h-12 w-12 items-center justify-center rounded-xl ${c.iconBg} ${c.iconColor}`}>
             {c.icon}
           </div>
 
           {/* Title */}
-          <h2 className="text-xl font-bold text-gray-900 mb-2 leading-tight">
+          <h2 id={`permission-title-${type}`} className="mb-1.5 pr-8 text-lg font-bold leading-tight text-gray-900">
             {denied ? `${c.title} in Settings` : c.title}
           </h2>
 
           {/* Body */}
-          <p className="text-sm text-gray-600 leading-relaxed mb-1">
+          <p className="mb-1 break-words text-xs leading-relaxed text-gray-600">
             {denied ? c.settingsHint : c.body}
           </p>
 
           {/* "You can change this anytime" note — only on the initial prompt */}
           {!denied && (
-            <p className="text-xs text-gray-400 mt-2 mb-1">
+            <p className="mb-1 mt-2 text-[11px] text-gray-400">
               You can change this anytime in iPhone Settings.
             </p>
           )}
         </div>
 
         {/* Divider */}
-        <div className="h-px bg-gray-100 mx-6 mt-2" />
+        <div className="mx-4 mt-2 h-px shrink-0 bg-gray-100" />
 
         {/* Buttons */}
-        <div className="px-6 py-4 flex flex-col gap-2.5">
+        <div className="flex shrink-0 flex-col gap-1.5 px-4 py-3">
           {denied ? (
             /* Denied state — Settings button + Close */
             <>
               {isNative() && (
                 <button
                   onClick={() => void handleOpenSettings()}
-                  className="w-full flex items-center justify-center gap-2 bg-primary text-white font-bold py-3.5 rounded-2xl text-sm active:opacity-80 transition-opacity"
+                  className="flex w-full items-center justify-center gap-2 rounded-xl bg-primary py-2.5 text-sm font-bold text-white transition-opacity active:opacity-80"
                 >
                   <Settings size={16} />
                   Open iPhone Settings
@@ -225,7 +232,7 @@ export default function PermissionExplainerModal({
               )}
               <button
                 onClick={onNotNow}
-                className="w-full py-3 rounded-2xl text-sm font-semibold text-gray-500 hover:bg-gray-50 active:bg-gray-100 transition-colors"
+                className="w-full rounded-xl py-2 text-xs font-semibold text-gray-500 transition-colors hover:bg-gray-50 active:bg-gray-100"
               >
                 Close
               </button>
@@ -235,14 +242,14 @@ export default function PermissionExplainerModal({
             <>
               <button
                 onClick={onEnable}
-                className="w-full flex items-center justify-center gap-2 bg-primary text-white font-bold py-3.5 rounded-2xl text-sm active:opacity-80 transition-opacity shadow-md shadow-violet-200"
+                className="flex w-full items-center justify-center gap-2 rounded-xl bg-primary py-2.5 text-sm font-bold text-white shadow-md shadow-violet-200 transition-opacity active:opacity-80"
               >
                 <ShieldCheck size={16} />
                 {c.enableLabel}
               </button>
               <button
                 onClick={onNotNow}
-                className="w-full py-3 rounded-2xl text-sm font-semibold text-gray-500 hover:bg-gray-50 active:bg-gray-100 transition-colors"
+                className="w-full rounded-xl py-2 text-xs font-semibold text-gray-500 transition-colors hover:bg-gray-50 active:bg-gray-100"
               >
                 Not Now
               </button>
