@@ -20,6 +20,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { X, CheckCircle2, AlertCircle, Loader2, ShieldCheck, ShieldOff, KeyRound } from 'lucide-react';
 import { InputOTP, InputOTPGroup, InputOTPSlot } from '@/components/ui/input-otp';
+import { useBodyScrollLock } from '@/lib/useBodyScrollLock';
 import {
   getDeviceFingerprint,
   savePinRecord,
@@ -45,7 +46,28 @@ type Step =
   | 'confirm-new'      // create/change: confirm new PIN
   | 'done';
 
-// ── Helpers ───────────────────────────────────────────────────────────────────
+function restoreViewport() {
+  (document.activeElement as HTMLElement | null)?.blur();
+  document.body.style.removeProperty('overflow');
+  document.documentElement.style.removeProperty('overflow');
+  window.scrollTo(0, 0);
+}
+
+async function readApiError(res: Response): Promise<string> {
+  const fallback = res.status === 401
+    ? 'Sign in again, then set up the PIN.'
+    : res.status === 403
+      ? 'Your account must be verified before setting a PIN.'
+      : res.status === 404
+        ? 'PIN service is not on the website yet.'
+        : `Could not save PIN (${res.status}).`;
+  try {
+    const data = await res.json() as { error?: string };
+    return data.error ?? fallback;
+  } catch {
+    return fallback;
+  }
+}
 
 function stepTitle(mode: PinSetupMode, step: Step): string {
   if (step === 'verify-current') return 'Enter current PIN';
@@ -75,6 +97,17 @@ export default function PinSetupModal({ mode, userEmail, onClose, onSuccess }: P
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
 
+  useBodyScrollLock(true);
+
+  useEffect(() => {
+    return () => restoreViewport();
+  }, []);
+
+  const handleClose = useCallback(() => {
+    restoreViewport();
+    onClose();
+  }, [onClose]);
+
   // Reset pin input on step change
   useEffect(() => { setPin(''); setError(''); }, [step]);
 
@@ -92,9 +125,13 @@ export default function PinSetupModal({ mode, userEmail, onClose, onSuccess }: P
         credentials: 'include',
         body: JSON.stringify({ email: userEmail, pin: currentPin, deviceFingerprint: fp }),
       });
+      if (!res.ok) {
+        setError(await readApiError(res));
+        setPin('');
+        return;
+      }
       const data = await res.json() as { ok?: boolean; error?: string };
-
-      if (!res.ok || !data.ok) {
+      if (!data.ok) {
         setError(data.error ?? 'Incorrect PIN.');
         setPin('');
         return;
@@ -122,8 +159,7 @@ export default function PinSetupModal({ mode, userEmail, onClose, onSuccess }: P
         credentials: 'include',
       });
       if (!res.ok) {
-        const d = await res.json() as { error?: string };
-        setError(d.error ?? 'Failed to disable PIN.');
+        setError(await readApiError(res));
         return;
       }
       clearPinRecord();
@@ -157,9 +193,12 @@ export default function PinSetupModal({ mode, userEmail, onClose, onSuccess }: P
         credentials: 'include',
         body: JSON.stringify({ deviceFingerprint: fp, deviceName, pin: confirmedPin }),
       });
+      if (!res.ok) {
+        setError(await readApiError(res));
+        return;
+      }
       const data = await res.json() as { ok?: boolean; error?: string; deviceId?: string };
-
-      if (!res.ok || !data.ok) {
+      if (!data.ok) {
         setError(data.error ?? 'Failed to save PIN.');
         return;
       }
@@ -203,14 +242,21 @@ export default function PinSetupModal({ mode, userEmail, onClose, onSuccess }: P
   const isDisableMode = mode === 'disable';
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center sm:items-center">
+    <div
+      className="fixed inset-0 z-[9999] flex items-end justify-center overflow-hidden p-3 sm:items-center"
+      style={{
+        WebkitTextSizeAdjust: '100%',
+        textSizeAdjust: '100%',
+        paddingBottom: 'max(env(safe-area-inset-bottom), 12px)',
+      }}
+    >
       {/* Backdrop */}
       <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
         className="absolute inset-0 bg-black/60"
-        onClick={onClose}
+        onClick={handleClose}
       />
 
       {/* Sheet */}
@@ -219,11 +265,16 @@ export default function PinSetupModal({ mode, userEmail, onClose, onSuccess }: P
         animate={{ y: 0, opacity: 1 }}
         exit={{ y: 60, opacity: 0 }}
         transition={{ type: 'spring', damping: 28, stiffness: 320 }}
-        className="relative w-full max-w-sm bg-card rounded-t-3xl sm:rounded-2xl shadow-2xl overflow-hidden"
-        style={{ paddingBottom: 'max(env(safe-area-inset-bottom), 24px)' }}
+        className="relative flex w-full flex-col rounded-2xl bg-card shadow-2xl"
+        style={{
+          width: 'min(calc(100vw - 24px), 24rem)',
+          maxWidth: '24rem',
+          maxHeight: 'min(560px, calc(100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom) - 24px))',
+          overflow: 'hidden',
+        }}
       >
         {/* Header */}
-        <div className="flex items-center justify-between px-5 pt-5 pb-2">
+        <div className="flex shrink-0 items-center justify-between px-5 pt-5 pb-2">
           <div className="flex items-center gap-2.5">
             <div className={`w-8 h-8 rounded-xl flex items-center justify-center ${
               isDisableMode ? 'bg-destructive/15' : 'bg-primary/15'
@@ -241,7 +292,7 @@ export default function PinSetupModal({ mode, userEmail, onClose, onSuccess }: P
             </div>
           </div>
           <button
-            onClick={onClose}
+            onClick={handleClose}
             className="w-8 h-8 rounded-full bg-muted flex items-center justify-center text-muted-foreground active:bg-muted/70"
           >
             <X size={15} />
@@ -249,7 +300,7 @@ export default function PinSetupModal({ mode, userEmail, onClose, onSuccess }: P
         </div>
 
         {/* Body */}
-        <div className="px-5 pt-4 pb-2 flex flex-col items-center gap-5">
+        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 pt-4 pb-2 flex flex-col items-center gap-5">
           <AnimatePresence mode="wait">
             {isDone ? (
               <motion.div
@@ -290,6 +341,9 @@ export default function PinSetupModal({ mode, userEmail, onClose, onSuccess }: P
                   onChange={setPin}
                   disabled={busy}
                   autoFocus
+                  inputMode="numeric"
+                  autoComplete="one-time-code"
+                  className="text-base"
                 >
                   <InputOTPGroup>
                     {[0, 1, 2, 3].map(i => (
