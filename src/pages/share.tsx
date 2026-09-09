@@ -14,7 +14,7 @@
 import { useEffect, useState } from 'react';
 import { useParams } from "react-router";
 import { Helmet } from '@dr.pogodin/react-helmet';
-import { FileText, AlertTriangle, Loader2, CheckCircle2, Clock, Lock, Download, ExternalLink, MapPin, Key, Link2 } from 'lucide-react';
+import { FileText, AlertTriangle, Loader2, CheckCircle2, Clock, Lock, Download, ExternalLink, MapPin, Key, Link2, X } from 'lucide-react';
 import ExternalFormPage from './external-form';
 import { Button } from '@/components/ui/button';
 
@@ -360,6 +360,88 @@ interface SecureShareLink {
 // completed_form and job_form (legacy alias) are routed to buildFormPdfDocument()
 // estimate and invoice are routed to their respective builders
 const PDF_SUPPORTED_TYPES = new Set(['estimate', 'invoice', 'completed_form', 'job_form']);
+// ── Types that support photo gallery delivery via /api/secure-share/:token/photos
+const PHOTO_GALLERY_TYPES = new Set(['job_photos']);
+
+// ── JobPhotoGallery — renders a public photo grid for job_photos share links ──
+
+interface GalleryPhoto { id: number; url: string; originalName: string; }
+
+function JobPhotoGallery({ token }: { token: string }) {
+  const [photos, setPhotos] = useState<GalleryPhoto[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [lightbox, setLightbox] = useState<GalleryPhoto | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch(`/api/secure-share/${encodeURIComponent(token)}/photos`)
+      .then(async (r) => {
+        const data = await r.json() as { ok?: boolean; photos?: GalleryPhoto[]; error?: string };
+        if (cancelled) return;
+        if (!r.ok || !data.ok) { setError(data.error ?? 'Failed to load photos'); return; }
+        setPhotos(data.photos ?? []);
+      })
+      .catch(() => { if (!cancelled) setError('Network error — could not load photos'); })
+      .finally(() => { if (!cancelled) setLoading(false); });
+    return () => { cancelled = true; };
+  }, [token]);
+
+  if (loading) return (
+    <div className="flex items-center justify-center py-8">
+      <Loader2 size={22} className="animate-spin text-violet-500" />
+    </div>
+  );
+  if (error) return <p className="text-sm text-red-500 text-center py-4">{error}</p>;
+  if (photos.length === 0) return <p className="text-sm text-slate-400 text-center py-4">No photos in this gallery.</p>;
+
+  return (
+    <>
+      <p className="text-xs text-slate-500 text-center mb-3">{photos.length} photo{photos.length !== 1 ? 's' : ''}</p>
+      <div className="grid grid-cols-3 gap-1.5">
+        {photos.map((p) => (
+          <button
+            key={p.id}
+            onClick={() => setLightbox(p)}
+            className="aspect-square rounded-lg overflow-hidden bg-slate-100 border border-slate-200 hover:opacity-90 transition-opacity"
+          >
+            <img src={p.url} alt={p.originalName} className="w-full h-full object-cover" loading="lazy" />
+          </button>
+        ))}
+      </div>
+      {/* Lightbox */}
+      {lightbox && (
+        <div
+          className="fixed inset-0 z-[300] bg-black/90 flex items-center justify-center p-4"
+          onClick={() => setLightbox(null)}
+        >
+          <button
+            className="absolute top-4 right-4 text-white/70 hover:text-white p-2"
+            onClick={() => setLightbox(null)}
+            aria-label="Close"
+          >
+            <X size={24} />
+          </button>
+          <img
+            src={lightbox.url}
+            alt={lightbox.originalName}
+            className="max-w-full max-h-[90dvh] rounded-xl object-contain"
+            onClick={(e) => e.stopPropagation()}
+          />
+          <a
+            href={lightbox.url}
+            download={lightbox.originalName}
+            className="absolute bottom-6 left-1/2 -translate-x-1/2 flex items-center gap-2 bg-white/10 hover:bg-white/20 text-white text-xs font-semibold px-4 py-2 rounded-full transition-colors"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <Download size={13} />
+            Download
+          </a>
+        </div>
+      )}
+    </>
+  );
+}
 
 // ── SecureShareViewer — public viewer for /api/secure-share/:token ────────────
 
@@ -546,8 +628,13 @@ function SecureShareViewer({
                       Download PDF
                     </a>}
 
+                  {/* Job photo gallery — public, no login required */}
+                  {PHOTO_GALLERY_TYPES.has(link.targetType) && (
+                    <JobPhotoGallery token={token} />
+                  )}
+
                   {/* Unsupported type — clear message */}
-                  {!PDF_SUPPORTED_TYPES.has(link.targetType) && <p className="text-sm text-slate-500 text-center py-2">
+                  {!PDF_SUPPORTED_TYPES.has(link.targetType) && !PHOTO_GALLERY_TYPES.has(link.targetType) && <p className="text-sm text-slate-500 text-center py-2">
                       This document type cannot be previewed here.
                     </p>}
                 </div>}

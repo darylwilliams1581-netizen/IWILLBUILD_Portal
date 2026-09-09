@@ -6,6 +6,10 @@
  * PDF assembly is delegated to buildFormPdfDocument() — the canonical builder
  * shared with the export-pdf endpoint and the secure-share content endpoint.
  *
+ * Links in the email and in the PDF header always use no-password secure-share
+ * URLs (https://iwillbuild.com/share/{token}) so recipients can open them
+ * without logging in.  The share rows are created or reused via ensureShareLink().
+ *
  * Body: {
  *   to:                          string[]
  *   cc?:                         string[]
@@ -14,7 +18,7 @@
  *   message:                     string
  *   attachPdf:                   boolean
  *   bccOwner:                    boolean
- *   includeJobGallery?:          boolean   — default false; appends job photos URL when true
+ *   includeJobGallery?:          boolean   — default false; appends job photos share URL when true
  * }
  */
 import type { Request, Response } from 'express';
@@ -24,6 +28,7 @@ import { db } from '../../../../db/client.js';
 import { jobFormSubmissions, profiles, user } from '../../../../db/schema.js';
 import { sendEmail } from '../../../../email.js';
 import { buildFormPdfDocument } from '../../../../lib/form-pdf-document.js';
+import { ensureShareLink } from '../../../../lib/ensure-share-link.js';
 import { getAuth } from '../../../../../lib/auth/auth.js';
 
 const EMAIL_ATTACHMENT_LIMIT = 2 * 1024 * 1024;
@@ -101,7 +106,25 @@ export default async function handler(req: Request, res: Response) {
     if (message.length > MAX_MESSAGE) return res.status(400).json({ error: `Message must be ${MAX_MESSAGE} characters or fewer.` });
 
     // ── Build PDF via canonical builder ────────────────────────────────────────
-    const doc = await buildFormPdfDocument(profile.companyId, submissionId);
+    // First, create/reuse a no-password secure-share link for this submission
+    // so the PDF header link and email link are publicly accessible.
+    const doc_meta = await db.query.jobFormSubmissions.findFirst({
+      where: eq(jobFormSubmissions.id, submissionId),
+      columns: { id: true, jobId: true, templateId: true },
+    });
+    if (!doc_meta) return res.status(404).json({ error: 'Submission not found' });
+
+    const shareUrl = await ensureShareLink({
+      companyId: profile.companyId,
+      createdByUserId: session.user.id,
+      targetType: 'completed_form',
+      targetId: String(submissionId),
+      title: `Form ${submissionId} share`,
+    });
+
+    // Build PDF — pass shareUrl so the header link annotation points to the
+    // no-password share URL rather than the login-walled portal URL.
+    const doc = await buildFormPdfDocument(profile.companyId, submissionId, shareUrl ?? undefined);
     if (!doc) return res.status(404).json({ error: 'Submission not found' });
 
     const { pdfBytes, filename, templateName, companyName, jobNumber, jobName, jobId } = doc;
@@ -131,22 +154,33 @@ export default async function handler(req: Request, res: Response) {
     const escapedMessage = escapeHtml(message).replace(/\n/g, '<br>');
     const statusLabel = doc.status;
 
-    // Portal links — always included
-    const BASE = 'https://iwillbuild.com';
-    const reportUrl  = jobId ? `${BASE}/jobs/${jobId}/forms/${submissionId}` : null;
-    const galleryUrl = (includeJobGallery && jobId) ? `${BASE}/jobs/${jobId}/photos` : null;
+    // ── Secure share URLs — publicly accessible, no login required ────────────
+    // shareUrl was created above for the form submission.
+    // For the job photo gallery, create/reuse a separate no-password share row.
+    const reportShareUrl = shareUrl; // already created above; null if key missing
+
+    let galleryShareUrl: string | null = null;
+    if (includeJobGallery && jobId) {
+      galleryShareUrl = await ensureShareLink({
+        companyId: profile.companyId,
+        createdByUserId: session.user.id,
+        targetType: 'job_photos',
+        targetId: String(jobId),
+        title: `Job ${jobId} photos share`,
+      });
+    }
 
     // Plain-text suffix
     const linkLines: string[] = [];
-    if (reportUrl)  linkLines.push(`IWILLBUILD report\n${reportUrl}`);
-    if (galleryUrl) linkLines.push(`Job photos\n${galleryUrl}`);
+    if (reportShareUrl)  linkLines.push(`IWILLBUILD report\n${reportShareUrl}`);
+    if (galleryShareUrl) linkLines.push(`Job photos\n${galleryShareUrl}`);
     const linkSuffix = linkLines.length ? `\n\n${linkLines.join('\n\n')}` : '';
     const fullText = `${message}${linkSuffix}\n\n—\n${SYSTEM_FOOTER}`;
 
-    // HTML link blocks
+    // HTML link blocks — real <a href> anchors, not plain text
     const linkBlockHtml = [
-      reportUrl  ? `<p style="margin:12px 0 4px"><strong>IWILLBUILD report</strong><br><a href="${escapeHtml(reportUrl)}" style="color:#7c3aed">${escapeHtml(reportUrl)}</a></p>` : '',
-      galleryUrl ? `<p style="margin:12px 0 4px"><strong>Job photos</strong><br><a href="${escapeHtml(galleryUrl)}" style="color:#7c3aed">${escapeHtml(galleryUrl)}</a></p>` : '',
+      reportShareUrl  ? `<p style="margin:12px 0 4px"><strong>IWILLBUILD report</strong><br><a href="${escapeHtml(reportShareUrl)}" style="color:#7c3aed">${escapeHtml(reportShareUrl)}</a></p>` : '',
+      galleryShareUrl ? `<p style="margin:12px 0 4px"><strong>Job photos</strong><br><a href="${escapeHtml(galleryShareUrl)}" style="color:#7c3aed">${escapeHtml(galleryShareUrl)}</a></p>` : '',
     ].filter(Boolean).join('');
 
     const html = `<!doctype html><html><body style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:#1e293b">

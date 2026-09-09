@@ -108,14 +108,19 @@ export interface FormPdfDocument {
 /**
  * Build the canonical form PDF for a completed (or in-progress) submission.
  *
- * @param companyId  The company that owns the submission — used for all DB lookups.
+ * @param companyId     The company that owns the submission — used for all DB lookups.
  * @param submissionId  The job_form_submissions.id to render.
+ * @param shareUrl      Optional: a pre-created secure-share URL to embed as the
+ *                      clickable "open originals" link in the PDF header.
+ *                      When omitted the PDF header link falls back to the
+ *                      login-walled portal URL (authenticated export only).
  * @returns  FormPdfDocument, or null if the submission does not exist / is not
  *           accessible by the given company.
  */
 export async function buildFormPdfDocument(
   companyId: number,
   submissionId: number,
+  shareUrl?: string,
 ): Promise<FormPdfDocument | null> {
   // ── Load submission ─────────────────────────────────────────────────────────
   const submission = await db.query.jobFormSubmissions.findFirst({
@@ -218,11 +223,14 @@ export async function buildFormPdfDocument(
   const status = submission.status === 'completed' ? 'Completed' : 'In Progress';
 
   // ── Generate PDF ────────────────────────────────────────────────────────────
-  // Build the portal report URL — used for the clickable header link on page 1.
-  // Shape: https://iwillbuild.com/jobs/{jobId}/forms/{submissionId}
-  const reportUrl = submission.jobId
-    ? `https://iwillbuild.com/jobs/${submission.jobId}/forms/${submission.id}`
-    : undefined;
+  // Prefer the caller-supplied shareUrl (a no-password secure-share link) so
+  // the PDF header link works for unauthenticated recipients.  Fall back to
+  // the login-walled portal URL only when no share URL is provided (e.g. the
+  // authenticated export-pdf endpoint).
+  const reportUrl = shareUrl
+    ?? (submission.jobId
+      ? `https://iwillbuild.com/jobs/${submission.jobId}/forms/${submission.id}`
+      : undefined);
 
   const pdfBytes = await generateFormSubmissionPdf({
     title: templateName,

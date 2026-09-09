@@ -835,6 +835,7 @@ import secure_share_id_revoke_and_rotate_post_802 from "./api/secure-share/[id]/
 import secure_share_token_get_803 from "./api/secure-share/[token]/GET";
 import secure_share_token_post_804 from "./api/secure-share/[token]/POST";
 import secure_share_token_content_get_805 from "./api/secure-share/[token]/content/GET";
+import secure_share_token_photos_get_806 from "./api/secure-share/[token]/photos/GET";
 import settings_backup_get_806 from "./api/settings/backup/GET";
 import settings_backup_post_807 from "./api/settings/backup/POST";
 import settings_backup_company_data_get_808 from "./api/settings/backup/company-data/GET";
@@ -4306,6 +4307,7 @@ app.post("/api/secure-share/:id/revoke-and-rotate", secure_share_id_revoke_and_r
 app.get("/api/secure-share/:token", secure_share_token_get_803);
 app.post("/api/secure-share/:token", secure_share_token_post_804);
 app.get("/api/secure-share/:token/content", secure_share_token_content_get_805);
+app.get("/api/secure-share/:token/photos", secure_share_token_photos_get_806);
 app.get("/api/settings/backup", settings_backup_get_806);
 app.post("/api/settings/backup", settings_backup_post_807);
 app.get("/api/settings/backup/company-data", settings_backup_company_data_get_808);
