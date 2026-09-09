@@ -13,6 +13,7 @@ import {
 } from './WorkShared';
 import JobPickerSheet from '@/components/JobPickerSheet';
 import JobTodos from '@/components/job/JobTodos';
+import { useFieldSheetScrollLock } from '@/lib/useFieldSheetScrollLock';
 
 interface Task {
   id: number;
@@ -53,6 +54,7 @@ export default function WorkTasksTab({ initialJobId, initialJobName }: Props) {
   const [selectedJobId, setSelectedJobId] = useState<number | null>(null);
   const [selectedJobName, setSelectedJobName] = useState<string | null>(null);
   const [showTodosFor, setShowTodosFor] = useState<number | null>(null);
+  useFieldSheetScrollLock(showTodosFor !== null);
 
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -299,10 +301,15 @@ export default function WorkTasksTab({ initialJobId, initialJobName }: Props) {
 
       {/* Inline task editor — opens after job is selected */}
       {showTodosFor !== null && (
-        <div className="fixed inset-0 z-50 bg-black/40 flex items-end sm:items-center justify-center sm:p-4">
+        <div className="fixed inset-0 z-50 bg-black/40 flex items-end sm:items-center justify-center overflow-hidden p-3">
           <div
-            className="bg-background w-full sm:max-w-2xl rounded-t-3xl sm:rounded-3xl overflow-hidden flex flex-col"
-            style={{ maxHeight: 'min(90dvh, 700px)' }}
+            className="bg-background w-full max-w-[28rem] rounded-2xl overflow-hidden flex flex-col"
+            style={{
+              width: 'min(calc(100vw - 24px), 28rem)',
+              maxHeight: 'min(560px, calc(100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom) - 24px))',
+              WebkitTextSizeAdjust: '100%',
+              textSizeAdjust: '100%',
+            }}
           >
             <div className="flex items-center justify-between px-5 py-4 border-b border-border shrink-0">
               <div>
@@ -317,7 +324,7 @@ export default function WorkTasksTab({ initialJobId, initialJobName }: Props) {
                 ×
               </button>
             </div>
-            <div className="overflow-y-auto flex-1 p-4">
+            <div className="min-h-0 overflow-y-auto overscroll-contain flex-1 p-4">
               <JobTodos jobId={showTodosFor} />
             </div>
           </div>

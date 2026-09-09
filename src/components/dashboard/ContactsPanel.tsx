@@ -14,6 +14,7 @@ import { AnimatePresence, motion } from 'motion/react';
 import { Users, Phone, Mail, MessageSquare, Search, Loader2, AlertCircle, ChevronRight, Send, Check, X, ExternalLink } from 'lucide-react';
 import { Link } from 'react-router';
 import { fetchCustomers, type Customer } from '@/lib/customers-api';
+import { useFieldSheetScrollLock } from '@/lib/useFieldSheetScrollLock';
 
 // ── SMS compose modal ─────────────────────────────────────────────────────────
 
@@ -22,6 +23,7 @@ function SmsModal({ to, name, onClose }: { to: string; name: string; onClose: ()
   const [sending, setSending] = useState(false);
   const [sent, setSent] = useState(false);
   const [error, setError] = useState('');
+  useFieldSheetScrollLock(true);
 
   async function handleSend(e: React.FormEvent) {
     e.preventDefault();
@@ -47,14 +49,20 @@ function SmsModal({ to, name, onClose }: { to: string; name: string; onClose: ()
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center sm:p-4">
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center overflow-hidden p-3">
       <div className="absolute inset-0 bg-black/60" onClick={onClose} />
       <motion.div
         initial={{ opacity: 0, y: 40 }}
         animate={{ opacity: 1, y: 0 }}
         exit={{ opacity: 0, y: 40 }}
         transition={{ duration: 0.2, ease: 'easeOut' as const }}
-        className="relative bg-white rounded-t-2xl sm:rounded-2xl shadow-2xl w-full sm:max-w-md"
+        className="relative bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden flex flex-col"
+        style={{
+          width: 'min(calc(100vw - 24px), 24rem)',
+          maxHeight: 'min(560px, calc(100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom) - 24px))',
+          WebkitTextSizeAdjust: '100%',
+          textSizeAdjust: '100%',
+        }}
       >
         <div className="flex items-center justify-between px-5 py-4 border-b border-slate-200">
           <div className="flex items-center gap-2.5">
@@ -70,7 +78,7 @@ function SmsModal({ to, name, onClose }: { to: string; name: string; onClose: ()
             <X size={15} />
           </button>
         </div>
-        <form onSubmit={handleSend} className="p-5 flex flex-col gap-4">
+        <form onSubmit={handleSend} className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-5 flex flex-col gap-4">
           {sent ? (
             <div className="flex items-center justify-center gap-2 py-6 text-emerald-600 font-semibold text-sm">
               <Check size={18} /> Message sent!

@@ -19,6 +19,7 @@ import { snapshotDiagBuffer, pushDiagEvent, type DiagEvent } from '@/lib/diagnos
 import { compressScreenshot } from '@/lib/imageCompressor';
 import { getStorageDiagnostics, type StorageDiagnostics } from '@/lib/storageDiagnostics';
 import BugWidgetStatusCentre from '@/components/dazza/BugWidgetStatusCentre';
+import { useFieldSheetScrollLock } from '@/lib/useFieldSheetScrollLock';
 
 // ── Categories ────────────────────────────────────────────────────────────────
 
@@ -141,6 +142,7 @@ export default function BugReportModal() {
   );
 
   const [phase, setPhase]             = useState<Phase>('idle');
+  useFieldSheetScrollLock(phase === 'my-reports' || phase === 'open' || phase === 'submitting');
   const [category, setCategory]       = useState('');
   const [description, setDescription] = useState('');
   const [screenshot, setScreenshot]   = useState<File | null>(null);
@@ -343,18 +345,19 @@ export default function BugReportModal() {
       {/* ── My Reports panel ── */}
       {phase === 'my-reports' && (
         <div
-          className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-sm"
+          className="fixed inset-0 z-50 flex items-end sm:items-center justify-center overflow-hidden bg-black/60 backdrop-blur-sm p-3"
           style={{
-            paddingTop: 'max(env(safe-area-inset-top, 0px), 3.5rem)',
-            paddingLeft: 'env(safe-area-inset-left, 0px)',
-            paddingRight: 'env(safe-area-inset-right, 0px)',
-            paddingBottom: 'env(safe-area-inset-bottom, 0px)',
+            WebkitTextSizeAdjust: '100%',
+            textSizeAdjust: '100%',
           }}
           onClick={(e) => { if (e.target === e.currentTarget) setPhase('idle'); }}
         >
           <div
-            className="w-full max-w-lg bg-white rounded-t-2xl sm:rounded-2xl shadow-2xl overflow-hidden flex flex-col"
-            style={{ maxHeight: 'min(calc(100dvh - max(env(safe-area-inset-top, 0px), 3.5rem) - env(safe-area-inset-bottom, 0px)), 600px)' }}
+            className="w-full max-w-[28rem] bg-white rounded-2xl shadow-2xl overflow-hidden flex flex-col"
+            style={{
+              width: 'min(calc(100vw - 24px), 28rem)',
+              maxHeight: 'min(560px, calc(100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom) - 24px))',
+            }}
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100">
@@ -374,7 +377,7 @@ export default function BugReportModal() {
                 </button>
               </div>
             </div>
-            <div className="flex-1 overflow-y-auto p-4">
+            <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-4">
               <BugWidgetStatusCentre
                 onStillHavingTrouble={async (commId) => {
                   try {
@@ -392,18 +395,19 @@ export default function BugReportModal() {
       {/* ── Modal backdrop ── */}
       {(phase === 'open' || phase === 'submitting') && (
         <div
-          className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-sm"
+          className="fixed inset-0 z-50 flex items-end sm:items-center justify-center overflow-hidden bg-black/60 backdrop-blur-sm p-3"
           style={{
-            paddingTop: 'max(env(safe-area-inset-top, 0px), 3.5rem)',
-            paddingLeft: 'env(safe-area-inset-left, 0px)',
-            paddingRight: 'env(safe-area-inset-right, 0px)',
-            paddingBottom: 'env(safe-area-inset-bottom, 0px)',
+            WebkitTextSizeAdjust: '100%',
+            textSizeAdjust: '100%',
           }}
           onClick={(e) => { if (e.target === e.currentTarget) closeModal(); }}
         >
           <div
-            className="w-full max-w-lg bg-white rounded-t-2xl sm:rounded-2xl shadow-2xl overflow-hidden flex flex-col"
-            style={{ maxHeight: 'min(calc(100dvh - max(env(safe-area-inset-top, 0px), 3.5rem) - env(safe-area-inset-bottom, 0px)), 680px)' }}
+            className="w-full max-w-[28rem] bg-white rounded-2xl shadow-2xl overflow-hidden flex flex-col"
+            style={{
+              width: 'min(calc(100vw - 24px), 28rem)',
+              maxHeight: 'min(560px, calc(100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom) - 24px))',
+            }}
             onClick={(e) => e.stopPropagation()}
           >
             {/* Header */}
@@ -428,7 +432,7 @@ export default function BugReportModal() {
             </div>
 
             {/* Scrollable form body */}
-            <div className="overflow-y-auto flex-1">
+            <div className="min-h-0 overflow-y-auto overscroll-contain flex-1">
               <form onSubmit={handleSubmit} className="p-5 flex flex-col gap-4">
                 {/* Category dropdown */}
                 <div>

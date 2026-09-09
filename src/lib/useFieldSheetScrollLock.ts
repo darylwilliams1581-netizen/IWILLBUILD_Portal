@@ -7,6 +7,7 @@ export function useFieldSheetScrollLock(open: boolean) {
     if (!open) return;
 
     const roots = [document.documentElement, document.body];
+    const previousHtmlOverflow = document.documentElement.style.overflow;
     roots.forEach(root => {
       root.style.removeProperty('overflow');
       root.style.removeProperty('height');
@@ -15,11 +16,13 @@ export function useFieldSheetScrollLock(open: boolean) {
     document.documentElement.style.overflow = 'hidden';
 
     return () => {
+      if (document.activeElement instanceof HTMLElement) document.activeElement.blur();
+      document.documentElement.style.overflow = previousHtmlOverflow;
       roots.forEach(root => {
-        root.style.removeProperty('overflow');
         root.style.removeProperty('height');
         root.style.removeProperty('position');
       });
+      window.scrollTo(0, 0);
     };
   }, [open]);
 

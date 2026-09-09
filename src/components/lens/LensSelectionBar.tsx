@@ -31,6 +31,7 @@ import {
   HardHat, Layers,
 } from 'lucide-react';
 import LensJobPickerSheet, { type LensJobOption } from './LensJobPickerSheet';
+import { useFieldSheetScrollLock } from '@/lib/useFieldSheetScrollLock';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -60,6 +61,7 @@ interface WholeJobConfirmProps {
 }
 
 function WholeJobConfirm({ job, photoCount, loading, onConfirm, onCancel }: WholeJobConfirmProps) {
+  useFieldSheetScrollLock(true);
   const jobLabel = job.jobNumber ? `#${job.jobNumber} — ${job.name}` : job.name;
   return (
     <motion.div
@@ -67,15 +69,20 @@ function WholeJobConfirm({ job, photoCount, loading, onConfirm, onCancel }: Whol
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/50 px-4"
-      style={{ paddingBottom: 'max(env(safe-area-inset-bottom), 16px)' }}
+      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center overflow-hidden bg-black/50 p-3"
     >
       <motion.div
         initial={{ y: 40, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
         exit={{ y: 40, opacity: 0 }}
         transition={{ type: 'spring', damping: 28, stiffness: 320 }}
-        className="w-full max-w-sm bg-background rounded-2xl shadow-2xl p-5"
+        className="w-full max-w-sm bg-background rounded-2xl shadow-2xl overflow-y-auto overscroll-contain p-5"
+        style={{
+          width: 'min(calc(100vw - 24px), 24rem)',
+          maxHeight: 'min(560px, calc(100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom) - 24px))',
+          WebkitTextSizeAdjust: '100%',
+          textSizeAdjust: '100%',
+        }}
       >
         <div className="flex items-center gap-3 mb-3">
           <div className="w-10 h-10 rounded-xl bg-violet-100 flex items-center justify-center shrink-0">

@@ -21,6 +21,7 @@ import {
   SheetHeader,
   SheetTitle,
 } from '@/components/ui/sheet';
+import { useFieldSheetScrollLock } from '@/lib/useFieldSheetScrollLock';
 
 type AnswerValue = string | string[] | boolean | SignatureAnswer | MultiSignatureAnswer | GpsAnswer | null;
 
@@ -125,6 +126,7 @@ function PhotoFieldInput({
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [localPreviews, setLocalPreviews] = useState<Array<{ id: string; url: string }>>([]);
   const [pickerOpen, setPickerOpen] = useState(false);
+  useFieldSheetScrollLock(pickerOpen);
   const [jobPhotos, setJobPhotos] = useState<JobPhotoPickerItem[]>([]);
   const [pickerLoading, setPickerLoading] = useState(false);
   const [pickerError, setPickerError] = useState<string | null>(null);
@@ -298,13 +300,21 @@ function PhotoFieldInput({
         setPickerOpen(open);
         if (!open) setSelectedJobPhotoIds(new Set());
       }}>
-        <SheetContent side="bottom" className="max-h-[85dvh] overflow-hidden rounded-t-3xl px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-5">
+        <SheetContent
+          side="bottom"
+          className="bottom-3 left-1/2 right-auto flex w-[calc(100vw-24px)] max-w-sm -translate-x-1/2 flex-col overflow-hidden rounded-2xl px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-5"
+          style={{
+            maxHeight: 'min(560px, calc(100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom) - 24px))',
+            WebkitTextSizeAdjust: '100%',
+            textSizeAdjust: '100%',
+          }}
+        >
           <SheetHeader className="pr-8 text-left">
             <SheetTitle>Photos from this job</SheetTitle>
             <SheetDescription>Select existing job photos to attach to this form.</SheetDescription>
           </SheetHeader>
 
-          <div className="mt-4 max-h-[55dvh] overflow-y-auto pb-2">
+          <div className="mt-4 min-h-0 flex-1 overflow-y-auto overscroll-contain pb-2">
             {pickerLoading ? (
               <div className="flex items-center justify-center py-12"><Loader2 size={22} className="animate-spin text-primary" /></div>
             ) : pickerError ? (

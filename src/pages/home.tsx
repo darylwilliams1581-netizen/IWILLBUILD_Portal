@@ -60,6 +60,8 @@ function Sheet({
   titleIconClass: string;
   children: ReactNode;
 }) {
+  useFieldSheetScrollLock(open);
+
   return <AnimatePresence>
       {open && <>
           <motion.div initial={{
@@ -69,6 +71,7 @@ function Sheet({
       }} exit={{
         opacity: 0
       }} className="fixed inset-0 z-[60] bg-black/30 backdrop-blur-[2px]" onClick={onClose} />
+          <div className="fixed inset-0 z-[65] flex items-end sm:items-center justify-center overflow-hidden p-3 pointer-events-none">
           <motion.div initial={{
         y: '100%'
       }} animate={{
@@ -79,9 +82,13 @@ function Sheet({
         type: 'spring',
         damping: 30,
         stiffness: 320
-      }} className="fixed bottom-0 left-0 right-0 z-[70] bg-white rounded-t-3xl max-h-[88vh] flex flex-col overflow-hidden" style={{
-        boxShadow: '0 -4px 32px rgba(0,0,0,0.12)'
-      }}>
+      }} className="relative z-[70] w-full max-w-sm bg-white rounded-2xl flex flex-col overflow-hidden pointer-events-auto" style={{
+        boxShadow: '0 -4px 32px rgba(0,0,0,0.12)',
+        width: 'min(calc(100vw - 24px), 24rem)',
+        maxHeight: 'min(560px, calc(100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom) - 24px))',
+        WebkitTextSizeAdjust: '100%',
+        textSizeAdjust: '100%'
+      }} onClick={e => e.stopPropagation()}>
             {/* Handle */}
             <div className="flex justify-center pt-3 pb-1 shrink-0">
               <div className="w-10 h-1 rounded-full bg-gray-200" />
@@ -97,10 +104,11 @@ function Sheet({
               </button>
             </div>
             {/* Content */}
-            <div className="overflow-y-auto flex-1 px-4 py-4">
+            <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 py-4">
               {children}
             </div>
           </motion.div>
+          </div>
         </>}
     </AnimatePresence>;
 }
@@ -1723,6 +1731,8 @@ function ProfileSheet({
   open: boolean;
   onClose: () => void;
 }) {
+  useFieldSheetScrollLock(open);
+
   const {
     session
   } = useSession();
@@ -1750,6 +1760,7 @@ function ProfileSheet({
       }} exit={{
         opacity: 0
       }} className="fixed inset-0 z-[60] bg-black/30 backdrop-blur-[2px]" onClick={onClose} />
+          <div className="fixed inset-0 z-[65] flex items-end sm:items-center justify-center overflow-hidden p-3 pointer-events-none">
           <motion.div initial={{
         y: '100%'
       }} animate={{
@@ -1760,13 +1771,17 @@ function ProfileSheet({
         type: 'spring',
         damping: 30,
         stiffness: 320
-      }} className="fixed bottom-0 left-0 right-0 z-[70] bg-white rounded-t-3xl overflow-hidden" style={{
-        boxShadow: '0 -4px 32px rgba(0,0,0,0.12)'
+      }} className="relative z-[70] w-full max-w-sm bg-white rounded-2xl overflow-hidden flex flex-col pointer-events-auto" style={{
+        boxShadow: '0 -4px 32px rgba(0,0,0,0.12)',
+        width: 'min(calc(100vw - 24px), 24rem)',
+        maxHeight: 'min(560px, calc(100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom) - 24px))',
+        WebkitTextSizeAdjust: '100%',
+        textSizeAdjust: '100%'
       }}>
             <div className="flex justify-center pt-3 pb-1">
               <div className="w-10 h-1 rounded-full bg-gray-200" />
             </div>
-            <div className="px-5 py-4 pb-8">
+            <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 py-4 pb-8">
               {/* Avatar + name */}
               <div className="flex items-center gap-4 mb-6">
                 <div className="w-14 h-14 rounded-2xl bg-violet-100 flex items-center justify-center">
@@ -1794,6 +1809,7 @@ function ProfileSheet({
               </div>
             </div>
           </motion.div>
+          </div>
         </>}
     </AnimatePresence>;
 }

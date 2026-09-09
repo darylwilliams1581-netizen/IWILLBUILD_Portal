@@ -49,6 +49,7 @@ import {
   RotateCw,
 } from 'lucide-react';
 import type { JobPhoto } from '@/components/JobPhotos';
+import { useFieldSheetScrollLock } from '@/lib/useFieldSheetScrollLock';
 
 // ── EditorConfig — generic adapter interface ──────────────────────────────────
 //
@@ -330,6 +331,7 @@ function findErasedIndices(
 // ── Main component ────────────────────────────────────────────────────────────
 
 export default function PhotoEditor({ photo: photoProp, onClose, onSaved, readOnly = false, config }: PhotoEditorProps) {
+  useFieldSheetScrollLock(true);
   // When config is supplied, photo may be omitted. Create a safe fallback so
   // all legacy photo.xxx accesses below remain valid without per-field guards.
   const photo: JobPhoto = photoProp ?? {
@@ -766,13 +768,20 @@ export default function PhotoEditor({ photo: photoProp, onClose, onSaved, readOn
 
   return (
     <div
-      className="fixed inset-0 z-[80] flex flex-col bg-black"
+      className="fixed inset-0 z-[80] flex items-end sm:items-center justify-center overflow-hidden bg-black/60 p-3"
       style={{
-        height: '100dvh',
-        maxWidth: '100vw',
-        overflowX: 'clip',
+        WebkitTextSizeAdjust: '100%',
+        textSizeAdjust: '100%',
       }}
     >
+      <div
+        className="w-full max-w-[28rem] flex flex-col bg-black rounded-2xl overflow-hidden"
+        style={{
+          width: 'min(calc(100vw - 24px), 28rem)',
+          height: 'min(560px, calc(100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom) - 24px))',
+          maxHeight: 'min(560px, calc(100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom) - 24px))',
+        }}
+      >
       {/* ── Error banner ── */}
       {saveError && (
         <div className="flex items-center gap-2 px-4 py-2 bg-red-900/80 text-red-200 text-xs font-semibold shrink-0">
@@ -1307,6 +1316,7 @@ export default function PhotoEditor({ photo: photoProp, onClose, onSaved, readOn
           to   { transform: translateY(0); }
         }
       `}</style>
+      </div>
     </div>
   );
 }

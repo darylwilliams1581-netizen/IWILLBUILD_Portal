@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
 import { Car, X, AlertCircle, Loader2, CheckCircle2, MapPin } from 'lucide-react';
+import { useFieldSheetScrollLock } from '@/lib/useFieldSheetScrollLock';
 
 interface Vehicle {
   id: number;
@@ -55,6 +56,7 @@ export default function StartDrivingModal({ onClose, onStarted }: Props) {
   const [selected, setSelected] = useState<number | null>(null);
   const [starting, setStarting] = useState(false);
   const [error,    setError]    = useState('');
+  useFieldSheetScrollLock(true);
 
   useEffect(() => {
     const ac = new AbortController();
@@ -107,15 +109,20 @@ export default function StartDrivingModal({ onClose, onStarted }: Props) {
   const selectedVehicle = vehicles.find((v) => v.id === selected);
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center">
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center overflow-hidden p-3">
       <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
       <motion.div
         initial={{ opacity: 0, y: 40 }}
         animate={{ opacity: 1, y: 0 }}
         exit={{ opacity: 0, y: 40 }}
         transition={{ duration: 0.18, ease: 'easeOut' }}
-        className="relative bg-white rounded-t-3xl sm:rounded-2xl shadow-2xl w-full sm:max-w-md flex flex-col"
-        style={{ maxHeight: 'min(92dvh, 640px)' }}
+        className="relative bg-white rounded-2xl shadow-2xl w-full max-w-sm flex flex-col overflow-hidden"
+        style={{
+          width: 'min(calc(100vw - 24px), 24rem)',
+          maxHeight: 'min(560px, calc(100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom) - 24px))',
+          WebkitTextSizeAdjust: '100%',
+          textSizeAdjust: '100%',
+        }}
         onClick={(e) => e.stopPropagation()}
       >
         {/* Drag handle — mobile only */}
@@ -140,7 +147,7 @@ export default function StartDrivingModal({ onClose, onStarted }: Props) {
         </div>
 
         {/* Body */}
-        <div className="p-5 flex flex-col gap-4 overflow-y-auto flex-1">
+        <div className="p-5 flex flex-col gap-4 min-h-0 overflow-y-auto overscroll-contain flex-1">
           {error && (
             <div className="flex items-start gap-2 bg-red-50 border border-red-200 rounded-lg px-3 py-2.5 text-sm text-red-700">
               <AlertCircle size={14} className="shrink-0 mt-0.5" />

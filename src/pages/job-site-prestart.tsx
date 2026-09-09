@@ -16,6 +16,7 @@ import { Badge } from '@/components/ui/badge';
 import { DelayModal, type DelayEntry } from '@/components/job/JobDelays';
 import MobileOverflowMenu from '@/components/MobileOverflowMenu';
 import JobPickerSheet from '@/components/JobPickerSheet';
+import { useFieldSheetScrollLock } from '@/lib/useFieldSheetScrollLock';
 import { cn } from '@/lib/utils';
 import { goBack } from '@/lib/navigation';
 import { useOfflineQueue } from '@/lib/useOfflineQueue';
@@ -452,6 +453,7 @@ function WorkerSignOnScreen({
     signature: ''
   });
   const [rolePickerOpen, setRolePickerOpen] = useState(false);
+  useFieldSheetScrollLock(rolePickerOpen);
   const [roleDraft, setRoleDraft] = useState<SiteRole | ''>('');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
@@ -698,11 +700,14 @@ function WorkerSignOnScreen({
       </div>
 
       {/* ── Role picker sheet ── */}
-      {rolePickerOpen && <div className="fixed inset-0 z-50 flex flex-col justify-end" style={{
+      {rolePickerOpen && <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center overflow-hidden p-3" style={{
       background: 'rgba(0,0,0,0.45)'
     }}>
-          <div className="bg-white rounded-t-2xl overflow-hidden" style={{
-        maxHeight: '70dvh'
+          <div className="bg-white rounded-2xl overflow-hidden flex flex-col w-full max-w-sm" style={{
+        width: 'min(calc(100vw - 24px), 24rem)',
+        maxHeight: 'min(560px, calc(100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom) - 24px))',
+        WebkitTextSizeAdjust: '100%',
+        textSizeAdjust: '100%'
       }}>
             {/* Header */}
             <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100">
@@ -725,9 +730,7 @@ function WorkerSignOnScreen({
               </button>
             </div>
             {/* Role list */}
-            <div className="overflow-y-auto overscroll-contain" style={{
-          maxHeight: 'calc(70dvh - 60px)'
-        }}>
+            <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
               {SITE_ROLES.map((role, i) => {
             const active = (roleDraft || form.roleTrade) === role;
             return <button key={role} type="button" onClick={() => {
@@ -802,6 +805,7 @@ export default function JobSitePrestartPage() {
   const [finalising, setFinalising] = useState(false);
   const [finaliseError, setFinaliseError] = useState('');
   const [showFinaliseConfirm, setShowFinaliseConfirm] = useState(false);
+  useFieldSheetScrollLock(showFinaliseConfirm);
   const [supervisorSig, setSupervisorSig] = useState('');
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const { queue: prestartQueue, enqueue: enqueuePrestart, retryAll: retryPrestartSync } =
@@ -1275,9 +1279,13 @@ export default function JobSitePrestartPage() {
               </Section>
 
               {/* Finalise confirm */}
-              {showFinaliseConfirm && <div className="fixed inset-0 bg-black/50 z-50 flex items-end justify-center p-4">
-                  <div className="bg-white rounded-2xl p-5 w-full max-w-sm space-y-4 max-h-[90dvh] overflow-y-auto" style={{
-              paddingBottom: 'max(1.25rem, env(safe-area-inset-bottom))'
+              {showFinaliseConfirm && <div className="fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center overflow-hidden p-3">
+                  <div className="bg-white rounded-2xl p-5 w-full max-w-sm space-y-4 overflow-y-auto overscroll-contain" style={{
+              width: 'min(calc(100vw - 24px), 24rem)',
+              maxHeight: 'min(560px, calc(100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom) - 24px))',
+              paddingBottom: 'max(1.25rem, env(safe-area-inset-bottom))',
+              WebkitTextSizeAdjust: '100%',
+              textSizeAdjust: '100%'
             }}>
                     <h3 className="font-bold text-slate-800">Finalise Prestart?</h3>
                     <p className="text-sm text-slate-600">Once finalised, the briefing content becomes read-only. Workers can still sign on after finalising.</p>

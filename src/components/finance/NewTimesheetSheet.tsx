@@ -13,6 +13,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
 import { X, Clock, ChevronDown, Loader2, AlertCircle, User, Copy, ChevronsDown } from 'lucide-react';
+import { useFieldSheetScrollLock } from '@/lib/useFieldSheetScrollLock';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -671,6 +672,7 @@ function DayRowDesktop({ row, jobs, globalJobId, lafh, onToggleLafh, onUpdate, o
 // ── Main Sheet ────────────────────────────────────────────────────────────────
 
 export default function NewTimesheetSheet({ open, onClose, onSaved, editId }: Props) {
+  useFieldSheetScrollLock(open);
   const [weekEnding, setWeekEnding] = useState(nextSunday);
   const [weekDateError, setWeekDateError] = useState<string | null>(null);
   const [globalJobId, setGlobalJobId] = useState<number | null>(null);
@@ -964,7 +966,7 @@ export default function NewTimesheetSheet({ open, onClose, onSaved, editId }: Pr
   return (
     <AnimatePresence>
       {open && (
-        <div className="fixed inset-0 z-[1200] flex items-end sm:items-center justify-center sm:justify-end">
+        <div className="fixed inset-0 z-[1200] flex items-end sm:items-center justify-center overflow-hidden p-3">
           <div className="absolute inset-0 bg-black/40 backdrop-blur-[2px]" onClick={onClose} aria-hidden="true" />
 
           <motion.div
@@ -972,8 +974,13 @@ export default function NewTimesheetSheet({ open, onClose, onSaved, editId }: Pr
             animate={{ y: 0, opacity: 1 }}
             exit={{ y: 40, opacity: 0 }}
             transition={{ duration: 0.2, ease: 'easeOut' }}
-            className="relative z-10 w-full sm:w-[580px] sm:h-full bg-background flex flex-col rounded-t-2xl sm:rounded-none shadow-2xl"
-            style={{ maxHeight: 'min(94dvh, 960px)' }}
+            className="relative z-10 w-full max-w-[28rem] bg-background flex flex-col rounded-2xl shadow-2xl overflow-hidden"
+            style={{
+              width: 'min(calc(100vw - 24px), 28rem)',
+              maxHeight: 'min(560px, calc(100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom) - 24px))',
+              WebkitTextSizeAdjust: '100%',
+              textSizeAdjust: '100%',
+            }}
           >
             {/* ── Sheet header ── */}
             <div className="flex items-center gap-3 px-5 py-4 border-b border-border shrink-0">
@@ -997,7 +1004,7 @@ export default function NewTimesheetSheet({ open, onClose, onSaved, editId }: Pr
             </div>
 
             {/* ── Body ── */}
-            <div className="flex-1 overflow-y-auto overscroll-contain px-4 sm:px-5 py-4 space-y-5 pb-safe">
+            <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 sm:px-5 py-4 space-y-5 pb-safe">
 
               <AnimatePresence>
                 {error && (

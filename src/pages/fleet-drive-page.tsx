@@ -8,6 +8,7 @@ import { useParams, useNavigate } from "react-router";
 import { motion, AnimatePresence } from 'motion/react';
 import { Helmet } from '@dr.pogodin/react-helmet';
 import { ArrowLeft, Car, Loader2, Download, Clock, CheckCircle2, AlertCircle, Navigation, Plus, X, User, Calendar, AlarmClock, FileText } from 'lucide-react';
+import { useFieldSheetScrollLock } from '@/lib/useFieldSheetScrollLock';
 interface FleetAsset {
   id: number;
   name: string;
@@ -103,6 +104,7 @@ function LogTripSheet({
   onClose,
   onSaved
 }: LogTripSheetProps) {
+  useFieldSheetScrollLock(true);
   const now = new Date();
   const oneHourAgo = new Date(now.getTime() - 3600000);
   const [driverName, setDriverName] = useState('');
@@ -165,7 +167,7 @@ function LogTripSheet({
     opacity: 1
   }} exit={{
     opacity: 0
-  }} className="fixed inset-0 z-50 bg-black/60 flex items-end md:items-center md:justify-center" onClick={onClose}>
+  }} className="fixed inset-0 z-50 bg-black/60 flex items-end sm:items-center justify-center overflow-hidden p-3" onClick={onClose}>
       <motion.div initial={{
       y: '100%'
     }} animate={{
@@ -176,9 +178,12 @@ function LogTripSheet({
       type: 'spring',
       damping: 28,
       stiffness: 300
-    }} className="w-full md:max-w-md bg-white rounded-t-3xl md:rounded-3xl border border-gray-200 flex flex-col overflow-hidden" style={{
-      maxHeight: '92vh',
-      boxShadow: '0 -4px 32px rgba(0,0,0,0.14)'
+    }} className="w-full max-w-sm bg-white rounded-2xl border border-gray-200 flex flex-col overflow-hidden" style={{
+      width: 'min(calc(100vw - 24px), 24rem)',
+      maxHeight: 'min(560px, calc(100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom) - 24px))',
+      boxShadow: '0 -4px 32px rgba(0,0,0,0.14)',
+      WebkitTextSizeAdjust: '100%',
+      textSizeAdjust: '100%'
     }} onClick={e => e.stopPropagation()}>
         {/* Handle */}
         <div className="flex justify-center pt-3 pb-1 md:hidden shrink-0">
@@ -209,7 +214,7 @@ function LogTripSheet({
             <p className="text-gray-900 font-bold text-lg">Trip logged!</p>
             <p className="text-gray-400 text-sm">Session has been recorded.</p>
           </div> : <>
-            <div className="flex-1 overflow-y-auto px-5 py-4 space-y-4">
+            <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 py-4 space-y-4">
 
               {/* Driver name */}
               <div>

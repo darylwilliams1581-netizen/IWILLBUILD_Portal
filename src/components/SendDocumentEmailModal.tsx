@@ -35,6 +35,7 @@ import {
   parseAddresses,
 } from '@/lib/email-compose-utils';
 import type { ToastVariant } from '@/components/EmailSentToast';
+import { useFieldSheetScrollLock } from '@/lib/useFieldSheetScrollLock';
 
 export interface JobEmailContext {
   jobNumber: string;
@@ -137,6 +138,7 @@ export default function SendDocumentEmailModal({
   onSuccess,
   onClose,
 }: SendDocumentEmailProps) {
+  useFieldSheetScrollLock(true);
   const [to, setTo] = useState(defaultTo);
   const [cc, setCc] = useState('');
   const [bcc, setBcc] = useState('');
@@ -442,7 +444,7 @@ export default function SendDocumentEmailModal({
     <>
     <AnimatePresence>
       <motion.div
-        className="fixed inset-0 z-[200] flex items-end md:items-start md:pt-[124px] justify-center"
+        className="fixed inset-0 z-[200] flex items-end sm:items-center justify-center overflow-hidden p-3"
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
@@ -450,7 +452,13 @@ export default function SendDocumentEmailModal({
         <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={sending ? undefined : onClose} />
 
         <motion.div
-          className="relative bg-white w-full md:max-w-3xl md:rounded-2xl rounded-t-2xl shadow-2xl flex flex-col md:flex-row max-h-[94dvh] md:max-h-[calc(100dvh-140px)] overflow-hidden"
+          className="relative bg-white w-full max-w-[28rem] rounded-2xl shadow-2xl flex flex-col md:flex-row overflow-hidden"
+          style={{
+            width: 'min(calc(100vw - 24px), 28rem)',
+            maxHeight: 'min(560px, calc(100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom) - 24px))',
+            WebkitTextSizeAdjust: '100%',
+            textSizeAdjust: '100%',
+          }}
           initial={{ y: 48, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
           exit={{ y: 48, opacity: 0 }}
@@ -496,7 +504,7 @@ export default function SendDocumentEmailModal({
               </button>
             </div>
 
-            <div className="overflow-y-auto flex-1 px-5 md:px-6 py-4">
+            <div className="min-h-0 overflow-y-auto overscroll-contain flex-1 px-5 md:px-6 py-4">
               {/* Sending overlay */}
               {sending ? (
                 <div className="flex flex-col items-center gap-3 py-16 text-center">

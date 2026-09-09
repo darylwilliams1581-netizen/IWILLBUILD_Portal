@@ -16,6 +16,7 @@ import {
   X, ChevronRight, ChevronLeft, Search, Plus, Trash2,
   Loader2, AlertCircle, Briefcase, User, FileText, Check,
 } from 'lucide-react';
+import { useFieldSheetScrollLock } from '@/lib/useFieldSheetScrollLock';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -68,6 +69,7 @@ const STEP_LABELS = ['Job', 'Contractor', 'Details', 'Lines'];
 // ── Component ─────────────────────────────────────────────────────────────────
 
 export default function NewPOSheet({ onClose, onCreated }: Props) {
+  useFieldSheetScrollLock(true);
   const [step, setStep] = useState(0);
 
   // Step 1 — Job
@@ -177,7 +179,7 @@ export default function NewPOSheet({ onClose, onCreated }: Props) {
   // ── Render ─────────────────────────────────────────────────────────────────
 
   return (
-    <div className="fixed inset-0 z-[1200] flex items-end md:items-center justify-center md:justify-end">
+    <div className="fixed inset-0 z-[1200] flex items-end sm:items-center justify-center overflow-hidden p-3">
       {/* Backdrop */}
       <div className="absolute inset-0 bg-black/40 backdrop-blur-[2px]" onClick={onClose} aria-hidden="true" />
 
@@ -187,8 +189,13 @@ export default function NewPOSheet({ onClose, onCreated }: Props) {
         animate={{ y: 0, opacity: 1 }}
         exit={{ y: 40, opacity: 0 }}
         transition={{ duration: 0.2, ease: 'easeOut' }}
-        className="relative z-10 w-full md:w-[520px] md:h-full bg-background flex flex-col rounded-t-2xl md:rounded-none shadow-2xl"
-        style={{ maxHeight: 'min(90dvh, 800px)' }}
+        className="relative z-10 w-full max-w-[28rem] bg-background flex flex-col rounded-2xl shadow-2xl overflow-hidden"
+        style={{
+          width: 'min(calc(100vw - 24px), 28rem)',
+          maxHeight: 'min(560px, calc(100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom) - 24px))',
+          WebkitTextSizeAdjust: '100%',
+          textSizeAdjust: '100%',
+        }}
       >
         {/* Header */}
         <div className="flex items-center gap-3 px-5 py-4 border-b border-border shrink-0">
@@ -224,7 +231,7 @@ export default function NewPOSheet({ onClose, onCreated }: Props) {
         </div>
 
         {/* Step content */}
-        <div className="flex-1 overflow-y-auto">
+        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
           {/* Step 0: Job */}
           {step === 0 && (
             <div className="p-5">
