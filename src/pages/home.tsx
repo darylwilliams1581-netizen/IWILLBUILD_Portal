@@ -1814,24 +1814,55 @@ export default function HomeScreen() {
   } = useSession();
   const email = session?.user?.email ?? me?.user?.email ?? '';
 
+  // Let the native dashboard establish its final viewport before showing any
+  // first-run HTML overlay. This avoids measuring onboarding against the login
+  // page or the keyboard's visual viewport during the route transition.
+  const [nativeDashboardReady, setNativeDashboardReady] = useState(!isNative());
+  useEffect(() => {
+    if (!isNative()) return;
+    if (loading) {
+      setNativeDashboardReady(false);
+      return;
+    }
+
+    let secondFrame = 0;
+    let readyTimer: ReturnType<typeof setTimeout> | undefined;
+    const firstFrame = window.requestAnimationFrame(() => {
+      secondFrame = window.requestAnimationFrame(() => {
+        readyTimer = setTimeout(() => setNativeDashboardReady(true), 750);
+      });
+    });
+
+    return () => {
+      window.cancelAnimationFrame(firstFrame);
+      if (secondFrame) window.cancelAnimationFrame(secondFrame);
+      if (readyTimer) clearTimeout(readyTimer);
+    };
+  }, [loading]);
+
   // ── Terms acceptance gate — shown once on first use (web + native) ───────────
   // Dev account (support@iwillbuild.com) always sees the gate regardless of localStorage.
   // Initialise conservatively (false = hidden) then re-evaluate once session resolves.
   const [showTermsGate, setShowTermsGate] = useState(false);
   useEffect(() => {
     if (!email && loading) return; // session still loading — wait
+    if (isNative() && !nativeDashboardReady) {
+      setShowTermsGate(false);
+      return;
+    }
     setShowTermsGate(!hasAcceptedTerms(email));
-  }, [email, loading]);
+  }, [email, loading, nativeDashboardReady]);
 
   // Show permissions onboarding AFTER terms are accepted (native only)
   const [showPermOnboarding, setShowPermOnboarding] = useState(false);
   useEffect(() => {
     if (!isNative() || hasCompletedOnboarding()) return;
+    if (!nativeDashboardReady) return;
     // Only start the timer once terms have been accepted
     if (showTermsGate) return;
     const t = setTimeout(() => setShowPermOnboarding(true), 1500);
     return () => clearTimeout(t);
-  }, [showTermsGate]);
+  }, [showTermsGate, nativeDashboardReady]);
 
   // ── Home icon permissions ──────────────────────────────────────────────────
   const [iconPermissions, setIconPermissions] = useState<string[] | null>(null);
