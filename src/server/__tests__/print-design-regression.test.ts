@@ -256,11 +256,16 @@ describe('Printer-friendly document design — source integrity', () => {
       expect(src).toMatch(/signature[\s\S]*?drawImage/i);
     });
 
-    it('photo appendix uses light grey header not PURPLE', () => {
-      const appendixFn = src.match(/function addAppendixPage[\s\S]*?^\s*}/m);
-      if (!appendixFn) return;
-      expect(appendixFn[0]).not.toMatch(/PURPLE/);
-      expect(appendixFn[0]).toMatch(/LIGHT/);
+    it('compresses each photo to a 1280px JPEG at quality 70', () => {
+      expect(src).toMatch(/PDF_PHOTO_MAX_DIMENSION\s*=\s*1280/);
+      expect(src).toMatch(/PDF_PHOTO_JPEG_QUALITY\s*=\s*70/);
+      expect(src).toMatch(/Math\.max\(width, height\)/);
+      expect(src).toMatch(/image\.getBuffer\(jpegMime,\s*\{\s*quality:\s*PDF_PHOTO_JPEG_QUALITY\s*\}\)/);
+    });
+
+    it('does not duplicate photos in a full-size appendix', () => {
+      expect(src).not.toMatch(/PHOTO APPENDIX/);
+      expect(src).not.toMatch(/full size at end of document/i);
     });
 
     it('page numbers are present', () => {

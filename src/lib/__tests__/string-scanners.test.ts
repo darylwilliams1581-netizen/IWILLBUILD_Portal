@@ -2,7 +2,7 @@
  * CP9E string-scanners.ts characterisation + adversarial tests
  */
 import { describe, it, expect } from 'vitest';
-import { isFileApiUrl, isValidRLValue, extractLeadingEmoji } from '../string-scanners';
+import { isFileApiUrl, parseJobPhotoApiUrl, isValidRLValue, extractLeadingEmoji } from '../string-scanners';
 
 describe('SC1 isFileApiUrl valid', () => {
   it('basic', () => expect(isFileApiUrl('/api/files/42/photo')).toBe(true));
@@ -44,6 +44,19 @@ describe('SC3 isFileApiUrl adversarial', () => {
   it('only slashes', () => expect(isFileApiUrl('////')).toBe(false));
   it('no id', () => expect(isFileApiUrl('/api/files//photo')).toBe(false));
   it('type uppercase end', () => expect(isFileApiUrl('/api/files/1/photoX')).toBe(false));
+});
+
+describe('job photo API URL parsing', () => {
+  it('returns the existing job and photo IDs', () => {
+    expect(parseJobPhotoApiUrl('/api/jobs/42/photos/9/download')).toEqual({ jobId: 42, photoId: 9 });
+    expect(parseJobPhotoApiUrl('/api/jobs/42/photos/9/download?inline=1')).toEqual({ jobId: 42, photoId: 9 });
+  });
+
+  it('rejects other, absolute, and malformed URLs', () => {
+    expect(parseJobPhotoApiUrl('/api/jobs/42/photos/9/report-image')).toBeNull();
+    expect(parseJobPhotoApiUrl('https://evil.example/api/jobs/42/photos/9/download')).toBeNull();
+    expect(parseJobPhotoApiUrl('/api/jobs/42x/photos/9/download')).toBeNull();
+  });
 });
 
 describe('SC4 isValidRLValue valid', () => {

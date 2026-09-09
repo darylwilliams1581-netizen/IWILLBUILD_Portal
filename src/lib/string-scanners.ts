@@ -54,6 +54,43 @@ export function isFileApiUrl(url: unknown): url is string {
   return false;
 }
 
+/**
+ * Parses the authenticated download URL for an existing job photo:
+ *   /api/jobs/<job-id>/photos/<photo-id>/download[?<query>]
+ *
+ * Returns null for absolute URLs, malformed IDs, and other job endpoints.
+ */
+export function parseJobPhotoApiUrl(url: unknown): { jobId: number; photoId: number } | null {
+  if (!url || typeof url !== 'string') return null;
+  const value = url.trim();
+  const queryIndex = value.indexOf('?');
+  const path = queryIndex >= 0 ? value.slice(0, queryIndex) : value;
+  const segments = path.split('/');
+
+  if (
+    segments.length !== 7
+    || segments[0] !== ''
+    || segments[1] !== 'api'
+    || segments[2] !== 'jobs'
+    || segments[4] !== 'photos'
+    || segments[6] !== 'download'
+  ) return null;
+
+  const isDecimal = (segment: string) => {
+    if (!segment) return false;
+    for (let index = 0; index < segment.length; index++) {
+      const code = segment.charCodeAt(index);
+      if (code < 48 || code > 57) return false;
+    }
+    return true;
+  };
+
+  if (!isDecimal(segments[3]) || !isDecimal(segments[5])) return null;
+  const jobId = Number(segments[3]);
+  const photoId = Number(segments[5]);
+  return Number.isSafeInteger(jobId) && Number.isSafeInteger(photoId) ? { jobId, photoId } : null;
+}
+
 // ── RL (Reduced Level) value validation ──────────────────────────────────────
 
 /**

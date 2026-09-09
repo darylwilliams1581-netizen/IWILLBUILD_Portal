@@ -10,7 +10,7 @@
  *   [ ✓ Completed pill ]  ·····  [ Edit ]
  *
  * Bottom bar — active/edit view:
- *   [ Save Draft ]  [ Submit ]
+ *   [ Save Draft ]  [ Complete ]
  *
  * The floating Document Actions widget (purple circle) is suppressed on this
  * page via DocumentActionsWidget's pathname guard. The FileDown header button
@@ -283,7 +283,7 @@ export default function JobFormRunnerPage() {
                   {shellReopening ? <Loader2 size={14} className="animate-spin" /> : <Pencil size={14} />}
                   Edit
                 </button>
-              </div>) : (/* ── Active / edit view: Save Draft + Submit ── */
+              </div>) : (/* ── Active / edit view: Save Draft + Complete ── */
           <div className="flex items-center gap-2.5">
                 {/* Save Draft */}
                 <button onClick={() => void handleSaveDraft()} disabled={shellSaving || shellCompleting} className="flex items-center justify-center gap-2 h-11 px-4 rounded-2xl border border-slate-200 bg-white hover:bg-slate-50 text-sm font-semibold text-slate-700 disabled:opacity-50 transition-colors shrink-0">
@@ -291,9 +291,9 @@ export default function JobFormRunnerPage() {
                   Save Draft
                 </button>
 
-                <button onClick={() => void handleComplete()} disabled={shellSaving || shellCompleting} className="flex-1 flex items-center justify-center gap-2 h-11 rounded-2xl bg-violet-600 hover:bg-violet-700 active:bg-violet-800 text-white text-sm font-bold disabled:opacity-50 transition-colors shadow-sm">
+                <button onClick={() => void handleComplete()} disabled={shellSaving || shellCompleting} className="flex-1 flex items-center justify-center gap-2 h-11 rounded-2xl bg-red-600 hover:bg-red-700 active:bg-red-800 text-white text-sm font-bold disabled:opacity-50 transition-colors shadow-sm">
                   {shellCompleting ? <Loader2 size={14} className="animate-spin" /> : <CheckCircle2 size={14} />}
-                  Submit
+                  Complete
                 </button>
               </div>)}
 

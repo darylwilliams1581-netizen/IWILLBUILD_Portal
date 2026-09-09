@@ -18,9 +18,9 @@ export interface FormPdfField {
 export interface FormPdfImage {
   bytes: Uint8Array;
   mimeType: string;
-  fullBytes?: Uint8Array;   // full-resolution bytes for the appendix
+  fullBytes?: Uint8Array;   // original bytes used to produce the single compressed PDF image
   fullMimeType?: string;
-  label?: string;           // field label for appendix heading
+  label?: string;
 }
 
 export interface FormSubmissionPdfData {
@@ -45,6 +45,68 @@ const MARGIN = 46;
 const HEADER_H = 78;
 const FOOTER_H = 34;
 const CONTENT_W = PAGE_W - MARGIN * 2;
+const PDF_PHOTO_MAX_DIMENSION = 1280;
+const PDF_PHOTO_JPEG_QUALITY = 70;
+
+// Jimp is lazy-loaded because this module is used only when a PDF is requested.
+interface PdfJimpImage {
+  width: number;
+  height: number;
+  resize: (size: { w: number } | { h: number }) => PdfJimpImage;
+  getBuffer: (mimeType: string, options: { quality: number }) => Promise<Uint8Array>;
+}
+
+interface PdfJimpConstructor {
+  read: (buffer: Buffer) => Promise<PdfJimpImage>;
+}
+
+let pdfJimpPromise: Promise<{ CustomJimp: PdfJimpConstructor; jpegMime: string }> | null = null;
+
+async function getPdfJimp(): Promise<{ CustomJimp: PdfJimpConstructor; jpegMime: string }> {
+  if (!pdfJimpPromise) {
+    pdfJimpPromise = Promise.all([
+      import('@jimp/core'),
+      import('jimp'),
+      import('@jimp/plugin-resize'),
+    ]).then(([core, jimpPackage, resizePackage]) => {
+      const createJimp = (core as unknown as {
+        createJimp: (options: { plugins: unknown[]; formats: unknown[] }) => PdfJimpConstructor;
+      }).createJimp;
+      const { defaultPlugins, defaultFormats, JimpMime } = jimpPackage as unknown as {
+        defaultPlugins: unknown[];
+        defaultFormats: unknown[];
+        JimpMime: { jpeg: string };
+      };
+      const resizeMethods = (resizePackage as unknown as { methods: unknown }).methods;
+      return {
+        CustomJimp: createJimp({ plugins: [...defaultPlugins, resizeMethods], formats: defaultFormats }),
+        jpegMime: JimpMime.jpeg as string,
+      };
+    });
+  }
+  return pdfJimpPromise;
+}
+
+async function compressPhotoForPdf(input: FormPdfImage): Promise<FormPdfImage> {
+  try {
+    const { CustomJimp, jpegMime } = await getPdfJimp();
+    const source = input.fullBytes ?? input.bytes;
+    const image = await CustomJimp.read(Buffer.from(source));
+    const width = image.width as number;
+    const height = image.height as number;
+
+    if (Math.max(width, height) > PDF_PHOTO_MAX_DIMENSION) {
+      if (width >= height) image.resize({ w: PDF_PHOTO_MAX_DIMENSION });
+      else image.resize({ h: PDF_PHOTO_MAX_DIMENSION });
+    }
+
+    const jpeg = await image.getBuffer(jpegMime, { quality: PDF_PHOTO_JPEG_QUALITY });
+    return { bytes: Uint8Array.from(jpeg), mimeType: 'image/jpeg', label: input.label };
+  } catch (error) {
+    console.warn('[form-pdf-generator] Photo compression failed; using prepared thumbnail:', error instanceof Error ? error.message : error);
+    return { bytes: input.bytes, mimeType: input.mimeType, label: input.label };
+  }
+}
 
 function printable(value: unknown): string {
   return String(value ?? '')
@@ -259,7 +321,10 @@ export async function generateFormSubmissionPdf(data: FormSubmissionPdfData): Pr
     y -= 17;
 
     if (isImageField && imageInputs.length > 0) {
-      const embedded = (await Promise.all(imageInputs.map((image) => embedImage(doc, image)))).filter((image): image is PDFImage => image !== null);
+      const preparedInputs = field.fieldType === 'photo'
+        ? await Promise.all(imageInputs.map(compressPhotoForPdf))
+        : imageInputs;
+      const embedded = (await Promise.all(preparedInputs.map((image) => embedImage(doc, image)))).filter((image): image is PDFImage => image !== null);
       if (embedded.length > 0) {
         if (field.fieldType === 'photo') {
           // ── Inline thumbnails: 3 per row, small ──
@@ -285,7 +350,7 @@ export async function generateFormSubmissionPdf(data: FormSubmissionPdfData): Pr
             y -= THUMB_H + 8;
           }
           const photoCount = embedded.length;
-          drawLines([`${photoCount} photo${photoCount === 1 ? '' : 's'} — full size at end of document`], { size: 8, color: MUTED, font: italic, lineHeight: 12 });
+          drawLines([`${photoCount} photo${photoCount === 1 ? '' : 's'}`], { size: 8, color: MUTED, font: italic, lineHeight: 12 });
         } else {
           // signatures: single column
           const columns = 1;
@@ -334,68 +399,6 @@ export async function generateFormSubmissionPdf(data: FormSubmissionPdfData): Pr
     ensureSpace(50);
     drawLines(['Disclaimer'], { font: bold, size: 8.5, color: MUTED, lineHeight: 14 });
     drawLines([data.disclaimer], { size: 8.5, color: MUTED, lineHeight: 12 });
-  }
-
-  // ── Photo appendix: full-size images, one per page, clean header ─────────────
-  const photoFields = data.fields.filter((f) => f.fieldType === 'photo');
-
-  // Collect unique images — deduplicate by bytes reference (same object = same fetch)
-  const appendixEntries: Array<{ label: string; image: PDFImage }> = [];
-  const embeddedSet = new Set<Uint8Array>();
-  for (const field of photoFields) {
-    const images = data.fieldImages?.[String(field.id)] ?? [];
-    for (const img of images) {
-      // Use fullBytes for appendix if available, else fall back to thumb bytes
-      const srcBytes = img.fullBytes ?? img.bytes;
-      const srcMime = img.fullMimeType ?? img.mimeType;
-      // Skip if we've already embedded this exact buffer (deduplication)
-      if (embeddedSet.has(srcBytes)) continue;
-      embeddedSet.add(srcBytes);
-      const embedded = await embedImage(doc, { bytes: srcBytes, mimeType: srcMime });
-      if (embedded) appendixEntries.push({ label: field.label, image: embedded });
-    }
-  }
-
-  if (appendixEntries.length > 0) {
-    // Appendix pages use a lighter header (no purple band — just a title bar)
-    function addAppendixPage(pageTitle: string) {
-      page = doc.addPage([PAGE_W, PAGE_H]);
-      pages.push(page);
-      page.drawRectangle({ x: 0, y: PAGE_H - HEADER_H, width: PAGE_W, height: HEADER_H, color: LIGHT });
-      page.drawText(printable(pageTitle).slice(0, 72), {
-        x: MARGIN, y: PAGE_H - 35, font: bold, size: 14, color: SLATE,
-      });
-      page.drawText('PHOTO APPENDIX', {
-        x: MARGIN, y: PAGE_H - 55, font: regular, size: 8.5, color: MUTED,
-      });
-      y = PAGE_H - HEADER_H - 24;
-    }
-
-    const FULL_W = CONTENT_W;
-    // Max height for a single image: full content area minus label row
-    const MAX_IMG_H = PAGE_H - HEADER_H - FOOTER_H - 50;
-
-    for (const { label, image } of appendixEntries) {
-      // Each photo gets its own fresh page — no overflow, no blank pages
-      addAppendixPage(printable(data.title));
-
-      // Label
-      page.drawText(printable(label).toUpperCase(), {
-        x: MARGIN, y, font: bold, size: 8.5, color: MUTED,
-      });
-      y -= 16;
-
-      // Scale image to fit within the available area
-      const dims = image.scale(1);
-      const ratio = Math.min(FULL_W / dims.width, MAX_IMG_H / dims.height, 1);
-      const drawW = dims.width * ratio;
-      const drawH = dims.height * ratio;
-
-      const imgX = MARGIN + (FULL_W - drawW) / 2;
-      page.drawRectangle({ x: imgX - 2, y: y - drawH - 2, width: drawW + 4, height: drawH + 4, color: WHITE, borderColor: BORDER, borderWidth: 0.8 });
-      page.drawImage(image, { x: imgX, y: y - drawH, width: drawW, height: drawH });
-      y -= drawH + 12;
-    }
   }
 
   pages.forEach((target, index) => {

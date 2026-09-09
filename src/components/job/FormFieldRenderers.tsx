@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import {
   Loader2, AlertCircle, MapPin, Link, SplitSquareHorizontal,
   Navigation, ExternalLink, Briefcase, Truck, Search, ChevronDown, X,
-  ImagePlus, CheckCircle2,
+  ImagePlus, CheckCircle2, Camera, Images,
 } from 'lucide-react';
 import { type FormField, parseOptions, parseSettings, fetchGlobalLists } from '../FormFieldBuilder';
 import SignaturePad, {
@@ -14,6 +14,13 @@ import SignaturePad, {
 } from './SignaturePad';
 import { isGpsAnswer, type GpsAnswer } from './form-types';
 import { useAuthenticatedImageUrl } from '@/hooks/useAuthenticatedImageUrl';
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+} from '@/components/ui/sheet';
 
 type AnswerValue = string | string[] | boolean | SignatureAnswer | MultiSignatureAnswer | GpsAnswer | null;
 
@@ -26,7 +33,7 @@ function FormPhotoThumb({
   url: string;
   index: number;
   disabled: boolean | undefined;
-  onRemove: () => void;
+  onRemove?: () => void;
 }) {
   const image = useAuthenticatedImageUrl(url);
   return (
@@ -38,7 +45,7 @@ function FormPhotoThumb({
           {image.loading ? 'Loading…' : `Photo ${index + 1}`}
         </div>
       )}
-      {!disabled && (
+      {!disabled && onRemove && (
         <button
           type="button"
           onClick={onRemove}
@@ -50,6 +57,294 @@ function FormPhotoThumb({
       <div className="absolute bottom-0.5 right-0.5">
         <CheckCircle2 size={12} className="text-emerald-400 drop-shadow" />
       </div>
+    </div>
+  );
+}
+
+interface JobPhotoPickerItem {
+  id: number;
+  label: string;
+  thumbUrl: string | null;
+  downloadUrl: string;
+}
+
+function JobPhotoPickerThumb({ photo, selected }: { photo: JobPhotoPickerItem; selected: boolean }) {
+  const protectedUrl = photo.thumbUrl?.startsWith('/api/') ? photo.thumbUrl : null;
+  const image = useAuthenticatedImageUrl(protectedUrl);
+  const imageSrc = protectedUrl ? image.src : photo.thumbUrl;
+  return (
+    <div className="relative aspect-square overflow-hidden rounded-xl bg-slate-100">
+      {imageSrc ? (
+        <img src={imageSrc} alt={photo.label} className="h-full w-full object-cover" />
+      ) : (
+        <div className="flex h-full w-full items-center justify-center text-slate-400">
+          {image.loading ? <Loader2 size={18} className="animate-spin" /> : <Camera size={18} />}
+        </div>
+      )}
+      {selected && (
+        <div className="absolute inset-0 flex items-center justify-center bg-violet-600/35">
+          <CheckCircle2 size={26} className="fill-violet-600 text-white drop-shadow" />
+        </div>
+      )}
+    </div>
+  );
+}
+
+function PhotoFieldInput({
+  value,
+  onChange,
+  error,
+  disabled,
+  allowMultiple,
+  jobId,
+}: {
+  value: AnswerValue;
+  onChange: (val: AnswerValue) => void;
+  error?: string;
+  disabled?: boolean;
+  allowMultiple: boolean;
+  jobId?: number;
+}) {
+  const urls: string[] = (() => {
+    if (!value) return [];
+    if (Array.isArray(value)) return value.filter((item): item is string => typeof item === 'string');
+    if (typeof value === 'string') {
+      try {
+        const parsed = JSON.parse(value) as unknown;
+        return Array.isArray(parsed)
+          ? parsed.filter((item): item is string => typeof item === 'string')
+          : [value];
+      } catch {
+        return [value];
+      }
+    }
+    return [];
+  })();
+
+  const [uploading, setUploading] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
+  const [localPreviews, setLocalPreviews] = useState<Array<{ id: string; url: string }>>([]);
+  const [pickerOpen, setPickerOpen] = useState(false);
+  const [jobPhotos, setJobPhotos] = useState<JobPhotoPickerItem[]>([]);
+  const [pickerLoading, setPickerLoading] = useState(false);
+  const [pickerError, setPickerError] = useState<string | null>(null);
+  const [selectedJobPhotoIds, setSelectedJobPhotoIds] = useState<Set<number>>(new Set());
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const objectUrlsRef = useRef<Set<string>>(new Set());
+
+  const storeUrls = useCallback((next: string[]) => {
+    const unique = Array.from(new Set(next));
+    onChange(unique.length === 0 ? null : unique.length === 1 ? unique[0] : JSON.stringify(unique));
+  }, [onChange]);
+
+  useEffect(() => () => {
+    objectUrlsRef.current.forEach((url) => URL.revokeObjectURL(url));
+    objectUrlsRef.current.clear();
+  }, []);
+
+  useEffect(() => {
+    if (!pickerOpen || !jobId) return;
+    const controller = new AbortController();
+    setPickerLoading(true);
+    setPickerError(null);
+    void fetch(`/api/jobs/${jobId}/photos/picker`, {
+      credentials: 'include',
+      signal: controller.signal,
+    }).then(async (response) => {
+      const data = await response.json() as { photos?: JobPhotoPickerItem[]; error?: string };
+      if (!response.ok) throw new Error(data.error ?? 'Could not load job photos.');
+      setJobPhotos(data.photos ?? []);
+    }).catch((loadError: unknown) => {
+      if (controller.signal.aborted) return;
+      setPickerError(loadError instanceof Error ? loadError.message : 'Could not load job photos.');
+    }).finally(() => {
+      if (!controller.signal.aborted) setPickerLoading(false);
+    });
+    return () => controller.abort();
+  }, [jobId, pickerOpen]);
+
+  const handleFiles = useCallback(async (selectedFiles: File[]) => {
+    const files = allowMultiple ? selectedFiles : selectedFiles.slice(-1);
+    if (!files.length) return;
+
+    const previews = files.map((file, index) => {
+      const url = URL.createObjectURL(file);
+      objectUrlsRef.current.add(url);
+      return { id: `${file.name}-${file.lastModified}-${index}`, url };
+    });
+    setLocalPreviews(previews);
+    setUploading(true);
+    setUploadError(null);
+
+    try {
+      const newUrls: string[] = [];
+      for (const file of files) {
+        const formData = new FormData();
+        formData.append('file', file);
+        formData.append('fileCategory', 'Forms');
+        const response = await fetch('/api/files', {
+          method: 'POST',
+          body: formData,
+          credentials: 'include',
+        });
+        if (!response.ok) {
+          const data = await response.json().catch(() => ({})) as { error?: string };
+          throw new Error(data.error ?? 'Upload failed');
+        }
+        const data = await response.json() as { file?: { id: number } };
+        if (data.file?.id) newUrls.push(`/api/files/${data.file.id}/download`);
+      }
+      storeUrls(allowMultiple ? [...urls, ...newUrls] : newUrls.slice(-1));
+    } catch (uploadFailure) {
+      setUploadError(uploadFailure instanceof Error ? uploadFailure.message : 'Upload failed');
+    } finally {
+      previews.forEach(({ url }) => {
+        URL.revokeObjectURL(url);
+        objectUrlsRef.current.delete(url);
+      });
+      setLocalPreviews([]);
+      setUploading(false);
+    }
+  }, [allowMultiple, storeUrls, urls]);
+
+  const removePhoto = (index: number) => storeUrls(urls.filter((_, itemIndex) => itemIndex !== index));
+
+  const toggleJobPhoto = (photoId: number) => {
+    setSelectedJobPhotoIds((current) => {
+      if (!allowMultiple) return new Set(current.has(photoId) ? [] : [photoId]);
+      const next = new Set(current);
+      if (next.has(photoId)) next.delete(photoId);
+      else next.add(photoId);
+      return next;
+    });
+  };
+
+  const attachSelectedJobPhotos = () => {
+    const selectedUrls = jobPhotos
+      .filter((photo) => selectedJobPhotoIds.has(photo.id))
+      .map((photo) => photo.downloadUrl);
+    storeUrls(allowMultiple ? [...urls, ...selectedUrls] : selectedUrls.slice(-1));
+    setSelectedJobPhotoIds(new Set());
+    setPickerOpen(false);
+  };
+
+  return (
+    <div className="flex flex-col gap-2">
+      {(urls.length > 0 || localPreviews.length > 0) && (
+        <div className="flex flex-wrap gap-2">
+          {urls.map((url, index) => (
+            <FormPhotoThumb
+              key={`${url}-${index}`}
+              url={url}
+              index={index}
+              disabled={disabled || uploading}
+              onRemove={() => removePhoto(index)}
+            />
+          ))}
+          {localPreviews.map((preview, index) => (
+            <div key={preview.id} className="relative h-20 w-20 shrink-0 overflow-hidden rounded-xl border border-violet-300 bg-slate-100">
+              <img src={preview.url} alt={`Uploading photo ${index + 1}`} className="h-full w-full object-cover" />
+              <div className="absolute inset-0 flex items-center justify-center bg-black/20">
+                <Loader2 size={18} className="animate-spin text-white drop-shadow" />
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {!disabled && (
+        <>
+          <div className="grid grid-cols-2 gap-2">
+            <button
+              type="button"
+              disabled={uploading}
+              onClick={() => fileInputRef.current?.click()}
+              className={`flex min-h-16 items-center justify-center gap-2 rounded-xl border-2 border-dashed px-2 transition-colors ${
+                error ? 'border-red-300 bg-red-50' : 'border-slate-200 bg-slate-50 hover:border-primary/40 hover:bg-primary/5'
+              } ${uploading ? 'pointer-events-none opacity-60' : ''}`}
+            >
+              {uploading ? <Loader2 size={18} className="animate-spin text-primary" /> : <ImagePlus size={18} className="text-slate-400" />}
+              <span className="text-xs font-medium text-slate-600">{uploading ? 'Uploading…' : 'Take / Camera roll'}</span>
+            </button>
+            {jobId && (
+              <button
+                type="button"
+                disabled={uploading}
+                onClick={() => setPickerOpen(true)}
+                className="flex min-h-16 items-center justify-center gap-2 rounded-xl border-2 border-dashed border-slate-200 bg-slate-50 px-2 text-xs font-medium text-slate-600 transition-colors hover:border-primary/40 hover:bg-primary/5 disabled:opacity-60"
+              >
+                <Images size={18} className="text-slate-400" />
+                From this job
+              </button>
+            )}
+          </div>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*"
+            multiple={allowMultiple}
+            className="hidden"
+            onChange={(event) => {
+              if (event.target.files?.length) void handleFiles(Array.from(event.target.files));
+              event.target.value = '';
+            }}
+          />
+        </>
+      )}
+
+      {uploadError && <p className="flex items-center gap-1 text-xs text-red-500"><AlertCircle size={12} />{uploadError}</p>}
+
+      <Sheet open={pickerOpen} onOpenChange={(open) => {
+        setPickerOpen(open);
+        if (!open) setSelectedJobPhotoIds(new Set());
+      }}>
+        <SheetContent side="bottom" className="max-h-[85dvh] overflow-hidden rounded-t-3xl px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-5">
+          <SheetHeader className="pr-8 text-left">
+            <SheetTitle>Photos from this job</SheetTitle>
+            <SheetDescription>Select existing job photos to attach to this form.</SheetDescription>
+          </SheetHeader>
+
+          <div className="mt-4 max-h-[55dvh] overflow-y-auto pb-2">
+            {pickerLoading ? (
+              <div className="flex items-center justify-center py-12"><Loader2 size={22} className="animate-spin text-primary" /></div>
+            ) : pickerError ? (
+              <p className="rounded-xl bg-red-50 px-3 py-3 text-sm text-red-600">{pickerError}</p>
+            ) : jobPhotos.length === 0 ? (
+              <div className="flex flex-col items-center gap-2 py-12 text-slate-400">
+                <Camera size={24} />
+                <p className="text-sm">No photos have been added to this job.</p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
+                {jobPhotos.map((photo) => {
+                  const selected = selectedJobPhotoIds.has(photo.id);
+                  return (
+                    <button
+                      key={photo.id}
+                      type="button"
+                      onClick={() => toggleJobPhoto(photo.id)}
+                      aria-pressed={selected}
+                      className={`overflow-hidden rounded-xl border-2 text-left transition-colors ${selected ? 'border-violet-600' : 'border-transparent'}`}
+                    >
+                      <JobPhotoPickerThumb photo={photo} selected={selected} />
+                      <span className="block truncate px-1 py-1 text-[10px] text-slate-600">{photo.label}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
+          <button
+            type="button"
+            disabled={selectedJobPhotoIds.size === 0}
+            onClick={attachSelectedJobPhotos}
+            className="mt-3 flex h-11 w-full items-center justify-center rounded-xl bg-violet-600 text-sm font-bold text-white transition-colors hover:bg-violet-700 disabled:opacity-40"
+          >
+            Attach selected{selectedJobPhotoIds.size > 0 ? ` (${selectedJobPhotoIds.size})` : ''}
+          </button>
+        </SheetContent>
+      </Sheet>
     </div>
   );
 }
@@ -163,9 +458,7 @@ export function ReadOnlyAnswer({ field, value }: { field: FormField; value: Answ
       display = photoUrls.length > 0 ? (
         <div className="flex flex-wrap gap-2">
           {photoUrls.map((url, idx) => (
-            <a key={idx} href={url} target="_blank" rel="noopener noreferrer" className="block w-20 h-20 rounded-xl overflow-hidden border border-slate-200 bg-slate-100 shrink-0 hover:opacity-90 transition-opacity">
-              <img src={url} alt={`Photo ${idx + 1}`} className="w-full h-full object-cover" />
-            </a>
+            <FormPhotoThumb key={`${url}-${idx}`} url={url} index={idx} disabled />
           ))}
         </div>
       ) : <span className="text-sm text-slate-400 italic">No photo</span>;
@@ -191,6 +484,7 @@ interface FieldInputProps {
   error?: string;
   disabled?: boolean;
   companyId?: number;
+  jobId?: number;
 }
 
 // ── Shared searchable dropdown for job_link / asset_link ─────────────────────
@@ -301,7 +595,7 @@ function LinkDropdown({
   );
 }
 
-export function FieldInput({ field, value, onChange, error, disabled, companyId }: FieldInputProps) {
+export function FieldInput({ field, value, onChange, error, disabled, companyId, jobId }: FieldInputProps) {
   const settings = parseSettings(field.settingsJson);
   const globalListId = typeof settings.globalListId === 'number' && settings.globalListId > 0 ? settings.globalListId : null;
 
@@ -520,106 +814,16 @@ export function FieldInput({ field, value, onChange, error, disabled, companyId 
           </div>
         );
       })()}
-      {field.fieldType === 'photo' && (() => {
-        const allowMultiple = settings.multiple !== false; // default true — multiple photos always allowed
-        // value is stored as a JSON array of URLs, or a single URL string, or null
-        const urls: string[] = (() => {
-          if (!value) return [];
-          if (Array.isArray(value)) return value.filter((v): v is string => typeof v === 'string');
-          if (typeof value === 'string') {
-            try { const p = JSON.parse(value); return Array.isArray(p) ? p : [value]; } catch { return [value]; }
-          }
-          return [];
-        })();
-
-        const [uploading, setUploading] = useState(false);
-        const [uploadError, setUploadError] = useState<string | null>(null);
-        const fileInputRef = useRef<HTMLInputElement>(null);
-
-        const handleFiles = useCallback(async (files: File[]) => {
-          if (!files.length) return;
-          setUploading(true);
-          setUploadError(null);
-          try {
-            const newUrls: string[] = [];
-            for (const file of files) {
-              const fd = new FormData();
-              fd.append('file', file);
-              fd.append('fileCategory', 'Forms');
-              const endpoint = '/api/' + 'files';
-              const res = await fetch(endpoint, { method: 'POST', body: fd, credentials: 'include' });
-              if (!res.ok) { const d = await res.json().catch(() => ({})) as { error?: string }; throw new Error(d.error ?? 'Upload failed'); }
-              const data = await res.json() as { file?: { id: number } };
-              const fileId = data.file?.id;
-              if (fileId) newUrls.push('/api/' + 'files/' + String(fileId) + '/download');
-            }
-            const combined = allowMultiple ? [...urls, ...newUrls] : newUrls.slice(-1);
-            onChange(combined.length === 1 ? combined[0] : JSON.stringify(combined));
-          } catch (e) {
-            setUploadError(e instanceof Error ? e.message : 'Upload failed');
-          } finally {
-            setUploading(false);
-          }
-        }, [urls, allowMultiple, onChange]);
-
-
-        const removePhoto = (idx: number) => {
-          const next = urls.filter((_, i) => i !== idx);
-          onChange(next.length === 0 ? null : next.length === 1 ? next[0] : JSON.stringify(next));
-        };
-
-        return (
-          <div className="flex flex-col gap-2">
-            {/* Thumbnails */}
-            {urls.length > 0 && (
-              <div className="flex flex-wrap gap-2">
-                {urls.map((url, idx) => (
-                  <FormPhotoThumb
-                    key={`${url}-${idx}`}
-                    url={url}
-                    index={idx}
-                    disabled={disabled}
-                    onRemove={() => removePhoto(idx)}
-                  />
-                ))}
-              </div>
-            )}
-
-            {/* Upload / capture button — always shown when not disabled */}
-            {!disabled && (
-              <>
-                <button
-                  type="button"
-                  disabled={uploading}
-                  onClick={() => fileInputRef.current?.click()}
-                  className={`flex items-center justify-center gap-2 h-20 rounded-xl border-2 border-dashed transition-colors ${
-                    error ? 'border-red-300 bg-red-50' : 'border-slate-200 bg-slate-50 hover:border-primary/40 hover:bg-primary/5'
-                  } ${uploading ? 'opacity-60 pointer-events-none' : ''}`}
-                >
-                  {uploading
-                    ? <><Loader2 size={18} className="animate-spin text-primary" /><span className="text-xs text-slate-500">Uploading…</span></>
-                    : <><ImagePlus size={18} className="text-slate-400" /><span className="text-xs font-medium text-slate-500">{urls.length > 0 ? 'Add another photo' : 'Take or upload a photo'}</span></>
-                  }
-                </button>
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept="image/*"
-                  multiple={allowMultiple}
-                  className="hidden"
-                  onChange={(e) => { if (e.target.files?.length) { handleFiles(Array.from(e.target.files)); e.target.value = ''; } }}
-                />
-              </>
-            )}
-
-            {uploadError && (
-              <p className="text-xs text-red-500 flex items-center gap-1"><AlertCircle size={12} />{uploadError}</p>
-            )}
-            {/* CP12A: Subtle safeguard notice */}
-          
-          </div>
-        );
-      })()}
+      {field.fieldType === 'photo' && (
+        <PhotoFieldInput
+          value={value}
+          onChange={onChange}
+          error={error}
+          disabled={disabled}
+          allowMultiple={settings.multiple !== false}
+          jobId={jobId}
+        />
+      )}
       {field.fieldType === 'signature' && (() => {
         const isMultiple = !!settings.multiple;
         const buttonLabel = typeof settings.buttonLabel === 'string' && settings.buttonLabel.trim() ? settings.buttonLabel : '+ Add Signer';

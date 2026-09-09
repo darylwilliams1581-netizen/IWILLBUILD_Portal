@@ -19,16 +19,18 @@ import {
   formFields,
   formTemplates,
   jobFormSubmissions,
+  jobPhotos,
   jobs,
 } from '../db/schema.js';
 import { generateFormSubmissionPdf, type FormPdfImage } from './form-pdf-generator.js';
 import {
   BUCKET_COMPANY_FILES,
+  BUCKET_JOB_PHOTOS,
   generateThumbnail,
   getDownloadBuffer,
 } from '../storage/storage-service.js';
 
-import { isFileApiUrl } from '../../lib/string-scanners.js';
+import { isFileApiUrl, parseJobPhotoApiUrl } from '../../lib/string-scanners.js';
 
 // ── Re-export the helpers that send-email also needs ─────────────────────────
 
@@ -49,11 +51,15 @@ export function answerUrls(value: unknown): string[] {
   }
   const seen = new Set<string>();
   return urls.filter((u) => {
-    if (!u || !isFileApiUrl(u)) return false;
+    if (!u || (!isFileApiUrl(u) && !jobPhotoRefFromUrl(u))) return false;
     if (seen.has(u)) return false;
     seen.add(u);
     return true;
   });
+}
+
+export function jobPhotoRefFromUrl(value: string): { jobId: number; photoId: number } | null {
+  return parseJobPhotoApiUrl(value);
 }
 
 export function fileIdFromUrl(value: string): number | null {
@@ -200,21 +206,34 @@ export async function buildFormPdfDocument(
   } catch { /* malformed historical answers remain blank */ }
 
   // ── Embed photos + signatures ───────────────────────────────────────────────
-  const photoIds = Array.from(new Set(
-    fields
-      .filter((f) => f.fieldType === 'photo')
-      .flatMap((f) => answerUrls(answers[String(f.id)]))
-      .map(fileIdFromUrl)
-      .filter((id): id is number => id !== null),
+  const allPhotoUrls = fields
+    .filter((field) => field.fieldType === 'photo')
+    .flatMap((field) => answerUrls(answers[String(field.id)]));
+  const companyFileIds = Array.from(new Set(
+    allPhotoUrls.map(fileIdFromUrl).filter((id): id is number => id !== null),
+  ));
+  const selectedJobPhotoIds = Array.from(new Set(
+    allPhotoUrls
+      .map(jobPhotoRefFromUrl)
+      .filter((ref): ref is { jobId: number; photoId: number } => ref !== null && ref.jobId === submission.jobId)
+      .map((ref) => ref.photoId),
   ));
 
-  const photoRecords = photoIds.length > 0
+  const companyPhotoRecords = companyFileIds.length > 0
     ? await db.select().from(companyFiles).where(and(
         eq(companyFiles.companyId, companyId),
-        inArray(companyFiles.id, photoIds),
+        inArray(companyFiles.id, companyFileIds),
       ))
     : [];
-  const recordById = new Map(photoRecords.map((r) => [r.id, r]));
+  const selectedJobPhotoRecords = selectedJobPhotoIds.length > 0 && submission.jobId
+    ? await db.select().from(jobPhotos).where(and(
+        eq(jobPhotos.companyId, companyId),
+        eq(jobPhotos.jobId, submission.jobId),
+        inArray(jobPhotos.id, selectedJobPhotoIds),
+      ))
+    : [];
+  const companyFileById = new Map(companyPhotoRecords.map((record) => [record.id, record]));
+  const jobPhotoById = new Map(selectedJobPhotoRecords.map((record) => [record.id, record]));
 
   const fieldImages: Record<string, FormPdfImage[]> = {};
   for (const field of fields) {
@@ -222,14 +241,32 @@ export async function buildFormPdfDocument(
       const images = await Promise.all(
         answerUrls(answers[String(field.id)]).map(async (url): Promise<FormPdfImage | null> => {
           const fileId = fileIdFromUrl(url);
-          const record = fileId ? recordById.get(fileId) : undefined;
-          if (!record) return null;
+          const companyFile = fileId ? companyFileById.get(fileId) : undefined;
+          const jobPhotoRef = jobPhotoRefFromUrl(url);
+          const jobPhoto = jobPhotoRef?.jobId === submission.jobId
+            ? jobPhotoById.get(jobPhotoRef.photoId)
+            : undefined;
+          if (!companyFile && !jobPhoto) return null;
+
+          const storedName = companyFile?.storedName
+            ?? jobPhoto?.previewKey
+            ?? jobPhoto?.thumbnailKey
+            ?? jobPhoto?.filename;
+          const mimeType = companyFile?.mimeType
+            ?? (jobPhoto?.previewKey ? jobPhoto.previewMimeType : null)
+            ?? (jobPhoto?.thumbnailKey ? jobPhoto.thumbnailMimeType : null)
+            ?? jobPhoto?.mimeType
+            ?? 'image/jpeg';
+          const bucket = companyFile ? BUCKET_COMPANY_FILES : BUCKET_JOB_PHOTOS;
+          const recordId = companyFile?.id ?? jobPhoto?.id;
+          if (!storedName || !recordId) return null;
+
           try {
-            const downloaded = await getDownloadBuffer(record.storedName, BUCKET_COMPANY_FILES);
-            const thumbnail = await generateThumbnail(downloaded.buffer, record.mimeType, 300, 70);
+            const downloaded = await getDownloadBuffer(storedName, bucket);
+            const thumbnail = await generateThumbnail(downloaded.buffer, mimeType, 300, 70);
             const thumbBytes = thumbnail ? Uint8Array.from(thumbnail.buffer) : null;
             const thumbMime = thumbnail ? thumbnail.mimeType : null;
-            const isImage = /image\/(?:png|jpe?g)/i.test(record.mimeType);
+            const isImage = /image\/(?:png|jpe?g)/i.test(mimeType);
             if (!isImage) return null;
             const fullBytes = Uint8Array.from(downloaded.buffer);
             if (thumbBytes && thumbMime) {
@@ -237,19 +274,19 @@ export async function buildFormPdfDocument(
                 bytes: thumbBytes,
                 mimeType: thumbMime,
                 fullBytes,
-                fullMimeType: record.mimeType,
+                fullMimeType: mimeType,
                 label: field.label,
               };
             }
             return {
               bytes: fullBytes,
-              mimeType: record.mimeType,
+              mimeType,
               fullBytes,
-              fullMimeType: record.mimeType,
+              fullMimeType: mimeType,
               label: field.label,
             };
           } catch (err) {
-            console.warn(`[form-pdf-document] Failed to load photo file ${record.id}:`, err);
+            console.warn(`[form-pdf-document] Failed to load photo ${recordId}:`, err);
           }
           return null;
         }),

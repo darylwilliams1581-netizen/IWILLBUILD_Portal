@@ -79,6 +79,7 @@ export interface FormRunnerProps {
 // ── Main form runner ──────────────────────────────────────────────────────────
 
 export default function FormRunner({
+  jobId,
   job,
   submission,
   templateName,
@@ -445,6 +446,7 @@ export default function FormRunner({
                 value={answers[field.id] ?? null}
                 onChange={(val) => setAnswer(field.id, val)}
                 error={errors[field.id]}
+                jobId={jobId ?? job?.id}
               />
             </motion.div>
           ))}
