@@ -1,7 +1,8 @@
 import{useEffect,useRef,useState}from'react';
 // Split to avoid static-analysis false-positive on the path prefix
 const API_PFX = '/api/' + 'files/';
-function isInt(s:string){return s.startsWith(API_PFX);}
+// Any /api/ path that requires session-cookie auth
+function isInt(s:string){return s.startsWith(API_PFX)||s.startsWith('/api/');}
 
 // Module-level cache: src → { blobUrl, refCount }
 const _cache=new Map<string,{blobUrl:string;refCount:number}>();
