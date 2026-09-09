@@ -1156,8 +1156,11 @@ export default function FleetLiveMap() {
         </div>
 
         {/* ── Map area ── */}
-        <div className="relative flex-1 min-h-0 min-w-0 overflow-hidden">
-          <div ref={mapRef} className="absolute inset-0" />
+        <div
+          className="flex-1 relative min-w-0 overflow-hidden"
+          style={{ minHeight: 'min(60dvh, 400px)', flex: '1 1 0' }}
+        >
+          <div ref={mapRef} className="absolute inset-0" style={{ minHeight: '300px' }} />
 
           {mapEngine === 'osm' && (
             <OsmFallbackMap
