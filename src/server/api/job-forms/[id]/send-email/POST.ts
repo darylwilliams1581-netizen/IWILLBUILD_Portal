@@ -14,6 +14,7 @@
  *   message:                     string
  *   attachPdf:                   boolean
  *   bccOwner:                    boolean
+ *   includeJobPhotoGallery?:     boolean
  * }
  */
 import type { Request, Response } from 'express';
@@ -88,6 +89,7 @@ export default async function handler(req: Request, res: Response) {
     const message   = typeof body.message === 'string' ? body.message.trim() : '';
     const attachPdf = body.attachPdf !== false;
     const bccOwner  = body.bccOwner  !== false;
+    const includeJobPhotoGallery = body.includeJobPhotoGallery === true;
 
     if (toList.length === 0) return res.status(400).json({ error: 'At least one To recipient is required.' });
     for (const a of [...toList, ...ccList, ...bccList]) {
@@ -103,6 +105,9 @@ export default async function handler(req: Request, res: Response) {
     if (!doc) return res.status(404).json({ error: 'Submission not found' });
 
     const { pdfBytes, filename, templateName, companyName, jobNumber, jobName, jobId } = doc;
+    if (!jobId) return res.status(400).json({ error: 'This form is not linked to a job.' });
+    const reportUrl = `https://iwillbuild.com/jobs/${jobId}/forms/${submissionId}`;
+    const jobPhotosUrl = `https://iwillbuild.com/jobs/${jobId}/photos`;
 
     let willAttach = attachPdf;
     let oversizedNote = '';
@@ -134,8 +139,12 @@ export default async function handler(req: Request, res: Response) {
     // ── Build email body ───────────────────────────────────────────────────────
     const jobLabel = [jobNumber, jobName].filter(Boolean).join(' – ');
     const escapedMessage = escapeHtml(message + oversizedNote).replace(/\n/g, '<br>');
-    const fullText = `${message}${oversizedNote}\n\n—\n${SYSTEM_FOOTER}`;
+    const linkText = `\n\nIWILLBUILD report\n${reportUrl}${includeJobPhotoGallery ? `\n\nJob photos\n${jobPhotosUrl}` : ''}`;
+    const fullText = `${message}${oversizedNote}${linkText}\n\n—\n${SYSTEM_FOOTER}`;
     const statusLabel = doc.status;
+    const galleryHtml = includeJobPhotoGallery
+      ? `<p style="margin:14px 0 0"><strong>Job photos</strong><br><a href="${escapeHtml(jobPhotosUrl)}">${escapeHtml(jobPhotosUrl)}</a></p>`
+      : '';
 
     const html = `<!doctype html><html><body style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:#1e293b">
       <div style="max-width:620px;margin:24px auto">
@@ -145,6 +154,8 @@ export default async function handler(req: Request, res: Response) {
         </div>
         <div style="border:1px solid #e2e8f0;border-top:0;padding:24px;border-radius:0 0 12px 12px">
           <p style="white-space:pre-line">${escapedMessage}</p>
+          <p style="margin:18px 0 0"><strong>IWILLBUILD report</strong><br><a href="${escapeHtml(reportUrl)}">${escapeHtml(reportUrl)}</a></p>
+          ${galleryHtml}
         </div>
         <div style="background:#f1f5f9;padding:12px 24px">
           <p style="margin:0;font-size:11px;color:#94a3b8;font-style:italic">${escapeHtml(SYSTEM_FOOTER)}</p>

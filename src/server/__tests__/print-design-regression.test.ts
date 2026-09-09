@@ -256,11 +256,20 @@ describe('Printer-friendly document design — source integrity', () => {
       expect(src).toMatch(/signature[\s\S]*?drawImage/i);
     });
 
-    it('compresses each photo to a 1280px JPEG at quality 70', () => {
-      expect(src).toMatch(/PDF_PHOTO_MAX_DIMENSION\s*=\s*1280/);
-      expect(src).toMatch(/PDF_PHOTO_JPEG_QUALITY\s*=\s*70/);
+    it('embeds only compact 160px JPEG thumbnails in a four-column grid', () => {
+      expect(src).toMatch(/PDF_PHOTO_THUMB_MAX_DIMENSION\s*=\s*160/);
+      expect(src).toMatch(/PDF_PHOTO_THUMB_JPEG_QUALITY\s*=\s*60/);
       expect(src).toMatch(/Math\.max\(width, height\)/);
-      expect(src).toMatch(/image\.getBuffer\(jpegMime,\s*\{\s*quality:\s*PDF_PHOTO_JPEG_QUALITY\s*\}\)/);
+      expect(src).toMatch(/image\.getBuffer\(jpegMime,\s*\{\s*quality:\s*PDF_PHOTO_THUMB_JPEG_QUALITY\s*\}\)/);
+      expect(src).toMatch(/THUMB_COLS\s*=\s*4/);
+      expect(src).toMatch(/THUMB_W\s*=\s*112/);
+      expect(src).not.toMatch(/fullBytes/);
+    });
+
+    it('adds a clickable page-one link to the original form report', () => {
+      expect(src).toMatch(/IWILLBUILD report — open originals/);
+      expect(src).toMatch(/https:\/\/iwillbuild\.com\/jobs\/\$\{data\.jobId\}\/forms\/\$\{data\.formInstanceId\}/);
+      expect(src).toMatch(/target\.node\.addAnnot\(annotation\)/);
     });
 
     it('does not duplicate photos in a full-size appendix', () => {
@@ -270,6 +279,24 @@ describe('Printer-friendly document design — source integrity', () => {
 
     it('page numbers are present', () => {
       expect(src).toMatch(/Page \$\{index \+ 1\} of \$\{pages\.length\}/);
+    });
+  });
+
+  describe('form email report links', () => {
+    const modal = read('components/SendDocumentEmailModal.tsx');
+    const endpoint = read('server/api/job-forms/[id]/send-email/POST.ts');
+
+    it('offers the job gallery checkbox off by default', () => {
+      expect(modal).toMatch(/useState\(false\).*includeJobPhotoGallery|includeJobPhotoGallery, setIncludeJobPhotoGallery\] = useState\(false\)/s);
+      expect(modal).toMatch(/Include job photo gallery/);
+      expect(modal).toMatch(/includeJobPhotoGallery/);
+    });
+
+    it('always sends the form report link and only conditionally sends the gallery link', () => {
+      expect(endpoint).toMatch(/https:\/\/iwillbuild\.com\/jobs\/\$\{jobId\}\/forms\/\$\{submissionId\}/);
+      expect(endpoint).toMatch(/IWILLBUILD report/);
+      expect(endpoint).toMatch(/includeJobPhotoGallery \? `\\n\\nJob photos/);
+      expect(endpoint).toMatch(/https:\/\/iwillbuild\.com\/jobs\/\$\{jobId\}\/photos/);
     });
   });
 

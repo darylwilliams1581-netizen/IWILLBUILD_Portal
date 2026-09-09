@@ -18,8 +18,6 @@ export interface FormPdfField {
 export interface FormPdfImage {
   bytes: Uint8Array;
   mimeType: string;
-  fullBytes?: Uint8Array;   // original bytes used to produce the single compressed PDF image
-  fullMimeType?: string;
   label?: string;
 }
 
@@ -32,6 +30,8 @@ export interface FormSubmissionPdfData {
   jobAddress?: string;
   completedBy?: string;
   completedAt?: string;
+  jobId?: number | null;
+  formInstanceId?: number;
   footerText?: string;
   disclaimer?: string;
   fields: FormPdfField[];
@@ -45,8 +45,8 @@ const MARGIN = 46;
 const HEADER_H = 78;
 const FOOTER_H = 34;
 const CONTENT_W = PAGE_W - MARGIN * 2;
-const PDF_PHOTO_MAX_DIMENSION = 1280;
-const PDF_PHOTO_JPEG_QUALITY = 70;
+const PDF_PHOTO_THUMB_MAX_DIMENSION = 160;
+const PDF_PHOTO_THUMB_JPEG_QUALITY = 60;
 
 // Jimp is lazy-loaded because this module is used only when a PDF is requested.
 interface PdfJimpImage {
@@ -90,17 +90,16 @@ async function getPdfJimp(): Promise<{ CustomJimp: PdfJimpConstructor; jpegMime:
 async function compressPhotoForPdf(input: FormPdfImage): Promise<FormPdfImage> {
   try {
     const { CustomJimp, jpegMime } = await getPdfJimp();
-    const source = input.fullBytes ?? input.bytes;
-    const image = await CustomJimp.read(Buffer.from(source));
+    const image = await CustomJimp.read(Buffer.from(input.bytes));
     const width = image.width as number;
     const height = image.height as number;
 
-    if (Math.max(width, height) > PDF_PHOTO_MAX_DIMENSION) {
-      if (width >= height) image.resize({ w: PDF_PHOTO_MAX_DIMENSION });
-      else image.resize({ h: PDF_PHOTO_MAX_DIMENSION });
+    if (Math.max(width, height) > PDF_PHOTO_THUMB_MAX_DIMENSION) {
+      if (width >= height) image.resize({ w: PDF_PHOTO_THUMB_MAX_DIMENSION });
+      else image.resize({ h: PDF_PHOTO_THUMB_MAX_DIMENSION });
     }
 
-    const jpeg = await image.getBuffer(jpegMime, { quality: PDF_PHOTO_JPEG_QUALITY });
+    const jpeg = await image.getBuffer(jpegMime, { quality: PDF_PHOTO_THUMB_JPEG_QUALITY });
     return { bytes: Uint8Array.from(jpeg), mimeType: 'image/jpeg', label: input.label };
   } catch (error) {
     console.warn('[form-pdf-generator] Photo compression failed; using prepared thumbnail:', error instanceof Error ? error.message : error);
@@ -198,7 +197,7 @@ async function embedImage(doc: PDFDocumentType, input: FormPdfImage): Promise<PD
 }
 
 export async function generateFormSubmissionPdf(data: FormSubmissionPdfData): Promise<Uint8Array> {
-  const { PDFDocument, StandardFonts, rgb } = await import('pdf-lib');
+  const { PDFDocument, PDFString, StandardFonts, rgb } = await import('pdf-lib');
   const doc = await PDFDocument.create();
   const regular = await doc.embedFont(StandardFonts.Helvetica);
   const bold = await doc.embedFont(StandardFonts.HelveticaBold);
@@ -229,6 +228,24 @@ export async function generateFormSubmissionPdf(data: FormSubmissionPdfData): Pr
       target.drawText(printable(data.companyName).slice(0, 60), {
         x: MARGIN, y: PAGE_H - 46, font: regular, size: 8.5, color: MUTED,
       });
+    }
+    if (pages.length === 1 && data.jobId && data.formInstanceId) {
+      const reportUrl = `https://iwillbuild.com/jobs/${data.jobId}/forms/${data.formInstanceId}`;
+      const reportLabel = 'IWILLBUILD report — open originals';
+      const reportX = MARGIN;
+      const reportY = PAGE_H - 61;
+      const reportSize = 8.5;
+      target.drawText(reportLabel, {
+        x: reportX, y: reportY, font: bold, size: reportSize, color: PURPLE,
+      });
+      const annotation = doc.context.register(doc.context.obj({
+        Type: 'Annot',
+        Subtype: 'Link',
+        Rect: [reportX, reportY - 2, reportX + bold.widthOfTextAtSize(reportLabel, reportSize), reportY + reportSize + 2],
+        Border: [0, 0, 0],
+        A: { Type: 'Action', S: 'URI', URI: PDFString.of(reportUrl) },
+      }));
+      target.node.addAnnot(annotation);
     }
     // Status — text prefix, no filled badge
     const status = printable(data.status || 'Completed').toUpperCase();
@@ -327,11 +344,11 @@ export async function generateFormSubmissionPdf(data: FormSubmissionPdfData): Pr
       const embedded = (await Promise.all(preparedInputs.map((image) => embedImage(doc, image)))).filter((image): image is PDFImage => image !== null);
       if (embedded.length > 0) {
         if (field.fieldType === 'photo') {
-          // ── Inline thumbnails: 3 per row, small ──
-          const THUMB_COLS = 3;
+          // ── Inline thumbnails: four compact previews per row ──
+          const THUMB_COLS = 4;
           const THUMB_GAP = 8;
-          const THUMB_W = (CONTENT_W - THUMB_GAP * (THUMB_COLS - 1)) / THUMB_COLS;
-          const THUMB_H = THUMB_W * 0.75;
+          const THUMB_W = 112;
+          const THUMB_H = 84;
           for (let index = 0; index < embedded.length; index += THUMB_COLS) {
             ensureSpace(THUMB_H + 10);
             for (let col = 0; col < THUMB_COLS; col++) {

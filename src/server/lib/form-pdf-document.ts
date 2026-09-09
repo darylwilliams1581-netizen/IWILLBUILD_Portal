@@ -263,26 +263,21 @@ export async function buildFormPdfDocument(
 
           try {
             const downloaded = await getDownloadBuffer(storedName, bucket);
-            const thumbnail = await generateThumbnail(downloaded.buffer, mimeType, 300, 70);
+            const thumbnail = await generateThumbnail(downloaded.buffer, mimeType, 160, 60);
             const thumbBytes = thumbnail ? Uint8Array.from(thumbnail.buffer) : null;
             const thumbMime = thumbnail ? thumbnail.mimeType : null;
             const isImage = /image\/(?:png|jpe?g)/i.test(mimeType);
             if (!isImage) return null;
-            const fullBytes = Uint8Array.from(downloaded.buffer);
             if (thumbBytes && thumbMime) {
               return {
                 bytes: thumbBytes,
                 mimeType: thumbMime,
-                fullBytes,
-                fullMimeType: mimeType,
                 label: field.label,
               };
             }
             return {
-              bytes: fullBytes,
+              bytes: Uint8Array.from(downloaded.buffer),
               mimeType,
-              fullBytes,
-              fullMimeType: mimeType,
               label: field.label,
             };
           } catch (err) {
@@ -318,6 +313,8 @@ export async function buildFormPdfDocument(
     jobAddress,
     completedBy: submission.completedByName ?? 'Unknown',
     completedAt,
+    jobId: submission.jobId ?? null,
+    formInstanceId: submission.id,
     footerText,
     disclaimer,
     fields: fields.map((f) => ({
