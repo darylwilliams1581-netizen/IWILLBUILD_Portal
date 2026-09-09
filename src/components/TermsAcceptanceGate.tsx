@@ -4,6 +4,7 @@
  */
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
+import { createPortal } from 'react-dom';
 import { Shield } from 'lucide-react';
 import { authClient } from '@/lib/auth/auth-client';
 import LegalDocument, { LEGAL_VERSION, LEGAL_JURISDICTION } from '@/content/legal/LegalDocument';
@@ -69,7 +70,9 @@ export default function TermsAcceptanceGate({ onAccepted, userEmail }: Props) {
     setTimeout(() => onAccepted(), 200);
   }
 
-  return (
+  if (typeof document === 'undefined') return null;
+
+  return createPortal(
     <AnimatePresence>
       {!accepted && (
         <motion.div
@@ -78,23 +81,22 @@ export default function TermsAcceptanceGate({ onAccepted, userEmail }: Props) {
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           transition={{ duration: 0.2 }}
-          className="fixed inset-0 z-[9999] flex items-center justify-center overflow-hidden p-3"
+          className="fixed inset-0 z-[9999] flex items-center justify-center overflow-hidden p-4"
           style={{
             background: 'rgba(15,17,23,0.72)',
-            WebkitTextSizeAdjust: '100%',
-            textSizeAdjust: '100%',
+            paddingTop: 'max(env(safe-area-inset-top), 16px)',
+            paddingBottom: 'max(env(safe-area-inset-bottom), 16px)',
           }}
         >
           <motion.div
             initial={{ y: 24, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
             exit={{ y: 16, opacity: 0 }}
-            className="flex w-full max-w-md flex-col rounded-2xl bg-white shadow-2xl"
+            className="flex w-full max-w-sm flex-col overflow-hidden rounded-2xl bg-white shadow-2xl"
             style={{
-              width: 'min(calc(100vw - 24px), 28rem)',
-              maxWidth: '28rem',
-              maxHeight: 'min(calc(100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom) - 24px), 640px)',
-              overflow: 'hidden',
+              width: 'calc(100% - 8px)',
+              maxWidth: '24rem',
+              maxHeight: 'calc(100% - 24px)',
             }}
             role="dialog"
             aria-modal="true"
@@ -159,6 +161,7 @@ export default function TermsAcceptanceGate({ onAccepted, userEmail }: Props) {
           </motion.div>
         </motion.div>
       )}
-    </AnimatePresence>
+    </AnimatePresence>,
+    document.body,
   );
 }

@@ -29,7 +29,6 @@ type LeafletMarker = {
 
 type LeafletTileLayer = {
   addTo: (m: LeafletMap) => LeafletTileLayer;
-  on: (event: 'tileload' | 'tileerror', handler: () => void) => LeafletTileLayer;
 };
 
 declare global {
@@ -49,7 +48,6 @@ const DEFAULT_CENTER: [number, number] = [-19.259, 146.817]; // Townsville
 const LEAFLET_JS = '/vendor/leaflet/leaflet.js';
 const LEAFLET_CSS = '/vendor/leaflet/leaflet.css';
 const LOAD_TIMEOUT_MS = 8_000;
-const TILE_TIMEOUT_MS = 10_000;
 
 let leafletLoadPromise: Promise<void> | null = null;
 
@@ -134,8 +132,6 @@ export default function OsmFallbackMap({
 
   useEffect(() => {
     let disposed = false;
-    let tileLoaded = false;
-    let tileTimer: number | undefined;
     let resizeObserver: ResizeObserver | undefined;
     setMapStatus({ phase: 'loading', message: 'Loading map…' });
 
@@ -150,29 +146,11 @@ export default function OsmFallbackMap({
         });
         mapRef.current = map;
 
-        const tiles = window.L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
-          attribution: '&copy; OpenStreetMap contributors',
+        window.L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+          attribution: '&copy; OpenStreetMap',
           maxZoom: 19,
-        });
-        tiles.on('tileload', () => {
-          if (disposed) return;
-          tileLoaded = true;
-          if (tileTimer !== undefined) window.clearTimeout(tileTimer);
-          setMapStatus({ phase: 'ready', message: '' });
-        });
-        tiles.on('tileerror', () => {
-          console.warn('[OsmFallbackMap] An OpenStreetMap tile failed to load.');
-        });
-        tiles.addTo(map);
-
-        tileTimer = window.setTimeout(() => {
-          if (!disposed && !tileLoaded) {
-            setMapStatus({
-              phase: 'error',
-              message: 'Map tiles could not load. Check your internet connection and try again.',
-            });
-          }
-        }, TILE_TIMEOUT_MS);
+        }).addTo(map);
+        setMapStatus({ phase: 'ready', message: '' });
 
         zoomInRef.current = () => map.setZoom(map.getZoom() + 1);
         zoomOutRef.current = () => map.setZoom(map.getZoom() - 1);
@@ -195,7 +173,6 @@ export default function OsmFallbackMap({
 
     return () => {
       disposed = true;
-      if (tileTimer !== undefined) window.clearTimeout(tileTimer);
       resizeObserver?.disconnect();
       markersRef.current.forEach(marker => marker.remove());
       markersRef.current = [];

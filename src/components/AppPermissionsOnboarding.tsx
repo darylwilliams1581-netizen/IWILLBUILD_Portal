@@ -11,6 +11,7 @@
  */
 
 import { useState, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   MapPin, Camera, Bell, ChevronRight, X, CheckCircle2, Shield,
@@ -236,23 +237,21 @@ export default function AppPermissionsOnboarding({ onDone }: Props) {
   const state = stepStates[currentStep.id];
   const Icon = currentStep.icon;
 
-  return (
-    <div
-      className="fixed inset-0 z-[200] flex w-full max-w-full flex-col overflow-hidden bg-gray-950"
-      style={{
-        maxWidth: 'none',
-        maxHeight: '100dvh',
-        WebkitTextSizeAdjust: '100%',
-        textSizeAdjust: '100%',
-      }}
-      role="dialog"
-      aria-modal="true"
-      aria-label="App permission setup"
-    >
+  if (typeof document === 'undefined') return null;
+
+  return createPortal(
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-gray-950/75 p-4">
+      <div
+        className="flex w-full max-w-sm flex-col overflow-hidden rounded-2xl bg-gray-950 shadow-2xl ring-1 ring-white/10"
+        style={{ width: 'calc(100% - 8px)', maxWidth: '24rem', maxHeight: 'calc(100% - 24px)' }}
+        role="dialog"
+        aria-modal="true"
+        aria-label="App permission setup"
+      >
       {/* Dismiss */}
       <div
         className="flex shrink-0 justify-end px-4 pb-1"
-        style={{ paddingTop: 'max(env(safe-area-inset-top), 12px)' }}
+        style={{ paddingTop: '12px' }}
       >
         <button
           onClick={handleDismissAll}
@@ -288,7 +287,7 @@ export default function AppPermissionsOnboarding({ onDone }: Props) {
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -16 }}
             transition={{ duration: 0.28, ease: 'easeOut' as const }}
-            className="mx-auto my-auto flex w-full max-w-sm flex-col items-center gap-3 py-2 text-center"
+            className="mx-auto flex w-full flex-col items-center gap-3 py-2 text-center"
           >
             {/* Icon */}
             <div className={`flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl ${currentStep.iconBg} shadow-xl`}>
@@ -329,7 +328,7 @@ export default function AppPermissionsOnboarding({ onDone }: Props) {
       {/* Actions */}
       <div
         className="shrink-0 space-y-1.5 px-4 pt-2"
-        style={{ paddingBottom: 'max(env(safe-area-inset-bottom), 12px)' }}
+        style={{ paddingBottom: '12px' }}
       >
         <button
           onClick={handleEnable}
@@ -364,6 +363,8 @@ export default function AppPermissionsOnboarding({ onDone }: Props) {
           {isLastStep ? 'Skip and go to app' : 'Skip for now'}
         </button>
       </div>
-    </div>
+      </div>
+    </div>,
+    document.body,
   );
 }

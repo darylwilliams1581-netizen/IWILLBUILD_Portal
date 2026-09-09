@@ -28,6 +28,7 @@
  */
 
 import React from 'react';
+import { createPortal } from 'react-dom';
 import {
   Camera, Image, MapPin, Mic, Bell,
   X, ExternalLink, Settings, ShieldCheck,
@@ -147,26 +148,26 @@ export default function PermissionExplainerModal({
     onNotNow();
   }
 
-  return (
+  if (typeof document === 'undefined') return null;
+
+  return createPortal(
     /* Backdrop */
     <div
-      className="fixed inset-0 z-[9999] flex items-end justify-center overflow-hidden p-3 sm:items-center"
+      className="fixed inset-0 z-[9999] flex items-center justify-center overflow-hidden p-4"
       style={{
         backgroundColor: 'rgba(0,0,0,0.65)',
-        paddingBottom: 'max(env(safe-area-inset-bottom), 12px)',
-        WebkitTextSizeAdjust: '100%',
-        textSizeAdjust: '100%',
+        paddingTop: 'max(env(safe-area-inset-top), 16px)',
+        paddingBottom: 'max(env(safe-area-inset-bottom), 16px)',
       }}
       onClick={onNotNow}
     >
       {/* Sheet / dialog — stop propagation so tapping inside doesn't close */}
       <div
-        className="relative mx-auto flex w-full flex-col rounded-2xl bg-white shadow-2xl animate-in slide-in-from-bottom-4 sm:zoom-in-95 duration-200"
+        className="relative mx-auto flex w-full max-w-sm flex-col overflow-hidden rounded-2xl bg-white shadow-2xl animate-in fade-in duration-200"
         style={{
-          width: 'min(calc(100vw - 24px), 24rem)',
+          width: 'calc(100% - 8px)',
           maxWidth: '24rem',
-          maxHeight: 'min(calc(100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom) - 24px), 480px)',
-          overflow: 'hidden',
+          maxHeight: 'calc(100% - 24px)',
         }}
         role="dialog"
         aria-modal="true"
@@ -183,7 +184,7 @@ export default function PermissionExplainerModal({
         </button>
 
         {/* Pull handle (mobile) */}
-        <div className="flex justify-center pt-3 pb-1 sm:hidden">
+        <div className="flex justify-center pt-3 pb-1">
           <div className="w-10 h-1 rounded-full bg-gray-200" />
         </div>
 
@@ -257,6 +258,7 @@ export default function PermissionExplainerModal({
           )}
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }
