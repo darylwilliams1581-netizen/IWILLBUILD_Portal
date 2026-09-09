@@ -12,9 +12,9 @@
  * Bottom bar — active/edit view:
  *   [ Save Draft ]  [ Complete (red) ]
  *
- * The floating Document Actions widget (purple circle) is suppressed on this
- * page via DocumentActionsWidget's pathname guard. The FileDown header button
- * is the sole entry point to PDF/Email/Share on completed forms.
+ * The floating Document Actions widget (purple circle FAB) is registered via
+ * useDocumentActionsRegistration() when the form is completed — it opens the
+ * same FormDocumentActionsModal as the header FileDown button.
  */
 import { useState, useEffect, useRef, useCallback, lazy, Suspense } from 'react';
 import { useParams, useLocation } from "react-router";
@@ -23,6 +23,7 @@ import { Loader2, AlertTriangle, ChevronLeft, CheckCircle2, Pencil, Save, FileDo
 import FormRunner from '@/components/job/FormRunner';
 import type { FormSubmission } from '@/components/job/form-types';
 import type { Job } from '@/lib/jobs-api';
+import { useDocumentActionsRegistration } from '@/lib/document-actions-context';
 
 const FormDocumentActionsModal = lazy(
   () => import('@/components/job/FormDocumentActionsModal'),
@@ -69,6 +70,23 @@ export default function JobFormRunnerPage() {
   const [docActionsOpen, setDocActionsOpen] = useState(false);
   const saveRef = useRef<(() => Promise<void>) | null>(null);
   const completeRef = useRef<(() => Promise<void>) | null>(null);
+
+  // ── Register with the global FAB widget when the form is completed ────────────
+  // The FAB (purple circle) appears and opens FormDocumentActionsModal, the same
+  // modal as the header FileDown button.  Registration is null while loading or
+  // when the form is not yet completed so the FAB stays hidden.
+  useDocumentActionsRegistration(
+    isDone && submission
+      ? {
+          documentType: 'completed_form',
+          recordId: submissionId,
+          title: templateName,
+          jobId,
+          job: job ?? undefined,
+          availableActions: ['pdf', 'email', 'secure_share'],
+        }
+      : null,
+  );
   useEffect(() => {
     if (!submissionId) {
       setError('Invalid URL');
