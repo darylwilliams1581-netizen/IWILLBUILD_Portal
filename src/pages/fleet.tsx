@@ -377,7 +377,10 @@ export default function FleetPage() {
         {/* Content */}
         <div className="relative z-0 flex flex-1 min-h-0 flex-col overflow-hidden">
           {/* ── Live Map view ── */}
-          {view === 'live-map' && <div className="relative z-0 flex flex-1 min-h-0 flex-col overflow-hidden">
+          {view === 'live-map' && <div
+              className="relative z-0 flex flex-1 flex-col overflow-hidden"
+              style={{ minHeight: 'min(70dvh, calc(100dvh - 8rem))' }}
+            >
               <PortalErrorBoundary inline>
                 <Suspense fallback={<div className="flex items-center justify-center flex-1 gap-2 text-slate-400">
                     <Loader2 size={20} className="animate-spin" />
