@@ -835,5 +835,19 @@
     },
     "uploadContentHash": "73be4c3af28bf05a76df7c14be269bd5a7f77d55122fa1de381827d8993cac9b",
     "caption": "mobile app dashboard with job management tools"
+  },
+  "debug/screenshot-latest-share": {
+    "mediaType": "image",
+    "currentUrl": "/airo-assets/uploads/debug-screenshot-latest-share-1e8d0fe6.jpg",
+    "searchQuery": "variation request form kitchen project management",
+    "alternatives": [],
+    "userModified": true,
+    "createdAt": "2026-09-09T20:24:10.120Z",
+    "lastUpdated": "2026-09-09T20:24:10.120Z",
+    "uploadSources": {
+      "/airo-assets/uploads/debug-screenshot-latest-share-1e8d0fe6.jpg": "f38wenbvln_1788982059547_file_yfV6_q0Mov.jpg"
+    },
+    "uploadContentHash": "329a81a362efb2f5c1c2e619d788e9355005f271236e0f349df5d4fe79ff70fb",
+    "caption": "variation request form kitchen project management"
   }
 }
