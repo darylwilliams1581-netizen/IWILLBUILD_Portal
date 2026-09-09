@@ -326,37 +326,30 @@ export default function JobPhotosPage() {
                 <Check size={12} className="shrink-0" />
                 {sendMsg}
               </div>}
-            <div className="flex items-center gap-2 px-3 pt-2 pb-2">
+            <div className="flex items-center gap-1.5 px-3 pt-2 pb-2">
               {/* Done */}
               <button onClick={() => {
             handleSetSelectMode(false);
             photosRef.current?.exitSelectMode();
-          }} className="flex flex-col items-center justify-center gap-0.5 px-3 py-2 rounded-lg border border-gray-200 bg-gray-50 hover:bg-gray-100 text-gray-600 transition-colors touch-manipulation shrink-0">
+          }} className="flex flex-1 min-w-0 flex-col items-center justify-center gap-0.5 px-2 py-2 rounded-lg border border-gray-200 bg-gray-50 hover:bg-gray-100 text-gray-600 transition-colors touch-manipulation">
                 <X size={16} />
                 <span className="text-[10px] font-semibold leading-none">Done</span>
               </button>
 
-              {/* Count label */}
-              <div className="flex-1 text-center">
-                <p className="text-sm font-semibold text-gray-800">
-                  {selectedCount === 0 ? 'Tap to select' : `${selectedCount} selected`}
-                </p>
-              </div>
-
               {/* Delete selected */}
-              <button onClick={() => photosRef.current?.deleteSelected()} disabled={selectedCount === 0} className="flex flex-col items-center justify-center gap-0.5 px-3 py-2 rounded-lg border border-gray-200 bg-gray-50 hover:bg-red-50 hover:border-red-200 disabled:opacity-40 text-gray-600 hover:text-red-600 transition-colors touch-manipulation shrink-0">
+              <button onClick={() => photosRef.current?.deleteSelected()} disabled={selectedCount === 0} className="flex flex-1 min-w-0 flex-col items-center justify-center gap-0.5 px-2 py-2 rounded-lg border border-gray-200 bg-gray-50 hover:bg-red-50 hover:border-red-200 disabled:opacity-40 text-gray-600 hover:text-red-600 transition-colors touch-manipulation">
                 <Trash2 size={16} />
                 <span className="text-[10px] font-semibold leading-none">Delete</span>
               </button>
 
               {/* Download selected */}
-              <button onClick={handleDownloadSelected} disabled={selectedCount === 0} className="flex flex-col items-center justify-center gap-0.5 px-3 py-2 rounded-lg border border-gray-200 bg-gray-50 hover:bg-gray-100 disabled:opacity-40 text-gray-600 transition-colors touch-manipulation shrink-0">
+              <button onClick={handleDownloadSelected} disabled={selectedCount === 0} className="flex flex-1 min-w-0 flex-col items-center justify-center gap-0.5 px-2 py-2 rounded-lg border border-gray-200 bg-gray-50 hover:bg-gray-100 disabled:opacity-40 text-gray-600 transition-colors touch-manipulation">
                 <Download size={16} />
                 <span className="text-[10px] font-semibold leading-none">Download</span>
               </button>
 
               {/* Send selected */}
-              <button onClick={() => void handleSendSelected()} disabled={selectedCount === 0 || sendingSelected} className="flex flex-col items-center justify-center gap-0.5 px-3 py-2 rounded-lg border border-gray-200 bg-gray-50 hover:bg-gray-100 disabled:opacity-40 text-gray-600 transition-colors touch-manipulation shrink-0">
+              <button onClick={() => void handleSendSelected()} disabled={selectedCount === 0 || sendingSelected} className="flex flex-1 min-w-0 flex-col items-center justify-center gap-0.5 px-2 py-2 rounded-lg border border-gray-200 bg-gray-50 hover:bg-gray-100 disabled:opacity-40 text-gray-600 transition-colors touch-manipulation">
                 {sendingSelected ? <Loader2 size={16} className="animate-spin" /> : <Send size={16} />}
                 <span className="text-[10px] font-semibold leading-none">Send</span>
               </button>
