@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import {
   Loader2, AlertCircle, MapPin, Link, SplitSquareHorizontal,
   Navigation, ExternalLink, Briefcase, Truck, Search, ChevronDown, X,
-  ImagePlus, CheckCircle2, Camera, Images,
+  CheckCircle2, Camera, Images,
 } from 'lucide-react';
 import { type FormField, parseOptions, parseSettings, fetchGlobalLists } from '../FormFieldBuilder';
 import SignaturePad, {
@@ -14,6 +14,9 @@ import SignaturePad, {
 } from './SignaturePad';
 import { isGpsAnswer, type GpsAnswer } from './form-types';
 import { useAuthenticatedImageUrl } from '@/hooks/useAuthenticatedImageUrl';
+import { useIosMediaPicker } from '@/hooks/useIosMediaPicker';
+import { IosMediaInputs, IosPermissionBanner } from '@/components/IosMediaInputs';
+import PermissionExplainerModal from '@/components/PermissionExplainerModal';
 import {
   Sheet,
   SheetContent,
@@ -131,7 +134,6 @@ function PhotoFieldInput({
   const [pickerLoading, setPickerLoading] = useState(false);
   const [pickerError, setPickerError] = useState<string | null>(null);
   const [selectedJobPhotoIds, setSelectedJobPhotoIds] = useState<Set<number>>(new Set());
-  const fileInputRef = useRef<HTMLInputElement>(null);
   const objectUrlsRef = useRef<Set<string>>(new Set());
 
   const storeUrls = useCallback((next: string[]) => {
@@ -209,6 +211,11 @@ function PhotoFieldInput({
     }
   }, [allowMultiple, storeUrls, urls]);
 
+  const mediaPicker = useIosMediaPicker(
+    (file) => { void handleFiles([file]); },
+    (files) => { void handleFiles(allowMultiple ? files : files.slice(0, 1)); },
+  );
+
   const removePhoto = (index: number) => storeUrls(urls.filter((_, itemIndex) => itemIndex !== index));
 
   const toggleJobPhoto = (photoId: number) => {
@@ -256,17 +263,34 @@ function PhotoFieldInput({
 
       {!disabled && (
         <>
-          <div className="grid grid-cols-2 gap-2">
+          <IosMediaInputs picker={mediaPicker} accept="image/*" />
+          {mediaPicker.permissionDenied && (
+            <IosPermissionBanner type={mediaPicker.permissionDenied} />
+          )}
+          <div className={`grid gap-2 ${jobId ? 'grid-cols-3' : 'grid-cols-2'}`}>
             <button
               type="button"
-              disabled={uploading}
-              onClick={() => fileInputRef.current?.click()}
+              disabled={uploading || mediaPicker.checkingPermission}
+              onClick={() => void mediaPicker.openCamera()}
               className={`flex min-h-16 items-center justify-center gap-2 rounded-xl border-2 border-dashed px-2 transition-colors ${
                 error ? 'border-red-300 bg-red-50' : 'border-slate-200 bg-slate-50 hover:border-primary/40 hover:bg-primary/5'
-              } ${uploading ? 'pointer-events-none opacity-60' : ''}`}
+              } ${uploading || mediaPicker.checkingPermission ? 'pointer-events-none opacity-60' : ''}`}
             >
-              {uploading ? <Loader2 size={18} className="animate-spin text-primary" /> : <ImagePlus size={18} className="text-slate-400" />}
-              <span className="text-xs font-medium text-slate-600">{uploading ? 'Uploading…' : 'Take / Camera roll'}</span>
+              {uploading || mediaPicker.checkingPermission
+                ? <Loader2 size={18} className="animate-spin text-primary" />
+                : <Camera size={18} className="text-slate-400" />}
+              <span className="text-xs font-medium text-slate-600">{uploading ? 'Uploading…' : 'Camera'}</span>
+            </button>
+            <button
+              type="button"
+              disabled={uploading || mediaPicker.checkingPermission}
+              onClick={() => void mediaPicker.openLibrary({ maxSelections: allowMultiple ? 20 : 1 })}
+              className={`flex min-h-16 items-center justify-center gap-2 rounded-xl border-2 border-dashed px-2 transition-colors ${
+                error ? 'border-red-300 bg-red-50' : 'border-slate-200 bg-slate-50 hover:border-primary/40 hover:bg-primary/5'
+              } ${uploading || mediaPicker.checkingPermission ? 'pointer-events-none opacity-60' : ''}`}
+            >
+              <Images size={18} className="text-slate-400" />
+              <span className="text-xs font-medium text-slate-600">Library</span>
             </button>
             {jobId && (
               <button
@@ -280,21 +304,24 @@ function PhotoFieldInput({
               </button>
             )}
           </div>
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept="image/*"
-            multiple={allowMultiple}
-            className="hidden"
-            onChange={(event) => {
-              if (event.target.files?.length) void handleFiles(Array.from(event.target.files));
-              event.target.value = '';
-            }}
-          />
         </>
       )}
 
-      {uploadError && <p className="flex items-center gap-1 text-xs text-red-500"><AlertCircle size={12} />{uploadError}</p>}
+      {(uploadError || mediaPicker.cameraError) && (
+        <p className="flex items-center gap-1 text-xs text-red-500">
+          <AlertCircle size={12} />{uploadError || mediaPicker.cameraError}
+        </p>
+      )}
+
+      {mediaPicker.explainer && (
+        <PermissionExplainerModal
+          open={true}
+          type={mediaPicker.explainer.type}
+          denied={mediaPicker.explainer.denied}
+          onNotNow={mediaPicker.explainer.onNotNow}
+          onEnable={mediaPicker.explainer.onEnable}
+        />
+      )}
 
       <Sheet open={pickerOpen} onOpenChange={(open) => {
         setPickerOpen(open);
