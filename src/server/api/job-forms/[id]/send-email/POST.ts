@@ -104,10 +104,11 @@ export default async function handler(req: Request, res: Response) {
 
     const { pdfBytes, filename, templateName, companyName, jobNumber, jobName, jobId } = doc;
 
+    let willAttach = attachPdf;
+    let oversizedNote = '';
     if (attachPdf && pdfBytes.length > EMAIL_ATTACHMENT_LIMIT) {
-      return res.status(413).json({
-        error: 'This form PDF is larger than the 2 MB email limit. Remove some photos or use Download PDF to save it.',
-      });
+      willAttach = false;
+      oversizedNote = '\n\nThe form PDF was larger than the 2 MB email limit, so it was not attached. Open this form in IWILLBUILD and use Download PDF.';
     }
 
     // ── Resolve owner BCC ──────────────────────────────────────────────────────
@@ -132,8 +133,8 @@ export default async function handler(req: Request, res: Response) {
 
     // ── Build email body ───────────────────────────────────────────────────────
     const jobLabel = [jobNumber, jobName].filter(Boolean).join(' – ');
-    const escapedMessage = escapeHtml(message).replace(/\n/g, '<br>');
-    const fullText = `${message}\n\n—\n${SYSTEM_FOOTER}`;
+    const escapedMessage = escapeHtml(message + oversizedNote).replace(/\n/g, '<br>');
+    const fullText = `${message}${oversizedNote}\n\n—\n${SYSTEM_FOOTER}`;
     const statusLabel = doc.status;
 
     const html = `<!doctype html><html><body style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:#1e293b">
@@ -159,7 +160,7 @@ export default async function handler(req: Request, res: Response) {
       text: fullText,
       html,
       fromName: companyName,
-      attachments: attachPdf
+      attachments: willAttach
         ? [{ filename, content: Buffer.from(pdfBytes), contentType: 'application/pdf' }]
         : undefined,
     });
@@ -175,7 +176,7 @@ export default async function handler(req: Request, res: Response) {
           day: 'numeric', month: 'short', year: 'numeric',
           hour: '2-digit', minute: '2-digit', timeZone: 'Australia/Brisbane',
         });
-        const attachment = attachPdf ? `${templateName} PDF` : 'None';
+        const attachment = willAttach ? `${templateName} PDF` : (oversizedNote ? 'None (PDF over 2 MB)' : 'None');
         const jobLabelNote = [jobNumber, jobName].filter(Boolean).join(' — ');
         const noteBody = [
           `Email sent – ${templateName}`,
@@ -208,7 +209,8 @@ export default async function handler(req: Request, res: Response) {
     return res.json({
       ok: true,
       messageId: result.messageId,
-      attachedPdf: attachPdf,
+      attachedPdf: willAttach,
+      pdfOmittedBecauseTooLarge: Boolean(oversizedNote),
       ownerBcced,
       senderName,
       submissionId: submission?.id ?? submissionId,

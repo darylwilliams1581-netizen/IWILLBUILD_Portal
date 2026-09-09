@@ -185,7 +185,7 @@ export default function SendDocumentEmailModal({
     setSending(true);
     setError('');
 
-    let sendData: { ok: boolean; messageId: string; attachedPdf: boolean; ownerBcced: boolean; senderName?: string };
+    let sendData: { ok: boolean; messageId: string; attachedPdf: boolean; ownerBcced: boolean; senderName?: string; pdfOmittedBecauseTooLarge?: boolean };
 
     try {
       const res = await fetch(endpoint, {
@@ -198,7 +198,7 @@ export default function SendDocumentEmailModal({
             attachPdf, bccOwner,
           }),
       });
-      const data = await res.json() as { ok?: boolean; messageId?: string; attachedPdf?: boolean; ownerBcced?: boolean; senderName?: string; error?: string };
+      const data = await res.json() as { ok?: boolean; messageId?: string; attachedPdf?: boolean; ownerBcced?: boolean; senderName?: string; pdfOmittedBecauseTooLarge?: boolean; error?: string };
       if (!res.ok || !data.ok || !data.messageId) {
         throw new Error(data.error ?? `Send failed (HTTP ${res.status}).`);
       }
@@ -208,6 +208,7 @@ export default function SendDocumentEmailModal({
         attachedPdf: data.attachedPdf ?? false,
         ownerBcced: data.ownerBcced ?? false,
         senderName: data.senderName ?? 'Unknown',
+        pdfOmittedBecauseTooLarge: data.pdfOmittedBecauseTooLarge ?? false,
       };
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Network error — please try again.');
@@ -253,7 +254,13 @@ export default function SendDocumentEmailModal({
     onClose();
 
     if (onSuccess) {
-      if (noteOk) {
+      if (sendData.pdfOmittedBecauseTooLarge) {
+        onSuccess({
+          variant: 'warning',
+          title: 'Email sent — PDF not attached',
+          subtitle: 'The PDF is over 2 MB. Use Download PDF in the form.',
+        });
+      } else if (noteOk) {
         onSuccess({
           variant: 'success',
           title: 'Email sent successfully',
@@ -380,7 +387,7 @@ export default function SendDocumentEmailModal({
           onChange={(e) => { setMessage(e.target.value.slice(0, MAX_MESSAGE_LEN)); setError(''); }}
           rows={6}
           placeholder="Email message body"
-          className={`${INPUT_CLS} resize-none`}
+          className={`${INPUT_CLS} resize-none min-h-[120px]`}
           disabled={sending}
         />
         <p className="text-[11px] text-gray-400 mt-1 text-right">{message.length}/{MAX_MESSAGE_LEN}</p>
@@ -464,7 +471,7 @@ export default function SendDocumentEmailModal({
 
           {/* Left column — job context */}
           {job && (
-            <div className="md:w-64 md:shrink-0 md:border-r md:border-gray-100 p-4 md:p-5 md:flex md:flex-col md:overflow-y-auto">
+            <div className="md:w-64 md:shrink-0 md:border-r md:border-gray-100 p-4 md:p-5 md:flex md:flex-col md:overflow-y-auto max-md:max-h-[28vh] max-md:overflow-y-auto shrink-0">
               <div className="hidden md:flex items-center gap-2.5 mb-4">
                 <div className="w-8 h-8 rounded-xl bg-violet-600 flex items-center justify-center shrink-0">
                   <Mail size={15} className="text-white" />

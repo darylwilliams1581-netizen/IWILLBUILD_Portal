@@ -13,8 +13,46 @@ import SignaturePad, {
   parseMultiSignatureAnswer,
 } from './SignaturePad';
 import { isGpsAnswer, type GpsAnswer } from './form-types';
+import { useAuthenticatedImageUrl } from '@/hooks/useAuthenticatedImageUrl';
 
 type AnswerValue = string | string[] | boolean | SignatureAnswer | MultiSignatureAnswer | GpsAnswer | null;
+
+function FormPhotoThumb({
+  url,
+  index,
+  disabled,
+  onRemove,
+}: {
+  url: string;
+  index: number;
+  disabled: boolean | undefined;
+  onRemove: () => void;
+}) {
+  const image = useAuthenticatedImageUrl(url);
+  return (
+    <div className="relative w-20 h-20 rounded-xl overflow-hidden border border-slate-200 bg-slate-100 shrink-0">
+      {image.src ? (
+        <img src={image.src} alt={`Photo ${index + 1}`} className="w-full h-full object-cover" />
+      ) : (
+        <div className="w-full h-full flex items-center justify-center text-[10px] text-slate-400 px-1 text-center">
+          {image.loading ? 'Loading…' : `Photo ${index + 1}`}
+        </div>
+      )}
+      {!disabled && (
+        <button
+          type="button"
+          onClick={onRemove}
+          className="absolute top-0.5 right-0.5 w-5 h-5 rounded-full bg-black/60 flex items-center justify-center hover:bg-black/80 transition-colors"
+        >
+          <X size={10} className="text-white" />
+        </button>
+      )}
+      <div className="absolute bottom-0.5 right-0.5">
+        <CheckCircle2 size={12} className="text-emerald-400 drop-shadow" />
+      </div>
+    </div>
+  );
+}
 
 // ── Read-only answer display ──────────────────────────────────────────────────
 
@@ -536,21 +574,13 @@ export function FieldInput({ field, value, onChange, error, disabled, companyId 
             {urls.length > 0 && (
               <div className="flex flex-wrap gap-2">
                 {urls.map((url, idx) => (
-                  <div key={idx} className="relative w-20 h-20 rounded-xl overflow-hidden border border-slate-200 bg-slate-100 shrink-0">
-                    <img src={url} alt={`Photo ${idx + 1}`} className="w-full h-full object-cover" />
-                    {!disabled && (
-                      <button
-                        type="button"
-                        onClick={() => removePhoto(idx)}
-                        className="absolute top-0.5 right-0.5 w-5 h-5 rounded-full bg-black/60 flex items-center justify-center hover:bg-black/80 transition-colors"
-                      >
-                        <X size={10} className="text-white" />
-                      </button>
-                    )}
-                    <div className="absolute bottom-0.5 right-0.5">
-                      <CheckCircle2 size={12} className="text-emerald-400 drop-shadow" />
-                    </div>
-                  </div>
+                  <FormPhotoThumb
+                    key={`${url}-${idx}`}
+                    url={url}
+                    index={idx}
+                    disabled={disabled}
+                    onRemove={() => removePhoto(idx)}
+                  />
                 ))}
               </div>
             )}
