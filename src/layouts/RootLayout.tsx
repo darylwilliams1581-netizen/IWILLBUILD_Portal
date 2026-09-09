@@ -130,7 +130,16 @@ export default function RootLayout({ children }: RootLayoutProps) {
         <div suppressHydrationWarning className="flex-1 min-h-0 flex flex-col overflow-hidden w-full min-w-0">
           {children}
         </div>
-        {/* Global Document Actions floating widget — hidden on public/share pages */}
+        {/*
+          DocumentActionsWidget is intentionally rendered OUTSIDE the
+          overflow-hidden content div above.  motion/react AnimatePresence on
+          page-level wrappers creates a new CSS containing block, which makes
+          `position:fixed` children behave like `position:absolute` and clips
+          them inside the overflow:hidden ancestor.  Placing the widget here —
+          as a sibling of the content div, still inside DocumentActionsProvider
+          — keeps it in the normal fixed-position stacking context so it
+          overlays the full viewport correctly and receives pointer events.
+        */}
         <ClientOnly>
           <DocumentActionsWidget />
         </ClientOnly>

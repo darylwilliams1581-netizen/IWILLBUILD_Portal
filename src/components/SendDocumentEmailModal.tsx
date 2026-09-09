@@ -274,9 +274,55 @@ export default function SendDocumentEmailModal({
   const jobHeading = job ? [job.jobNumber, job.jobName].filter(Boolean).join(' \u2014 ') : documentName;
 
   /* ─────────────────────────────────────────────────────────────────────────
+     Shared checkbox options — rendered in both left panel (desktop) and
+     compose section (mobile).  Defined as plain JSX fragments so React never
+     unmounts/remounts them on re-render (inner function components would get
+     new references each render, causing React to treat them as different
+     component types and remount — which swallows onChange events).
+  ───────────────────────────────────────────────────────────────────────── */
+  const checkboxOptions = (
+    <>
+      {documentType !== 'job' && (
+        <label className="flex items-center gap-3 cursor-pointer select-none">
+          <input
+            type="checkbox"
+            checked={attachPdf}
+            onChange={(e) => setAttachPdf(e.target.checked)}
+            disabled={sending}
+            className="w-4 h-4 accent-violet-600 rounded"
+          />
+          <span className="text-xs text-gray-700">Attach {documentLabel} as PDF</span>
+        </label>
+      )}
+      {documentType === 'form' && (
+        <label className="flex items-center gap-3 cursor-pointer select-none">
+          <input
+            type="checkbox"
+            checked={includeJobGallery}
+            onChange={(e) => setIncludeJobGallery(e.target.checked)}
+            disabled={sending}
+            className="w-4 h-4 accent-violet-600 rounded"
+          />
+          <span className="text-xs text-gray-700">Include job photo gallery</span>
+        </label>
+      )}
+      <label className="flex items-center gap-3 cursor-pointer select-none">
+        <input
+          type="checkbox"
+          checked={bccOwner}
+          onChange={(e) => setBccOwner(e.target.checked)}
+          disabled={sending}
+          className="w-4 h-4 accent-violet-600 rounded"
+        />
+        <span className="text-xs text-gray-700">Copy company owner</span>
+      </label>
+    </>
+  );
+
+  /* ─────────────────────────────────────────────────────────────────────────
      Job context panel
   ───────────────────────────────────────────────────────────────────────── */
-  const JobPanel = () => (
+  const jobPanel = (
     <div className="rounded-2xl border border-gray-100 bg-gray-50 overflow-hidden h-full flex flex-col">
       <div className="bg-violet-600 px-4 py-3.5 flex items-start justify-between gap-3">
         <div className="flex items-start gap-2.5 min-w-0">
@@ -326,22 +372,7 @@ export default function SendDocumentEmailModal({
 
         {/* Desktop-only options */}
         <div className="hidden md:flex flex-col gap-2.5 mt-auto pt-4 border-t border-gray-200">
-          {documentType !== 'job' && (
-            <label className="flex items-center gap-3 cursor-pointer select-none">
-              <input type="checkbox" checked={attachPdf} onChange={(e) => setAttachPdf(e.target.checked)} disabled={sending} className="w-4 h-4 accent-violet-600 rounded" />
-              <span className="text-xs text-gray-700">Attach {documentLabel} as PDF</span>
-            </label>
-          )}
-          {documentType === 'form' && (
-            <label className="flex items-center gap-3 cursor-pointer select-none">
-              <input type="checkbox" checked={includeJobGallery} onChange={(e) => setIncludeJobGallery(e.target.checked)} disabled={sending} className="w-4 h-4 accent-violet-600 rounded" />
-              <span className="text-xs text-gray-700">Include job photo gallery</span>
-            </label>
-          )}
-          <label className="flex items-center gap-3 cursor-pointer select-none">
-            <input type="checkbox" checked={bccOwner} onChange={(e) => setBccOwner(e.target.checked)} disabled={sending} className="w-4 h-4 accent-violet-600 rounded" />
-            <span className="text-xs text-gray-700">Copy company owner</span>
-          </label>
+          {checkboxOptions}
         </div>
       </div>
     </div>
@@ -350,7 +381,7 @@ export default function SendDocumentEmailModal({
   /* ─────────────────────────────────────────────────────────────────────────
      Compose form
   ───────────────────────────────────────────────────────────────────────── */
-  const ComposeForm = () => (
+  const composeForm = (
     <div className="flex flex-col gap-4">
       <div>
         <p className={LABEL_CLS}>To</p>
@@ -418,22 +449,7 @@ export default function SendDocumentEmailModal({
 
       {/* Mobile-only options */}
       <div className="flex flex-col gap-2.5 pt-1 border-t border-gray-100 md:hidden">
-        {documentType !== 'job' && (
-          <label className="flex items-center gap-3 cursor-pointer select-none">
-            <input type="checkbox" checked={attachPdf} onChange={(e) => setAttachPdf(e.target.checked)} disabled={sending} className="w-4 h-4 accent-violet-600 rounded" />
-            <span className="text-sm text-gray-700">Attach {documentLabel} as PDF</span>
-          </label>
-        )}
-        {documentType === 'form' && (
-          <label className="flex items-center gap-3 cursor-pointer select-none">
-            <input type="checkbox" checked={includeJobGallery} onChange={(e) => setIncludeJobGallery(e.target.checked)} disabled={sending} className="w-4 h-4 accent-violet-600 rounded" />
-            <span className="text-sm text-gray-700">Include job photo gallery</span>
-          </label>
-        )}
-        <label className="flex items-center gap-3 cursor-pointer select-none">
-          <input type="checkbox" checked={bccOwner} onChange={(e) => setBccOwner(e.target.checked)} disabled={sending} className="w-4 h-4 accent-violet-600 rounded" />
-          <span className="text-sm text-gray-700">Send a copy to the company owner</span>
-        </label>
+        {checkboxOptions}
       </div>
 
       {error && (
@@ -489,7 +505,7 @@ export default function SendDocumentEmailModal({
                 </div>
               </div>
               <div className="flex-1">
-                <JobPanel />
+                {jobPanel}
               </div>
             </div>
           )}
@@ -512,7 +528,7 @@ export default function SendDocumentEmailModal({
                   <p className="text-xs text-gray-400">Please wait</p>
                 </div>
               ) : (
-                <ComposeForm />
+                composeForm
               )}
             </div>
 
