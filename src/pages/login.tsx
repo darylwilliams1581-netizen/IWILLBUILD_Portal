@@ -21,6 +21,28 @@ function authLog(event: string, data?: Record<string, unknown>) {
   } catch {/* best-effort */}
 }
 
+/**
+ * Finish an authenticated login without carrying an iOS keyboard zoom into
+ * the portal. A React Router transition keeps WKWebView's visual viewport
+ * from the focused login input; the first-run terms and permission cards then
+ * render enlarged and clipped until the document is reloaded.
+ */
+function finishLoginNavigation(
+  destination: string,
+  navigate: ReturnType<typeof useNavigate>,
+): void {
+  if (isNativeApp) {
+    const activeElement = document.activeElement;
+    if (activeElement instanceof HTMLElement) activeElement.blur();
+
+    window.history.replaceState(window.history.state, '', destination);
+    window.location.reload();
+    return;
+  }
+
+  navigate(destination, { replace: true });
+}
+
 // ── Device fingerprint (stable per browser) ──────────────────────────────────
 function getDeviceFingerprint(): string {
   const key = 'iwb_device_fp';
@@ -125,9 +147,7 @@ export default function LoginPage() {
       authLog('already_authenticated', {
         redirectTo: from
       });
-      navigate(from, {
-        replace: true
-      });
+      finishLoginNavigation(from, navigate);
     }
   }, [isAuthenticated, navigate, location.state, location.search]);
 
@@ -341,9 +361,7 @@ export default function LoginPage() {
       authLog('redirect', {
         to: from
       });
-      navigate(from, {
-        replace: true
-      });
+      finishLoginNavigation(from, navigate);
     } catch (err) {
       authLog('exception', {
         errorMsg: String((err as Error)?.message ?? err).slice(0, 120)
@@ -432,11 +450,7 @@ export default function LoginPage() {
           ? rawFrom
           : '/home';
       console.info(JSON.stringify({ event: 'login.2fa.redirect', dest, native: isNativeApp, ts: Date.now() }));
-      if (isNativeApp) {
-        navigate(dest, { replace: true });
-      } else {
-        window.location.replace(dest);
-      }
+      finishLoginNavigation(dest, navigate);
       return;
     }
 
@@ -457,7 +471,7 @@ export default function LoginPage() {
         ? rawFrom2fa
         : '/home';
     console.info(JSON.stringify({ event: 'login.2fa.redirect', dest: dest2fa, native: isNativeApp, ts: Date.now() }));
-    navigate(dest2fa, { replace: true });
+    finishLoginNavigation(dest2fa, navigate);
   }
 
   async function handle2FA(e: React.FormEvent) {
@@ -478,7 +492,7 @@ export default function LoginPage() {
         const rawFrom2faBackup = (location.state as { from?: { pathname: string } })?.from?.pathname || '/home';
         const SAFE_BLOCKLIST_BACKUP = ['/login', '/signup', '/verify', '/forgot', '/reset', '/check-email'];
         const from2faBackup = isNativeApp ? '/home' : rawFrom2faBackup.startsWith('/') && !SAFE_BLOCKLIST_BACKUP.some(b => rawFrom2faBackup.startsWith(b)) ? rawFrom2faBackup : '/home';
-        navigate(from2faBackup, { replace: true });
+        finishLoginNavigation(from2faBackup, navigate);
       } catch {
         setError('Something went wrong. Please try again.');
       } finally {
@@ -573,9 +587,7 @@ export default function LoginPage() {
       })?.from?.pathname || '/home';
       const SAFE_BLOCKLIST_PW = ['/login', '/signup', '/verify', '/forgot', '/reset', '/check-email'];
       const fromPwChange = isNativeApp ? '/home' : rawFromPwChange.startsWith('/') && !SAFE_BLOCKLIST_PW.some(b => rawFromPwChange.startsWith(b)) ? rawFromPwChange : '/home';
-      navigate(fromPwChange, {
-        replace: true
-      });
+      finishLoginNavigation(fromPwChange, navigate);
     }} />}
 
       {/* Blueprint grid background */}

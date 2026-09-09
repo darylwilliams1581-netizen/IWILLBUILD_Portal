@@ -240,10 +240,18 @@ export default function AppPermissionsOnboarding({ onDone }: Props) {
   if (typeof document === 'undefined') return null;
 
   return createPortal(
-    <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-gray-950/75 p-4">
+    <div
+      className="fixed inset-0 z-[9999] flex items-center justify-center overflow-hidden bg-gray-950/75 p-4"
+      style={{ WebkitTextSizeAdjust: '100%', textSizeAdjust: '100%' }}
+    >
       <div
         className="flex w-full max-w-sm flex-col overflow-hidden rounded-2xl bg-gray-950 shadow-2xl ring-1 ring-white/10"
-        style={{ width: 'calc(100% - 8px)', maxWidth: '24rem', maxHeight: 'calc(100% - 24px)' }}
+        style={{
+          width: 'calc(100% - 8px)',
+          maxWidth: '24rem',
+          maxHeight: 'calc(100% - 24px)',
+          overflow: 'hidden',
+        }}
         role="dialog"
         aria-modal="true"
         aria-label="App permission setup"

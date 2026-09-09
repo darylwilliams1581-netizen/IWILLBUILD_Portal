@@ -86,6 +86,8 @@ export default function TermsAcceptanceGate({ onAccepted, userEmail }: Props) {
             background: 'rgba(15,17,23,0.72)',
             paddingTop: 'max(env(safe-area-inset-top), 16px)',
             paddingBottom: 'max(env(safe-area-inset-bottom), 16px)',
+            WebkitTextSizeAdjust: '100%',
+            textSizeAdjust: '100%',
           }}
         >
           <motion.div
@@ -97,6 +99,7 @@ export default function TermsAcceptanceGate({ onAccepted, userEmail }: Props) {
               width: 'calc(100% - 8px)',
               maxWidth: '24rem',
               maxHeight: 'calc(100% - 24px)',
+              overflow: 'hidden',
             }}
             role="dialog"
             aria-modal="true"
