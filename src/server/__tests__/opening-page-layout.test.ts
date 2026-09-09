@@ -117,8 +117,8 @@ describe('Compact card — layout', () => {
     expect(screenSrc).toContain('text-[13px] font-semibold');
   });
 
-  it('card has aria-label={feature.label}', () => {
-    expect(screenSrc).toContain('aria-label={feature.label}');
+  it('card aria-label matches the displayed destination name', () => {
+    expect(screenSrc).toContain('aria-label={displayLabel}');
   });
 });
 
@@ -384,13 +384,21 @@ describe('Manage page grid', () => {
 // ── 49–58. Dashboard quick-action compact spec ────────────────────────────────
 
 describe('Dashboard quick-action buttons — compact spec', () => {
-  it('Lens button uses 32×32 badge (w-8 h-8)', () => {
-    // Lens is the first w-8 h-8 in DashboardPage
+  it('Photos button uses 32×32 badge (w-8 h-8)', () => {
+    // Photos gallery is the first w-8 h-8 in DashboardPage
     expect(screenSrc).toContain('w-8 h-8 rounded-lg bg-white/20');
   });
 
-  it('Lens glyph is 16px', () => {
+  it('Photos glyph is 16px', () => {
     expect(screenSrc).toContain('<CameraIcon size={16}');
+  });
+
+  it('uses clear names for gallery, capture-adjacent, and record destinations', () => {
+    expect(screenSrc).toContain("? 'Job Photos'");
+    expect(screenSrc).toContain("? 'Attendance Records'");
+    expect(screenSrc).toMatch(/>\s*Photos\s*<\/button>/);
+    expect(screenSrc).toMatch(/>\s*Attendance\s*<\/span>/);
+    expect(screenSrc).toMatch(/>\s*Sign in or out\s*<\/span>/);
   });
 
   it('Add Job glyph is 16px', () => {
@@ -405,13 +413,13 @@ describe('Dashboard quick-action buttons — compact spec', () => {
   it('quick-action buttons have minHeight 52', () => {
     // All dashboard quick-action buttons set minHeight: 52
     const matches = (screenSrc.match(/minHeight: 52/g) ?? []).length;
-    // Lens, Add Job, Sign In, Fleet, Site Prestart, Contacts + JobFeatureCard = ≥7
+    // Photos, Add Job, Attendance, Fleet, Site Prestart, Contacts + JobFeatureCard = ≥7
     expect(matches).toBeGreaterThanOrEqual(7);
   });
 
-  it('Sign In uses horizontal layout with gap-2.5', () => {
+  it('Attendance uses the existing sign-in panel and horizontal layout', () => {
     expect(screenSrc).toContain("panel=signin");
-    // Sign In button uses flex items-center gap-2.5
+    // Attendance button uses flex items-center gap-2.5
     expect(screenSrc).toContain('flex items-center gap-2.5 px-3 py-2.5 rounded-xl bg-blue-600');
   });
 
@@ -427,7 +435,7 @@ describe('Dashboard quick-action buttons — compact spec', () => {
     expect(screenSrc).toContain('flex items-center gap-2.5 px-3 py-2.5 rounded-xl bg-teal-600');
   });
 
-  it('Sign In glyph is 16px', () => {
+  it('Attendance glyph is 16px', () => {
     expect(screenSrc).toContain('<LogIn size={16}');
   });
 

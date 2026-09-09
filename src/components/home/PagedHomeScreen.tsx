@@ -103,6 +103,11 @@ function JobFeatureCard({
   rowSpan?: 2;
 }) {
   const Icon = feature.icon;
+  const displayLabel = feature.key === 'photos'
+    ? 'Job Photos'
+    : feature.key === 'attendance'
+      ? 'Attendance Records'
+      : feature.label;
   const spanCls = [
     colSpan === 2 ? 'col-span-2' : '',
     rowSpan === 2 ? 'row-span-2' : '',
@@ -117,14 +122,14 @@ function JobFeatureCard({
         type="button"
         onClick={() => onClick(feature)}
         data-testid={`opening-page-card-${feature.key}`}
-        aria-label={feature.label}
+        aria-label={displayLabel}
         className={`${spanCls} flex flex-col items-center justify-center gap-3 py-4 bg-white rounded-xl border border-gray-100 shadow-sm hover:shadow-md hover:border-violet-200 active:scale-[0.97] transition-all duration-150 w-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-1`}
       >
         <div className={`w-12 h-12 rounded-xl ${feature.bg} flex items-center justify-center`}>
           <Icon size={22} className={feature.fg} />
         </div>
         <span className="text-[13px] font-semibold text-gray-800 leading-tight text-center w-full px-2">
-          {feature.label}
+          {displayLabel}
         </span>
       </button>
     );
@@ -136,7 +141,7 @@ function JobFeatureCard({
       type="button"
       onClick={() => onClick(feature)}
       data-testid={`opening-page-card-${feature.key}`}
-      aria-label={feature.label}
+      aria-label={displayLabel}
       className={`${spanCls} flex items-center gap-2.5 px-3 py-2.5 bg-white rounded-xl border border-gray-100 shadow-sm hover:shadow-md hover:border-violet-200 active:scale-[0.97] transition-all duration-150 w-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-1`}
       style={{ minHeight: 52 }}
     >
@@ -146,7 +151,7 @@ function JobFeatureCard({
       </div>
       {/* Label — wraps naturally, never truncates */}
       <span className="text-[13px] font-semibold text-gray-800 leading-tight text-left">
-        {feature.label}
+        {displayLabel}
       </span>
     </button>
   );
@@ -244,13 +249,13 @@ const DashboardPage = memo(function DashboardPage({
       {/* ── Banner — sits at the very top so it's immediately visible ── */}
       <DashboardBanner userId={userId} />
 
-      {/* Full-width Lens + Add Job row */}
+      {/* Full-width Photos gallery + Add Job row */}
       <div className="flex items-center gap-3">
         <button onClick={() => onNavigate('/lens')} className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl bg-violet-600 text-white text-sm font-bold shadow-sm active:scale-95 transition-transform" style={{ minHeight: 52 }}>
           <div className="w-8 h-8 rounded-lg bg-white/20 flex items-center justify-center shrink-0">
             <CameraIcon size={16} strokeWidth={2} />
           </div>
-          Lens
+          Photos
         </button>
         <button onClick={onNewJob} className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl bg-primary text-primary-foreground text-sm font-bold shadow-sm active:scale-95 transition-transform" style={{ minHeight: 52 }}>
           <div className="w-8 h-8 rounded-lg bg-white/20 flex items-center justify-center shrink-0">
@@ -267,8 +272,8 @@ const DashboardPage = memo(function DashboardPage({
             <LogIn size={16} strokeWidth={2} />
           </div>
           <div className="flex flex-col items-start min-w-0">
-            <span className="text-[13px] font-bold leading-tight">Sign In</span>
-            <span className="text-[10px] text-white/60 leading-tight">Site attendance</span>
+            <span className="text-[13px] font-bold leading-tight">Attendance</span>
+            <span className="text-[10px] text-white/60 leading-tight">Sign in or out</span>
           </div>
         </button>
         <button onClick={() => onNavigate('/fleet')} className="flex items-center gap-2.5 px-3 py-2.5 rounded-xl bg-sky-500 text-white shadow-sm active:scale-95 transition-transform" style={{ minHeight: 52 }}>
