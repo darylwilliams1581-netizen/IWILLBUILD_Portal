@@ -839,7 +839,7 @@
   "debug/screenshot-latest-share": {
     "mediaType": "image",
     "currentUrl": "/airo-assets/uploads/debug-screenshot-latest-share-1e8d0fe6.jpg",
-    "searchQuery": "",
+    "searchQuery": "variation request form kitchen project management",
     "alternatives": [],
     "userModified": true,
     "createdAt": "2026-09-09T20:24:10.120Z",
@@ -847,6 +847,7 @@
     "uploadSources": {
       "/airo-assets/uploads/debug-screenshot-latest-share-1e8d0fe6.jpg": "f38wenbvln_1788982059547_file_yfV6_q0Mov.jpg"
     },
-    "uploadContentHash": "329a81a362efb2f5c1c2e619d788e9355005f271236e0f349df5d4fe79ff70fb"
+    "uploadContentHash": "329a81a362efb2f5c1c2e619d788e9355005f271236e0f349df5d4fe79ff70fb",
+    "caption": "variation request form kitchen project management"
   }
 }
