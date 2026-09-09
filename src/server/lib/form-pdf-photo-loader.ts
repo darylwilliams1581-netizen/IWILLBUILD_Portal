@@ -2,7 +2,10 @@
  * form-pdf-photo-loader.ts
  * Loads and compresses photos for form PDF generation.
  * Supports company-file and job-photo URL shapes.
- * Each photo is downsampled to max 1280px JPEG q70 before embedding.
+ *
+ * Target size: 96px on the longest edge, JPEG q75.
+ * This keeps 100-photo substation audits well under 1 MB embedded.
+ * Full-resolution originals remain accessible via the portal report link.
  */
 import { and, eq, inArray } from 'drizzle-orm';
 import { db } from '../db/client.js';
@@ -16,7 +19,7 @@ import { fileIdFromUrl, signatureDataUrls, imageFromDataUrl, answerUrls } from '
 import { parseJobPhotoUrl } from '../../lib/string-scanners.js';
 import type { FormPdfImage, FormPdfField } from './form-pdf-generator.js';
 
-/** Downsample to max 1280px longest edge, JPEG q70. Falls back to original on error. */
+/** Downsample to max 96px longest edge, JPEG q75. Falls back to original on error. */
 async function compressForPdf(
   bytes: Buffer,
   mime: string,
@@ -24,11 +27,11 @@ async function compressForPdf(
   try {
     const { Jimp } = await import('jimp');
     const img = await Jimp.read(bytes);
-    const MAX = 1280;
+    const MAX = 96;
     if (img.width > MAX || img.height > MAX) {
       img.scaleToFit({ w: MAX, h: MAX });
     }
-    const jpegBuf = await img.getBuffer('image/jpeg', { quality: 70 });
+    const jpegBuf = await img.getBuffer('image/jpeg', { quality: 75 });
     return { bytes: Uint8Array.from(jpegBuf), mimeType: 'image/jpeg' };
   } catch {
     return { bytes: Uint8Array.from(bytes), mimeType: mime };

@@ -144,6 +144,7 @@ export default function SendDocumentEmailModal({
   const [message, setMessage] = useState(defaultMessage);
   const [attachPdf, setAttachPdf] = useState(documentType !== 'job');
   const [bccOwner, setBccOwner] = useState(true);
+  const [includeJobGallery, setIncludeJobGallery] = useState(false); // default OFF per spec
   const [showAdvanced, setShowAdvanced] = useState(false);
 
   const [sending, setSending] = useState(false);
@@ -196,6 +197,7 @@ export default function SendDocumentEmailModal({
             to: toList, cc: ccList, bcc: bccList,
             subject: subject.trim(), message: message.trim(),
             attachPdf, bccOwner,
+            ...(documentType === 'form' ? { includeJobGallery } : {}),
           }),
       });
       const data = await res.json() as { ok?: boolean; messageId?: string; attachedPdf?: boolean; ownerBcced?: boolean; senderName?: string; error?: string };
@@ -330,6 +332,12 @@ export default function SendDocumentEmailModal({
               <span className="text-xs text-gray-700">Attach {documentLabel} as PDF</span>
             </label>
           )}
+          {documentType === 'form' && (
+            <label className="flex items-center gap-3 cursor-pointer select-none">
+              <input type="checkbox" checked={includeJobGallery} onChange={(e) => setIncludeJobGallery(e.target.checked)} disabled={sending} className="w-4 h-4 accent-violet-600 rounded" />
+              <span className="text-xs text-gray-700">Include job photo gallery</span>
+            </label>
+          )}
           <label className="flex items-center gap-3 cursor-pointer select-none">
             <input type="checkbox" checked={bccOwner} onChange={(e) => setBccOwner(e.target.checked)} disabled={sending} className="w-4 h-4 accent-violet-600 rounded" />
             <span className="text-xs text-gray-700">Copy company owner</span>
@@ -414,6 +422,12 @@ export default function SendDocumentEmailModal({
           <label className="flex items-center gap-3 cursor-pointer select-none">
             <input type="checkbox" checked={attachPdf} onChange={(e) => setAttachPdf(e.target.checked)} disabled={sending} className="w-4 h-4 accent-violet-600 rounded" />
             <span className="text-sm text-gray-700">Attach {documentLabel} as PDF</span>
+          </label>
+        )}
+        {documentType === 'form' && (
+          <label className="flex items-center gap-3 cursor-pointer select-none">
+            <input type="checkbox" checked={includeJobGallery} onChange={(e) => setIncludeJobGallery(e.target.checked)} disabled={sending} className="w-4 h-4 accent-violet-600 rounded" />
+            <span className="text-sm text-gray-700">Include job photo gallery</span>
           </label>
         )}
         <label className="flex items-center gap-3 cursor-pointer select-none">

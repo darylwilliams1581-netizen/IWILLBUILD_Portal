@@ -218,6 +218,12 @@ export async function buildFormPdfDocument(
   const status = submission.status === 'completed' ? 'Completed' : 'In Progress';
 
   // ── Generate PDF ────────────────────────────────────────────────────────────
+  // Build the portal report URL — used for the clickable header link on page 1.
+  // Shape: https://iwillbuild.com/jobs/{jobId}/forms/{submissionId}
+  const reportUrl = submission.jobId
+    ? `https://iwillbuild.com/jobs/${submission.jobId}/forms/${submission.id}`
+    : undefined;
+
   const pdfBytes = await generateFormSubmissionPdf({
     title: templateName,
     status,
@@ -229,6 +235,7 @@ export async function buildFormPdfDocument(
     completedAt,
     footerText,
     disclaimer,
+    reportUrl,
     fields: fields.map((f) => ({
       id: f.id,
       label: f.label,

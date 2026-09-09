@@ -34,6 +34,8 @@ export interface FormSubmissionPdfData {
   fields: FormPdfField[];
   answers: Record<string, unknown>;
   fieldImages?: Record<string, FormPdfImage[]>;
+  /** When set, a "View originals" link is drawn in the page-1 header */
+  reportUrl?: string;
 }
 
 const PAGE_W = 595.28;
@@ -154,7 +156,7 @@ export async function generateFormSubmissionPdf(data: FormSubmissionPdfData): Pr
   let page!: PDFPage;
   let y = 0;
 
-  function drawHeader(target: PDFPage) {
+  function drawHeader(target: PDFPage, isFirstPage: boolean) {
     // Printer-friendly header: 3pt accent rule + plain dark text on white
     target.drawLine({ start: { x: 0, y: PAGE_H - 3 }, end: { x: PAGE_W, y: PAGE_H - 3 }, thickness: 3, color: PURPLE });
     target.drawText(printable(data.title).slice(0, 72), {
@@ -171,14 +173,45 @@ export async function generateFormSubmissionPdf(data: FormSubmissionPdfData): Pr
     target.drawText(status, {
       x: PAGE_W - MARGIN - statusW, y: PAGE_H - 28, font: bold, size: 9, color: GREEN,
     });
-    // Thin separator rule
-    target.drawLine({ start: { x: MARGIN, y: PAGE_H - HEADER_H }, end: { x: PAGE_W - MARGIN, y: PAGE_H - HEADER_H }, thickness: 0.5, color: BORDER });
+
+    // Page 1 only: "IWILLBUILD report — open originals" link below company name
+    if (isFirstPage && data.reportUrl) {
+      const linkLabel = `IWILLBUILD report \u2014 open originals`;
+      target.drawText(printable(linkLabel), {
+        x: MARGIN, y: PAGE_H - 62, font: italic, size: 7.5, color: PURPLE,
+      });
+      // Underline the link text
+      const linkW = italic.widthOfTextAtSize(printable(linkLabel), 7.5);
+      target.drawLine({
+        start: { x: MARGIN, y: PAGE_H - 63.5 },
+        end: { x: MARGIN + linkW, y: PAGE_H - 63.5 },
+        thickness: 0.5, color: PURPLE,
+      });
+      // Embed a clickable URI annotation
+      try {
+        const page = target as PDFPage & { node: { context: { obj: (dict: Record<string, unknown>) => unknown; register: (obj: unknown) => unknown }; addAnnot: (ref: unknown) => void } };
+        const ctx = page.node.context;
+        const uriAction = ctx.obj({ Type: 'Action', S: 'URI', URI: data.reportUrl });
+        const uriRef = ctx.register(uriAction);
+        const annot = ctx.obj({
+          Type: 'Annot', Subtype: 'Link',
+          Rect: [MARGIN, PAGE_H - 66, MARGIN + linkW, PAGE_H - 58],
+          Border: [0, 0, 0],
+          A: uriRef,
+        });
+        page.node.addAnnot(ctx.register(annot));
+      } catch { /* pdf-lib annotation API not available — link text still visible */ }
+    }
+
+    // Thin separator rule — push down slightly when the link row is present
+    const ruleY = (isFirstPage && data.reportUrl) ? PAGE_H - HEADER_H - 6 : PAGE_H - HEADER_H;
+    target.drawLine({ start: { x: MARGIN, y: ruleY }, end: { x: PAGE_W - MARGIN, y: ruleY }, thickness: 0.5, color: BORDER });
   }
 
   function addPage() {
     page = doc.addPage([PAGE_W, PAGE_H]);
     pages.push(page);
-    drawHeader(page);
+    drawHeader(page, pages.length === 1);
     y = PAGE_H - HEADER_H - 24;
   }
 
@@ -259,19 +292,21 @@ export async function generateFormSubmissionPdf(data: FormSubmissionPdfData): Pr
       const embedded = (await Promise.all(imageInputs.map((image) => embedImage(doc, image)))).filter((image): image is PDFImage => image !== null);
       if (embedded.length > 0) {
         if (field.fieldType === 'photo') {
-          // ── Inline thumbnails: 3 per row, small ──
-          const THUMB_COLS = 3;
-          const THUMB_GAP = 8;
-          const THUMB_W = (CONTENT_W - THUMB_GAP * (THUMB_COLS - 1)) / THUMB_COLS;
-          const THUMB_H = THUMB_W * 0.75;
+          // ── Inline thumbnails: 4 per row, ~96px each ──────────────────────
+          // Small thumbs keep 100-photo audits to a compact PDF.
+          // Full-resolution originals are accessible via the report link in the header.
+          const THUMB_COLS = 4;
+          const THUMB_GAP = 6;
+          const THUMB_W = (CONTENT_W - THUMB_GAP * (THUMB_COLS - 1)) / THUMB_COLS; // ~120pt ≈ 96px screen
+          const THUMB_H = Math.round(THUMB_W * 0.75);
           for (let index = 0; index < embedded.length; index += THUMB_COLS) {
-            ensureSpace(THUMB_H + 10);
+            ensureSpace(THUMB_H + 8);
             for (let col = 0; col < THUMB_COLS; col++) {
               const image = embedded[index + col];
               if (!image) continue;
               const x = MARGIN + col * (THUMB_W + THUMB_GAP);
-              page.drawRectangle({ x, y: y - THUMB_H, width: THUMB_W, height: THUMB_H, color: WHITE, borderColor: BORDER, borderWidth: 0.8 });
-              const fitted = fitImage(image, THUMB_W - 4, THUMB_H - 4);
+              page.drawRectangle({ x, y: y - THUMB_H, width: THUMB_W, height: THUMB_H, color: WHITE, borderColor: BORDER, borderWidth: 0.6 });
+              const fitted = fitImage(image, THUMB_W - 2, THUMB_H - 2);
               page.drawImage(image, {
                 x: x + (THUMB_W - fitted.width) / 2,
                 y: y - THUMB_H + (THUMB_H - fitted.height) / 2,
@@ -279,10 +314,8 @@ export async function generateFormSubmissionPdf(data: FormSubmissionPdfData): Pr
                 height: fitted.height,
               });
             }
-            y -= THUMB_H + 8;
+            y -= THUMB_H + 6;
           }
-          const photoCount = embedded.length;
-          drawLines([`${photoCount} photo${photoCount === 1 ? '' : 's'} attached`], { size: 8, color: MUTED, font: italic, lineHeight: 12 });
         } else {
           // signatures: single column
           const columns = 1;

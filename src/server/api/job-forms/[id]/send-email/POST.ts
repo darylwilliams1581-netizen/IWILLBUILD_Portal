@@ -14,6 +14,7 @@
  *   message:                     string
  *   attachPdf:                   boolean
  *   bccOwner:                    boolean
+ *   includeJobGallery?:          boolean   — default false; appends job photos URL when true
  * }
  */
 import type { Request, Response } from 'express';
@@ -86,8 +87,9 @@ export default async function handler(req: Request, res: Response) {
     const bccList = dedupeLC(toLines(body.bcc));
     const subject   = typeof body.subject === 'string' ? body.subject.trim() : '';
     const message   = typeof body.message === 'string' ? body.message.trim() : '';
-    const attachPdf = body.attachPdf !== false;
-    const bccOwner  = body.bccOwner  !== false;
+    const attachPdf          = body.attachPdf          !== false;
+    const bccOwner           = body.bccOwner           !== false;
+    const includeJobGallery  = body.includeJobGallery  === true;
 
     if (toList.length === 0) return res.status(400).json({ error: 'At least one To recipient is required.' });
     for (const a of [...toList, ...ccList, ...bccList]) {
@@ -127,8 +129,25 @@ export default async function handler(req: Request, res: Response) {
     // ── Build email body ───────────────────────────────────────────────────────
     const jobLabel = [jobNumber, jobName].filter(Boolean).join(' – ');
     const escapedMessage = escapeHtml(message).replace(/\n/g, '<br>');
-    const fullText = `${message}\n\n—\n${SYSTEM_FOOTER}`;
     const statusLabel = doc.status;
+
+    // Portal links — always included
+    const BASE = 'https://iwillbuild.com';
+    const reportUrl  = jobId ? `${BASE}/jobs/${jobId}/forms/${submissionId}` : null;
+    const galleryUrl = (includeJobGallery && jobId) ? `${BASE}/jobs/${jobId}/photos` : null;
+
+    // Plain-text suffix
+    const linkLines: string[] = [];
+    if (reportUrl)  linkLines.push(`IWILLBUILD report\n${reportUrl}`);
+    if (galleryUrl) linkLines.push(`Job photos\n${galleryUrl}`);
+    const linkSuffix = linkLines.length ? `\n\n${linkLines.join('\n\n')}` : '';
+    const fullText = `${message}${linkSuffix}\n\n—\n${SYSTEM_FOOTER}`;
+
+    // HTML link blocks
+    const linkBlockHtml = [
+      reportUrl  ? `<p style="margin:12px 0 4px"><strong>IWILLBUILD report</strong><br><a href="${escapeHtml(reportUrl)}" style="color:#7c3aed">${escapeHtml(reportUrl)}</a></p>` : '',
+      galleryUrl ? `<p style="margin:12px 0 4px"><strong>Job photos</strong><br><a href="${escapeHtml(galleryUrl)}" style="color:#7c3aed">${escapeHtml(galleryUrl)}</a></p>` : '',
+    ].filter(Boolean).join('');
 
     const html = `<!doctype html><html><body style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:#1e293b">
       <div style="max-width:620px;margin:24px auto">
@@ -138,6 +157,7 @@ export default async function handler(req: Request, res: Response) {
         </div>
         <div style="border:1px solid #e2e8f0;border-top:0;padding:24px;border-radius:0 0 12px 12px">
           <p style="white-space:pre-line">${escapedMessage}</p>
+          ${linkBlockHtml}
         </div>
         <div style="background:#f1f5f9;padding:12px 24px">
           <p style="margin:0;font-size:11px;color:#94a3b8;font-style:italic">${escapeHtml(SYSTEM_FOOTER)}</p>
