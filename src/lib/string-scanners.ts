@@ -54,7 +54,83 @@ export function isFileApiUrl(url: unknown): url is string {
   return false;
 }
 
-// ── RL (Reduced Level) value validation ──────────────────────────────────────
+// ── Job-photo API URL validation ──────────────────────────────────────────────
+
+/**
+ * Returns true when `url` is a valid job-photo download path:
+ *   /api/jobs/<numeric-jobId>/photos/<numeric-photoId>/download
+ *
+ * Used by: form-pdf-document.ts
+ */
+export function isJobPhotoApiUrl(url: unknown): url is string {
+  if (!url || typeof url !== 'string') return false;
+  const s = url.trim();
+
+  const PREFIX = '/api/jobs/';
+  if (!s.startsWith(PREFIX)) return false;
+
+  let pos = PREFIX.length;
+
+  // jobId — one or more digits
+  if (pos >= s.length) return false;
+  const jobIdStart = pos;
+  while (pos < s.length) {
+    const c = s.charCodeAt(pos);
+    if (c < 48 || c > 57) break;
+    pos++;
+  }
+  if (pos === jobIdStart) return false;
+
+  // /photos/
+  const PHOTOS_SEG = '/photos/';
+  if (s.slice(pos, pos + PHOTOS_SEG.length) !== PHOTOS_SEG) return false;
+  pos += PHOTOS_SEG.length;
+
+  // photoId — one or more digits
+  if (pos >= s.length) return false;
+  const photoIdStart = pos;
+  while (pos < s.length) {
+    const c = s.charCodeAt(pos);
+    if (c < 48 || c > 57) break;
+    pos++;
+  }
+  if (pos === photoIdStart) return false;
+
+  // /download
+  const DOWNLOAD_SEG = '/download';
+  if (s.slice(pos) !== DOWNLOAD_SEG) return false;
+
+  return true;
+}
+
+/**
+ * Extracts { jobId, photoId } from a job-photo download URL.
+ * Returns null if the URL does not match.
+ */
+export function parseJobPhotoUrl(url: string): { jobId: number; photoId: number } | null {
+  if (!isJobPhotoApiUrl(url)) return null;
+  const PREFIX = '/api/jobs/';
+  let pos = PREFIX.length;
+  const jobIdStart = pos;
+  while (pos < url.length) {
+    const c = url.charCodeAt(pos);
+    if (c < 48 || c > 57) break;
+    pos++;
+  }
+  const jobId = Number(url.slice(jobIdStart, pos));
+  pos += '/photos/'.length;
+  const photoIdStart = pos;
+  while (pos < url.length) {
+    const c = url.charCodeAt(pos);
+    if (c < 48 || c > 57) break;
+    pos++;
+  }
+  const photoId = Number(url.slice(photoIdStart, pos));
+  if (!Number.isInteger(jobId) || !Number.isInteger(photoId)) return null;
+  return { jobId, photoId };
+}
+
+
 
 /**
  * Returns true when `value` (trimmed) is a valid RL string:

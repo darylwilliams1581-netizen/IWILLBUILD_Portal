@@ -2,8 +2,9 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import {
   Loader2, AlertCircle, MapPin, Link, SplitSquareHorizontal,
   Navigation, ExternalLink, Briefcase, Truck, Search, ChevronDown, X,
-  ImagePlus, CheckCircle2,
+  ImagePlus, CheckCircle2, Images,
 } from 'lucide-react';
+import { useAuthImage } from '@/components/DocumentBuilder/useAuthImage';
 import { type FormField, parseOptions, parseSettings, fetchGlobalLists } from '../FormFieldBuilder';
 import SignaturePad, {
   MultiSignaturePad,
@@ -126,7 +127,7 @@ export function ReadOnlyAnswer({ field, value }: { field: FormField; value: Answ
         <div className="flex flex-wrap gap-2">
           {photoUrls.map((url, idx) => (
             <a key={idx} href={url} target="_blank" rel="noopener noreferrer" className="block w-20 h-20 rounded-xl overflow-hidden border border-slate-200 bg-slate-100 shrink-0 hover:opacity-90 transition-opacity">
-              <img src={url} alt={`Photo ${idx + 1}`} className="w-full h-full object-cover" />
+              <AuthThumb src={url} alt={`Photo ${idx + 1}`} className="w-full h-full" />
             </a>
           ))}
         </div>
@@ -153,6 +154,8 @@ interface FieldInputProps {
   error?: string;
   disabled?: boolean;
   companyId?: number;
+  /** jobId — when set, enables "From this job" photo picker */
+  jobId?: number;
 }
 
 // ── Shared searchable dropdown for job_link / asset_link ─────────────────────
@@ -263,7 +266,155 @@ function LinkDropdown({
   );
 }
 
-export function FieldInput({ field, value, onChange, error, disabled, companyId }: FieldInputProps) {
+// ── Authenticated thumbnail — fetches /api/ URLs with session cookie ─────────
+
+function AuthThumb({ src, alt, className }: { src: string; alt: string; className?: string }) {
+  const { blobUrl, loading } = useAuthImage(src.startsWith('/api/') ? src : undefined);
+  const displaySrc = src.startsWith('/api/') ? (blobUrl ?? undefined) : src;
+  if (loading) return <div className={`${className ?? ''} bg-slate-100 animate-pulse`} />;
+  if (!displaySrc) return <div className={`${className ?? ''} bg-slate-100 flex items-center justify-center`}><ImagePlus size={14} className="text-slate-300" /></div>;
+  return <img src={displaySrc} alt={alt} className={`${className ?? ''} object-cover`} />;
+}
+
+// ── Job photo picker bottom sheet ─────────────────────────────────────────────
+
+interface PickerPhoto {
+  id: number;
+  label: string;
+  thumbUrl: string;
+  downloadUrl: string;
+}
+
+function JobPhotoPickerSheet({
+  jobId,
+  allowMultiple,
+  onSelect,
+  onClose,
+}: {
+  jobId: number;
+  allowMultiple: boolean;
+  onSelect: (urls: string[]) => void;
+  onClose: () => void;
+}) {
+  const [photos, setPhotos] = useState<PickerPhoto[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [selected, setSelected] = useState<Set<number>>(new Set());
+
+  useEffect(() => {
+    let cancelled = false;
+    setLoading(true);
+    setError(null);
+    fetch(`/api/jobs/${jobId}/photos/picker`, { credentials: 'include' })
+      .then(async (r) => {
+        if (!r.ok) throw new Error('Failed to load photos');
+        const data = await r.json() as { photos?: PickerPhoto[] };
+        if (!cancelled) setPhotos(data.photos ?? []);
+      })
+      .catch((e) => { if (!cancelled) setError(e instanceof Error ? e.message : 'Failed to load'); })
+      .finally(() => { if (!cancelled) setLoading(false); });
+    return () => { cancelled = true; };
+  }, [jobId]);
+
+  function toggle(id: number) {
+    if (!allowMultiple) {
+      setSelected(new Set([id]));
+      return;
+    }
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  }
+
+  function confirm() {
+    const urls = photos
+      .filter((p) => selected.has(p.id))
+      .map((p) => p.downloadUrl);
+    onSelect(urls);
+  }
+
+  return (
+    /* Backdrop */
+    <div
+      className="fixed inset-0 z-50 flex flex-col justify-end bg-black/40"
+      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+    >
+      <div className="bg-white rounded-t-2xl max-h-[80vh] flex flex-col shadow-2xl"
+        style={{ paddingBottom: 'max(16px, env(safe-area-inset-bottom))' }}>
+        {/* Handle + header */}
+        <div className="flex items-center justify-between px-4 pt-3 pb-2 border-b border-slate-100 shrink-0">
+          <div className="w-10 h-1 rounded-full bg-slate-200 absolute left-1/2 -translate-x-1/2 top-2" />
+          <p className="text-sm font-bold text-slate-800 mt-1">Photos from this job</p>
+          <button onClick={onClose} className="p-1 rounded-lg hover:bg-slate-100 text-slate-400">
+            <X size={16} />
+          </button>
+        </div>
+
+        {/* Grid */}
+        <div className="flex-1 overflow-y-auto p-3">
+          {loading && (
+            <div className="flex items-center justify-center py-12">
+              <Loader2 size={22} className="animate-spin text-primary" />
+            </div>
+          )}
+          {error && (
+            <p className="text-xs text-red-500 text-center py-8">{error}</p>
+          )}
+          {!loading && !error && photos.length === 0 && (
+            <p className="text-xs text-slate-400 text-center py-8">No photos on this job yet.</p>
+          )}
+          {!loading && !error && photos.length > 0 && (
+            <div className="grid grid-cols-3 gap-2">
+              {photos.map((p) => {
+                const isSel = selected.has(p.id);
+                return (
+                  <button
+                    key={p.id}
+                    type="button"
+                    onClick={() => toggle(p.id)}
+                    className={`relative aspect-square rounded-xl overflow-hidden border-2 transition-all ${
+                      isSel ? 'border-primary shadow-md' : 'border-transparent'
+                    }`}
+                  >
+                    <AuthThumb
+                      src={p.thumbUrl}
+                      alt={p.label}
+                      className="w-full h-full"
+                    />
+                    {isSel && (
+                      <div className="absolute top-1 right-1 w-5 h-5 rounded-full bg-primary flex items-center justify-center shadow">
+                        <CheckCircle2 size={12} className="text-white" />
+                      </div>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+          )}
+        </div>
+
+        {/* Footer */}
+        {selected.size > 0 && (
+          <div className="px-4 pt-2 shrink-0">
+            <button
+              type="button"
+              onClick={confirm}
+              className="w-full h-11 rounded-2xl bg-primary hover:bg-violet-700 text-white text-sm font-bold transition-colors shadow-sm"
+            >
+              {allowMultiple
+                ? `Use ${selected.size} photo${selected.size === 1 ? '' : 's'}`
+                : 'Use photo'}
+            </button>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+export function FieldInput({ field, value, onChange, error, disabled, companyId, jobId }: FieldInputProps) {
   const settings = parseSettings(field.settingsJson);
   const globalListId = typeof settings.globalListId === 'number' && settings.globalListId > 0 ? settings.globalListId : null;
 
@@ -496,12 +647,24 @@ export function FieldInput({ field, value, onChange, error, disabled, companyId 
 
         const [uploading, setUploading] = useState(false);
         const [uploadError, setUploadError] = useState<string | null>(null);
+        // Local object URLs for immediate preview while uploading
+        const [localPreviews, setLocalPreviews] = useState<{ objectUrl: string; uploading: boolean }[]>([]);
+        const [showPicker, setShowPicker] = useState(false);
         const fileInputRef = useRef<HTMLInputElement>(null);
+        // Revoke object URLs on unmount
+        const localPreviewsRef = useRef(localPreviews);
+        localPreviewsRef.current = localPreviews;
+        useEffect(() => () => {
+          for (const p of localPreviewsRef.current) URL.revokeObjectURL(p.objectUrl);
+        }, []);
 
         const handleFiles = useCallback(async (files: File[]) => {
           if (!files.length) return;
           setUploading(true);
           setUploadError(null);
+          // Create immediate local previews
+          const previews = files.map((f) => ({ objectUrl: URL.createObjectURL(f), uploading: true }));
+          setLocalPreviews((prev) => allowMultiple ? [...prev, ...previews] : previews);
           try {
             const newUrls: string[] = [];
             for (const file of files) {
@@ -521,9 +684,21 @@ export function FieldInput({ field, value, onChange, error, disabled, companyId 
             setUploadError(e instanceof Error ? e.message : 'Upload failed');
           } finally {
             setUploading(false);
+            // Revoke and clear local previews — saved URLs take over display
+            setLocalPreviews((prev) => {
+              for (const p of prev) URL.revokeObjectURL(p.objectUrl);
+              return [];
+            });
           }
         }, [urls, allowMultiple, onChange]);
 
+        // Called when user picks existing job photos from the picker sheet
+        const handlePickerSelect = useCallback((pickedUrls: string[]) => {
+          setShowPicker(false);
+          if (!pickedUrls.length) return;
+          const combined = allowMultiple ? [...urls, ...pickedUrls] : pickedUrls.slice(-1);
+          onChange(combined.length === 1 ? combined[0] : JSON.stringify(combined));
+        }, [urls, allowMultiple, onChange]);
 
         const removePhoto = (idx: number) => {
           const next = urls.filter((_, i) => i !== idx);
@@ -532,12 +707,12 @@ export function FieldInput({ field, value, onChange, error, disabled, companyId 
 
         return (
           <div className="flex flex-col gap-2">
-            {/* Thumbnails */}
+            {/* Saved thumbnails — use AuthThumb for /api/ URLs */}
             {urls.length > 0 && (
               <div className="flex flex-wrap gap-2">
                 {urls.map((url, idx) => (
                   <div key={idx} className="relative w-20 h-20 rounded-xl overflow-hidden border border-slate-200 bg-slate-100 shrink-0">
-                    <img src={url} alt={`Photo ${idx + 1}`} className="w-full h-full object-cover" />
+                    <AuthThumb src={url} alt={`Photo ${idx + 1}`} className="w-full h-full" />
                     {!disabled && (
                       <button
                         type="button"
@@ -555,22 +730,51 @@ export function FieldInput({ field, value, onChange, error, disabled, companyId 
               </div>
             )}
 
-            {/* Upload / capture button — always shown when not disabled */}
+            {/* Local previews while uploading */}
+            {localPreviews.length > 0 && (
+              <div className="flex flex-wrap gap-2">
+                {localPreviews.map((p, idx) => (
+                  <div key={idx} className="relative w-20 h-20 rounded-xl overflow-hidden border border-slate-200 bg-slate-100 shrink-0">
+                    <img src={p.objectUrl} alt="Uploading…" className="w-full h-full object-cover opacity-70" />
+                    <div className="absolute inset-0 flex items-center justify-center bg-black/20">
+                      <Loader2 size={14} className="animate-spin text-white" />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Action buttons — always shown when not disabled */}
             {!disabled && (
-              <>
+              <div className="flex gap-2">
+                {/* Take / camera roll */}
                 <button
                   type="button"
                   disabled={uploading}
                   onClick={() => fileInputRef.current?.click()}
-                  className={`flex items-center justify-center gap-2 h-20 rounded-xl border-2 border-dashed transition-colors ${
+                  className={`flex-1 flex items-center justify-center gap-2 h-11 rounded-xl border-2 border-dashed transition-colors ${
                     error ? 'border-red-300 bg-red-50' : 'border-slate-200 bg-slate-50 hover:border-primary/40 hover:bg-primary/5'
                   } ${uploading ? 'opacity-60 pointer-events-none' : ''}`}
                 >
                   {uploading
-                    ? <><Loader2 size={18} className="animate-spin text-primary" /><span className="text-xs text-slate-500">Uploading…</span></>
-                    : <><ImagePlus size={18} className="text-slate-400" /><span className="text-xs font-medium text-slate-500">{urls.length > 0 ? 'Add another photo' : 'Take or upload a photo'}</span></>
+                    ? <><Loader2 size={16} className="animate-spin text-primary" /><span className="text-xs text-slate-500">Uploading…</span></>
+                    : <><ImagePlus size={16} className="text-slate-400" /><span className="text-xs font-medium text-slate-500">Take / camera roll</span></>
                   }
                 </button>
+
+                {/* From this job — only shown when a jobId is available */}
+                {jobId != null && jobId > 0 && (
+                  <button
+                    type="button"
+                    disabled={uploading}
+                    onClick={() => setShowPicker(true)}
+                    className="flex-1 flex items-center justify-center gap-2 h-11 rounded-xl border-2 border-dashed border-slate-200 bg-slate-50 hover:border-primary/40 hover:bg-primary/5 transition-colors"
+                  >
+                    <Images size={16} className="text-slate-400" />
+                    <span className="text-xs font-medium text-slate-500">From this job</span>
+                  </button>
+                )}
+
                 <input
                   ref={fileInputRef}
                   type="file"
@@ -579,14 +783,22 @@ export function FieldInput({ field, value, onChange, error, disabled, companyId 
                   className="hidden"
                   onChange={(e) => { if (e.target.files?.length) { handleFiles(Array.from(e.target.files)); e.target.value = ''; } }}
                 />
-              </>
+              </div>
             )}
 
             {uploadError && (
               <p className="text-xs text-red-500 flex items-center gap-1"><AlertCircle size={12} />{uploadError}</p>
             )}
-            {/* CP12A: Subtle safeguard notice */}
-          
+
+            {/* Job photo picker sheet */}
+            {showPicker && jobId != null && jobId > 0 && (
+              <JobPhotoPickerSheet
+                jobId={jobId}
+                allowMultiple={allowMultiple}
+                onSelect={handlePickerSelect}
+                onClose={() => setShowPicker(false)}
+              />
+            )}
           </div>
         );
       })()}

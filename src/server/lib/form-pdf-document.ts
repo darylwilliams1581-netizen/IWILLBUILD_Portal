@@ -11,25 +11,18 @@
  *
  * Returns a typed document object — callers decide how to deliver the bytes.
  */
-import { and, asc, eq, inArray } from 'drizzle-orm';
+import { and, asc, eq } from 'drizzle-orm';
 import { sql } from 'drizzle-orm';
 import { db } from '../db/client.js';
 import {
-  companyFiles,
   formFields,
   formTemplates,
   jobFormSubmissions,
   jobs,
 } from '../db/schema.js';
 import { generateFormSubmissionPdf, type FormPdfImage } from './form-pdf-generator.js';
-import {
-  BUCKET_COMPANY_FILES,
-  generateThumbnail,
-  getDownloadBuffer,
-} from '../storage/storage-service.js';
-
-import { isFileApiUrl } from '../../lib/string-scanners.js';
-
+import { isFileApiUrl, isJobPhotoApiUrl } from '../../lib/string-scanners.js';
+import { loadFieldImages } from './form-pdf-photo-loader.js';
 // ── Re-export the helpers that send-email also needs ─────────────────────────
 
 export function answerUrls(value: unknown): string[] {
@@ -49,7 +42,7 @@ export function answerUrls(value: unknown): string[] {
   }
   const seen = new Set<string>();
   return urls.filter((u) => {
-    if (!u || !isFileApiUrl(u)) return false;
+    if (!u || (!isFileApiUrl(u) && !isJobPhotoApiUrl(u))) return false;
     if (seen.has(u)) return false;
     seen.add(u);
     return true;
@@ -200,67 +193,20 @@ export async function buildFormPdfDocument(
   } catch { /* malformed historical answers remain blank */ }
 
   // ── Embed photos + signatures ───────────────────────────────────────────────
-  const photoIds = Array.from(new Set(
-    fields
-      .filter((f) => f.fieldType === 'photo')
-      .flatMap((f) => answerUrls(answers[String(f.id)]))
-      .map(fileIdFromUrl)
-      .filter((id): id is number => id !== null),
-  ));
-
-  const photoRecords = photoIds.length > 0
-    ? await db.select().from(companyFiles).where(and(
-        eq(companyFiles.companyId, companyId),
-        inArray(companyFiles.id, photoIds),
-      ))
-    : [];
-  const recordById = new Map(photoRecords.map((r) => [r.id, r]));
-
-  const fieldImages: Record<string, FormPdfImage[]> = {};
-  for (const field of fields) {
-    if (field.fieldType === 'photo') {
-      const images = await Promise.all(
-        answerUrls(answers[String(field.id)]).map(async (url): Promise<FormPdfImage | null> => {
-          const fileId = fileIdFromUrl(url);
-          const record = fileId ? recordById.get(fileId) : undefined;
-          if (!record) return null;
-          try {
-            const downloaded = await getDownloadBuffer(record.storedName, BUCKET_COMPANY_FILES);
-            const thumbnail = await generateThumbnail(downloaded.buffer, record.mimeType, 300, 70);
-            const thumbBytes = thumbnail ? Uint8Array.from(thumbnail.buffer) : null;
-            const thumbMime = thumbnail ? thumbnail.mimeType : null;
-            const isImage = /image\/(?:png|jpe?g)/i.test(record.mimeType);
-            if (!isImage) return null;
-            const fullBytes = Uint8Array.from(downloaded.buffer);
-            if (thumbBytes && thumbMime) {
-              return {
-                bytes: thumbBytes,
-                mimeType: thumbMime,
-                fullBytes,
-                fullMimeType: record.mimeType,
-                label: field.label,
-              };
-            }
-            return {
-              bytes: fullBytes,
-              mimeType: record.mimeType,
-              fullBytes,
-              fullMimeType: record.mimeType,
-              label: field.label,
-            };
-          } catch (err) {
-            console.warn(`[form-pdf-document] Failed to load photo file ${record.id}:`, err);
-          }
-          return null;
-        }),
-      );
-      fieldImages[String(field.id)] = images.filter((img): img is FormPdfImage => img !== null);
-    } else if (field.fieldType === 'signature') {
-      fieldImages[String(field.id)] = signatureDataUrls(answers[String(field.id)])
-        .map(imageFromDataUrl)
-        .filter((img): img is FormPdfImage => img !== null);
-    }
-  }
+  // Delegated to form-pdf-photo-loader: handles both company-file and job-photo
+  // URLs, downsamples to 1280px JPEG q70, and keeps signatures unchanged.
+  const fieldImages = await loadFieldImages(
+    companyId,
+    submission.jobId ?? null,
+    fields.map((f) => ({
+      id: f.id,
+      label: f.label,
+      fieldType: f.fieldType,
+      required: f.required,
+      settingsJson: f.settingsJson,
+    })),
+    answers,
+  );
 
   // ── Timestamps ──────────────────────────────────────────────────────────────
   const completedAt = new Date(

@@ -10,7 +10,7 @@
  *   [ ✓ Completed pill ]  ·····  [ Edit ]
  *
  * Bottom bar — active/edit view:
- *   [ Save Draft ]  [ Incomplete (red) ]
+ *   [ Save Draft ]  [ Complete (red) ]
  *
  * The floating Document Actions widget (purple circle) is suppressed on this
  * page via DocumentActionsWidget's pathname guard. The FileDown header button
@@ -19,7 +19,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams, useLocation } from "react-router";
 import { Helmet } from '@dr.pogodin/react-helmet';
-import { Loader2, AlertTriangle, ChevronLeft, CheckCircle2, Pencil, Save, XCircle } from 'lucide-react';
+import { Loader2, AlertTriangle, ChevronLeft, CheckCircle2, Pencil, Save } from 'lucide-react';
 import FormRunner from '@/components/job/FormRunner';
 import type { FormSubmission } from '@/components/job/form-types';
 import type { Job } from '@/lib/jobs-api';
@@ -294,10 +294,10 @@ export default function JobFormRunnerPage() {
                   Save Draft
                 </button>
 
-                {/* Incomplete — red, marks form as complete */}
+                {/* Complete — red, marks form as complete */}
                 <button onClick={() => void handleComplete()} disabled={shellSaving || shellCompleting} className="flex-1 flex items-center justify-center gap-2 h-11 rounded-2xl bg-red-600 hover:bg-red-700 active:bg-red-800 text-white text-sm font-bold disabled:opacity-50 transition-colors shadow-sm">
-                  {shellCompleting ? <Loader2 size={14} className="animate-spin" /> : <XCircle size={14} />}
-                  Incomplete
+                  {shellCompleting ? <Loader2 size={14} className="animate-spin" /> : <CheckCircle2 size={14} />}
+                  Complete
                 </button>
               </div>)}
 

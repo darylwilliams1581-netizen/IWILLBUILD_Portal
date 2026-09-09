@@ -104,12 +104,6 @@ export default async function handler(req: Request, res: Response) {
 
     const { pdfBytes, filename, templateName, companyName, jobNumber, jobName, jobId } = doc;
 
-    if (attachPdf && pdfBytes.length > EMAIL_ATTACHMENT_LIMIT) {
-      return res.status(413).json({
-        error: 'This form PDF is larger than the 2 MB email limit. Remove some photos or use Download PDF to save it.',
-      });
-    }
-
     // ── Resolve owner BCC ──────────────────────────────────────────────────────
     let ownerBcced = false;
     let finalBcc = [...bccList];
@@ -150,6 +144,28 @@ export default async function handler(req: Request, res: Response) {
         </div>
       </div>
     </body></html>`;
+
+    // ── Size check: last-resort fallback — send without attachment if still >2 MB ──
+    if (attachPdf && pdfBytes.length > EMAIL_ATTACHMENT_LIMIT) {
+      const resultNoAttach = await sendEmail({
+        to: toList,
+        cc: ccList.length ? ccList : undefined,
+        bcc: finalBcc.length ? finalBcc : undefined,
+        subject,
+        text: fullText,
+        html,
+        fromName: companyName,
+      });
+      return res.json({
+        ok: true,
+        messageId: resultNoAttach.messageId,
+        attachedPdf: false,
+        ownerBcced,
+        senderName,
+        submissionId: submissionId,
+        note: 'PDF was too large to attach (over 2 MB). The email was sent without the attachment.',
+      });
+    }
 
     const result = await sendEmail({
       to: toList,
