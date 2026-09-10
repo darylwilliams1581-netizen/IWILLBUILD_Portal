@@ -85,9 +85,20 @@ function DrawingRow({
         <FileText size={12} />
       </div>
 
-      {/* Title + meta */}
+      {/* Title + meta — tapping the name opens the same viewer as the eye */}
       <div className="flex-1 min-w-0 flex items-center gap-2">
-        <span className="text-xs font-medium text-slate-800 truncate">{drawing.title}</span>
+        {hasPdf ? (
+          <button
+            type="button"
+            onClick={() => onOpen(drawing.id)}
+            title="Open viewer"
+            className="text-xs font-medium text-slate-800 truncate text-left min-w-0 max-w-full hover:text-violet-700"
+          >
+            {drawing.title}
+          </button>
+        ) : (
+          <span className="text-xs font-medium text-slate-800 truncate">{drawing.title}</span>
+        )}
         <div className="flex items-center gap-1.5 shrink-0">
           {drawing.revision_name && <span className="flex items-center gap-0.5 text-[10px] text-slate-400">
               <GitBranch size={8} />{drawing.revision_name}
