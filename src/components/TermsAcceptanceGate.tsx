@@ -1,6 +1,7 @@
 /**
- * TermsAcceptanceGate — one scrollable legal document + sticky acknowledgement.
- * Does not lock html/body height (that blew out dashboard pages).
+ * TermsAcceptanceGate — compact phone sheet + sticky acknowledgement.
+ * Sized with dvw/dvh so a bloated html/body cannot stretch the dialog.
+ * Does not lock html/body height.
  */
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
@@ -81,11 +82,21 @@ export default function TermsAcceptanceGate({ onAccepted, userEmail }: Props) {
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           transition={{ duration: 0.2 }}
-          className="fixed inset-0 z-[9999] flex items-center justify-center overflow-hidden p-4"
+          className="z-[9999] flex items-center justify-center overflow-hidden"
           style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            width: '100dvw',
+            height: '100dvh',
+            maxWidth: '100dvw',
+            maxHeight: '100dvh',
+            boxSizing: 'border-box',
             background: 'rgba(15,17,23,0.72)',
-            paddingTop: 'max(env(safe-area-inset-top), 16px)',
-            paddingBottom: 'max(env(safe-area-inset-bottom), 16px)',
+            paddingTop: 'max(env(safe-area-inset-top), 12px)',
+            paddingBottom: 'max(env(safe-area-inset-bottom), 12px)',
+            paddingLeft: 16,
+            paddingRight: 16,
             WebkitTextSizeAdjust: '100%',
             textSizeAdjust: '100%',
           }}
@@ -94,50 +105,52 @@ export default function TermsAcceptanceGate({ onAccepted, userEmail }: Props) {
             initial={{ y: 24, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
             exit={{ y: 16, opacity: 0 }}
-            className="flex w-full max-w-sm flex-col overflow-hidden rounded-2xl bg-white shadow-2xl"
+            className="flex min-w-0 flex-col overflow-hidden rounded-2xl bg-white shadow-2xl"
             style={{
-              width: 'calc(100% - 8px)',
-              maxWidth: '24rem',
-              maxHeight: 'calc(100% - 24px)',
-              overflow: 'hidden',
+              width: 'min(20rem, calc(100dvw - 32px))',
+              maxWidth: 'min(20rem, calc(100dvw - 32px))',
+              maxHeight: 'min(72dvh, calc(100dvh - 48px))',
+              boxSizing: 'border-box',
             }}
             role="dialog"
             aria-modal="true"
             aria-labelledby="terms-title"
           >
-            <div className="flex shrink-0 items-center gap-2.5 border-b border-gray-100 px-4 py-3">
+            <div className="flex min-w-0 shrink-0 items-center gap-2.5 border-b border-gray-100 px-3 py-2.5">
               <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-violet-600">
                 <Shield size={14} className="text-white" />
               </div>
               <div className="min-w-0">
-                <h1 id="terms-title" className="text-sm font-semibold leading-tight text-gray-900">
+                <h1 id="terms-title" className="truncate text-sm font-semibold leading-tight text-gray-900">
                   Terms & privacy
                 </h1>
-                <p className="text-[11px] text-gray-500">
+                <p className="truncate text-[11px] text-gray-500">
                   {LEGAL_VERSION} · {LEGAL_JURISDICTION}
                 </p>
               </div>
             </div>
 
             {isDevAccount && (
-              <p className="mx-4 mt-2 shrink-0 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-[11px] text-amber-800">
+              <p className="mx-3 mt-2 shrink-0 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-[11px] text-amber-800">
                 Dev account — this prompt always shows for support@iwillbuild.com
               </p>
             )}
 
-            <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 py-3">
-              <LegalDocument />
+            <div className="min-h-0 min-w-0 flex-1 overflow-x-hidden overflow-y-auto overscroll-contain px-3 py-3">
+              <div className="min-w-0 break-words [overflow-wrap:anywhere]">
+                <LegalDocument />
+              </div>
             </div>
 
-            <div className="shrink-0 space-y-2 border-t border-gray-100 bg-white px-4 py-3">
-              <label className="flex cursor-pointer items-start gap-2 text-xs leading-snug text-gray-700">
+            <div className="min-w-0 shrink-0 space-y-2 border-t border-gray-100 bg-white px-3 py-3">
+              <label className="flex min-w-0 cursor-pointer items-start gap-2 text-xs leading-snug text-gray-700">
                 <input
                   type="checkbox"
                   checked={checked}
                   onChange={e => setChecked(e.target.checked)}
                   className="mt-0.5 h-4 w-4 shrink-0 rounded border-gray-300 text-violet-600"
                 />
-                <span>
+                <span className="min-w-0 break-words [overflow-wrap:anywhere]">
                   I have read and agree to the Terms of Use, Fair Use, Privacy and System Policy.
                 </span>
               </label>
