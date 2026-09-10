@@ -6,6 +6,7 @@
 import { useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { X, Upload, Loader2, AlertCircle, CheckCircle2, FileText } from 'lucide-react';
+import DateField from '@/components/DateField';
 
 interface UploadDocModalProps {
   /** API endpoint to POST to, e.g. "/api/safety/documents" */
@@ -163,18 +164,12 @@ export default function UploadDocModal({
               </select>
             </div>
 
-            {/* Review date (optional) */}
-            <div>
-              <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">
-                Review date <span className="font-normal text-slate-400">(optional)</span>
-              </label>
-              <input
-                type="date"
-                value={reviewDate}
-                onChange={(e) => setReviewDate(e.target.value)}
-                className="w-full bg-white border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary/60 transition-colors"
-              />
-            </div>
+            <DateField
+              label="Review date"
+              value={reviewDate}
+              onChange={setReviewDate}
+              optional
+            />
 
             {/* Error */}
             {error && (

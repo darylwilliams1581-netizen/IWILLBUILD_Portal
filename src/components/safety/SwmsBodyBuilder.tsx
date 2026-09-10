@@ -8,6 +8,7 @@ import {
   ShieldAlert, HardHat, ClipboardList, Wrench, Users, FileText,
   TriangleAlert, Flame, Leaf, BookOpen, Link2, PenLine, CheckSquare, Layers,
 } from 'lucide-react';
+import DateField from '@/components/DateField';
 import {
   type SwmsBodyData, type WorkStep, type CriticalControl, type PlantItem,
   type PpeRow, type HRCWEntry, type TaskRequirement, type EnvControl,
@@ -299,8 +300,7 @@ export default function SwmsBodyBuilder({ initial, onClose, onSaved, onGenerateS
             <input value={data.revisionNumber} onChange={(e) => set('revisionNumber', e.target.value)} className={inputCls} placeholder="1" />
           </div>
           <div>
-            <label className={labelCls}>Review Date</label>
-            <input type="date" value={data.reviewDate} onChange={(e) => set('reviewDate', e.target.value)} className={inputCls} />
+            <DateField label="Review Date" value={data.reviewDate} onChange={(v) => set('reviewDate', v)} optional />
           </div>
           <div>
             <label className={labelCls}>Status</label>
