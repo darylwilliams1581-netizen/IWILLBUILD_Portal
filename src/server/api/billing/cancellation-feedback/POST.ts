@@ -36,6 +36,12 @@ export default async function handler(req: Request, res: Response) {
     });
     if (!profile?.companyId) return res.status(400).json({ error: 'No company found.' });
 
+    // Only owners and admins can cancel — members cannot reach this step via the UI,
+    // but enforce server-side as a backup.
+    if (!['owner', 'admin'].includes(profile.role)) {
+      return res.status(403).json({ error: 'Owner or Admin access required.' });
+    }
+
     const company = await db.query.companies.findFirst({
       where: eq(companies.id, profile.companyId),
     });

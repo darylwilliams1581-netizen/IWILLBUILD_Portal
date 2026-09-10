@@ -19,7 +19,10 @@
  * Each download always creates a fresh copy — users can download again if they
  * want a clean reset. No deduplication check.
  *
- * Access: owner, admin, estimator roles only.
+ * Access: owner, admin, estimator, member roles.
+ * Members can browse and download library items into company templates.
+ * They cannot publish, edit, or delete Global Library masters (those remain
+ * platform-developer only via /api/owner-console/sources/* endpoints).
  */
 import type { Request, Response } from 'express';
 import { db } from '../../../../../db/client.js';
@@ -27,7 +30,7 @@ import { sql } from 'drizzle-orm';
 import { getSessionAndProfile } from '../../../../../lib/auth-middleware.js';
 import type { ResultSetHeader } from 'mysql2';
 
-const ALLOWED_ROLES = new Set(['owner', 'admin', 'estimator']);
+const ALLOWED_ROLES = new Set(['owner', 'admin', 'estimator', 'member']);
 
 // Types that map to form_templates
 const FORM_TYPES = new Set([
