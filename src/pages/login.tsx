@@ -639,6 +639,7 @@ export default function LoginPage() {
             />
           </div>
         ) : (
+        <>
         <div className="bg-[#1A1D23] border border-white/10 rounded-xl shadow-2xl overflow-hidden">
           {/* Header */}
           <div className="px-8 pt-8 pb-6 border-b border-white/10">
@@ -1002,6 +1003,7 @@ export default function LoginPage() {
               &larr; Back to home
             </button>}
         </div>
+        </>
         )}
       </motion.div>
     </div>;

@@ -83,7 +83,7 @@ export default async function handler(req: Request, res: Response) {
       });
     }
 
-    return res.json({ ok: true, message: 'PIN set up successfully on this device.' });
+    return res.json({ ok: true, deviceId: existing?.id ?? id, message: 'PIN set up successfully on this device.' });
   } catch (err) {
     console.error('POST /api/auth/trusted-devices error:', err);
     return res.status(500).json({ error: 'Failed to set up PIN.' });
