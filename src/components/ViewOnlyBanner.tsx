@@ -1,16 +1,45 @@
+/**
+ * ViewOnlyBanner
+ * ─────────────────────────────────────────────────────────────────────────────
+ * Renders a subscription-state banner in two variants:
+ *
+ *   variant="desktop"  — rendered INSIDE DesktopTopBar (fixed, md+).
+ *                        Sits as a second row below the topbar content row.
+ *                        Sets --iwb-banner-h on <body> so .lg-portal
+ *                        padding-top grows to accommodate it.
+ *                        Hidden on mobile (DesktopTopBar is already hidden).
+ *
+ *   variant="mobile"   — rendered in normal document flow via RootLayout.
+ *                        Only visible below md breakpoint (md:hidden).
+ *                        No CSS-var side-effect needed — it's in normal flow.
+ *
+ * Role-aware CTA:
+ *   owner / admin  → navigate to /billing
+ *   member / viewer → plain text "Contact your company owner"
+ */
+
 import { useNavigate } from "react-router";
 import { AlertTriangle, CalendarClock, CreditCard, X, RotateCcw, Info } from 'lucide-react';
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useSubscriptionGate } from '@/lib/useSubscriptionGate';
+import { usePermissions } from '@/lib/usePermissions';
+
 function fmtDate(iso: string | null | undefined): string {
   if (!iso) return 'the end of your billing period';
   return new Date(iso).toLocaleDateString('en-AU', {
     day: 'numeric',
     month: 'long',
-    year: 'numeric'
+    year: 'numeric',
   });
 }
-export default function ViewOnlyBanner() {
+
+interface ViewOnlyBannerProps {
+  /** "desktop" — fixed second row inside DesktopTopBar; sets --iwb-banner-h.
+   *  "mobile"  — normal-flow, hidden on md+. */
+  variant?: 'desktop' | 'mobile';
+}
+
+export default function ViewOnlyBanner({ variant = 'mobile' }: ViewOnlyBannerProps) {
   const {
     isViewOnly,
     isCancelScheduled,
@@ -18,115 +47,207 @@ export default function ViewOnlyBanner() {
     status,
     isLoading,
     currentPeriodEnd,
-    graceDaysLeft
+    graceDaysLeft,
   } = useSubscriptionGate();
+
+  const { isOwner, isAdmin } = usePermissions();
+  const canManageBilling = isOwner || isAdmin;
+
   const navigate = useNavigate();
   const [dismissed, setDismissed] = useState(false);
-  if (isLoading || dismissed || !status || status === 'active' || status === 'trial' || status === 'no_company') {
-    return null;
+  const bannerRef = useRef<HTMLDivElement>(null);
+
+  // ── Visibility gate ───────────────────────────────────────────────────────
+  const isVisible =
+    !isLoading &&
+    !dismissed &&
+    !!status &&
+    status !== 'active' &&
+    status !== 'trial' &&
+    status !== 'no_company';
+
+  // ── CSS variable side-effect (desktop variant only) ───────────────────────
+  // Sets --iwb-banner-h on <body> so .lg-portal padding-top grows to fit.
+  useEffect(() => {
+    if (variant !== 'desktop') return;
+    if (typeof document === 'undefined') return;
+
+    function updateVar() {
+      const h =
+        isVisible && bannerRef.current
+          ? bannerRef.current.getBoundingClientRect().height
+          : 0;
+      document.body.style.setProperty('--iwb-banner-h', `${h}px`);
+    }
+
+    updateVar();
+
+    const ro =
+      typeof ResizeObserver !== 'undefined' ? new ResizeObserver(updateVar) : null;
+    if (ro && bannerRef.current) ro.observe(bannerRef.current);
+
+    return () => {
+      ro?.disconnect();
+      if (typeof document !== 'undefined') {
+        document.body.style.setProperty('--iwb-banner-h', '0px');
+      }
+    };
+  }, [variant, isVisible]);
+
+  if (!isVisible) return null;
+
+  // ── Wrapper classes ───────────────────────────────────────────────────────
+  // desktop: always shown (DesktopTopBar hides itself on mobile)
+  // mobile:  only shown below md
+  const wrapperBase = 'w-full flex items-center gap-3 px-4 py-2';
+  const wrapperClass =
+    variant === 'desktop'
+      ? wrapperBase
+      : `${wrapperBase} md:hidden shadow-md`;
+
+  // ── CTA component ─────────────────────────────────────────────────────────
+  function BillingCta({
+    label,
+    icon: Icon,
+    textColor,
+    hoverBg,
+  }: {
+    label: string;
+    icon: typeof CreditCard;
+    textColor: string;
+    hoverBg: string;
+  }) {
+    if (!canManageBilling) {
+      return (
+        <span className="shrink-0 text-xs font-semibold opacity-90 whitespace-nowrap">
+          Contact your company owner
+        </span>
+      );
+    }
+    return (
+      <button
+        onClick={() => navigate('/billing')}
+        className={`shrink-0 flex items-center gap-1.5 bg-white font-semibold text-xs px-3 py-1.5 rounded-md transition-colors ${textColor} ${hoverBg}`}
+      >
+        <Icon className="h-3.5 w-3.5" />
+        {label}
+      </button>
+    );
   }
 
-  // ── Cancel scheduled (full access, informational) ─────────────────────────
+  // ── Cancel scheduled (amber, informational) ───────────────────────────────
   if (isCancelScheduled) {
-    return <div role="status" className="w-full bg-amber-500 text-white px-4 py-3 flex items-start gap-3 z-50 shadow-md" style={{
-      borderBottom: '2px solid rgba(0,0,0,0.12)'
-    }}>
-        <CalendarClock className="h-5 w-5 mt-0.5 shrink-0" />
-        <div className="flex-1 min-w-0">
-          <p className="font-semibold text-sm leading-snug">
-            Your subscription is scheduled to cancel on {fmtDate(currentPeriodEnd)}.
-          </p>
-          <p className="text-xs mt-0.5 opacity-90 leading-snug">
-            You have full access until then. Reactivate any time to keep your subscription.
-          </p>
-        </div>
-        <button onClick={() => navigate('/billing')} className="shrink-0 flex items-center gap-1.5 bg-white text-amber-700 font-semibold text-xs px-3 py-1.5 rounded-md hover:bg-amber-50 transition-colors">
-          <RotateCcw className="h-3.5 w-3.5" />
-          Reactivate
+    return (
+      <div
+        ref={bannerRef}
+        role="status"
+        className={`${wrapperClass} bg-amber-500 text-white`}
+        style={{ borderBottom: `1px solid hsl(var(--banner-border-amber))` }}
+      >
+        <CalendarClock className="h-4 w-4 shrink-0" />
+        <p className="flex-1 min-w-0 font-semibold text-xs leading-snug">
+          Subscription cancels {fmtDate(currentPeriodEnd)}. Full access until then.
+        </p>
+        <BillingCta
+          label="Reactivate"
+          icon={RotateCcw}
+          textColor="text-amber-700"
+          hoverBg="hover:bg-amber-50"
+        />
+        <button
+          onClick={() => setDismissed(true)}
+          className="shrink-0 p-1 rounded hover:bg-amber-400 transition-colors opacity-80 hover:opacity-100"
+          aria-label="Dismiss"
+        >
+          <X className="h-3.5 w-3.5" />
         </button>
-        <button onClick={() => setDismissed(true)} className="shrink-0 p-1 rounded hover:bg-amber-400 transition-colors opacity-80 hover:opacity-100" aria-label="Dismiss">
-          <X className="h-4 w-4" />
-        </button>
-      </div>;
+      </div>
+    );
   }
 
-  // ── Past due within grace period (full access, urgent warning) ────────────
+  // ── Past due within grace period (amber-600, urgent) ─────────────────────
   if (isPastDueWarning) {
     const daysText = graceDaysLeft === 1 ? '1 day' : `${graceDaysLeft ?? 'a few'} days`;
-    return <div role="alert" className="w-full bg-amber-600 text-white px-4 py-3 flex items-start gap-3 z-50 shadow-md" style={{
-      borderBottom: '2px solid rgba(0,0,0,0.15)'
-    }}>
-        <AlertTriangle className="h-5 w-5 mt-0.5 shrink-0" />
-        <div className="flex-1 min-w-0">
-          <p className="font-semibold text-sm leading-snug">
-            Your last payment failed. Update your payment method within {daysText}.
-          </p>
-          <p className="text-xs mt-0.5 opacity-90 leading-snug">
-            Your account remains fully active during this grace period. After that, it becomes view-only.
-          </p>
-        </div>
-        <button onClick={() => navigate('/billing')} className="shrink-0 flex items-center gap-1.5 bg-white text-amber-700 font-semibold text-xs px-3 py-1.5 rounded-md hover:bg-amber-50 transition-colors">
-          <CreditCard className="h-3.5 w-3.5" />
-          Update Payment
+    return (
+      <div
+        ref={bannerRef}
+        role="alert"
+        className={`${wrapperClass} bg-amber-600 text-white`}
+        style={{ borderBottom: `1px solid hsl(var(--banner-border-amber-dark))` }}
+      >
+        <AlertTriangle className="h-4 w-4 shrink-0" />
+        <p className="flex-1 min-w-0 font-semibold text-xs leading-snug">
+          Payment failed — update within {daysText} to keep full access.
+        </p>
+        <BillingCta
+          label="Update Payment"
+          icon={CreditCard}
+          textColor="text-amber-700"
+          hoverBg="hover:bg-amber-50"
+        />
+        <button
+          onClick={() => setDismissed(true)}
+          className="shrink-0 p-1 rounded hover:bg-amber-500 transition-colors opacity-80 hover:opacity-100"
+          aria-label="Dismiss"
+        >
+          <X className="h-3.5 w-3.5" />
         </button>
-        <button onClick={() => setDismissed(true)} className="shrink-0 p-1 rounded hover:bg-amber-500 transition-colors opacity-80 hover:opacity-100" aria-label="Dismiss">
-          <X className="h-4 w-4" />
-        </button>
-      </div>;
+      </div>
+    );
   }
 
-  // ── View-only states ──────────────────────────────────────────────────────
+  // ── View-only states (red) ────────────────────────────────────────────────
   if (!isViewOnly) return null;
+
   const viewOnlyMessages: Record<string, {
     title: string;
-    body: string;
     cta: string;
     icon: typeof CreditCard;
   }> = {
     trial_expired: {
-      title: 'Your free trial has ended.',
-      body: 'Your account is now view-only. You can browse your data and download files, but cannot create or edit anything.',
+      title: 'Your free trial has ended — account is now view-only.',
       cta: 'Subscribe',
-      icon: CreditCard
+      icon: CreditCard,
     },
     cancelled: {
-      title: 'Your subscription has ended. Your account is now view-only.',
-      body: 'Your records are still here if you choose to come back. Reactivate your subscription to restore full access.',
+      title: 'Subscription ended — account is now view-only.',
       cta: 'Reactivate',
-      icon: RotateCcw
+      icon: RotateCcw,
     },
     past_due: {
-      title: 'Your subscription payment is overdue.',
-      body: 'Your account is now view-only. Update your payment method to restore full access.',
+      title: 'Payment overdue — account is now view-only.',
       cta: 'Update Payment',
-      icon: CreditCard
+      icon: CreditCard,
     },
     suspended: {
-      title: 'Your account has been suspended.',
-      body: 'Your account is now view-only. Contact support or subscribe to restore access.',
+      title: 'Account suspended — view-only access only.',
       cta: 'Go to Billing',
-      icon: Info
-    }
+      icon: Info,
+    },
   };
+
   const msg = viewOnlyMessages[status ?? ''] ?? {
-    title: 'Your subscription is inactive.',
-    body: 'Your account is now view-only. Subscribe to continue creating and editing work.',
+    title: 'Subscription inactive — account is now view-only.',
     cta: 'Subscribe',
-    icon: CreditCard
+    icon: CreditCard,
   };
-  const CtaIcon = msg.icon;
-  return <div role="alert" className="w-full bg-red-600 text-white px-4 py-3 flex items-start gap-3 z-50 shadow-md" style={{
-    borderBottom: '2px solid rgba(0,0,0,0.2)'
-  }}>
-      <AlertTriangle className="h-5 w-5 mt-0.5 shrink-0" />
-      <div className="flex-1 min-w-0">
-        <p className="font-semibold text-sm leading-snug">{msg.title}</p>
-        <p className="text-xs mt-0.5 opacity-90 leading-snug">{msg.body}</p>
-      </div>
-      <button onClick={() => navigate('/billing')} className="shrink-0 flex items-center gap-1.5 bg-white text-red-700 font-semibold text-xs px-3 py-1.5 rounded-md hover:bg-red-50 transition-colors">
-        <CtaIcon className="h-3.5 w-3.5" />
-        {msg.cta}
-      </button>
-      {/* No dismiss on view-only — user needs to see this */}
-    </div>;
+
+  return (
+    <div
+      ref={bannerRef}
+      role="alert"
+      className={`${wrapperClass} bg-red-600 text-white`}
+      style={{ borderBottom: `1px solid hsl(var(--banner-border-red))` }}
+    >
+      <AlertTriangle className="h-4 w-4 shrink-0" />
+      <p className="flex-1 min-w-0 font-semibold text-xs leading-snug">{msg.title}</p>
+      <BillingCta
+        label={msg.cta}
+        icon={msg.icon}
+        textColor="text-red-700"
+        hoverBg="hover:bg-red-50"
+      />
+      {/* No dismiss on view-only — user must always see this */}
+    </div>
+  );
 }

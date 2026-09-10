@@ -1410,9 +1410,23 @@ textarea {
      top offset = 56px topbar + safe-area-inset-top.
      left offset = sidebar width.
 */
+/*
+   --iwb-banner-h: set by ViewOnlyBanner (desktop variant) via JS when a
+   subscription-state banner is visible. .lg-portal adds this to its
+   padding-top so content starts below both the fixed topbar and the banner.
+   Defaults to 0px (no banner).
+*/
+:root {
+  --iwb-banner-h: 0px;
+  /* Banner border-bottom tints — used in ViewOnlyBanner inline styles */
+  --banner-border-amber: 0 0% 0% / 0.12;
+  --banner-border-amber-dark: 0 0% 0% / 0.15;
+  --banner-border-red: 0 0% 0% / 0.20;
+}
+
 @media (min-width: 768px) and (max-width: 1023px) {
   .lg-portal {
-    padding-top: calc(112px + env(safe-area-inset-top, 0px)) !important;
+    padding-top: calc(112px + var(--iwb-banner-h, 0px) + env(safe-area-inset-top, 0px)) !important;
     min-width: 0;
     max-width: 100vw;
     overflow-x: hidden;
@@ -1422,7 +1436,7 @@ textarea {
 
 @media (min-width: 1024px) {
   .lg-portal {
-    padding-top: calc(56px + env(safe-area-inset-top, 0px)) !important;
+    padding-top: calc(56px + var(--iwb-banner-h, 0px) + env(safe-area-inset-top, 0px)) !important;
     padding-left: var(--iwb-sidebar-w, 240px) !important;
     transition: padding-left 0.2s ease;
     min-width: 0;

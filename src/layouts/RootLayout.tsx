@@ -65,7 +65,10 @@ function PortalBanners({ pathname }: { pathname: string | undefined }) {
   return (
     <>
       <SupportModeBanner />
-      <ViewOnlyBanner />
+      {/* ViewOnlyBanner mobile variant — only visible below md breakpoint.
+          On md+ the banner renders inside DesktopTopBar (fixed, second row)
+          so it sits directly below the purple header in the correct z-order. */}
+      <ViewOnlyBanner variant="mobile" />
     </>
   );
 }

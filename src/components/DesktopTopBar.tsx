@@ -18,6 +18,7 @@ import { usePermissions } from '@/lib/usePermissions';
 import { signOut } from '@/lib/auth/auth-client.tsx';
 import { useDriverSessionSafe } from '@/lib/useDriverSession';
 import DrivingSessionBadge from '@/components/fleet/DrivingSessionBadge';
+import ViewOnlyBanner from '@/components/ViewOnlyBanner';
 export const DESKTOP_TOPBAR_HEIGHT = 56;
 /**
  * CSS calc() expression for the total topbar height including the iOS
@@ -115,22 +116,29 @@ export default function DesktopTopBar() {
     top: 0,
     left: 0,
     right: 0,
-    /* Total height = fixed content area + iOS status-bar inset.
-       On desktop env() resolves to 0 so this equals DESKTOP_TOPBAR_HEIGHT. */
-    height: `calc(${DESKTOP_TOPBAR_HEIGHT}px + env(safe-area-inset-top, 0px))`,
+    /* Height is auto so the banner row can extend it naturally.
+       The topbar content row is always DESKTOP_TOPBAR_HEIGHT (56px + safe-area).
+       ViewOnlyBanner (desktop variant) adds its own height below that row and
+       sets --iwb-banner-h on <body> so .lg-portal padding-top adjusts. */
+    height: 'auto',
     zIndex: 1100,
-    alignItems: 'flex-end',   /* push content below the status-bar inset */
-    justifyContent: 'space-between',
-    paddingLeft: 20,
-    paddingRight: 14,
-    /* Bottom padding keeps content vertically centred in the 56px content zone */
-    paddingBottom: 8,
-    /* Top padding = status-bar height so content clears the iOS status bar */
-    paddingTop: 'env(safe-area-inset-top, 0px)',
+    flexDirection: 'column',
     background: 'linear-gradient(90deg, #1e1b4b 0%, #2e1065 50%, #3b0764 100%)',
     borderBottom: '1px solid rgba(255,255,255,0.10)',
     boxShadow: '0 2px 8px rgba(109,40,217,0.20)'
   }}>
+      {/* ── Row 1: topbar content ── */}
+      <div style={{
+        display: 'flex',
+        alignItems: 'flex-end',
+        justifyContent: 'space-between',
+        height: `calc(${DESKTOP_TOPBAR_HEIGHT}px + env(safe-area-inset-top, 0px))`,
+        paddingLeft: 20,
+        paddingRight: 14,
+        paddingBottom: 8,
+        paddingTop: 'env(safe-area-inset-top, 0px)',
+        flexShrink: 0,
+      }}>
       {/* ── Left: date + greeting ── */}
       <div style={{
       display: 'flex',
@@ -239,5 +247,10 @@ export default function DesktopTopBar() {
           <LogOut size={15} />
         </button>
       </div>
+      </div>{/* end Row 1 */}
+
+      {/* ── Row 2: subscription-state banner ── */}
+      <ViewOnlyBanner variant="desktop" />
+
     </div>;
 }
