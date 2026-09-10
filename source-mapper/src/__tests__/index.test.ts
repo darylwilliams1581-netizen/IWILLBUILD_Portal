@@ -1169,6 +1169,123 @@ describe('jsxSourceMapper — per-item list instrumentation (gap 2b)', () => {
   });
 });
 
+describe('jsxSourceMapper — concrete collection leaf identity', () => {
+  it('puts an id-anchored key on the text leaf when a custom wrapper drops list attributes', () => {
+    const output: string = transform(`
+      import { home } from 'virtual:content';
+      export default () => <>{home.experience.features.slice(1).map((feat) => (
+        <FadeIn><span>{feat.spec}</span></FadeIn>
+      ))}</>;
+    `);
+
+    expect(output).toMatch(
+      /<span[^>]*data-dev-content-key-template="home\.experience\.features\[\]\.spec"[^>]*data-dev-content-key=\{typeof feat\.id === "string" && \/\^\[A-Za-z0-9_-\]\+\$\/\.test\(feat\.id\) \? `home\.experience\.features\[@\$\{feat\.id\}\]\.spec` : undefined\}/,
+    );
+  });
+
+  it('uses every stable id in a filtered nested collection key', () => {
+    const output: string = transform(`
+      import { menu } from 'virtual:content';
+      export default () => <>{menu.categories.filter((cat) => cat.visible).map((cat) => (
+        <section>{cat.items.filter((item) => item.available).map((item) => (
+          <FadeIn><span>{item.name}</span></FadeIn>
+        ))}</section>
+      ))}</>;
+    `);
+
+    expect(output).toContain(
+      'data-dev-content-key={typeof cat.id === "string" && /^[A-Za-z0-9_-]+$/.test(cat.id) && typeof item.id === "string" && /^[A-Za-z0-9_-]+$/.test(item.id) ? `menu.categories[@${cat.id}].items[@${item.id}].name` : undefined}',
+    );
+  });
+
+  it('keeps ids distinct through three nested callbacks that shadow the item name', () => {
+    const output: string = transform(`
+      import { groups } from 'virtual:content';
+      export default () => <>{groups.map((item) => (
+        <section>{item.children.map((item) => (
+          <div>{item.children.map((item) => <span>{item.name}</span>)}</div>
+        ))}</section>
+      ))}</>;
+    `);
+
+    expect(output).toMatch(
+      /data-dev-content-key=\{typeof item\.id === "string" && \/\^\[A-Za-z0-9_-\]\+\$\/\.test\(item\.id\) && typeof (_item\d*)\.id === "string" && \/\^\[A-Za-z0-9_-\]\+\$\/\.test\(\1\.id\) && typeof (_item\d*)\.id === "string" && \/\^\[A-Za-z0-9_-\]\+\$\/\.test\(\2\.id\) \? `groups\[@\$\{item\.id\}\]\.children\[@\$\{\1\.id\}\]\.children\[@\$\{\2\.id\}\]\.name`/,
+    );
+  });
+
+  it('does not rename shadowed callback parameters in production', () => {
+    const originalNodeEnv: string | undefined = process.env.NODE_ENV;
+    process.env.NODE_ENV = 'production';
+    try {
+      const output: string = transform(`
+        import { groups } from 'virtual:content';
+        export default () => <>{groups.map((item) => (
+          <section>{item.children.map((item) => <span>{item.name}</span>)}</section>
+        ))}</>;
+      `);
+
+      expect(output).not.toContain('_item');
+    } finally {
+      process.env.NODE_ENV = originalNodeEnv;
+    }
+  });
+
+  it.each(['sort', 'reverse', 'toSorted', 'toReversed'] as const)(
+    'keeps stable identity through chained slicing, filtering, and %s',
+    (method: 'sort' | 'reverse' | 'toSorted' | 'toReversed') => {
+      const output: string = transform(`
+      import { products } from 'virtual:content';
+      export default () => <>{products.filter((product) => product.visible).slice(1).${method}().map((product) => (
+        <span>{product.name}</span>
+      ))}</>;
+    `);
+
+      expect(output).toContain(
+        'data-dev-content-key={typeof product.id === "string" && /^[A-Za-z0-9_-]+$/.test(product.id) ? `products[@${product.id}].name` : undefined}',
+      );
+    },
+  );
+
+  it('marks the leaf readonly when any stable id is missing or invalid instead of using an index', () => {
+    const output: string = transform(`
+      import { products } from 'virtual:content';
+      export default () => <>{products.map((product) => <span>{product.name}</span>)}</>;
+    `);
+
+    expect(output).toContain('data-dev-content-key-template="products[].name"');
+    expect(output).toContain(
+      'data-dev-content-key={typeof product.id === "string" && /^[A-Za-z0-9_-]+$/.test(product.id) ? `products[@${product.id}].name` : undefined}',
+    );
+    expect(output).toContain(
+      'data-dev-content-readonly={typeof product === "object" && product !== null && !(typeof product.id === "string" && /^[A-Za-z0-9_-]+$/.test(product.id)) ? "true" : undefined}',
+    );
+  });
+
+  it('keeps primitive array items editable through the positional fallback', () => {
+    const output: string = transform(`
+      import { home } from 'virtual:content';
+      export default () => <>{home.tags.map((tag) => <span>{tag}</span>)}</>;
+    `);
+
+    expect(output).toContain('data-dev-content-key-template="home.tags[]"');
+    expect(output).toContain(
+      'data-dev-content-readonly={typeof tag === "object" && tag !== null && !(typeof tag.id === "string" && /^[A-Za-z0-9_-]+$/.test(tag.id)) ? "true" : undefined}',
+    );
+  });
+
+  it('does not override a pre-existing readonly template leaf', () => {
+    const output: string = transform(`
+      import { products } from 'virtual:content';
+      export default () => <>{products.map((product) => (
+        <span data-dev-content-readonly="true">{product.name}</span>
+      ))}</>;
+    `);
+
+    expect(output).not.toContain('data-dev-content-key={product.id');
+    expect(output.match(/data-dev-content-readonly/g)).toHaveLength(1);
+  });
+});
+
 describe('jsxSourceMapper — indexed and derived content keys', () => {
   it('attributes a direct indexed array access in canonical bracket form', () => {
     const output = transform(`
@@ -1541,13 +1658,35 @@ describe('jsxSourceMapper — alias-before-map and derive-before-map attribution
   });
 });
 
-// Lock-in tests for the intentional DERIVE_METHODS boundary: only filter/slice/
-// flatMap are peeled (they return a same-element array). find/sort/reduce must
-// NOT be peeled — find returns a single element (wrong base path), reduce/sort
-// change identity/order in ways a content path can't track. Guards against
-// someone widening DERIVE_METHODS and silently mis-attributing.
-describe('jsxSourceMapper — derive boundary (find/sort/reduce not attributed)', () => {
-  for (const method of ['find', 'sort', 'reduce']) {
+describe('jsxSourceMapper — derive boundary (flatMap/find/reduce not attributed)', () => {
+  it('does not attribute items produced by flatMap to the source collection', () => {
+    const output: string = transform(`
+      import { products } from 'virtual:content';
+      export default () => (
+        <>{products.flatMap((product) => product.variants).map((variant) => (
+          <span>{variant.name}</span>
+        ))}</>
+      );
+    `);
+
+    expect(output).not.toContain('data-dev-content-key-template');
+    expect(output).not.toContain('data-dev-content-key');
+  });
+
+  it('does not attribute an alias produced by flatMap to the source collection', () => {
+    const output: string = transform(`
+      import { products } from 'virtual:content';
+      export default () => {
+        const variants = products.flatMap((product) => product.variants);
+        return <>{variants.map((variant) => <span>{variant.name}</span>)}</>;
+      };
+    `);
+
+    expect(output).not.toContain('data-dev-content-key-template');
+    expect(output).not.toContain('data-dev-content-key');
+  });
+
+  for (const method of ['find', 'reduce']) {
     it(`does NOT attribute a direct \`.${method}(...)\`-before-map chain`, () => {
       const output = transform(`
         import { catalog } from 'virtual:content';

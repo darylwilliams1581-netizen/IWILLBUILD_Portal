@@ -29,6 +29,39 @@ describe("buildContentUpdatePayload", () => {
     expect("expectedCurrent" in payload).toBe(false);
   });
 
+  it("includes expectedCurrent for a concrete collection leaf", () => {
+    const payload: ReturnType<typeof buildContentUpdatePayload> = buildContentUpdatePayload(
+      el({
+        "data-dev-content-key": "products[@stable].name",
+        "data-dev-content-key-template": "products[].name",
+      }),
+      { key: "products[@stable].name", kind: "copy" },
+      "Old",
+      "New",
+    );
+    expect(payload.expectedCurrent).toBe("Old");
+  });
+
+  it("omits expectedCurrent when only the concrete key is present", () => {
+    const payload: ReturnType<typeof buildContentUpdatePayload> = buildContentUpdatePayload(
+      el({ "data-dev-content-key": "products[@stable].name" }),
+      { key: "products[@stable].name", kind: "copy" },
+      "Old",
+      "New",
+    );
+    expect("expectedCurrent" in payload).toBe(false);
+  });
+
+  it("omits expectedCurrent when only the template key is present", () => {
+    const payload: ReturnType<typeof buildContentUpdatePayload> = buildContentUpdatePayload(
+      el({ "data-dev-content-key-template": "products[].name" }),
+      { key: "products[].name", kind: "copy" },
+      "Old",
+      "New",
+    );
+    expect("expectedCurrent" in payload).toBe(false);
+  });
+
   it("treats a missing / non-'true' derived attribute as non-derived", () => {
     const payload = buildContentUpdatePayload(
       el({ "data-dev-content-derived": "false" }),

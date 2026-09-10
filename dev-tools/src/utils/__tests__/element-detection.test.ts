@@ -591,6 +591,16 @@ describe('element-detection', () => {
       expect(resolveContentKey(element)).toEqual({ key: 'site.brand', kind: 'copy' });
     });
 
+    it('prefers a concrete leaf key while retaining the legacy template fallback', () => {
+      const element: HTMLElement = buildElement(
+        '<span data-dev-content-key="products[@stable].name" data-dev-content-key-template="products[].name" data-dev-content-list="products" data-dev-content-list-index="9" data-dev-item-id="stable">Stable</span>',
+      );
+      expect(resolveContentKey(element)).toEqual({ key: 'products[@stable].name', kind: 'copy' });
+
+      element.removeAttribute('data-dev-content-key');
+      expect(resolveContentKey(element)).toEqual({ key: 'products[@stable].name', kind: 'copy' });
+    });
+
     it('reads kind=richText from data-dev-content-kind', () => {
       const element = buildElement('<div data-dev-content-key="home.body" data-dev-content-kind="richText">x</div>');
       expect(resolveContentKey(element)).toEqual({ key: 'home.body', kind: 'richText' });
