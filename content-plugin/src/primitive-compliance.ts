@@ -198,11 +198,9 @@ function report(
 
 const PAGES_ROOT: string = 'src/pages';
 const COMPONENTS_ROOT: string = 'src/components';
-const GATED_ROOTS: readonly string[] = [PAGES_ROOT, COMPONENTS_ROOT];
+/** Same set as {@link DEFAULT_SCAN_ROOTS} — one alias, so a measured root cannot go unenforced. */
+const GATED_ROOTS: readonly string[] = DEFAULT_SCAN_ROOTS;
 const UI_PREFIX: string = `${COMPONENTS_ROOT}/ui`;
-/** Roots the migration may bind to the content layer: scan-wide, unlike {@link GATED_ROOTS}. Same
- * set as {@link DEFAULT_SCAN_ROOTS} — kept as one alias so the two cannot drift apart. */
-const BINDABLE_ROOTS: readonly string[] = DEFAULT_SCAN_ROOTS;
 
 /** App-relative path with forward slashes, so every prefix comparison here uses one convention. */
 function toPosix(relPath: string): string {
@@ -285,18 +283,6 @@ export function isComponentPath(relPath: string): boolean {
   const p: string = toPosix(relPath);
   if (isFrameworkExemptPath(p)) return false;
   return p === COMPONENTS_ROOT || p.startsWith(COMPONENTS_ROOT + '/');
-}
-
-/**
- * Whether a migration may bind this app-relative path to the content layer. Wider than
- * {@link isGatedPath} — it also covers `src/layouts`, which the write/build gate does not enforce —
- * so a layout site the binder cannot yet handle is unbound but never gated, and can never fail
- * `verify` or block the migration.
- */
-export function isBindablePath(relPath: string): boolean {
-  const p: string = toPosix(relPath);
-  if (isFrameworkExemptPath(p)) return false;
-  return BINDABLE_ROOTS.some((root: string): boolean => p === root || p.startsWith(root + '/'));
 }
 
 /** Cap on sites named in one message, so a whole-page write cannot produce an unbounded one. */
