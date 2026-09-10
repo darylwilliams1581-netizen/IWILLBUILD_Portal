@@ -673,6 +673,12 @@ import owner_console_library_items_id_delete_640 from "./api/owner-console/libra
 import owner_console_library_items_id_patch_641 from "./api/owner-console/library/items/[id]/PATCH";
 import owner_console_library_items_id_put_642 from "./api/owner-console/library/items/[id]/PUT";
 import owner_console_library_items_id_push_update_post_643 from "./api/owner-console/library/items/[id]/push-update/POST";
+import owner_console_sources_forms_get_644 from "./api/owner-console/sources/forms/GET";
+import owner_console_sources_forms_id_patch_645 from "./api/owner-console/sources/forms/[id]/PATCH";
+import owner_console_sources_forms_id_delete_646 from "./api/owner-console/sources/forms/[id]/DELETE";
+import owner_console_sources_swms_get_647 from "./api/owner-console/sources/swms/GET";
+import owner_console_sources_swms_id_patch_648 from "./api/owner-console/sources/swms/[id]/PATCH";
+import owner_console_sources_swms_id_delete_649 from "./api/owner-console/sources/swms/[id]/DELETE";
 import owner_console_library_submissions_get_644 from "./api/owner-console/library/submissions/GET";
 import owner_console_library_submissions_id_review_post_645 from "./api/owner-console/library/submissions/[id]/review/POST";
 import owner_console_starter_pack_get_646 from "./api/owner-console/starter-pack/GET";
@@ -4145,6 +4151,12 @@ app.delete("/api/owner-console/library/items/:id", owner_console_library_items_i
 app.patch("/api/owner-console/library/items/:id", owner_console_library_items_id_patch_641);
 app.put("/api/owner-console/library/items/:id", owner_console_library_items_id_put_642);
 app.post("/api/owner-console/library/items/:id/push-update", owner_console_library_items_id_push_update_post_643);
+app.get("/api/owner-console/sources/forms", owner_console_sources_forms_get_644);
+app.patch("/api/owner-console/sources/forms/:id", owner_console_sources_forms_id_patch_645);
+app.delete("/api/owner-console/sources/forms/:id", owner_console_sources_forms_id_delete_646);
+app.get("/api/owner-console/sources/swms", owner_console_sources_swms_get_647);
+app.patch("/api/owner-console/sources/swms/:id", owner_console_sources_swms_id_patch_648);
+app.delete("/api/owner-console/sources/swms/:id", owner_console_sources_swms_id_delete_649);
 app.get("/api/owner-console/library/submissions", owner_console_library_submissions_get_644);
 app.post("/api/owner-console/library/submissions/:id/review", owner_console_library_submissions_id_review_post_645);
 app.get("/api/owner-console/starter-pack", owner_console_starter_pack_get_646);

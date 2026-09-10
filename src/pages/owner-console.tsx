@@ -27,6 +27,7 @@ import SupportNotesTab from '@/components/owner-console/SupportNotesTab';
 import AccountingSmokeTestTab from '@/components/owner-console/AccountingSmokeTestTab';
 import SwmsMasterLibraryTab from '@/components/owner-console/SwmsMasterLibraryTab';
 import LibraryManagerTab from '@/components/owner-console/LibraryManagerTab';
+import GlobalLibraryTab from '@/components/owner-console/GlobalLibraryTab';
 import BugReportsTab from '@/components/owner-console/BugReportsTab';
 import IncidentQueueTab from '@/components/owner-console/IncidentQueueTab';
 import ClientRescueTab from '@/components/owner-console/ClientRescueTab';
@@ -1108,7 +1109,7 @@ export default function OwnerConsolePage() {
               {tab === 'anatomy' && <AnatomyTab />}
               {tab === 'global-library' && (
                 <div className="h-full overflow-hidden flex flex-col">
-                  <LibraryManagerTab />
+                  <GlobalLibraryTab />
                 </div>
               )}
               {tab === 'twilio' && <TwilioTab />}
