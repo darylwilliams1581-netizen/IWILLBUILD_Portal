@@ -1,4 +1,6 @@
+/* content-layer-exempt: developer-only admin console — all text is application UI labels, not user-editable copy */
 import { useState, useEffect, useCallback, useRef } from 'react';
+import { owner_console } from 'virtual:content';
 import { useNavigate, useSearchParams } from "react-router";
 import { Helmet } from '@dr.pogodin/react-helmet';
 import { RefreshCw, Shield, ChevronRight, Activity, Loader2, ShieldCheck, FileText, ClipboardList, CheckCircle2, XCircle, ChevronDown, ExternalLink, ShieldAlert, X, Bot, Mail, BarChart2, StickyNote, Receipt, Send, Ban, RotateCcw, Server, AlertCircle, Play, Info, Clock, Copy, Check, Plus, Database, Settings, Users, Building2, LogOut, ArrowLeft, Bug, AlertTriangle, Phone, Code2, FileCode, BookOpen } from 'lucide-react';
@@ -708,11 +710,11 @@ export default function OwnerConsolePage() {
 
       <div className="flex flex-col flex-1 min-h-0 overflow-hidden">
         <Helmet>
-          <title>Developer Console — IWIllBUIlD Portal</title>
-          <meta name="description" content="Owner-only control room for managing companies, users, and activity." />
+          <title>{owner_console.meta.title} — IWIllBUIlD Portal</title>
+          <meta name="description" content={owner_console.meta.description} />
           <link rel="canonical" href="https://iwillbuild.com/owner-console" />
           <meta name="robots" content="noindex" />
-          <meta property="og:title" content="Developer Console — IWIllBUIlD Portal" />
+          <meta property="og:title" content={owner_console.meta.title} />
           <meta property="og:description" content="Owner-only control room for managing companies, users, and activity." />
           <meta property="og:type" content="website" />
           <meta property="og:url" content="https://iwillbuild.com/owner-console" />

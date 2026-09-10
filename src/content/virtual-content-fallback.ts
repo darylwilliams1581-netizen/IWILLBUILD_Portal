@@ -15,6 +15,10 @@
  * Keep in sync with the stub and the real virtual module shape.
  */
 
+export const owner_console: { meta: { title: string; description: string } } = {
+  meta: { title: 'Developer Console', description: 'Platform owner administration console' },
+};
+
 export const asset_manager: { TABS: string[] } = { TABS: [] };
 
 export const asset_report_share: {

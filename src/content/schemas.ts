@@ -177,6 +177,12 @@ export const schemas = {
         "label": z.string(),
         "id": z.string()
       }))
+    }),
+    owner_console: z.object({
+      "meta": z.object({
+        "title": z.string(),
+        "description": z.string()
+      })
     })
   }
 };
