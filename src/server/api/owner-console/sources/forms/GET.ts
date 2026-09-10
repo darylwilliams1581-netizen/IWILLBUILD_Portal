@@ -1,42 +1,25 @@
 /**
  * GET /api/owner-console/sources/forms
  * ─────────────────────────────────────────────────────────────────────────────
- * Platform-owner view of ALL form_templates belonging to the developer company,
- * enriched with their Global Library publish state.
+ * Platform-developer view of ALL form_templates belonging to the developer
+ * company, enriched with their Global Library publish state.
+ *
+ * Access: platform_role = 'developer' (or PLATFORM_OWNER_EMAIL fallback).
+ * Normal company owners/admins are blocked.
  *
  * Publish state is derived by joining library_items on
  *   source_ref = 'form:{templateId}'
- *
- * Response:
- *   { ok: true, templates: FormSourceRow[] }
- *
- * FormSourceRow:
- *   id, name, category, form_type, status, created_at, updated_at,
- *   libraryItemId (null if not published),
- *   libraryStatus ('not_published' | 'published' | 'archived'),
- *   libraryVisibility ('public' | 'private' | null),
- *   installCount (number)
  */
 import type { Request, Response } from 'express';
 import { db } from '../../../../db/client.js';
 import { sql } from 'drizzle-orm';
-import { getAuth } from '../../../../../lib/auth/auth.js';
-import { profiles } from '../../../../db/schema.js';
-import { eq } from 'drizzle-orm';
+import { getPlatformOwnerInfo } from '../../../../lib/platform-owner-guard.js';
 
 export default async function handler(req: Request, res: Response) {
   try {
-    const auth = getAuth();
-    const headers = new Headers();
-    for (const [k, v] of Object.entries(req.headers)) {
-      if (v) headers.set(k, Array.isArray(v) ? v[0] : v);
-    }
-    const session = await auth.api.getSession({ headers });
-    if (!session?.user) return res.status(401).json({ error: 'Unauthorised' });
-
-    const profile = await db.query.profiles.findFirst({ where: eq(profiles.userId, session.user.id) });
-    if (!profile?.companyId) return res.status(403).json({ error: 'No company' });
-    if (profile.platformRole !== 'owner') return res.status(403).json({ error: 'Platform owner access required' });
+    const info = await getPlatformOwnerInfo(req);
+    if (!info) return res.status(401).json({ error: 'Unauthorised' });
+    if (!info.isPlatformOwner) return res.status(403).json({ error: 'Platform developer access required' });
 
     const [rows] = await db.execute(sql`
       SELECT
@@ -45,6 +28,7 @@ export default async function handler(req: Request, res: Response) {
         ft.category,
         ft.form_type,
         ft.status,
+        ft.company_id,
         ft.created_at,
         ft.updated_at,
         li.id            AS library_item_id,
@@ -55,7 +39,6 @@ export default async function handler(req: Request, res: Response) {
       LEFT JOIN library_items li
         ON li.source_ref = CONCAT('form:', ft.id)
         AND li.status != 'deleted'
-      WHERE ft.company_id = ${profile.companyId}
       ORDER BY ft.name ASC
     `) as unknown as [Array<{
       id: number;
@@ -63,6 +46,7 @@ export default async function handler(req: Request, res: Response) {
       category: string | null;
       form_type: string | null;
       status: string;
+      company_id: number | null;
       created_at: string;
       updated_at: string;
       library_item_id: number | null;
@@ -77,6 +61,7 @@ export default async function handler(req: Request, res: Response) {
       category: r.category,
       formType: r.form_type,
       status: r.status,
+      companyId: r.company_id,
       createdAt: r.created_at,
       updatedAt: r.updated_at,
       libraryItemId: r.library_item_id ?? null,

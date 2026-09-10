@@ -307,7 +307,7 @@ export function AddSwmsModal({
   useEffect(() => {
     fetch('/api/safety/swms', {
       credentials: 'include'
-    }).then(r => r.json()).then(d => setTemplates((d.swms ?? []).filter((s: SwmsTemplate) => s.status !== 'archived'))).catch(() => {}).finally(() => setLoading(false));
+    }).then(r => r.json()).then(d => setTemplates(d.swms ?? [])).catch(() => {}).finally(() => setLoading(false));
   }, []);
   const filtered = templates.filter(t => !search || t.title.toLowerCase().includes(search.toLowerCase()));
   function toggle(id: number) {

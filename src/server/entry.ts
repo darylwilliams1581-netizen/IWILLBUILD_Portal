@@ -679,6 +679,9 @@ import owner_console_sources_forms_id_delete_646 from "./api/owner-console/sourc
 import owner_console_sources_swms_get_647 from "./api/owner-console/sources/swms/GET";
 import owner_console_sources_swms_id_patch_648 from "./api/owner-console/sources/swms/[id]/PATCH";
 import owner_console_sources_swms_id_delete_649 from "./api/owner-console/sources/swms/[id]/DELETE";
+import owner_console_sources_documents_get_650 from "./api/owner-console/sources/documents/GET";
+import owner_console_sources_documents_id_patch_651 from "./api/owner-console/sources/documents/[id]/PATCH";
+import owner_console_sources_documents_id_delete_652 from "./api/owner-console/sources/documents/[id]/DELETE";
 import owner_console_library_submissions_get_644 from "./api/owner-console/library/submissions/GET";
 import owner_console_library_submissions_id_review_post_645 from "./api/owner-console/library/submissions/[id]/review/POST";
 import owner_console_starter_pack_get_646 from "./api/owner-console/starter-pack/GET";
@@ -4157,6 +4160,9 @@ app.delete("/api/owner-console/sources/forms/:id", owner_console_sources_forms_i
 app.get("/api/owner-console/sources/swms", owner_console_sources_swms_get_647);
 app.patch("/api/owner-console/sources/swms/:id", owner_console_sources_swms_id_patch_648);
 app.delete("/api/owner-console/sources/swms/:id", owner_console_sources_swms_id_delete_649);
+app.get("/api/owner-console/sources/documents", owner_console_sources_documents_get_650);
+app.patch("/api/owner-console/sources/documents/:id", owner_console_sources_documents_id_patch_651);
+app.delete("/api/owner-console/sources/documents/:id", owner_console_sources_documents_id_delete_652);
 app.get("/api/owner-console/library/submissions", owner_console_library_submissions_get_644);
 app.post("/api/owner-console/library/submissions/:id/review", owner_console_library_submissions_id_review_post_645);
 app.get("/api/owner-console/starter-pack", owner_console_starter_pack_get_646);

@@ -1,6 +1,6 @@
 /**
- * PATCH /api/owner-console/sources/swms/:id
- * Archive or restore a swms_template source record.
+ * PATCH /api/owner-console/sources/documents/:id
+ * Archive or restore a document_template source record.
  * Body: { status: 'active' | 'archived' }
  * Access: platform_role = 'developer'
  */
@@ -24,14 +24,14 @@ export default async function handler(req: Request, res: Response) {
     }
 
     await db.execute(sql`
-      UPDATE swms_templates
+      UPDATE document_templates
       SET status = ${status}, updated_at = NOW()
       WHERE id = ${id}
     `);
 
     return res.json({ ok: true, status });
   } catch (err) {
-    console.error('PATCH /api/owner-console/sources/swms/:id error:', err);
-    return res.status(500).json({ error: 'Failed to update SWMS template' });
+    console.error('PATCH /api/owner-console/sources/documents/:id error:', err);
+    return res.status(500).json({ error: 'Failed to update document template' });
   }
 }

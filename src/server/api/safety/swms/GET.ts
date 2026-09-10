@@ -18,8 +18,15 @@ export default async function handler(req: Request, res: Response) {
     const profile = await db.query.profiles.findFirst({ where: eq(profiles.userId, session.user.id) });
     if (!profile?.companyId) return res.json({ swms: [] });
 
+    // Job selectors must only show active templates.
+    // Draft and archived templates are excluded from job assignment.
+    // The developer console source views use /api/owner-console/sources/swms
+    // which returns all statuses for management purposes.
     const [rows] = await db.execute(
-      sql`SELECT * FROM swms_templates WHERE company_id = ${profile.companyId} ORDER BY created_at DESC`
+      sql`SELECT * FROM swms_templates
+          WHERE company_id = ${profile.companyId}
+            AND status = 'active'
+          ORDER BY title ASC`
     ) as unknown as [Array<Record<string, unknown>>, unknown];
 
     res.json({ swms: rows ?? [] });
