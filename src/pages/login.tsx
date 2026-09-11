@@ -27,6 +27,11 @@ function authLog(event: string, data?: Record<string, unknown>) {
  * the portal. A React Router transition keeps WKWebView's visual viewport
  * from the focused login input; the first-run terms and permission cards then
  * render enlarged and clipped until the document is reloaded.
+ *
+ * Native: reload the Capacitor app ROOT (`/`), never `/home`.
+ * Capacitor only serves index.html at `/`. Reloading `/home` 404s the
+ * WKWebView and shows a plain white screen. NativeStartupGate then
+ * client-routes an authenticated session to `/home`.
  */
 function finishLoginNavigation(
   destination: string,
@@ -35,9 +40,7 @@ function finishLoginNavigation(
   if (isNativeApp) {
     const activeElement = document.activeElement;
     if (activeElement instanceof HTMLElement) activeElement.blur();
-
-    window.history.replaceState(window.history.state, '', destination);
-    window.location.reload();
+    window.location.replace('/');
     return;
   }
 
@@ -187,11 +190,16 @@ export default function LoginPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [email]);
 
-  // Don't render the form while session is loading or while redirecting
+  // Don't render the form while session is loading or while redirecting.
+  // Keep the dark splash while authenticated so we never flash a white hole
+  // between terms-accept and the native root reload. Terms and forced
+  // password-change must still render.
   if (isPending) return <div className="min-h-screen flex items-center justify-center bg-[#0F1117]">
       <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
     </div>;
-  if (isAuthenticated) return null;
+  if (isAuthenticated && !showLoginTerms && !mustChangePassword) return <div className="min-h-screen flex items-center justify-center bg-[#0F1117]">
+      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
+    </div>;
 
   /** Returns true if an error message is about email verification */
   function isVerificationError(msg: string): boolean {
