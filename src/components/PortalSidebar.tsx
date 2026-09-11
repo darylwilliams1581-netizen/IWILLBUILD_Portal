@@ -3,7 +3,7 @@ import { Link, useLocation, useNavigate } from "react-router";
 import { motion, AnimatePresence } from 'motion/react';
 import { LayoutDashboard, HardHat, Truck, Camera, LogOut, Settings, FolderOpen, Menu, X, ShieldCheck, CreditCard, AlertTriangle, CalendarDays, Users, Receipt, Bot, PanelLeftClose, PanelLeftOpen, Zap, AlertCircle,
 // Desktop sidebar icons
-Map, Building2, TriangleAlert, FileText, ClipboardList, BookOpen, Link2, TableProperties, ScrollText, History, UserCircle, HelpCircle, ShieldAlert,
+Map, Building2, TriangleAlert, FileText, ClipboardList, BookOpen, Link2, TableProperties, ScrollText, History, UserCircle, HelpCircle, ShieldAlert, FlaskConical, FileWarning,
 // Work section icons
 Plus, Briefcase, Clock } from 'lucide-react';
 import NewJobModal from '@/components/NewJobModal';
@@ -225,7 +225,7 @@ const DESKTOP_NAV_GROUPS: DesktopNavGroup[] = [{
   }, {
     id: 'nav-13',
     idx: '13',
-    label: 'Safety',
+    label: 'Safety Docs',
     icon: ShieldCheck,
     href: '/safety?safetyTab=company-documents'
   }, {
@@ -235,17 +235,29 @@ const DESKTOP_NAV_GROUPS: DesktopNavGroup[] = [{
     icon: ShieldAlert,
     href: '/safety/posters'
   }, {
+    id: 'nav-16',
+    idx: '16',
+    label: 'Hazard Register',
+    icon: TriangleAlert,
+    href: '/risk-register'
+  }, {
+    id: 'nav-26',
+    idx: '26',
+    label: 'SDS Register',
+    icon: FlaskConical,
+    href: '/sds-register'
+  }, {
+    id: 'nav-27',
+    idx: '27',
+    label: 'Risk & Permits',
+    icon: FileWarning,
+    href: '/home?panel=risky-picker'
+  }, {
     id: 'nav-15',
     idx: '15',
     label: 'Incidents',
     icon: AlertCircle,
     href: '/incidents'
-  }, {
-    id: 'nav-16',
-    idx: '16',
-    label: 'Risk Register',
-    icon: TriangleAlert,
-    href: '/risk-register'
   }, {
     id: 'nav-19',
     idx: '19',

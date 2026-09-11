@@ -157,8 +157,8 @@ const ICON_DOCS: Record<string, IconDoc> = {
   },
   risk_register: {
     purpose: 'Identify, assess, and control workplace hazards and risks across the company. Each entry captures the hazard, likelihood × consequence risk matrix, existing controls, additional controls required, responsible person, and due date.',
-    howTo: ['Tap Risk Register on the home screen.', 'Tap New risk to add a new entry.', 'Enter the hazard title, category, and description.', 'Set likelihood and consequence — the risk level is calculated automatically.', 'Document existing controls and any additional controls required.', 'Assign a responsible person and due date.', 'Update the status as controls are implemented.'],
-    tip: 'Extreme and high risks are highlighted at the top of the register. Review and update risk entries regularly.',
+    howTo: ['Tap Hazard Register on the home screen.', 'Tap New hazard to add a new entry.', 'Enter the hazard title, category, and description.', 'Set likelihood and consequence — the risk level is calculated automatically.', 'Document existing controls and any additional controls required.', 'Assign a responsible person and due date.', 'Update the status as controls are implemented.'],
+    tip: 'Extreme and high risks are highlighted at the top of the register. Review and update hazard entries regularly.',
   },
   sds_register: {
     purpose: 'Manage Safety Data Sheets (SDS) for all hazardous substances used on site. Store, search, and access SDS documents for compliance.',

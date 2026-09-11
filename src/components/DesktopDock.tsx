@@ -102,7 +102,7 @@ const ALL_ITEMS: DockItem[] = [
   href: '/incidents',
   color: '#ef4444'
 }, {
-  label: 'Risk Register',
+  label: 'Hazard Register',
   icon: TriangleAlert,
   href: '/risk-register',
   color: '#ea580c'
