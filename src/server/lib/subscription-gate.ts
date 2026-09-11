@@ -33,8 +33,9 @@
 import type { Request, Response, NextFunction } from 'express';
 import { db } from '../db/client.js';
 import { profiles, companies } from '../db/schema.js';
-import { eq } from 'drizzle-orm';
+import { eq, sql } from 'drizzle-orm';
 import { getAuth } from '../../lib/auth/auth.js';
+import { PLATFORM_OWNER_EMAILS } from './platform-owner-guard.js';
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -103,8 +104,23 @@ export async function getSubscriptionInfo(req: Request): Promise<SubscriptionInf
       return noCompany();
     }
 
-    // Platform owner bypasses all gates — always writable
-    if (profile.role === 'owner') {
+    // Platform developers (platform_role = 'developer' OR known email) bypass all
+    // subscription gates — always writable, plan shown as 'owner'.
+    // Regular company owners (role = 'owner') are paying customers and must go
+    // through normal subscription resolution.
+    const userEmail = session.user.email ?? '';
+    let isPlatformDev = PLATFORM_OWNER_EMAILS.has(userEmail.toLowerCase());
+    if (!isPlatformDev) {
+      try {
+        const [prRows] = await db.execute(
+          sql`SELECT platform_role FROM profiles WHERE user_id = ${session.user.id} LIMIT 1`
+        ) as unknown as [Array<{ platform_role: string | null }>, unknown];
+        isPlatformDev = prRows?.[0]?.platform_role === 'developer';
+      } catch {
+        // Column may not exist on fresh DBs — safe to ignore, treat as non-developer
+      }
+    }
+    if (isPlatformDev) {
       return ownerInfo();
     }
 
