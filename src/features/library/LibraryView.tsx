@@ -120,12 +120,22 @@ export function StarRating({ avg, count }: { avg: number; count: number }) {
 export interface LibraryViewProps {
   /** Pre-select a type filter on mount (e.g. "form", "document"). */
   initialTypeFilter?: string;
+  /** Restrict this embedded view to a subset of global-library item types. */
+  allowedTypes?: readonly string[];
+  /** Label for the empty type-filter option when the view is scoped. */
+  allTypesLabel?: string;
 }
 
 // ── LibraryView ───────────────────────────────────────────────────────────────
 
-export function LibraryView({ initialTypeFilter }: LibraryViewProps = {}) {
+export function LibraryView({ initialTypeFilter, allowedTypes, allTypesLabel }: LibraryViewProps = {}) {
   const { isPlatformOwner } = usePermissions();
+  const typeScope = (allowedTypes ?? [])
+    .filter(type => ITEM_TYPES.some(itemType => itemType.value === type && type !== ''))
+    .join(',');
+  const visibleItemTypes = typeScope
+    ? ITEM_TYPES.filter(itemType => itemType.value === '' || typeScope.split(',').includes(itemType.value))
+    : ITEM_TYPES;
 
   // ── Browse state ─────────────────────────────────────────────────────────
   const [items, setItems] = useState<LibraryItem[]>([]);
@@ -160,6 +170,7 @@ export function LibraryView({ initialTypeFilter }: LibraryViewProps = {}) {
       const params = new URLSearchParams();
       if (opts.search) params.set('search', opts.search);
       if (opts.type) params.set('type', opts.type);
+      if (typeScope) params.set('types', typeScope);
       if (opts.category) params.set('category', opts.category);
       params.set('page', String(opts.page ?? 1));
       params.set('limit', '20');
@@ -178,7 +189,7 @@ export function LibraryView({ initialTypeFilter }: LibraryViewProps = {}) {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [typeScope]);
 
   // Initial load
   useEffect(() => {
@@ -295,8 +306,10 @@ export function LibraryView({ initialTypeFilter }: LibraryViewProps = {}) {
                 onChange={e => setTypeFilter(e.target.value)}
                 className="appearance-none bg-white border border-slate-200 rounded-lg pl-8 pr-7 py-2.5 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-violet-600/30"
               >
-                {ITEM_TYPES.map(t => (
-                  <option key={t.value} value={t.value}>{t.label}</option>
+                {visibleItemTypes.map(t => (
+                  <option key={t.value} value={t.value}>
+                    {t.value === '' && allTypesLabel ? allTypesLabel : t.label}
+                  </option>
                 ))}
               </select>
               <ChevronDown size={12} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />

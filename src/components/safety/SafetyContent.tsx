@@ -39,6 +39,8 @@ import {
 import JobSwmsTab from './JobSwmsTab';
 import SwmsSubmissionsTab from './SwmsSubmissionsTab';
 import LibraryView from '../../features/library/LibraryView';
+
+const SAFETY_LIBRARY_TYPES = ['policy', 'procedure', 'swms'] as const;
 import { SubmissionsTab, type DocTemplate } from '../../pages/studio-documents';
 
 // ── Tab definitions ───────────────────────────────────────────────────────────
@@ -218,7 +220,10 @@ export default function SafetyContent() {
           )}
           {activeTab === 'doc-submissions' && <SubmissionsTab templates={templates} />}
           {activeTab === 'library'         && (
-            <LibraryView initialTypeFilter="safety" />
+            <LibraryView
+              allowedTypes={SAFETY_LIBRARY_TYPES}
+              allTypesLabel="All safety"
+            />
           )}
         </motion.div>
       </div>

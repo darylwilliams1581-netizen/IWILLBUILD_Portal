@@ -6,6 +6,7 @@
  *
  * Query params:
  *   type        — filter by item type (policy|procedure|swms|form|recipe|estimate_recipe|scope_line)
+ *   types       — comma-separated scope of allowed item types
  *   category    — filter by category string
  *   tag         — filter by tag (substring match in tags column)
  *   discipline  — filter by discipline
@@ -31,7 +32,7 @@ export default async function handler(req: Request, res: Response) {
 
   try {
     const {
-      type, category, tag, discipline, search,
+      type, types, category, tag, discipline, search,
       status = 'active',
       limit: rawLimit = '20',
       page: rawPage = '1',
@@ -53,6 +54,15 @@ export default async function handler(req: Request, res: Response) {
 
     if (type && ALLOWED_TYPES.has(type)) {
       conditions.push(`type = '${type}'`);
+    }
+    if (types) {
+      const safeTypes = types
+        .split(',')
+        .map(value => value.trim())
+        .filter(value => ALLOWED_TYPES.has(value));
+      if (safeTypes.length > 0) {
+        conditions.push(`type IN (${safeTypes.map(value => `'${value}'`).join(', ')})`);
+      }
     }
     if (category) {
       const safeCategory = category.replace(/'/g, '').slice(0, 100);

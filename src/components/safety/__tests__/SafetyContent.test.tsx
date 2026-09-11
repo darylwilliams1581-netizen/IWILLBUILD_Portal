@@ -72,8 +72,12 @@ vi.mock('../SwmsSubmissionsTab', () => ({
 // From this test file (src/components/safety/__tests__/) the same module is
 // at ../../../features/library/LibraryView.
 vi.mock('../../../features/library/LibraryView', () => ({
-  default: ({ initialTypeFilter }: { initialTypeFilter?: string }) => (
-    <div data-testid="tab-library" data-filter={initialTypeFilter ?? ''}>
+  default: ({ initialTypeFilter, allowedTypes }: { initialTypeFilter?: string; allowedTypes?: readonly string[] }) => (
+    <div
+      data-testid="tab-library"
+      data-filter={initialTypeFilter ?? ''}
+      data-allowed-types={allowedTypes?.join(',') ?? ''}
+    >
       Library content
     </div>
   ),

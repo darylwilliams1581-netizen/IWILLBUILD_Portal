@@ -17,7 +17,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router';
-import { LibraryView } from '../LibraryView';
+import { LibraryView, type LibraryViewProps } from '../LibraryView';
 
 // ── Mocks ─────────────────────────────────────────────────────────────────────
 
@@ -172,7 +172,7 @@ function mockFetchWithDownloadError() {
 
 // ── Render helper ─────────────────────────────────────────────────────────────
 
-function renderView(props: { initialTypeFilter?: string } = {}) {
+function renderView(props: LibraryViewProps = {}) {
   return render(
     <MemoryRouter>
       <LibraryView {...props} />
@@ -354,6 +354,30 @@ describe('LibraryView — initialTypeFilter prop', () => {
     renderView();
     const select = screen.getByRole('combobox') as HTMLSelectElement;
     expect(select.value).toBe('');
+  });
+
+  it('scopes an embedded library to its allowed item types', async () => {
+    mockUsePermissions.mockReturnValue({ isPlatformOwner: false } as ReturnType<typeof usePermissions>);
+    mockFetchEmpty();
+    renderView({
+      allowedTypes: ['policy', 'procedure', 'swms'],
+      allTypesLabel: 'All safety',
+    });
+
+    const select = screen.getByRole('combobox') as HTMLSelectElement;
+    expect(screen.getByRole('option', { name: 'All safety' })).toBeInTheDocument();
+    expect(screen.getByRole('option', { name: 'Policy' })).toBeInTheDocument();
+    expect(screen.getByRole('option', { name: 'Procedure' })).toBeInTheDocument();
+    expect(screen.getByRole('option', { name: 'SWMS' })).toBeInTheDocument();
+    expect(screen.queryByRole('option', { name: 'Form' })).toBeNull();
+    expect(select.value).toBe('');
+
+    await waitFor(() => {
+      expect(global.fetch).toHaveBeenCalledWith(
+        expect.stringContaining('types=policy%2Cprocedure%2Cswms'),
+        { credentials: 'include' },
+      );
+    });
   });
 });
 
