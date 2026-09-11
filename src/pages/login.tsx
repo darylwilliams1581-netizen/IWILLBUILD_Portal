@@ -6,6 +6,7 @@ import { Eye, EyeOff, ArrowRight, Lock, Mail, AlertCircle, Smartphone, KeyRound,
 import { useSession, authClient, signIn, consumeTwoFactorRedirect } from '@/lib/auth/auth-client';
 import { InputOTP, InputOTPGroup, InputOTPSlot } from '@/components/ui/input-otp';
 import ForcedPasswordChangeModal from '@/components/auth/ForcedPasswordChangeModal';
+import TermsAcceptanceGate, { hasAcceptedTerms } from '@/components/TermsAcceptanceGate';
 import { goBack } from '@/lib/navigation';
 
 import { isNativeApp, WEB_PORTAL_URL, openExternalUrl } from '@/lib/native-routing';
@@ -95,6 +96,8 @@ export default function LoginPage() {
 
   // Forced password change state
   const [mustChangePassword, setMustChangePassword] = useState(false);
+  const [showLoginTerms, setShowLoginTerms] = useState(false);
+  const pendingDestRef = useRef('/home');
 
   // Just-verified banner — shown when redirected from email verification
   const [justVerified, setJustVerified] = useState(false);
@@ -131,9 +134,9 @@ export default function LoginPage() {
 
   // ── All hooks must be declared before any conditional return ──────────────
 
-  // Redirect if already authenticated
+  // Redirect if already authenticated (terms first if this device has not accepted)
   useEffect(() => {
-    if (isAuthenticated) {
+    if (isAuthenticated && !showLoginTerms && !mustChangePassword) {
       const params = new URLSearchParams(location.search);
       const fromParam = params.get('from');
       const rawFrom = (location.state as {
@@ -142,14 +145,28 @@ export default function LoginPage() {
         };
       })?.from?.pathname || (fromParam ? decodeURIComponent(fromParam) : null) || '/home';
       const SAFE_BLOCKLIST = ['/login', '/signup', '/verify', '/forgot', '/reset', '/check-email'];
-      // Native app always lands on /home — never the public landing page
       const from = isNativeApp ? '/home' : rawFrom.startsWith('/') && !SAFE_BLOCKLIST.some(b => rawFrom.startsWith(b)) ? rawFrom : '/home';
       authLog('already_authenticated', {
         redirectTo: from
       });
+      if (!hasAcceptedTerms(email)) {
+        pendingDestRef.current = from;
+        setShowLoginTerms(true);
+        return;
+      }
       finishLoginNavigation(from, navigate);
     }
-  }, [isAuthenticated, navigate, location.state, location.search]);
+  }, [isAuthenticated, navigate, location.state, location.search, showLoginTerms, mustChangePassword, email]);
+
+  function completeLogin(destination: string) {
+    if (!hasAcceptedTerms(email)) {
+      pendingDestRef.current = destination;
+      setShowLoginTerms(true);
+      setLoading(false);
+      return;
+    }
+    finishLoginNavigation(destination, navigate);
+  }
 
   // Check if this device has a trusted PIN for the entered email
   useEffect(() => {
@@ -361,7 +378,7 @@ export default function LoginPage() {
       authLog('redirect', {
         to: from
       });
-      finishLoginNavigation(from, navigate);
+      completeLogin(from);
     } catch (err) {
       authLog('exception', {
         errorMsg: String((err as Error)?.message ?? err).slice(0, 120)
@@ -450,7 +467,7 @@ export default function LoginPage() {
           ? rawFrom
           : '/home';
       console.info(JSON.stringify({ event: 'login.2fa.redirect', dest, native: isNativeApp, ts: Date.now() }));
-      finishLoginNavigation(dest, navigate);
+      completeLogin(dest);
       return;
     }
 
@@ -471,7 +488,7 @@ export default function LoginPage() {
         ? rawFrom2fa
         : '/home';
     console.info(JSON.stringify({ event: 'login.2fa.redirect', dest: dest2fa, native: isNativeApp, ts: Date.now() }));
-    finishLoginNavigation(dest2fa, navigate);
+    completeLogin(dest2fa);
   }
 
   async function handle2FA(e: React.FormEvent) {
@@ -492,7 +509,7 @@ export default function LoginPage() {
         const rawFrom2faBackup = (location.state as { from?: { pathname: string } })?.from?.pathname || '/home';
         const SAFE_BLOCKLIST_BACKUP = ['/login', '/signup', '/verify', '/forgot', '/reset', '/check-email'];
         const from2faBackup = isNativeApp ? '/home' : rawFrom2faBackup.startsWith('/') && !SAFE_BLOCKLIST_BACKUP.some(b => rawFrom2faBackup.startsWith(b)) ? rawFrom2faBackup : '/home';
-        finishLoginNavigation(from2faBackup, navigate);
+        completeLogin(from2faBackup);
       } catch {
         setError('Something went wrong. Please try again.');
       } finally {
@@ -578,7 +595,7 @@ export default function LoginPage() {
       </Helmet>
 
       {/* Forced password change modal */}
-      {mustChangePassword && <ForcedPasswordChangeModal onSuccess={() => {
+      {mustChangePassword && !showLoginTerms && <ForcedPasswordChangeModal onSuccess={() => {
       setMustChangePassword(false);
       const rawFromPwChange = (location.state as {
         from?: {
@@ -587,7 +604,7 @@ export default function LoginPage() {
       })?.from?.pathname || '/home';
       const SAFE_BLOCKLIST_PW = ['/login', '/signup', '/verify', '/forgot', '/reset', '/check-email'];
       const fromPwChange = isNativeApp ? '/home' : rawFromPwChange.startsWith('/') && !SAFE_BLOCKLIST_PW.some(b => rawFromPwChange.startsWith(b)) ? rawFromPwChange : '/home';
-      finishLoginNavigation(fromPwChange, navigate);
+      completeLogin(fromPwChange);
     }} />}
 
       {/* Blueprint grid background */}
@@ -614,6 +631,15 @@ export default function LoginPage() {
       duration: 0.4,
       ease: 'easeOut' as const
     }} className="relative z-10 w-full max-w-md mx-4">
+        {showLoginTerms ? (
+          <div className="h-[min(72dvh,640px)] min-h-0 overflow-hidden rounded-xl">
+            <TermsAcceptanceGate
+              userEmail={email}
+              onAccepted={() => finishLoginNavigation(pendingDestRef.current, navigate)}
+            />
+          </div>
+        ) : (
+        <>
         <div className="bg-[#1A1D23] border border-white/10 rounded-xl shadow-2xl overflow-hidden">
           {/* Header */}
           <div className="px-8 pt-8 pb-6 border-b border-white/10">
@@ -977,6 +1003,8 @@ export default function LoginPage() {
               &larr; Back to home
             </button>}
         </div>
+        </>
+        )}
       </motion.div>
     </div>;
 }

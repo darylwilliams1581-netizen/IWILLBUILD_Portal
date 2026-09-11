@@ -1092,17 +1092,17 @@ export default function JobSitePrestartPage() {
                   <Input value={prestart.site_address ?? ''} onChange={e => update('site_address', e.target.value)} disabled={isReadOnly} placeholder="Address auto-filled from job…" className="h-10 rounded-xl" />
                 </Field>
 
-                <Field label="Date">
-                  <Input type="date" value={prestart.prestart_date ?? ''} onChange={e => update('prestart_date', e.target.value)} disabled={isReadOnly} className="h-10 rounded-xl" />
-                </Field>
-                <div className="grid grid-cols-1 gap-3">
+                <div className="grid grid-cols-2 gap-3">
+                  <Field label="Date">
+                    <Input type="date" value={prestart.prestart_date ?? ''} onChange={e => update('prestart_date', e.target.value)} disabled={isReadOnly} className="h-10 rounded-xl" />
+                  </Field>
                   <Field label="Start Time">
                     <Input type="time" value={prestart.start_time ?? ''} onChange={e => update('start_time', e.target.value)} disabled={isReadOnly} className="h-10 rounded-xl" />
                   </Field>
-                  <Field label="Weather">
+                </div>
+                <Field label="Weather">
                     <Input value={prestart.weather ?? ''} onChange={e => update('weather', e.target.value)} disabled={isReadOnly} placeholder="e.g. Sunny" className="h-10 rounded-xl" />
                   </Field>
-                </div>
               </Section>
 
               {/* Section 2: Situation */}

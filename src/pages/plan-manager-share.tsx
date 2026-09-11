@@ -1,21 +1,17 @@
-/**
- * /plan-manager/share/:token — public view-only page for a shared drawing.
- * No login required. Renders PDF with annotations in read-only mode.
- */
 import { useState, useEffect, useCallback } from 'react';
 import { useParams } from "react-router";
 import { Helmet } from '@dr.pogodin/react-helmet';
 import { Document, Page, pdfjs } from 'react-pdf';
 import 'react-pdf/dist/Page/AnnotationLayer.css';
 import 'react-pdf/dist/Page/TextLayer.css';
-import { ZoomIn, ZoomOut, ChevronLeft, ChevronRight, RotateCcw, RotateCw, Loader2, AlertCircle, Lock, Map } from 'lucide-react';
+import { ZoomIn, ZoomOut, ChevronLeft, ChevronRight, RotateCcw, RotateCw, Loader2, AlertCircle, Lock, Map, ExternalLink } from 'lucide-react';
 import AnnotationCanvas from '@/components/PlanManager/AnnotationCanvas';
 import type { Annotation } from '@/components/PlanManager/types';
-import { resolveNativeUrl } from '@/lib/native-url';
+import { usePlanPdfData } from '@/hooks/usePlanPdfData';
 
-// react-pdf@10 bundles its own pdfjs-dist@5.4.296 — worker must match that version exactly.
-// On Capacitor native the worker path must be absolute.
-pdfjs.GlobalWorkerOptions.workerSrc = resolveNativeUrl('/pdf.worker.5.4.296.min.mjs');
+if (typeof window !== 'undefined') {
+  pdfjs.GlobalWorkerOptions.workerSrc = `${window.location.origin}/pdf.worker.5.4.296.min.mjs`;
+}
 interface ShareData {
   drawing: {
     id: number;
@@ -52,6 +48,7 @@ export default function PlanManagerSharePage() {
   const [rotation, setRotation] = useState(0);
   const [pageWidth, setPageWidth] = useState(0);
   const [pageHeight, setPageHeight] = useState(0);
+  const pdf = usePlanPdfData(data?.drawing.source_file_path);
   useEffect(() => {
     if (!token) return;
     fetch(`/api/plan-manager/share/validate?token=${token}`).then(r => r.json() as Promise<ShareData & {
@@ -66,7 +63,6 @@ export default function PlanManagerSharePage() {
     }).catch(() => setError('Failed to load drawing')).finally(() => setLoading(false));
   }, [token]);
 
-  // Group annotations by page
   const annotationsByPage = useCallback((pageNo: number): Annotation[] => {
     if (!data) return [];
     return data.annotations.filter(a => Number(a.page_no) === pageNo).map(a => ({
@@ -108,7 +104,6 @@ export default function PlanManagerSharePage() {
       </Helmet>
 
       <div className="flex flex-col h-screen bg-slate-950 text-slate-100">
-        {/* Header */}
         <div className="flex items-center gap-3 px-4 py-3 bg-slate-900 border-b border-slate-700 flex-shrink-0">
           <div className="w-8 h-8 rounded-lg bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center">
             <Map size={15} className="text-indigo-400" />
@@ -127,7 +122,6 @@ export default function PlanManagerSharePage() {
 
           <div className="flex-1" />
 
-          {/* Viewer controls */}
           <div className="flex items-center gap-1">
             <button onClick={() => setCurrentPage(p => Math.max(1, p - 1))} disabled={currentPage <= 1} className="w-8 h-8 rounded-lg flex items-center justify-center text-slate-400 hover:text-slate-100 hover:bg-slate-700 disabled:opacity-30 transition-colors">
               <ChevronLeft size={16} />
@@ -154,13 +148,28 @@ export default function PlanManagerSharePage() {
           </div>
         </div>
 
-        {/* PDF */}
         <div className="flex-1 overflow-auto bg-slate-950 flex justify-center p-6">
-          <Document file={resolveNativeUrl(data.drawing.source_file_path)} onLoadSuccess={({
+          {pdf.error ? (
+            <div className="flex flex-col items-center gap-3 text-slate-400 mt-20 text-center">
+              <AlertCircle size={32} className="text-red-400" />
+              <p className="text-sm">{pdf.error}</p>
+              {pdf.openUrl && (
+                <a href={pdf.openUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 text-xs font-semibold text-violet-300">
+                  <ExternalLink size={12} /> Open in browser
+                </a>
+              )}
+            </div>
+          ) : pdf.loading || !pdf.file ? (
+            <div className="flex items-center gap-2 text-slate-400 mt-20">
+              <Loader2 size={20} className="animate-spin" />
+              <span className="text-sm">Loading PDF…</span>
+            </div>
+          ) : (
+            <Document file={pdf.file} onLoadSuccess={({
           numPages
         }) => setTotalPages(numPages)} loading={<div className="flex items-center gap-2 text-slate-400 mt-20">
                 <Loader2 size={20} className="animate-spin" />
-                <span className="text-sm">Loading PDF…</span>
+                <span className="text-sm">Rendering PDF…</span>
               </div>}>
             <div className="relative inline-block shadow-2xl">
               <Page pageNumber={currentPage} scale={scale} rotate={rotation} onLoadSuccess={p => {
@@ -174,9 +183,9 @@ export default function PlanManagerSharePage() {
             }} isLocked={true} onAnnotationsChange={() => {}} />}
             </div>
           </Document>
+          )}
         </div>
 
-        {/* Footer */}
         <div className="px-4 py-2 bg-slate-900 border-t border-slate-700 text-[10px] text-slate-600 text-center flex-shrink-0">
           Shared via IWIllBUIlD Plan Manager · View only · Expires {new Date(data.expiresAt).toLocaleDateString('en-AU', {
           day: 'numeric',

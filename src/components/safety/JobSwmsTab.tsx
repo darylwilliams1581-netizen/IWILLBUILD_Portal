@@ -8,6 +8,7 @@ import {
 import SwmsPrintModal from './SwmsPrintModal';
 import type { JobSwms } from './safety-types';
 import { JOB_SWMS_STATUSES, statusBadge, fmtDate } from './safety-types';
+import DateField from '@/components/DateField';
 
 // ── JobSwmsEditModal ──────────────────────────────────────────────────────────
 
@@ -104,8 +105,7 @@ function JobSwmsEditModal({ initial, onClose, onSaved }: {
                   <input value={form.revisionNumber} onChange={(e) => set('revisionNumber', e.target.value)} className={inputCls} />
                 </div>
                 <div>
-                  <label className={labelCls}>Review Date</label>
-                  <input type="date" value={form.reviewDate} onChange={(e) => set('reviewDate', e.target.value)} className={inputCls} />
+                  <DateField label="Review Date" value={form.reviewDate} onChange={(v) => set('reviewDate', v)} optional />
                 </div>
                 <div>
                   <label className={labelCls}>Status</label>

@@ -1855,18 +1855,13 @@ export default function HomeScreen() {
     };
   }, [loading]);
 
-  // ── Terms acceptance gate — shown once on first use (web + native) ───────────
+  // ── Terms acceptance gate — shown once, BEFORE Home paints ───────────────────
   // Dev account (support@iwillbuild.com) always sees the gate regardless of localStorage.
-  // Initialise conservatively (false = hidden) then re-evaluate once session resolves.
   const [showTermsGate, setShowTermsGate] = useState(false);
   useEffect(() => {
     if (!email && loading) return; // session still loading — wait
-    if (isNative() && !nativeDashboardReady) {
-      setShowTermsGate(false);
-      return;
-    }
     setShowTermsGate(!hasAcceptedTerms(email));
-  }, [email, loading, nativeDashboardReady]);
+  }, [email, loading]);
 
   // ── Home icon permissions ──────────────────────────────────────────────────
   const [iconPermissions, setIconPermissions] = useState<string[] | null>(null);
@@ -1995,15 +1990,15 @@ export default function HomeScreen() {
         <div className="w-8 h-8 border-2 border-violet-300 border-t-violet-600 rounded-full animate-spin" />
       </div>;
   }
+  if (showTermsGate) {
+    return (
+      <TermsAcceptanceGate
+        onAccepted={() => setShowTermsGate(false)}
+        userEmail={email}
+      />
+    );
+  }
   return <>
-      {/* Terms & Acceptable Use gate — shown once on first use (web + native) */}
-      {showTermsGate && (
-        <TermsAcceptanceGate
-          onAccepted={() => setShowTermsGate(false)}
-          userEmail={email}
-        />
-      )}
-
       <div className="flex-1 flex flex-col relative overflow-hidden min-h-0 w-full max-w-full min-w-0" style={{
       background: '#edf0f5'
     }}>

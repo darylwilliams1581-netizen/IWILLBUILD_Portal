@@ -160,7 +160,18 @@ export default function JobPlanManagerTab({ jobId, jobName }: Props) {
                 <FileText size={18} className={drawing.source_file_path ? 'text-red-500 shrink-0' : 'text-slate-300 shrink-0'} />
                 {/* Info */}
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-semibold text-slate-800 truncate">{drawing.title}</p>
+                  {drawing.source_file_path ? (
+                    <button
+                      type="button"
+                      onClick={() => void loadDrawing(drawing.id)}
+                      title="Open viewer"
+                      className="text-sm font-semibold text-slate-800 truncate text-left w-full hover:text-violet-700"
+                    >
+                      {drawing.title}
+                    </button>
+                  ) : (
+                    <p className="text-sm font-semibold text-slate-800 truncate">{drawing.title}</p>
+                  )}
                   <div className="flex items-center gap-2 mt-0.5 flex-wrap">
                     {drawing.drawing_number && (
                       <span className="text-[11px] text-slate-500 font-mono">{drawing.drawing_number}</span>
@@ -258,7 +269,20 @@ export default function JobPlanManagerTab({ jobId, jobName }: Props) {
                         <div className="flex items-center gap-2 min-w-0">
                           <FileText size={13} className={drawing.source_file_path ? 'text-red-500 shrink-0' : 'text-slate-300 shrink-0'} />
                           <div className="min-w-0">
-                            <p className="text-sm font-semibold text-slate-800 truncate max-w-[220px]">{drawing.title}</p>
+                            <p>
+                              {drawing.source_file_path ? (
+                                <button
+                                  type="button"
+                                  onClick={() => void loadDrawing(drawing.id)}
+                                  title="Open viewer"
+                                  className="text-sm font-semibold text-slate-800 truncate max-w-[220px] text-left hover:text-violet-700"
+                                >
+                                  {drawing.title}
+                                </button>
+                              ) : (
+                                <span className="text-sm font-semibold text-slate-800 truncate max-w-[220px]">{drawing.title}</span>
+                              )}
+                            </p>
                             <div className="flex items-center gap-2 mt-0.5 flex-wrap">
                               {drawing.locked && <span className="flex items-center gap-1 text-[10px] text-amber-600"><Lock size={9} /> Locked</span>}
                               {(drawing.annotation_count ?? 0) > 0 && (

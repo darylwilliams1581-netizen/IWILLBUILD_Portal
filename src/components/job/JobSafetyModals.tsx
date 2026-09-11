@@ -4,6 +4,7 @@ import { openPrintWindow } from '@/lib/print-html';
 import { ShieldAlert, Plus, Loader2, X, AlertCircle, UserCheck, Printer, Wand2, CheckSquare, Square, Search, ClipboardList, Check } from 'lucide-react';
 import { Link } from "react-router";
 import { escapeHtml, safeUrl } from '@/lib/html-escape';
+import DateField from '@/components/DateField';
 
 // ── Shared types ──────────────────────────────────────────────────────────────
 
@@ -498,7 +499,7 @@ export function SwmsEditModal({
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div><label className={labelCls}>Revision Number</label><input value={form.revisionNumber} onChange={e => set('revisionNumber', e.target.value)} className={inputCls} placeholder="1" /></div>
-              <div><label className={labelCls}>Review Date</label><input type="date" value={form.reviewDate} onChange={e => set('reviewDate', e.target.value)} className={inputCls} /></div>
+              <div><DateField label="Review Date" value={form.reviewDate} onChange={(v) => set('reviewDate', v)} optional /></div>
             </div>
             <div><label className={labelCls}>Work Activity / Scope</label><textarea value={form.workActivity} onChange={e => set('workActivity', e.target.value)} rows={3} className={textareaCls} /></div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">

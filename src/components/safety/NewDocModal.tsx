@@ -7,6 +7,7 @@ import { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { X, FileText, Loader2, AlertCircle, CheckCircle2 } from 'lucide-react';
 import { POLICY_TYPES } from './safety-types';
+import DateField from '@/components/DateField';
 
 interface NewDocModalProps {
   onClose: () => void;
@@ -111,18 +112,12 @@ export default function NewDocModal({ onClose, onCreated }: NewDocModalProps) {
               </select>
             </div>
 
-            {/* Review date */}
-            <div>
-              <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">
-                Review date <span className="font-normal text-slate-400">(optional)</span>
-              </label>
-              <input
-                type="date"
-                value={reviewDate}
-                onChange={(e) => setReviewDate(e.target.value)}
-                className="w-full bg-white border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary/60 transition-colors"
-              />
-            </div>
+            <DateField
+              label="Review date"
+              value={reviewDate}
+              onChange={setReviewDate}
+              optional
+            />
 
             {/* Notes */}
             <div>

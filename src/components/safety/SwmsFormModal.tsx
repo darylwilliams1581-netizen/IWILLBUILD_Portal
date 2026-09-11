@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { motion } from 'motion/react';
 import { ShieldAlert, X, Check, Loader2, AlertCircle } from 'lucide-react';
+import DateField from '@/components/DateField';
 import type { SwmsTemplate } from './safety-types';
 import { SWMS_STATUSES } from './safety-types';
 
@@ -109,8 +110,7 @@ export default function SwmsFormModal({ initial, onClose, onSaved }: Props) {
                   <input value={form.revisionNumber} onChange={(e) => set('revisionNumber', e.target.value)} className={inputCls} placeholder="1" />
                 </div>
                 <div>
-                  <label className={labelCls}>Review Date</label>
-                  <input type="date" value={form.reviewDate} onChange={(e) => set('reviewDate', e.target.value)} className={inputCls} />
+                  <DateField label="Review Date" value={form.reviewDate} onChange={(v) => set('reviewDate', v)} optional />
                 </div>
                 <div>
                   <label className={labelCls}>Status</label>
