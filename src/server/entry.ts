@@ -2702,6 +2702,23 @@ async function runStartupMigrations() {
   }
   console.log('[startup-migration] platform_role seeding complete');
 
+  // ── One-shot fix: strip developer role from real user test account ────────
+  // daryl.williams@energyq.com.au was incorrectly seeded as platform_role='developer'
+  // in an earlier boot. This idempotent UPDATE clears it so the account shows
+  // as a normal Solo customer. Safe to run on every boot — no-op once cleared.
+  try {
+    await db.execute(
+      sql`UPDATE profiles p
+          INNER JOIN user u ON u.id = p.user_id
+          SET p.platform_role = NULL
+          WHERE LOWER(u.email) = 'daryl.williams@energyq.com.au'
+            AND p.platform_role = 'developer'`
+    );
+    console.log('[startup-migration] energyq test account developer role cleared (idempotent)');
+  } catch (e: unknown) {
+    console.warn('[startup-migration] energyq developer-role clear failed:', String((e as Error)?.message ?? e));
+  }
+
   // ── platform_activity_log table ───────────────────────────────────────────
   try {
     const palRows = await db.execute(
