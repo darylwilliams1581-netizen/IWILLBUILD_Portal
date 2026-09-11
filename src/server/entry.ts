@@ -2685,9 +2685,9 @@ async function runStartupMigrations() {
   }
 
   // ── Seed platform_role = 'developer' for known platform developer emails ──────────
-  // darylwilliams1581@gmail.com = developer account (full platform access)
-  // daryl.williams@energyq.com.au = also a developer account (platform access granted)
-  const developerEmails = ['darylwilliams1581@gmail.com', 'daryl.williams@energyq.com.au'];
+  // darylwilliams1581@gmail.com = platform developer (full Owner Console access)
+  // daryl.williams@energyq.com.au = REAL USER TEST ACCOUNT — must NOT be seeded as developer
+  const developerEmails = ['darylwilliams1581@gmail.com'];
   for (const email of developerEmails) {
     try {
       await db.execute(
