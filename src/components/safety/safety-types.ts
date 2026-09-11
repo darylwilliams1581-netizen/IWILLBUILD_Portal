@@ -85,6 +85,9 @@ export interface JobSwms {
   id: number;
   job_id: number;
   template_id: number | null;
+  studio_document_id?: number | null;
+  studio_source_revision?: string | null;
+  content_snapshot_json?: string | null;
   title: string;
   work_activity: string | null;
   hazards: string | null;

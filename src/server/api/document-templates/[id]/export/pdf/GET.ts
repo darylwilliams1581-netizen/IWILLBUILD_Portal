@@ -43,6 +43,37 @@ function esc(s: unknown): string {
   return String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }
 
+/**
+ * Job attachments have existed in two snapshot formats:
+ *   - the builder JSON stored directly ({ blocks: [...] } or [...])
+ *   - an older wrapper ({ builderJson: { blocks: [...] } })
+ * Return only snapshots that contain a recognisable block collection so an
+ * invalid attachment can never silently replace a valid master document.
+ */
+function serialiseBuilderSnapshot(snapshot: string): string | null {
+  try {
+    let candidate: unknown = JSON.parse(snapshot);
+
+    if (candidate && typeof candidate === 'object' && !Array.isArray(candidate) && 'builderJson' in candidate) {
+      candidate = (candidate as { builderJson?: unknown }).builderJson;
+    }
+
+    if (typeof candidate === 'string') {
+      candidate = JSON.parse(candidate);
+    }
+
+    const hasBlocks = Array.isArray(candidate) || (
+      candidate !== null &&
+      typeof candidate === 'object' &&
+      Array.isArray((candidate as { blocks?: unknown }).blocks)
+    );
+
+    return hasBlocks ? JSON.stringify(candidate) : null;
+  } catch {
+    return null;
+  }
+}
+
 // ── Gotenberg helpers ─────────────────────────────────────────────────────────
 
 function gotenbergUrl(): string | null {
@@ -422,19 +453,11 @@ export default async function handler(req: Request, res: Response) {
     // ── BLOCKS-BASED FLOW ─────────────────────────────────────────────────────
 
     // ── Resolve builder_json ──────────────────────────────────────────────────
-    // If we have a snapshot, use its builderJson; otherwise use the live master.
+    // Prefer the immutable attached snapshot. Support both the direct format
+    // written by studio-swms/POST and the historical builderJson wrapper.
     let builderJsonStr = String(doc.builder_json ?? '{}');
     if (jobInfo?.contentSnapshot) {
-      try {
-        const snap = JSON.parse(jobInfo.contentSnapshot) as { builderJson?: unknown };
-        if (snap.builderJson) {
-          builderJsonStr = typeof snap.builderJson === 'string'
-            ? snap.builderJson
-            : JSON.stringify(snap.builderJson);
-        }
-      } catch {
-        // malformed snapshot — fall back to live master
-      }
+      builderJsonStr = serialiseBuilderSnapshot(jobInfo.contentSnapshot) ?? builderJsonStr;
     }
 
     // ── Pre-render blocks to sanitised static HTML (server-side) ─────────────

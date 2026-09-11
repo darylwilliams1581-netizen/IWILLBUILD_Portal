@@ -599,7 +599,12 @@ export default function JobSwmsTab({ initialJobId }: { initialJobId?: number | n
                       <span className={`text-xs font-bold px-2 py-0.5 rounded-full border ${statusBadge(j.status)}`}>
                         {j.status.charAt(0).toUpperCase() + j.status.slice(1)}
                       </span>
-                      <span className="text-xs text-slate-400">Rev {j.revision_number}</span>
+                      {j.studio_document_id && (
+                        <span className="text-xs font-semibold px-2 py-0.5 rounded-full border border-violet-200 bg-violet-50 text-violet-700">
+                          Company document
+                        </span>
+                      )}
+                      <span className="text-xs text-slate-400">Rev {j.studio_source_revision ?? j.revision_number}</span>
                       {j.review_date && <span className="text-xs text-slate-400">Review: {fmtDate(j.review_date)}</span>}
                       {j.approved_at && <span className="text-xs text-emerald-600 font-semibold">Approved {fmtDate(j.approved_at)}</span>}
                     </div>
@@ -637,8 +642,22 @@ export default function JobSwmsTab({ initialJobId }: { initialJobId?: number | n
                       <Users size={12} />
                       {signoffsOpen ? <ChevronUp size={11} /> : <ChevronDown size={11} />}
                     </button>
-                    <button onClick={() => setPrinting(j)} className="p-1.5 rounded-lg text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition-colors" title="Print / PDF"><Printer size={14} /></button>
-                    <button onClick={() => setEditing(j)} className="p-1.5 rounded-lg text-slate-400 hover:text-primary hover:bg-violet-50 transition-colors" title="Edit"><Wand2 size={14} /></button>
+                    {j.studio_document_id ? (
+                      <a
+                        href={`/api/document-templates/${j.studio_document_id}/export/pdf?job_swms_id=${j.id}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="p-1.5 rounded-lg text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition-colors"
+                        title="View / Print locked document"
+                      >
+                        <Printer size={14} />
+                      </a>
+                    ) : (
+                      <button onClick={() => setPrinting(j)} className="p-1.5 rounded-lg text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition-colors" title="Print / PDF"><Printer size={14} /></button>
+                    )}
+                    {!j.studio_document_id && (
+                      <button onClick={() => setEditing(j)} className="p-1.5 rounded-lg text-slate-400 hover:text-primary hover:bg-violet-50 transition-colors" title="Edit"><Wand2 size={14} /></button>
+                    )}
                     <button onClick={() => void handleDelete(j.id, j.title)} disabled={deleting === j.id} className="p-1.5 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 transition-colors" title="Delete">
                       {deleting === j.id ? <Loader2 size={14} className="animate-spin" /> : <Trash2 size={14} />}
                     </button>

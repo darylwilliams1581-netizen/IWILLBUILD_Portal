@@ -7,6 +7,9 @@ import { useParams } from "react-router";
 import { Helmet } from '@dr.pogodin/react-helmet';
 import { motion, AnimatePresence } from 'motion/react';
 import { ShieldCheck, Loader2, AlertTriangle, CheckCircle2, User, Building2, CreditCard, Pen, ChevronDown, ChevronUp, X, Clock, Users, AlertCircle } from 'lucide-react';
+import { BlockRenderer } from '@/components/DocumentBuilder/BlockRenderer';
+import type { DocumentBlock } from '@/components/DocumentBuilder/types';
+import { useDocumentStore } from '@/components/DocumentBuilder/useDocumentStore';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -28,6 +31,9 @@ interface SwmsData {
   status: string;
   job_name: string | null;
   job_address: string | null;
+  studio_document_id?: number | null;
+  studio_source_revision?: string | null;
+  content_snapshot_json?: string | null;
 }
 interface Signoff {
   id: number;
@@ -40,6 +46,54 @@ interface Signoff {
 interface CompanyInfo {
   name: string;
   logo_url?: string;
+}
+
+function parseSnapshotBlocks(snapshot: string | null | undefined): DocumentBlock[] | null {
+  if (!snapshot?.trim()) return null;
+
+  try {
+    let candidate: unknown = JSON.parse(snapshot);
+    if (typeof candidate === 'string') candidate = JSON.parse(candidate);
+
+    if (candidate && typeof candidate === 'object' && !Array.isArray(candidate) && 'builderJson' in candidate) {
+      candidate = (candidate as { builderJson?: unknown }).builderJson;
+      if (typeof candidate === 'string') candidate = JSON.parse(candidate);
+    }
+
+    const blocks = Array.isArray(candidate)
+      ? candidate
+      : candidate && typeof candidate === 'object' && Array.isArray((candidate as { blocks?: unknown }).blocks)
+        ? (candidate as { blocks: unknown[] }).blocks
+        : null;
+
+    if (!blocks?.length) return null;
+    if (!blocks.every((block) => block && typeof block === 'object' && typeof (block as { id?: unknown }).id === 'string' && typeof (block as { type?: unknown }).type === 'string')) {
+      return null;
+    }
+
+    return blocks as DocumentBlock[];
+  } catch {
+    return null;
+  }
+}
+
+function LockedDocumentContent({ blocks }: { blocks: DocumentBlock[] }) {
+  return (
+    <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden">
+      <div className="px-4 py-3 border-b border-slate-100 bg-slate-50 flex items-center justify-between gap-3">
+        <div>
+          <h2 className="text-sm font-bold text-slate-700">Document Content</h2>
+          <p className="text-xs text-slate-400">Read-only · Locked revision</p>
+        </div>
+        <ShieldCheck size={18} className="text-emerald-500 shrink-0" />
+      </div>
+      <div className="p-4 sm:p-6 overflow-x-auto select-text">
+        <div className="max-w-none space-y-2" aria-label="Locked safety document content">
+          {blocks.map((block) => <BlockRenderer key={block.id} block={block} />)}
+        </div>
+      </div>
+    </div>
+  );
 }
 
 // ── Signature Pad ─────────────────────────────────────────────────────────────
@@ -192,6 +246,10 @@ export default function SwmsSignoffPage() {
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState('');
   const [submitted, setSubmitted] = useState(false);
+  const isStudioDocument = Boolean(swms?.studio_document_id);
+  const snapshotBlocks = isStudioDocument ? parseSnapshotBlocks(swms?.content_snapshot_json) : null;
+  const snapshotUnavailable = isStudioDocument && snapshotBlocks === null;
+
   useEffect(() => {
     if (!token) return;
     fetch(`/api/public/swms/${token}`).then(r => r.json()).then((data: {
@@ -209,14 +267,36 @@ export default function SwmsSignoffPage() {
       setCompany(data.company ?? null);
     }).catch(() => setError('Failed to load SWMS')).finally(() => setLoading(false));
   }, [token]);
+
+  useEffect(() => {
+    if (!isStudioDocument || !swms?.studio_document_id) return;
+    const previous = useDocumentStore.getState();
+    useDocumentStore.setState({
+      mode: 'preview',
+      templateId: swms.studio_document_id,
+      selection: { blockId: null },
+    });
+    return () => {
+      useDocumentStore.setState({
+        mode: previous.mode,
+        templateId: previous.templateId,
+        selection: previous.selection,
+      });
+    };
+  }, [isStudioDocument, swms?.studio_document_id]);
+
   const handleSubmit = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
+    if (snapshotUnavailable) {
+      setSubmitError('This safety document is unavailable. You cannot sign until its locked content can be displayed.');
+      return;
+    }
     if (!workerName.trim()) {
       setSubmitError('Your name is required');
       return;
     }
     if (!hasRead) {
-      setSubmitError('Please confirm you have read and understood the SWMS');
+      setSubmitError(`Please confirm you have read and understood the ${isStudioDocument ? 'safety document' : 'SWMS'}`);
       return;
     }
     if (!signatureData) {
@@ -251,7 +331,7 @@ export default function SwmsSignoffPage() {
     } finally {
       setSubmitting(false);
     }
-  }, [token, workerName, companyName, role, whiteCardNumber, signatureData, hasRead]);
+  }, [token, workerName, companyName, role, whiteCardNumber, signatureData, hasRead, isStudioDocument, snapshotUnavailable]);
   if (loading) {
     return <div className="min-h-screen bg-slate-50 flex items-center justify-center">
         <Loader2 size={28} className="animate-spin text-emerald-500" />
@@ -279,8 +359,8 @@ export default function SwmsSignoffPage() {
   };
   return <div className="min-h-screen bg-slate-50">
       <Helmet>
-        <title>{swms.title} — SWMS Sign-off</title>
-        <meta name="description" content={`Sign off on the Safe Work Method Statement: ${swms.title}`} />
+        <title>{swms.title} — {isStudioDocument ? 'Safety Document' : 'SWMS'} Sign-off</title>
+        <meta name="description" content={`Sign off on the ${isStudioDocument ? 'safety document' : 'Safe Work Method Statement'}: ${swms.title}`} />
         <meta name="robots" content="noindex" />
         <link rel="canonical" href={`https://iwillbuild.com/safety/sign/${token ?? ''}`} />
       </Helmet>
@@ -292,7 +372,7 @@ export default function SwmsSignoffPage() {
             <ShieldCheck size={16} className="text-white" />
           </div>
           <div className="min-w-0">
-            <p className="text-xs font-bold text-emerald-700 uppercase tracking-wide">SWMS Sign-off</p>
+            <p className="text-xs font-bold text-emerald-700 uppercase tracking-wide">{isStudioDocument ? 'Safety Document' : 'SWMS'} Sign-off</p>
             <p className="text-sm font-bold text-slate-800 truncate">{swms.title}</p>
           </div>
           {company?.name && <p className="ml-auto text-xs text-slate-400 shrink-0 hidden sm:block">{company.name}</p>}
@@ -305,25 +385,39 @@ export default function SwmsSignoffPage() {
         {(swms.job_name || swms.job_address) && <div className="bg-emerald-50 border border-emerald-200 rounded-xl px-4 py-3 flex flex-wrap gap-3 text-sm text-emerald-800">
             {swms.job_name && <span className="font-semibold">{swms.job_name}</span>}
             {swms.job_address && <span className="text-emerald-600">{swms.job_address}</span>}
-            {swms.revision_number && <span className="ml-auto text-xs text-emerald-500">Rev {swms.revision_number}</span>}
+            {(swms.studio_source_revision || swms.revision_number) && <span className="ml-auto text-xs text-emerald-500">Rev {swms.studio_source_revision ?? swms.revision_number}</span>}
           </div>}
 
-        {/* SWMS content sections */}
-        <div className="space-y-2">
-          <Section title="Work Activity" content={swms.work_activity} defaultOpen />
-          <Section title="Hazards Identified" content={swms.hazards} defaultOpen />
-          <Section title="Risk Assessment" content={swms.risks} />
-          <Section title="Control Measures" content={swms.controls} defaultOpen />
-          <Section title="PPE Required" content={swms.ppe} defaultOpen />
-          <Section title="Plant & Equipment" content={swms.plant_equipment} />
-          <Section title="Training & Competency" content={swms.training_competency} />
-          <Section title="Emergency Controls" content={swms.emergency_controls} />
-          <Section title="Environmental Controls" content={swms.environmental_controls} />
-          {swms.sign_off_requirements && <div className="bg-amber-50 border border-amber-200 rounded-xl px-4 py-3">
-              <p className="text-xs font-bold text-amber-700 uppercase tracking-wide mb-1">Sign-off Requirements</p>
-              <p className="text-sm text-amber-800 whitespace-pre-wrap">{swms.sign_off_requirements}</p>
-            </div>}
-        </div>
+        {isStudioDocument ? (
+          snapshotBlocks ? <LockedDocumentContent blocks={snapshotBlocks} /> : (
+            <div className="bg-red-50 border border-red-200 rounded-2xl p-5 flex items-start gap-3" role="alert">
+              <AlertTriangle size={20} className="text-red-500 shrink-0 mt-0.5" />
+              <div>
+                <h2 className="font-bold text-red-800">Document Unavailable</h2>
+                <p className="text-sm text-red-700 mt-1">
+                  The locked document content could not be displayed. Signing is disabled until the document is restored.
+                </p>
+              </div>
+            </div>
+          )
+        ) : (
+          /* Legacy SWMS content sections */
+          <div className="space-y-2">
+            <Section title="Work Activity" content={swms.work_activity} defaultOpen />
+            <Section title="Hazards Identified" content={swms.hazards} defaultOpen />
+            <Section title="Risk Assessment" content={swms.risks} />
+            <Section title="Control Measures" content={swms.controls} defaultOpen />
+            <Section title="PPE Required" content={swms.ppe} defaultOpen />
+            <Section title="Plant & Equipment" content={swms.plant_equipment} />
+            <Section title="Training & Competency" content={swms.training_competency} />
+            <Section title="Emergency Controls" content={swms.emergency_controls} />
+            <Section title="Environmental Controls" content={swms.environmental_controls} />
+            {swms.sign_off_requirements && <div className="bg-amber-50 border border-amber-200 rounded-xl px-4 py-3">
+                <p className="text-xs font-bold text-amber-700 uppercase tracking-wide mb-1">Sign-off Requirements</p>
+                <p className="text-sm text-amber-800 whitespace-pre-wrap">{swms.sign_off_requirements}</p>
+              </div>}
+          </div>
+        )}
 
         {/* Existing signoffs */}
         {signoffs.length > 0 && <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
@@ -351,7 +445,7 @@ export default function SwmsSignoffPage() {
           </div>}
 
         {/* Sign-off form */}
-        {submitted ? <motion.div initial={{
+        {!snapshotUnavailable && (submitted ? <motion.div initial={{
         opacity: 0,
         scale: 0.95
       }} animate={{
@@ -363,7 +457,7 @@ export default function SwmsSignoffPage() {
             </div>
             <h2 className="text-lg font-bold text-slate-800">Sign-off Recorded</h2>
             <p className="text-sm text-slate-500">
-              Thank you, <strong>{workerName}</strong>. Your sign-off has been recorded for this SWMS.
+              Thank you, <strong>{workerName}</strong>. Your sign-off has been recorded for this {isStudioDocument ? 'safety document' : 'SWMS'}.
             </p>
             <p className="text-xs text-slate-400">You can now close this page.</p>
           </motion.div> : <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden">
@@ -416,7 +510,9 @@ export default function SwmsSignoffPage() {
                   {hasRead && <CheckCircle2 size={12} className="text-white" />}
                 </div>
                 <span className="text-sm text-slate-600 leading-snug">
-                  I confirm that I have read, understood, and will comply with this Safe Work Method Statement. I understand the hazards, risks, and control measures described above.
+                  {isStudioDocument
+                    ? 'I confirm that I have read, understood, and will comply with this safety document.'
+                    : 'I confirm that I have read, understood, and will comply with this Safe Work Method Statement. I understand the hazards, risks, and control measures described above.'}
                 </span>
               </label>
 
@@ -425,7 +521,7 @@ export default function SwmsSignoffPage() {
                 {submitting ? 'Submitting…' : 'Submit Sign-off'}
               </button>
             </form>
-          </div>}
+          </div>)}
 
         {/* Footer */}
         <p className="text-center text-xs text-slate-400 pb-4">
