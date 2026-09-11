@@ -5,7 +5,6 @@ import { FileText, Plus, Pencil, Trash2, LayoutDashboard, Briefcase, Truck, X, Z
 import { motion, AnimatePresence } from 'motion/react';
 import FormFieldBuilder from '@/components/FormFieldBuilder';
 import { usePermissions } from '@/lib/usePermissions';
-import { LibraryView as LibraryPage } from '../features/library/LibraryView';
 import DazzaBuilderAssistant from '@/components/DazzaBuilderAssistant';
 import { buildFormsBuilderContext } from '@/components/DazzaBuilderAssistant/FormsBuilderAdapter';
 
@@ -1200,10 +1199,13 @@ export function FormsPage() {
   // Initialise from ?tab= query param so returnTo links land on the right tab.
   const [searchParams] = useSearchParams();
   const tabParam = searchParams.get('tab');
-  const validTabs = ['submissions', 'forms', 'library'] as const;
+  const validTabs = ['submissions', 'forms'] as const;
   type TabId = typeof validTabs[number];
   const initialTab: TabId = validTabs.includes(tabParam as TabId) ? tabParam as TabId : 'submissions';
   const [pageTab, setPageTab] = useState<TabId>(initialTab);
+  useEffect(() => {
+    if (tabParam === 'library') navigate('/studio/library', { replace: true });
+  }, [tabParam, navigate]);
   const fetchTemplates = useCallback(async () => {
     try {
       const res = await fetch('/api/form-templates', {
@@ -1399,10 +1401,6 @@ export function FormsPage() {
           key: 'forms',
           label: 'Templates',
           icon: FileText
-        }, {
-          key: 'library',
-          label: 'Library',
-          icon: BookOpen
         }] as const).map(({
           key,
           label,
@@ -1473,9 +1471,6 @@ export function FormsPage() {
 
           {/* ── Submissions tab ── */}
           {pageTab === 'submissions' && <SubmissionsInbox templates={templates} onFillForm={() => setFillFormPickerOpen(true)} />}
-
-          {/* ── Library tab ── */}
-          {pageTab === 'library' && <LibraryPage initialTypeFilter="form" />}
         </div>
       </div>
 
