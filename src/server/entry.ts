@@ -1496,18 +1496,18 @@ async function runStartupMigrations() {
     }
   }
 
-  // 1a-rr-share-tokens. Hazard share tokens table
+  // 1a-rr-share-tokens. Hazard share tokens table (token_hash — raw token never stored)
   try {
     await db.execute(sql`
       CREATE TABLE IF NOT EXISTS hazard_share_tokens (
         id                  INT AUTO_INCREMENT PRIMARY KEY,
         hazard_id           INT NOT NULL,
         company_id          INT NOT NULL,
-        token               VARCHAR(96) NOT NULL UNIQUE,
+        token_hash          VARCHAR(64) NOT NULL UNIQUE,
         created_by_user_id  VARCHAR(36) NULL,
         revoked             TINYINT(1) NOT NULL DEFAULT 0,
         created_at          DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-        INDEX idx_hst_token (token),
+        INDEX idx_hst_token_hash (token_hash),
         INDEX idx_hst_hazard (hazard_id),
         INDEX idx_hst_company (company_id)
       )
@@ -1520,19 +1520,49 @@ async function runStartupMigrations() {
     }
   }
 
-  // 1a-rr-public-comments. Hazard public comments table
+  // 1a-rr-share-tokens-rename. If the table was created with the old plaintext `token`
+  // column (commit edc5251d, never published), rename it to token_hash now.
+  // This is idempotent: it silently ignores "column not found" and "column already exists".
+  try {
+    // Check if old `token` column exists
+    const [colCheck] = await db.execute(sql.raw(
+      `SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS
+       WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'hazard_share_tokens' AND COLUMN_NAME = 'token'`
+    )) as unknown as [Array<{ COLUMN_NAME: string }>];
+    if (colCheck?.length) {
+      // Rename token → token_hash and resize to 64 chars (SHA-256 hex)
+      await db.execute(sql.raw(
+        `ALTER TABLE hazard_share_tokens
+         CHANGE COLUMN \`token\` \`token_hash\` VARCHAR(64) NOT NULL`
+      ));
+      // Drop old index if it exists, add new one
+      try {
+        await db.execute(sql.raw(`ALTER TABLE hazard_share_tokens DROP INDEX idx_hst_token`));
+      } catch { /* index may not exist */ }
+      try {
+        await db.execute(sql.raw(`ALTER TABLE hazard_share_tokens ADD UNIQUE INDEX idx_hst_token_hash (token_hash)`));
+      } catch { /* index may already exist */ }
+      // Wipe any plaintext tokens that were stored — they are now invalid hashes
+      await db.execute(sql.raw(`DELETE FROM hazard_share_tokens WHERE LENGTH(token_hash) != 64`));
+      console.log('[startup-migration] hazard_share_tokens.token renamed to token_hash');
+    }
+  } catch (e: unknown) {
+    console.warn('[startup-migration] hazard_share_tokens rename check failed:', migrationErrMsg(e));
+  }
+
+  // 1a-rr-public-comments. Hazard public comments table (ip_hash — raw IP never stored)
   try {
     await db.execute(sql`
       CREATE TABLE IF NOT EXISTS hazard_public_comments (
         id               INT AUTO_INCREMENT PRIMARY KEY,
         hazard_id        INT NOT NULL,
         company_id       INT NOT NULL,
-        commenter_name   VARCHAR(255) NOT NULL,
+        commenter_name   VARCHAR(200) NOT NULL,
         comment          TEXT NOT NULL,
         action_taken     VARCHAR(30) NOT NULL DEFAULT 'comment',
         previous_status  VARCHAR(30) NULL,
         new_status       VARCHAR(30) NULL,
-        ip_address       VARCHAR(100) NULL,
+        ip_hash          VARCHAR(64) NULL,
         created_at       DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
         INDEX idx_hpc_hazard (hazard_id),
         INDEX idx_hpc_company (company_id)
@@ -1544,6 +1574,26 @@ async function runStartupMigrations() {
     if (!msg.includes('already exists') && !msg.includes('ER_TABLE_EXISTS')) {
       console.warn('[startup-migration] hazard_public_comments CREATE failed:', msg);
     }
+  }
+
+  // 1a-rr-public-comments-rename. If the table was created with the old `ip_address`
+  // column, rename it to ip_hash now (idempotent).
+  try {
+    const [colCheck] = await db.execute(sql.raw(
+      `SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS
+       WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'hazard_public_comments' AND COLUMN_NAME = 'ip_address'`
+    )) as unknown as [Array<{ COLUMN_NAME: string }>];
+    if (colCheck?.length) {
+      await db.execute(sql.raw(
+        `ALTER TABLE hazard_public_comments
+         CHANGE COLUMN \`ip_address\` \`ip_hash\` VARCHAR(64) NULL`
+      ));
+      // Clear any raw IPs that were stored — they are now invalid hashes
+      await db.execute(sql.raw(`UPDATE hazard_public_comments SET ip_hash = NULL WHERE LENGTH(ip_hash) != 64`));
+      console.log('[startup-migration] hazard_public_comments.ip_address renamed to ip_hash');
+    }
+  } catch (e: unknown) {
+    console.warn('[startup-migration] hazard_public_comments rename check failed:', migrationErrMsg(e));
   }
 
   // 1b. Ensure notifications table exists (must be before column migrations below)

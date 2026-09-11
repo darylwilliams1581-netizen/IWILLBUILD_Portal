@@ -32,20 +32,10 @@ interface PublicHazard {
   photo_url: string | null;
 }
 
-interface PublicComment {
-  id: number;
-  commenter_name: string;
-  comment: string;
-  action_taken: string;
-  previous_status: string | null;
-  new_status: string | null;
-  created_at: string;
-}
-
 interface PublicHazardData {
   hazard: PublicHazard;
   company: { name: string } | null;
-  comments: PublicComment[];
+  // comments are not returned by the public API — visible only to authenticated company users
 }
 
 // ── Page ──────────────────────────────────────────────────────────────────────
@@ -64,7 +54,6 @@ export default function HazardPublicPage() {
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState('');
   const [submitted, setSubmitted] = useState(false);
-
   useEffect(() => {
     if (!token) return;
     void (async () => {
@@ -88,29 +77,21 @@ export default function HazardPublicPage() {
     setSubmitting(true);
     setSubmitError('');
     try {
+      const action = markClosed ? 'close' : 'comment';
       const r = await fetch(`/api/public/hazard/${token}/close`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ commenter_name: name, comment, mark_closed: markClosed }),
+        body: JSON.stringify({ name: name.trim(), comment: comment.trim(), action }),
       });
       if (!r.ok) {
         const d = await r.json() as { error?: string };
         throw new Error(d.error ?? 'Submission failed');
       }
       const result = await r.json() as { new_status: string };
-      // Update local state
+      // Update local hazard status
       setData(prev => prev ? {
         ...prev,
         hazard: { ...prev.hazard, status: result.new_status },
-        comments: [...prev.comments, {
-          id: Date.now(),
-          commenter_name: name,
-          comment,
-          action_taken: markClosed ? 'closed' : 'comment',
-          previous_status: prev.hazard.status,
-          new_status: result.new_status,
-          created_at: new Date().toISOString(),
-        }],
       } : prev);
       setSubmitted(true);
     } catch (err) {
@@ -144,7 +125,7 @@ export default function HazardPublicPage() {
     </div>
   );
 
-  const { hazard, company, comments } = data;
+  const { hazard, company } = data;
   const isClosed = hazard.status === 'closed';
   const statusLabel = STATUS_OPTIONS.find(s => s.value === hazard.status)?.label ?? hazard.status;
   const riskLabel = RISK_LEVEL_OPTIONS.find(r => r.value === hazard.risk_level)?.label ?? hazard.risk_level;
@@ -237,29 +218,6 @@ export default function HazardPublicPage() {
             </p>
           </div>
         </div>
-
-        {/* Existing public comments */}
-        {comments.length > 0 && (
-          <div className="space-y-3">
-            <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Comments & actions</p>
-            {comments.map(c => (
-              <div key={c.id} className={`bg-white rounded-2xl border shadow-sm px-4 py-3 ${c.action_taken === 'closed' ? 'border-emerald-200' : 'border-slate-100'}`}>
-                <div className="flex items-start justify-between gap-2">
-                  <p className="text-sm font-semibold text-slate-800">{c.commenter_name}</p>
-                  {c.action_taken === 'closed' && (
-                    <span className="flex items-center gap-1 text-xs font-semibold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full shrink-0">
-                      <CheckCircle2 size={10} /> Closed
-                    </span>
-                  )}
-                </div>
-                <p className="text-sm text-slate-600 mt-1">{c.comment}</p>
-                <p className="text-xs text-slate-400 mt-1.5">
-                  {new Date(c.created_at).toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
-                </p>
-              </div>
-            ))}
-          </div>
-        )}
 
         {/* Comment / close form */}
         {submitted ? (

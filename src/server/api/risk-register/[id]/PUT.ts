@@ -43,6 +43,21 @@ export default async function handler(req: Request, res: Response) {
     const body = req.body as Record<string, unknown>;
     const setClauses: string[] = [];
 
+    // Validate responsible_user_id if provided: must be active and same company
+    if ('responsible_user_id' in body && body.responsible_user_id) {
+      const uid = String(body.responsible_user_id).trim();
+      const [userRows] = await db.execute(sql.raw(
+        `SELECT p.user_id FROM profiles p
+         JOIN user u ON u.id = p.user_id
+         WHERE p.user_id = '${uid.replace(/'/g, "''")}' AND p.company_id = ${profile.companyId}
+           AND (u.banned IS NULL OR u.banned = 0) AND (u.deleted_at IS NULL)
+         LIMIT 1`
+      )) as unknown as [Array<{ user_id: string }>];
+      if (!userRows?.length) {
+        return res.status(400).json({ error: 'responsible_user_id is not a valid active member of your company' });
+      }
+    }
+
     for (const field of ALLOWED_FIELDS) {
       if (!(field in body)) continue;
       const val = body[field as AllowedField];
@@ -68,7 +83,7 @@ export default async function handler(req: Request, res: Response) {
     ));
 
     const [rows] = await db.execute(sql.raw(
-      `SELECT r.*, j.job_number, j.name AS job_name, u.name AS responsible_user_name FROM risk_register r LEFT JOIN jobs j ON j.id = r.job_id LEFT JOIN user u ON u.id = r.responsible_user_id WHERE r.id = ${id} AND r.company_id = ${profile.companyId} LIMIT 1`
+      `SELECT r.*, j.job_number, j.name AS job_name, u.name AS responsible_user_name FROM risk_register r LEFT JOIN jobs j ON j.id = r.job_id LEFT JOIN user u ON u.id = r.responsible_user_id AND u.id IN (SELECT user_id FROM profiles WHERE company_id = ${profile.companyId}) WHERE r.id = ${id} AND r.company_id = ${profile.companyId} LIMIT 1`
     )) as unknown as [Array<Record<string, unknown>>, unknown];
 
     if (!rows?.length) return res.status(404).json({ error: 'Not found' });

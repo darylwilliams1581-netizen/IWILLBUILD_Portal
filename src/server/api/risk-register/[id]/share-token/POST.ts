@@ -1,8 +1,14 @@
 /**
  * POST /api/risk-register/:id/share-token
  * Generate (or return the existing active) share token for a hazard entry.
- * Token is a 48-byte cryptographically random hex string stored in plain text
- * (not hashed) — it is the URL secret itself, never transmitted in a header.
+ *
+ * Security model:
+ *   - Raw token is generated with 48 cryptographically random bytes (96 hex chars).
+ *   - Only SHA-256(rawToken) is stored in the database (token_hash column).
+ *   - The raw token is returned ONCE at creation time and never stored in plain text.
+ *   - Public lookup hashes the supplied token and compares token_hash.
+ *   - Creating a new link revokes any existing active token first.
+ *
  * Returns: { token, url }
  */
 import type { Request, Response } from 'express';
@@ -10,7 +16,11 @@ import { db } from '../../../../db/client.js';
 import { profiles } from '../../../../db/schema.js';
 import { eq, sql } from 'drizzle-orm';
 import { getAuth } from '../../../../../lib/auth/auth.js';
-import { randomBytes } from 'node:crypto';
+import { randomBytes, createHash } from 'node:crypto';
+
+function sha256hex(raw: string): string {
+  return createHash('sha256').update(raw, 'utf8').digest('hex');
+}
 
 export default async function handler(req: Request, res: Response) {
   try {
@@ -34,29 +44,28 @@ export default async function handler(req: Request, res: Response) {
     `) as unknown as [Array<{ id: number }>];
     if (!ownerRows?.length) return res.status(404).json({ error: 'Hazard not found' });
 
-    // Return existing active token if one exists
-    const [existing] = await db.execute(sql`
-      SELECT token FROM hazard_share_tokens
-      WHERE hazard_id = ${entryId} AND company_id = ${profile.companyId} AND revoked = 0
-      ORDER BY created_at DESC LIMIT 1
-    `) as unknown as [Array<{ token: string }>];
-
-    if (existing?.length) {
-      const token = existing[0].token;
-      const origin = (req.headers['x-forwarded-proto'] ? `${req.headers['x-forwarded-proto']}://${req.headers['host']}` : `https://iwillbuild.com`);
-      return res.json({ token, url: `${origin}/hazard/${token}` });
-    }
-
-    // Generate new token — 48 random bytes = 96 hex chars
-    const token = randomBytes(48).toString('hex');
-
+    // Revoke any existing active tokens before issuing a new one
     await db.execute(sql`
-      INSERT INTO hazard_share_tokens (hazard_id, company_id, token, created_by_user_id)
-      VALUES (${entryId}, ${profile.companyId}, ${token}, ${session.user.id})
+      UPDATE hazard_share_tokens
+      SET revoked = 1
+      WHERE hazard_id = ${entryId} AND company_id = ${profile.companyId} AND revoked = 0
     `);
 
-    const origin = (req.headers['x-forwarded-proto'] ? `${req.headers['x-forwarded-proto']}://${req.headers['host']}` : `https://iwillbuild.com`);
-    return res.status(201).json({ token, url: `${origin}/hazard/${token}` });
+    // Generate new raw token — 48 random bytes = 96 hex chars
+    const rawToken = randomBytes(48).toString('hex');
+    const tokenHash = sha256hex(rawToken);
+
+    await db.execute(sql`
+      INSERT INTO hazard_share_tokens (hazard_id, company_id, token_hash, created_by_user_id)
+      VALUES (${entryId}, ${profile.companyId}, ${tokenHash}, ${session.user.id})
+    `);
+
+    const origin = req.headers['x-forwarded-proto']
+      ? `${req.headers['x-forwarded-proto']}://${req.headers['host']}`
+      : 'https://iwillbuild.com';
+
+    // rawToken is returned here and never stored in plain text
+    return res.status(201).json({ token: rawToken, url: `${origin}/hazard/${rawToken}` });
   } catch (err) {
     console.error('[hazard share-token POST] error:', err);
     return res.status(500).json({ error: 'Failed to generate share link' });
