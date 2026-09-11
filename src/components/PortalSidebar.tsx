@@ -246,16 +246,16 @@ const DESKTOP_NAV_GROUPS: DesktopNavGroup[] = [{
     label: 'Risk Register',
     icon: TriangleAlert,
     href: '/risk-register'
-  }]
-}, {
-  heading: 'Resources',
-  items: [{
+  }, {
     id: 'nav-19',
     idx: '19',
     label: 'Resource Library',
     icon: BookOpen,
     href: '/studio/library'
-  }, {
+  }]
+}, {
+  heading: 'Resources',
+  items: [{
     id: 'nav-20',
     idx: '20',
     label: 'Quick Links',
