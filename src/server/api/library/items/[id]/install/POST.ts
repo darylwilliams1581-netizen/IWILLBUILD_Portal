@@ -55,10 +55,12 @@ export default async function handler(req: Request, res: Response) {
 
   try {
     // ── Fetch source item ─────────────────────────────────────────────────────
+    // NOTE: page_layout_json / theme_json / pdf_settings_json are document_templates
+    // columns, NOT library_items columns. Read them from metadata_json instead when
+    // present, or fall back to safe defaults. Never SELECT non-existent columns.
     const [sourceRows] = await db.execute(
       sql.raw(`
-        SELECT id, type, category, title, builder_json, content, version,
-               page_layout_json, theme_json, pdf_settings_json
+        SELECT id, type, category, title, builder_json, content, version, metadata_json
         FROM library_items
         WHERE id = ${sourceId} AND visibility = 'public' AND status = 'active'
         LIMIT 1
@@ -66,7 +68,7 @@ export default async function handler(req: Request, res: Response) {
     ) as unknown as [Array<{
       id: number; type: string; category: string | null; title: string;
       builder_json: string | null; content: string | null; version: string;
-      page_layout_json: string | null; theme_json: string | null; pdf_settings_json: string | null;
+      metadata_json: string | null;
     }>, unknown];
 
     const source = sourceRows?.[0];
@@ -122,7 +124,7 @@ export default async function handler(req: Request, res: Response) {
 
       newId = insertResult.insertId;
 
-      // Insert fields
+      // Insert fields — company_id is required; errors are surfaced not swallowed
       for (const field of fields) {
         const safeLabel = safe(field.label);
         const safeFieldType = safe(field.fieldType);
@@ -132,11 +134,11 @@ export default async function handler(req: Request, res: Response) {
         await db.execute(
           sql.raw(`
             INSERT INTO form_template_fields
-              (template_id, label, field_type, required, options_json, field_order)
+              (template_id, company_id, label, field_type, required, options_json, field_order)
             VALUES
-              (${newId}, '${safeLabel}', '${safeFieldType}', ${field.isRequired ? 1 : 0}, ${optionsJson}, ${field.sortOrder})
+              (${newId}, ${companyId}, '${safeLabel}', '${safeFieldType}', ${field.isRequired ? 1 : 0}, ${optionsJson}, ${field.sortOrder})
           `)
-        ).catch(() => { /* non-critical — template still usable without fields */ });
+        );
       }
 
       redirectTarget = '/forms';
@@ -166,10 +168,22 @@ export default async function handler(req: Request, res: Response) {
       const builderJson = source.builder_json ?? '{"blocks":[],"systemFields":[],"sourceAttachments":[]}';
       const safeBuilderJson = safe(builderJson);
       const tType = safe(source.type ?? 'document');
-      // Restore layout/theme/pdf_settings from library item
-      const pageLayoutVal  = source.page_layout_json  ? `'${safe(source.page_layout_json)}'`  : "'{}'";
-      const themeVal       = source.theme_json        ? `'${safe(source.theme_json)}'`        : "'{}'";
-      const pdfSettingsVal = source.pdf_settings_json ? `'${safe(source.pdf_settings_json)}'` : 'NULL';
+
+      // page_layout_json / theme_json / pdf_settings_json are NOT columns on
+      // library_items — extract from metadata_json if the publisher stored them there
+      let pageLayoutVal  = "'{}'";
+      let themeVal       = "'{}'";
+      let pdfSettingsVal = 'NULL';
+      if (source.metadata_json) {
+        try {
+          const meta = JSON.parse(source.metadata_json) as {
+            page_layout_json?: string; theme_json?: string; pdf_settings_json?: string;
+          };
+          if (meta.page_layout_json)  pageLayoutVal  = `'${safe(meta.page_layout_json)}'`;
+          if (meta.theme_json)        themeVal       = `'${safe(meta.theme_json)}'`;
+          if (meta.pdf_settings_json) pdfSettingsVal = `'${safe(meta.pdf_settings_json)}'`;
+        } catch { /* leave defaults */ }
+      }
 
       const [insertResult] = await db.execute(
         sql.raw(`
