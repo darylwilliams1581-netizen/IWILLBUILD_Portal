@@ -760,6 +760,14 @@ import risk_register_id_get_731 from "./api/risk-register/[id]/GET";
 import risk_register_id_put_732 from "./api/risk-register/[id]/PUT";
 import risk_register_id_archive_post_733 from "./api/risk-register/[id]/archive/POST";
 import risk_register_id_unarchive_post_734 from "./api/risk-register/[id]/unarchive/POST";
+import risk_register_id_photo_post from "./api/risk-register/[id]/photo/POST";
+import risk_register_id_photo_delete from "./api/risk-register/[id]/photo/DELETE";
+import risk_register_id_photo_url_get from "./api/risk-register/[id]/photo-url/GET";
+import risk_register_id_share_token_post from "./api/risk-register/[id]/share-token/POST";
+import risk_register_id_share_token_delete from "./api/risk-register/[id]/share-token/DELETE";
+import risk_register_id_public_comments_get from "./api/risk-register/[id]/public-comments/GET";
+import public_hazard_token_get from "./api/public/hazard/[token]/GET";
+import public_hazard_token_close_post from "./api/public/hazard/[token]/close/POST";
 import rl_register_get_735 from "./api/rl-register/GET";
 import rl_register_post_736 from "./api/rl-register/POST";
 import rl_register_points_id_delete_737 from "./api/rl-register/points/[id]/DELETE";
@@ -1422,6 +1430,8 @@ async function runStartupMigrations() {
         status              VARCHAR(30) NOT NULL DEFAULT 'open',
         review_date         DATE NULL,
         notes               TEXT NULL,
+        photo_path          VARCHAR(1000) NULL,
+        task_id             INT NULL,
         closed_at           DATETIME NULL,
         closed_by           VARCHAR(255) NULL,
         created_by          VARCHAR(36) NULL,
@@ -1429,7 +1439,8 @@ async function runStartupMigrations() {
         updated_at          DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
         INDEX idx_rr_company (company_id),
         INDEX idx_rr_company_status (company_id, status),
-        INDEX idx_rr_job (job_id)
+        INDEX idx_rr_job (job_id),
+        INDEX idx_rr_task_id (task_id)
       )
     `);
     console.log('[startup-migration] risk_register table ready');
@@ -1440,11 +1451,13 @@ async function runStartupMigrations() {
     }
   }
 
-  // 1a-rr-archive. Add archive columns to risk_register (idempotent)
+  // 1a-rr-columns. Heal older risk_register tables in place (idempotent)
   for (const colDef of [
     "archived_at    DATETIME NULL",
     "archived_by    VARCHAR(255) NULL",
     "archive_reason TEXT NULL",
+    "photo_path     VARCHAR(1000) NULL",
+    "task_id        INT NULL",
   ]) {
     const colName = colDef.trim().split(/\s+/)[0];
     try {
@@ -2742,6 +2755,92 @@ async function runStartupMigrations() {
     console.log('[startup-migration] Platform developer plans ensured');
   } catch (e: unknown) {
     console.warn('[startup-migration] Developer plan fix failed:', String((e as Error)?.message ?? e));
+  }
+
+  // Older Phase 2 previews briefly used a direct assignee column. The final
+  // model links hazards to job_todos, so remove that obsolete column if found.
+  try {
+    const [obsoleteColumns] = await db.execute(sql`
+      SELECT COLUMN_NAME
+      FROM INFORMATION_SCHEMA.COLUMNS
+      WHERE TABLE_SCHEMA = DATABASE()
+        AND TABLE_NAME = 'risk_register'
+        AND COLUMN_NAME = 'responsible_user_id'
+    `) as unknown as [unknown[], unknown];
+    if (obsoleteColumns.length > 0) {
+      await db.execute(sql.raw('ALTER TABLE risk_register DROP COLUMN responsible_user_id'));
+      console.log('[startup-migration] removed obsolete hazard assignment column');
+    }
+  } catch (e: unknown) {
+    console.warn('[startup-migration] obsolete hazard assignment cleanup failed:', migrationErrMsg(e));
+  }
+
+  // Link each hazard to the existing general task system. Index/FK operations
+  // are deliberately idempotent for databases upgraded from earlier builds.
+  try {
+    await db.execute(sql.raw('ALTER TABLE risk_register ADD INDEX idx_rr_task_id (task_id)'));
+  } catch (e: unknown) {
+    const msg = migrationErrMsg(e);
+    if (!msg.includes('Duplicate key name') && !msg.includes('ER_DUP_KEYNAME')) {
+      console.warn('[startup-migration] risk_register task index failed:', msg);
+    }
+  }
+  try {
+    await db.execute(sql`
+      UPDATE risk_register r
+      LEFT JOIN job_todos t ON t.id = r.task_id
+      SET r.task_id = NULL
+      WHERE r.task_id IS NOT NULL AND t.id IS NULL
+    `);
+    await db.execute(sql.raw(
+      'ALTER TABLE risk_register ADD CONSTRAINT fk_rr_task_id FOREIGN KEY (task_id) REFERENCES job_todos(id) ON DELETE SET NULL'
+    ));
+  } catch (e: unknown) {
+    const msg = migrationErrMsg(e);
+    if (!msg.includes('Duplicate foreign key') && !msg.includes('already exists') && !msg.includes('errno: 121')) {
+      console.warn('[startup-migration] risk_register task foreign key failed:', msg);
+    }
+  }
+
+  // Phase 2 hazard sharing. Only token hashes are persisted; raw share tokens
+  // are returned once to the authenticated creator.
+  try {
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS hazard_share_tokens (
+        id                 INT AUTO_INCREMENT PRIMARY KEY,
+        hazard_id          INT NOT NULL,
+        company_id         INT NOT NULL,
+        token_hash         VARCHAR(64) NOT NULL,
+        created_by_user_id VARCHAR(36) NULL,
+        revoked            TINYINT(1) NOT NULL DEFAULT 0,
+        created_at         DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE KEY uq_hazard_share_token_hash (token_hash),
+        INDEX idx_hazard_share_hazard (hazard_id, company_id),
+        INDEX idx_hazard_share_active (company_id, revoked)
+      )
+    `);
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS hazard_public_comments (
+        id              INT AUTO_INCREMENT PRIMARY KEY,
+        hazard_id       INT NOT NULL,
+        company_id      INT NOT NULL,
+        commenter_name  VARCHAR(200) NOT NULL,
+        comment         TEXT NOT NULL,
+        action_taken    VARCHAR(30) NOT NULL DEFAULT 'comment',
+        previous_status VARCHAR(30) NULL,
+        new_status      VARCHAR(30) NULL,
+        ip_hash         VARCHAR(64) NULL,
+        created_at      DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        INDEX idx_hazard_comment_hazard (hazard_id, company_id),
+        INDEX idx_hazard_comment_created (hazard_id, created_at)
+      )
+    `);
+    console.log('[startup-migration] hazard sharing tables ready');
+  } catch (e: unknown) {
+    const msg = migrationErrMsg(e);
+    if (!msg.includes('already exists') && !msg.includes('ER_TABLE_EXISTS')) {
+      console.warn('[startup-migration] hazard sharing tables failed:', msg);
+    }
   }
 
   // ── jobs: scheduled_start_time / scheduled_end_time columns ─────────────────
@@ -4196,10 +4295,18 @@ app.delete("/api/recipes/:id", recipes_id_delete_727);
 app.put("/api/recipes/:id", recipes_id_put_728);
 app.get("/api/risk-register", risk_register_get_729);
 app.post("/api/risk-register", risk_register_post_730);
+app.post("/api/risk-register/:id/photo", risk_register_id_photo_post);
+app.delete("/api/risk-register/:id/photo", risk_register_id_photo_delete);
+app.get("/api/risk-register/:id/photo-url", risk_register_id_photo_url_get);
+app.post("/api/risk-register/:id/share-token", risk_register_id_share_token_post);
+app.delete("/api/risk-register/:id/share-token", risk_register_id_share_token_delete);
+app.get("/api/risk-register/:id/public-comments", risk_register_id_public_comments_get);
 app.get("/api/risk-register/:id", risk_register_id_get_731);
 app.put("/api/risk-register/:id", risk_register_id_put_732);
 app.post("/api/risk-register/:id/archive", risk_register_id_archive_post_733);
 app.post("/api/risk-register/:id/unarchive", risk_register_id_unarchive_post_734);
+app.get("/api/public/hazard/:token", public_hazard_token_get);
+app.post("/api/public/hazard/:token/close", public_hazard_token_close_post);
 app.get("/api/rl-register", rl_register_get_735);
 app.post("/api/rl-register", rl_register_post_736);
 app.delete("/api/rl-register/points/:id", rl_register_points_id_delete_737);

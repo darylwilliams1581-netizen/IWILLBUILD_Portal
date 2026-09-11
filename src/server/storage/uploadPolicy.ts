@@ -187,6 +187,7 @@ const DRAWING_POLICY: UploadPolicy = {
  */
 const NAMESPACE_POLICIES: Partial<Record<LogicalNamespace, UploadPolicy>> = {
   'job-photos':          IMAGE_POLICY,
+  'hazard-photos':       IMAGE_POLICY,
   'job-card-photos':     IMAGE_POLICY,
   'am-asset-photos':     IMAGE_POLICY,
   'am-inspection-media': IMAGE_POLICY,

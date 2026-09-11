@@ -27,6 +27,7 @@ export default async function handler(req: Request, res: Response) {
       status,
       likelihood,
       consequence,
+      risk_level,
       category,
       jobId,
       dateFrom,
@@ -43,6 +44,7 @@ export default async function handler(req: Request, res: Response) {
     if (status)      where += ` AND r.status = '${status.replace(/'/g, "''")}'`;
     if (likelihood)  where += ` AND r.likelihood = '${likelihood.replace(/'/g, "''")}'`;
     if (consequence) where += ` AND r.consequence = '${consequence.replace(/'/g, "''")}'`;
+    if (risk_level)  where += ` AND r.risk_level = '${risk_level.replace(/'/g, "''")}'`;
     if (category)    where += ` AND r.category = '${category.replace(/'/g, "''")}'`;
     if (jobId)       where += ` AND r.job_id = ${parseInt(jobId, 10)}`;
     if (dateFrom)    where += ` AND r.identified_date >= '${dateFrom}'`;
@@ -52,9 +54,16 @@ export default async function handler(req: Request, res: Response) {
       SELECT r.*,
         j.job_number,
         j.name AS job_name,
-        j.site_address
+        j.site_address,
+        t.id AS task_id,
+        t.status AS task_status,
+        t.assigned_user_id AS task_assigned_user_id,
+        t.assigned_name AS task_assigned_name,
+        t.due_date AS task_due_date,
+        t.title AS task_title
       FROM risk_register r
       LEFT JOIN jobs j ON j.id = r.job_id
+      LEFT JOIN job_todos t ON t.id = r.task_id AND t.company_id = r.company_id
       ${where}
       ORDER BY
         FIELD(r.risk_level, 'extreme', 'high', 'medium', 'low') ASC,

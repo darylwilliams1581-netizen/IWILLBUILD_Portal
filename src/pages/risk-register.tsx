@@ -19,6 +19,7 @@ import DesktopTopBar from '@/components/DesktopTopBar';
 import DesktopDock from '@/components/DesktopDock';
 import PortalSidebar from '@/components/PortalSidebar';
 import JobPickerSheet from '@/components/JobPickerSheet';
+import HazardPhase2Controls from '@/components/safety/HazardPhase2Controls';
 import { ShieldAlert, Plus, Filter, X, ChevronRight, Loader2, Search, Home, AlertTriangle, CheckCircle2, Clock, User, CalendarDays, Briefcase, ChevronDown, ChevronUp, Archive, ArchiveRestore, Inbox } from 'lucide-react';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -41,6 +42,13 @@ export interface RiskEntry {
   risk_level: string;
   additional_controls: string | null;
   responsible_person: string | null;
+  photo_path: string | null;
+  task_id: number | null;
+  task_status: string | null;
+  task_assigned_user_id: string | null;
+  task_assigned_name: string | null;
+  task_due_date: string | null;
+  task_title: string | null;
   due_date: string | null;
   identified_date: string;
   status: string;
@@ -182,6 +190,14 @@ function NewRiskModal({
 }: NewRiskModalProps) {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+  const [members, setMembers] = useState<Array<{ userId: string; name: string; role?: string | null }>>([]);
+
+  useEffect(() => {
+    fetch('/api/team/members', { credentials: 'include' })
+      .then(response => response.ok ? response.json() : Promise.reject(new Error('Could not load team')))
+      .then((body: { members?: Array<{ userId: string; name: string; role?: string | null }> }) => setMembers(body.members ?? []))
+      .catch(() => setMembers([]));
+  }, []);
 
   // Job linkage — pre-filled from picker, can be cleared
   const [linkedJob, setLinkedJob] = useState<{
@@ -199,7 +215,7 @@ function NewRiskModal({
     likelihood: 'possible',
     consequence: 'moderate',
     additional_controls: '',
-    responsible_person: '',
+    assigned_user_id: '',
     due_date: '',
     identified_date: new Date().toISOString().slice(0, 10),
     status: 'open',
@@ -348,11 +364,14 @@ function NewRiskModal({
             <textarea value={form.additional_controls} onChange={e => set('additional_controls', e.target.value)} rows={2} placeholder="Further controls needed to reduce risk…" className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400 resize-none" />
           </div>
 
-          {/* Responsible person + due date */}
+          {/* Assigned team member + due date */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
-              <label className="text-xs font-semibold text-slate-600 mb-1 block">Responsible person</label>
-              <input type="text" value={form.responsible_person} onChange={e => set('responsible_person', e.target.value)} placeholder="Name or role" className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400" />
+              <label className="text-xs font-semibold text-slate-600 mb-1 block">Assign to</label>
+              <select value={form.assigned_user_id} onChange={e => set('assigned_user_id', e.target.value)} className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400">
+                <option value="">Unassigned</option>
+                {members.map(member => <option key={member.userId} value={member.userId}>{member.name}{member.role ? ` — ${member.role}` : ''}</option>)}
+              </select>
             </div>
             <div>
               <label className="text-xs font-semibold text-slate-600 mb-1 block">Due date</label>
@@ -402,6 +421,7 @@ interface RiskCardProps {
   onStatusChange: (id: number, status: string) => void;
   onArchived: (id: number) => void;
   onRestored: (id: number) => void;
+  onUpdated: (id: number, patch: Partial<RiskEntry>) => void;
   isArchiveView?: boolean;
 }
 function RiskCard({
@@ -409,6 +429,7 @@ function RiskCard({
   onStatusChange,
   onArchived,
   onRestored,
+  onUpdated,
   isArchiveView
 }: RiskCardProps) {
   const [expanded, setExpanded] = useState(false);
@@ -496,8 +517,8 @@ function RiskCard({
               {entry.job_name && <span className="flex items-center gap-1 text-xs text-slate-400">
                   <Briefcase size={10} /> {entry.job_name}
                 </span>}
-              {entry.responsible_person && <span className="flex items-center gap-1 text-xs text-slate-400">
-                  <User size={10} /> {entry.responsible_person}
+              {(entry.task_assigned_name || entry.responsible_person) && <span className="flex items-center gap-1 text-xs text-slate-400">
+                  <User size={10} /> {entry.task_assigned_name || entry.responsible_person}
                 </span>}
               {entry.due_date && <span className={`flex items-center gap-1 text-xs ${isOverdue ? 'text-red-500 font-semibold' : 'text-slate-400'}`}>
                   <CalendarDays size={10} />
@@ -560,6 +581,8 @@ function RiskCard({
               <p className="text-xs text-slate-400 mb-0.5">Notes</p>
               <p className="text-sm text-slate-700">{entry.notes}</p>
             </div>}
+
+          {!isArchiveView && <HazardPhase2Controls entry={entry} onUpdated={patch => onUpdated(entry.id, patch as Partial<RiskEntry>)} />}
 
           {/* Status change buttons */}
           {!isArchiveView && entry.status !== 'closed' && <div className="flex gap-2 pt-1">
@@ -681,7 +704,7 @@ export default function RiskRegisterPage() {
   }
 
   // Client-side search
-  const filtered = search.trim() ? entries.filter(e => e.title.toLowerCase().includes(search.toLowerCase()) || (e.description ?? '').toLowerCase().includes(search.toLowerCase()) || (e.category ?? '').toLowerCase().includes(search.toLowerCase()) || (e.responsible_person ?? '').toLowerCase().includes(search.toLowerCase()) || (e.job_name ?? '').toLowerCase().includes(search.toLowerCase())) : entries;
+  const filtered = search.trim() ? entries.filter(e => e.title.toLowerCase().includes(search.toLowerCase()) || (e.description ?? '').toLowerCase().includes(search.toLowerCase()) || (e.category ?? '').toLowerCase().includes(search.toLowerCase()) || (e.task_assigned_name ?? e.responsible_person ?? '').toLowerCase().includes(search.toLowerCase()) || (e.job_name ?? '').toLowerCase().includes(search.toLowerCase())) : entries;
 
   // Stats
   const extremeCount = entries.filter(e => e.risk_level === 'extreme' && e.status !== 'closed').length;
@@ -699,6 +722,9 @@ export default function RiskRegisterPage() {
   }
   function handleRestored(id: number) {
     setEntries(prev => prev.filter(e => e.id !== id));
+  }
+  function handleUpdated(id: number, patch: Partial<RiskEntry>) {
+    setEntries(prev => prev.map(entry => entry.id === id ? { ...entry, ...patch } : entry));
   }
   return <div className="flex-1 bg-[#f5f6f8] flex flex-col lg-portal">
       <PortalSidebar />
@@ -844,7 +870,7 @@ export default function RiskRegisterPage() {
                     </>}
                 </>}
             </div> : <div className="space-y-3">
-              {filtered.map(entry => <RiskCard key={entry.id} entry={entry} onStatusChange={handleStatusChange} onArchived={handleArchived} onRestored={handleRestored} isArchiveView={activeTab === 'archive'} />)}
+              {filtered.map(entry => <RiskCard key={entry.id} entry={entry} onStatusChange={handleStatusChange} onArchived={handleArchived} onRestored={handleRestored} onUpdated={handleUpdated} isArchiveView={activeTab === 'archive'} />)}
             </div>}
         </div>
       </div>

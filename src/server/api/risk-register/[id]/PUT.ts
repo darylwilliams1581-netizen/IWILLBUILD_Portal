@@ -9,6 +9,7 @@ import { sql } from 'drizzle-orm';
 import { getAuth } from '../../../../lib/auth/auth.js';
 import { profiles } from '../../../db/schema.js';
 import { eq } from 'drizzle-orm';
+import { completeLinkedTask, reopenLinkedTask, syncHazardTask } from '../../../lib/hazardTaskService.js';
 
 const ALLOWED_FIELDS = [
   'job_id', 'title', 'description', 'category', 'hazard_source',
@@ -41,6 +42,7 @@ export default async function handler(req: Request, res: Response) {
     if (isNaN(id)) return res.status(400).json({ error: 'Invalid id' });
 
     const body = req.body as Record<string, unknown>;
+    const assignmentProvided = Object.prototype.hasOwnProperty.call(body, 'assigned_user_id');
     const setClauses: string[] = [];
 
     for (const field of ALLOWED_FIELDS) {
@@ -60,21 +62,42 @@ export default async function handler(req: Request, res: Response) {
       }
     }
 
-    if (setClauses.length === 0) return res.status(400).json({ error: 'No fields to update' });
-    setClauses.push('`updated_at` = NOW()');
+    if (setClauses.length === 0 && !assignmentProvided) return res.status(400).json({ error: 'No fields to update' });
+    if (setClauses.length > 0) {
+      setClauses.push('`updated_at` = NOW()');
+      await db.execute(sql.raw(
+        `UPDATE risk_register SET ${setClauses.join(', ')} WHERE id = ${id} AND company_id = ${profile.companyId}`
+      ));
+    }
 
-    await db.execute(sql.raw(
-      `UPDATE risk_register SET ${setClauses.join(', ')} WHERE id = ${id} AND company_id = ${profile.companyId}`
-    ));
+    await syncHazardTask({
+      companyId: profile.companyId,
+      hazardId: id,
+      assignedUserId: body.assigned_user_id ? String(body.assigned_user_id) : null,
+      assignmentProvided,
+    });
 
-    const [rows] = await db.execute(sql.raw(
-      `SELECT r.*, j.job_number, j.name AS job_name FROM risk_register r LEFT JOIN jobs j ON j.id = r.job_id WHERE r.id = ${id} AND r.company_id = ${profile.companyId} LIMIT 1`
-    )) as unknown as [Array<Record<string, unknown>>, unknown];
+    if (body.status === 'closed') await completeLinkedTask(profile.companyId, id);
+    if (body.status === 'open' || body.status === 'in_progress') await reopenLinkedTask(profile.companyId, id);
+
+    const [rows] = await db.execute(sql`
+      SELECT r.*, j.job_number, j.name AS job_name,
+        t.id AS task_id, t.status AS task_status,
+        t.assigned_user_id AS task_assigned_user_id,
+        t.assigned_name AS task_assigned_name,
+        t.due_date AS task_due_date, t.title AS task_title
+      FROM risk_register r
+      LEFT JOIN jobs j ON j.id = r.job_id
+      LEFT JOIN job_todos t ON t.id = r.task_id AND t.company_id = r.company_id
+      WHERE r.id = ${id} AND r.company_id = ${profile.companyId}
+      LIMIT 1
+    `) as unknown as [Array<Record<string, unknown>>, unknown];
 
     if (!rows?.length) return res.status(404).json({ error: 'Not found' });
     res.json(rows[0]);
   } catch (err) {
     console.error('PUT /api/risk-register/:id error:', err);
-    res.status(500).json({ error: 'Failed to update risk entry' });
+    const status = (err as { status?: number })?.status ?? 500;
+    res.status(status).json({ error: status < 500 && err instanceof Error ? err.message : 'Failed to update risk entry' });
   }
 }

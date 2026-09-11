@@ -80,6 +80,7 @@ export const BUCKET_SAFETY_DOCS    = 'safety-documents';
 export const BUCKET_SAFETY_POSTERS = 'safety-posters';
 export const BUCKET_FLEET_FILES    = 'fleet-files';
 export const BUCKET_FORM_MEDIA     = 'form-media';
+export const BUCKET_HAZARD_PHOTOS  = 'hazard-photos';
 
 // ── Validation constants ──────────────────────────────────────────────────────
 

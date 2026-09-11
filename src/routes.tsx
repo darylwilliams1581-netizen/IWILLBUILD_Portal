@@ -93,6 +93,7 @@ const JobCardDetailPage = lazy(() => import('./pages/job-card-detail'));
 const DocumentViewerPage = lazy(() => import('./pages/document-viewer'));
 const SwmsSignoffPage = lazy(() => import('./pages/swms-signoff'));
 const FormFillPage = lazy(() => import('./pages/form-fill'));
+const HazardPublicPage = lazy(() => import('./pages/hazard-public'));
 const PlanManagerPage = lazy(() => import('./pages/plan-manager'));
 const PlanManagerSharePage = lazy(() => import('./pages/plan-manager-share'));
 const PlanManagerDrawingPage = lazy(() => import('./pages/plan-manager-drawing'));
@@ -291,6 +292,9 @@ export const routes: RouteObject[] = [{
 }, {
   path: '/forms/fill/:token',
   element: <Suspense fallback={<PageLoader />}><FormFillPage /></Suspense>
+}, {
+  path: '/hazard/:token',
+  element: <Suspense fallback={<PageLoader />}><HazardPublicPage /></Suspense>
 },
 // Customer portal — token-based, no staff login required
 {

@@ -8,6 +8,7 @@ import { sql } from 'drizzle-orm';
 import { getAuth } from '../../../lib/auth/auth.js';
 import { profiles } from '../../db/schema.js';
 import { eq } from 'drizzle-orm';
+import { syncHazardTask, validateCompanyUser } from '../../lib/hazardTaskService.js';
 
 export default async function handler(req: Request, res: Response) {
   try {
@@ -35,6 +36,7 @@ export default async function handler(req: Request, res: Response) {
       risk_level,
       additional_controls,
       responsible_person,
+      assigned_user_id,
       due_date,
       identified_date,
       status = 'open',
@@ -45,6 +47,11 @@ export default async function handler(req: Request, res: Response) {
     if (!title) return res.status(400).json({ error: 'title is required' });
     if (!likelihood) return res.status(400).json({ error: 'likelihood is required' });
     if (!consequence) return res.status(400).json({ error: 'consequence is required' });
+
+    if (assigned_user_id) {
+      const member = await validateCompanyUser(profile.companyId, String(assigned_user_id));
+      if (!member) return res.status(400).json({ error: 'Assigned user is not an active member of this company' });
+    }
 
     const [result] = await db.execute(sql.raw(`
       INSERT INTO risk_register (
@@ -81,9 +88,27 @@ export default async function handler(req: Request, res: Response) {
     const insertId = (result as { insertId?: number })?.insertId;
     if (!insertId) return res.status(500).json({ error: 'Insert failed' });
 
-    const [rows] = await db.execute(sql.raw(
-      `SELECT r.*, j.job_number, j.name AS job_name FROM risk_register r LEFT JOIN jobs j ON j.id = r.job_id WHERE r.id = ${insertId}`
-    )) as unknown as [Array<Record<string, unknown>>, unknown];
+    if (assigned_user_id) {
+      await syncHazardTask({
+        companyId: profile.companyId,
+        hazardId: insertId,
+        assignedUserId: String(assigned_user_id),
+        assignmentProvided: true,
+      });
+    }
+
+    const [rows] = await db.execute(sql`
+      SELECT r.*, j.job_number, j.name AS job_name,
+        t.id AS task_id, t.status AS task_status,
+        t.assigned_user_id AS task_assigned_user_id,
+        t.assigned_name AS task_assigned_name,
+        t.due_date AS task_due_date, t.title AS task_title
+      FROM risk_register r
+      LEFT JOIN jobs j ON j.id = r.job_id
+      LEFT JOIN job_todos t ON t.id = r.task_id AND t.company_id = r.company_id
+      WHERE r.id = ${insertId} AND r.company_id = ${profile.companyId}
+      LIMIT 1
+    `) as unknown as [Array<Record<string, unknown>>, unknown];
 
     res.status(201).json(rows?.[0] ?? { id: insertId });
   } catch (err) {

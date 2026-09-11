@@ -15,6 +15,7 @@ import { jobTodos, jobs, profiles } from '../../../db/schema.js';
 import { eq, and } from 'drizzle-orm';
 import { getAuth } from '../../../../lib/auth/auth.js';
 import { sql } from 'drizzle-orm';
+import { closeLinkedHazard, validateCompanyUser } from '../../../lib/hazardTaskService.js';
 
 const VALID_STATUSES = new Set(['Open', 'In Progress', 'Completed', 'Cancelled']);
 
@@ -49,7 +50,6 @@ export default async function handler(req: Request, res: Response) {
       status,
       notes,
       assignedUserId,
-      assignedName,
       jobId: rawJobId,
     } = req.body as {
       title?: string;
@@ -74,8 +74,17 @@ export default async function handler(req: Request, res: Response) {
     if (dueDate !== undefined)        update.dueDate        = dueDate?.trim() || null;
     if (status !== undefined)         update.status         = status;
     if (notes !== undefined)          update.notes          = notes?.trim() || null;
-    if (assignedUserId !== undefined) update.assignedUserId = assignedUserId?.trim() || null;
-    if (assignedName !== undefined)   update.assignedName   = assignedName?.trim() || null;
+    if (assignedUserId !== undefined) {
+      if (assignedUserId?.trim()) {
+        const member = await validateCompanyUser(profile.companyId, assignedUserId.trim());
+        if (!member) return res.status(400).json({ error: 'Assigned user is not an active member of this company' });
+        update.assignedUserId = member.userId;
+        update.assignedName = member.name;
+      } else {
+        update.assignedUserId = null;
+        update.assignedName = null;
+      }
+    }
 
     // Handle jobId change (including clearing it)
     if ('jobId' in req.body) {
@@ -95,6 +104,10 @@ export default async function handler(req: Request, res: Response) {
 
     if (Object.keys(update).length > 0) {
       await db.update(jobTodos).set(update).where(eq(jobTodos.id, taskId));
+    }
+
+    if (status === 'Completed') {
+      await closeLinkedHazard(profile.companyId, taskId, session.user.name ?? session.user.email ?? 'Team member');
     }
 
     // Fetch updated task with job info

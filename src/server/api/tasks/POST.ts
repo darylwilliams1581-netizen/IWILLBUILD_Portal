@@ -14,6 +14,7 @@ import { db } from '../../db/client.js';
 import { jobTodos, jobs, profiles } from '../../db/schema.js';
 import { eq, and } from 'drizzle-orm';
 import { getAuth } from '../../../lib/auth/auth.js';
+import { validateCompanyUser } from '../../lib/hazardTaskService.js';
 
 const VALID_STATUSES = new Set(['Open', 'In Progress', 'Completed', 'Cancelled']);
 
@@ -40,7 +41,6 @@ export default async function handler(req: Request, res: Response) {
       status,
       notes,
       assignedUserId,
-      assignedName,
       jobId: rawJobId,
     } = req.body as {
       title?: string;
@@ -70,6 +70,15 @@ export default async function handler(req: Request, res: Response) {
       resolvedJobId = jid;
     }
 
+    let safeAssignedUserId: string | null = null;
+    let safeAssignedName: string | null = null;
+    if (assignedUserId?.trim()) {
+      const member = await validateCompanyUser(profile.companyId, assignedUserId.trim());
+      if (!member) return res.status(400).json({ error: 'Assigned user is not an active member of this company' });
+      safeAssignedUserId = member.userId;
+      safeAssignedName = member.name;
+    }
+
     const [result] = await db.insert(jobTodos).values({
       jobId:          resolvedJobId as unknown as number, // schema type is int but DB now allows NULL
       companyId:      profile.companyId,
@@ -79,8 +88,8 @@ export default async function handler(req: Request, res: Response) {
       dueDate:        dueDate?.trim() || null,
       status:         resolvedStatus,
       notes:          notes?.trim() || null,
-      assignedUserId: assignedUserId?.trim() || null,
-      assignedName:   assignedName?.trim() || null,
+      assignedUserId: safeAssignedUserId,
+      assignedName:   safeAssignedName,
     });
 
     const task = await db.query.jobTodos.findFirst({
