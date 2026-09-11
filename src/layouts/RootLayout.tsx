@@ -67,7 +67,7 @@ function PortalBanners({ pathname }: { pathname: string | undefined }) {
   return (
     <>
       <SupportModeBanner />
-      <ViewOnlyBanner />
+      <ViewOnlyBanner variant="mobile" />
     </>
   );
 }

@@ -18,6 +18,7 @@ import { usePermissions } from '@/lib/usePermissions';
 import { signOut } from '@/lib/auth/auth-client.tsx';
 import { useDriverSessionSafe } from '@/lib/useDriverSession';
 import DrivingSessionBadge from '@/components/fleet/DrivingSessionBadge';
+import ViewOnlyBanner from '@/components/ViewOnlyBanner';
 export const DESKTOP_TOPBAR_HEIGHT = 56;
 /**
  * CSS calc() expression for the total topbar height including the iOS
@@ -115,22 +116,24 @@ export default function DesktopTopBar() {
     top: 0,
     left: 0,
     right: 0,
-    /* Total height = fixed content area + iOS status-bar inset.
-       On desktop env() resolves to 0 so this equals DESKTOP_TOPBAR_HEIGHT. */
-    height: `calc(${DESKTOP_TOPBAR_HEIGHT}px + env(safe-area-inset-top, 0px))`,
     zIndex: 1100,
-    alignItems: 'flex-end',   /* push content below the status-bar inset */
-    justifyContent: 'space-between',
-    paddingLeft: 20,
-    paddingRight: 14,
-    /* Bottom padding keeps content vertically centred in the 56px content zone */
-    paddingBottom: 8,
-    /* Top padding = status-bar height so content clears the iOS status bar */
-    paddingTop: 'env(safe-area-inset-top, 0px)',
-    background: 'linear-gradient(90deg, #1e1b4b 0%, #2e1065 50%, #3b0764 100%)',
-    borderBottom: '1px solid rgba(255,255,255,0.10)',
-    boxShadow: '0 2px 8px rgba(109,40,217,0.20)'
+    flexDirection: 'column',
+    alignItems: 'stretch'
   }}>
+    <div style={{
+      height: `calc(${DESKTOP_TOPBAR_HEIGHT}px + env(safe-area-inset-top, 0px))`,
+      display: 'flex',
+      alignItems: 'flex-end',
+      justifyContent: 'space-between',
+      paddingLeft: 20,
+      paddingRight: 14,
+      paddingBottom: 8,
+      paddingTop: 'env(safe-area-inset-top, 0px)',
+      background: 'linear-gradient(90deg, #1e1b4b 0%, #2e1065 50%, #3b0764 100%)',
+      borderBottom: '1px solid rgba(255,255,255,0.10)',
+      boxShadow: '0 2px 8px rgba(109,40,217,0.20)',
+      flexShrink: 0
+    }}>
       {/* ── Left: date + greeting ── */}
       <div style={{
       display: 'flex',
@@ -239,5 +242,7 @@ export default function DesktopTopBar() {
           <LogOut size={15} />
         </button>
       </div>
+    </div>
+    <ViewOnlyBanner variant="desktop" />
     </div>;
 }
