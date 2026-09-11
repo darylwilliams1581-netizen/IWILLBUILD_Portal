@@ -122,6 +122,7 @@ export default function SignupPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const [termsAgreed, setTermsAgreed] = useState(false);
   const [step, setStep] = useState<1 | 2 | 3>(1);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -170,6 +171,10 @@ export default function SignupPage() {
     }
     if (!passwordValid) {
       setError('Password does not meet the requirements below.');
+      return;
+    }
+    if (!termsAgreed) {
+      setError('Please agree to the Terms of Use, Fair Use, Privacy and System Policy to continue.');
       return;
     }
     setError('');
@@ -579,15 +584,41 @@ export default function SignupPage() {
                           </div>}
                       </div>
 
+                      {/* Terms agreement checkbox */}
+                      <label className="flex items-start gap-3 cursor-pointer select-none group">
+                        <div className="relative mt-0.5 shrink-0">
+                          <input
+                            type="checkbox"
+                            checked={termsAgreed}
+                            onChange={e => setTermsAgreed(e.target.checked)}
+                            className="sr-only"
+                          />
+                          <div className={`w-4.5 h-4.5 w-[18px] h-[18px] rounded border-2 flex items-center justify-center transition-all duration-150 ${termsAgreed ? 'bg-primary border-primary' : 'bg-white/5 border-white/25 group-hover:border-white/40'}`}>
+                            {termsAgreed && <CheckCircle2 size={11} className="text-white" />}
+                          </div>
+                        </div>
+                        <span className="text-xs text-white/50 leading-relaxed">
+                          I agree to the{' '}
+                          <a href="/terms" target="_blank" rel="noopener noreferrer" className="text-primary hover:text-violet-400 underline transition-colors">Terms of Use</a>
+                          {', '}
+                          <a href="/fair-use" target="_blank" rel="noopener noreferrer" className="text-primary hover:text-violet-400 underline transition-colors">Fair Use</a>
+                          {', '}
+                          <a href="/privacy" target="_blank" rel="noopener noreferrer" className="text-primary hover:text-violet-400 underline transition-colors">Privacy</a>
+                          {' and '}
+                          <a href="/system-policy" target="_blank" rel="noopener noreferrer" className="text-primary hover:text-violet-400 underline transition-colors">System Policy</a>
+                        </span>
+                      </label>
+
                       <div className="flex gap-2 mt-1">
                         <button type="button" onClick={() => {
                       setError('');
                       setTrialOnly(false);
+                      setTermsAgreed(false);
                       setStep(2);
                     }} className="flex-1 py-2.5 rounded-md border border-white/10 text-sm font-semibold text-white/50 hover:text-white hover:border-white/20 transition-colors duration-150">
                           Back
                         </button>
-                        <button type="submit" disabled={loading} className="flex-1 flex items-center justify-center gap-2 bg-primary hover:bg-violet-700 disabled:opacity-60 disabled:cursor-not-allowed text-white font-semibold text-sm py-2.5 rounded-md transition-colors duration-150">
+                        <button type="submit" disabled={loading || !termsAgreed} className="flex-1 flex items-center justify-center gap-2 bg-primary hover:bg-violet-700 disabled:opacity-60 disabled:cursor-not-allowed text-white font-semibold text-sm py-2.5 rounded-md transition-colors duration-150">
                           {loading ? <span className="flex items-center gap-2">
                               <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                               Creating…
@@ -609,7 +640,7 @@ export default function SignupPage() {
           {/* Footer */}
           <div className="px-8 py-4 bg-black/20 border-t border-white/5 text-center">
             <p className="text-xs text-white/25">
-              IWIllBUIlD Pty Ltd &mdash; By signing up you agree to our Terms of Service
+              IWIllBUIlD Pty Ltd &mdash; ABN 12 345 678 901
             </p>
           </div>
         </div>

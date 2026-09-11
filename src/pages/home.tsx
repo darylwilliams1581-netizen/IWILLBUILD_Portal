@@ -22,7 +22,6 @@ import MyTasksPanel from '@/components/notes/MyTasksPanel';
 import PagedHomeScreen from '@/components/home/PagedHomeScreen';
 
 import AppPermissionsOnboarding, { hasCompletedOnboarding } from '@/components/AppPermissionsOnboarding';
-import TermsAcceptanceGate, { hasAcceptedTerms } from '@/components/TermsAcceptanceGate';
 import { isNative } from '@/lib/capacitor-plugins';
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -1854,24 +1853,14 @@ export default function HomeScreen() {
   } = useSession();
   const email = session?.user?.email ?? me?.user?.email ?? '';
 
-  // ── Terms acceptance gate — shown once on first use (web + native) ───────────
-  // Dev account (support@iwillbuild.com) always sees the gate regardless of localStorage.
-  // Initialise conservatively (false = hidden) then re-evaluate once session resolves.
-  const [showTermsGate, setShowTermsGate] = useState(false);
-  useEffect(() => {
-    if (!email && loading) return; // session still loading — wait
-    setShowTermsGate(!hasAcceptedTerms(email));
-  }, [email, loading]);
-
-  // Show permissions onboarding AFTER terms are accepted (native only)
+  // ── Permissions onboarding — shown once on native after login ────────────────
   const [showPermOnboarding, setShowPermOnboarding] = useState(false);
   useEffect(() => {
     if (!isNative() || hasCompletedOnboarding()) return;
-    // Only start the timer once terms have been accepted
-    if (showTermsGate) return;
+    if (loading) return;
     const t = setTimeout(() => setShowPermOnboarding(true), 1500);
     return () => clearTimeout(t);
-  }, [showTermsGate]);
+  }, [loading]);
 
   // ── Home icon permissions ──────────────────────────────────────────────────
   const [iconPermissions, setIconPermissions] = useState<string[] | null>(null);
@@ -2001,21 +1990,11 @@ export default function HomeScreen() {
       </div>;
   }
   return <>
-      {/* Terms & Acceptable Use gate — shown once on first use (web + native) */}
-      {showTermsGate && (
-        <TermsAcceptanceGate
-          onAccepted={() => setShowTermsGate(false)}
-          userEmail={email}
-        />
-      )}
-
-      {/* Permissions onboarding — shown once on native after terms accepted */}
+      {/* Permissions onboarding — shown once on native after login */}
       {showPermOnboarding && <AppPermissionsOnboarding onDone={() => setShowPermOnboarding(false)} />}
 
-      {/* Main app content — suppressed while terms gate is open so iOS WKWebView
-          never measures a document taller than the viewport (which causes the
-          "pages too big / floats" layout bug on all subsequent pages). */}
-      {!showTermsGate && <div className="flex-1 flex flex-col relative overflow-hidden min-h-0 w-full max-w-full min-w-0" style={{
+      {/* Main app content */}
+      <div className="flex-1 flex flex-col relative overflow-hidden min-h-0 w-full max-w-full min-w-0" style={{
       background: '#edf0f5'
     }}>
       {/* Very subtle noise texture — reduced opacity so it doesn't compete with tile colours */}
@@ -2106,6 +2085,6 @@ export default function HomeScreen() {
       <PhoneJobCardSheet open={jobCardOpen} onClose={() => setJobCardOpen(false)} />
       </div>{/* end z-10 content wrapper */}
 
-    </div>}
+    </div>
     </>;
 }
