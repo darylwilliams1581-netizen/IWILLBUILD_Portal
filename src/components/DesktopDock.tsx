@@ -89,7 +89,7 @@ const ALL_ITEMS: DockItem[] = [
 {
   label: 'Safety',
   icon: ShieldCheck,
-  href: '/safety?safetyTab=documents',
+  href: '/safety?safetyTab=company-documents',
   color: '#dc2626'
 }, {
   label: 'Safety Posters',

@@ -3,12 +3,9 @@
  * extracted so it can be embedded inside Studio without its own
  * page wrapper, sidebar, or Helmet.
  *
- * Visible tab order (spec):
- *   1. Documents          — JobSwmsTab (job-issued SWMS documents)
- *   2. Submissions        — SwmsSubmissionsTab (company sign-off register)
- *   3. Policies & Docs    — PoliciesTab + App Doc template list
- *   4. Doc Submissions    — SubmissionsTab (document template submissions)
- *   5. Policy Library     — LibraryView (embedded, safety-filtered)
+ * Visible tab order:
+ *   1. Documents          — company document templates
+ *   2. Safety Documents   — documents assigned to jobs, with sign-offs
  *
  * Removed (moved to Studio → Apply Widget):
  *   SWMS               — SwmsLibraryTab  (master doc creation now in Studio)
@@ -26,36 +23,31 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { useSearchParams, useNavigate } from 'react-router';
 import { motion } from 'motion/react';
-import {
-  FileText, ClipboardCheck, BookOpen, Library, Inbox, Plus, FileUp, Layers,
-} from 'lucide-react';
-
-// Tab components from safety.tsx (unchanged behaviour)
-import {
-  PoliciesTab,
-} from '@/pages/safety';
+import { FileText, ClipboardCheck, Plus, FileUp, Layers } from 'lucide-react';
 
 // New / feature components
 import JobSwmsTab from './JobSwmsTab';
-import SwmsSubmissionsTab from './SwmsSubmissionsTab';
-import LibraryView from '../../features/library/LibraryView';
-
-const SAFETY_LIBRARY_TYPES = ['policy', 'procedure', 'swms'] as const;
-import { SubmissionsTab, type DocTemplate } from '../../pages/studio-documents';
+import type { DocTemplate } from '../../pages/studio-documents';
 
 // ── Tab definitions ───────────────────────────────────────────────────────────
 
 const TABS = [
-  { id: 'documents',       label: 'Documents',       icon: FileText       },
-  { id: 'submissions',     label: 'Submissions',      icon: ClipboardCheck },
-  { id: 'policies',        label: 'Policies & Docs',  icon: BookOpen       },
-  { id: 'doc-submissions', label: 'Doc Submissions',  icon: Inbox          },
-  { id: 'library',         label: 'Policy Library',   icon: Library        },
+  { id: 'company-documents', label: 'Documents',        icon: FileText },
+  { id: 'documents',         label: 'Safety Documents', icon: ClipboardCheck },
 ] as const;
 
 type TabId = typeof TABS[number]['id'];
 
-const DEFAULT_TAB: TabId = 'documents';
+const DEFAULT_TAB: TabId = 'company-documents';
+
+const LEGACY_TAB_REDIRECTS: Record<string, TabId> = {
+  submissions: 'documents',
+  swms: 'company-documents',
+  plans: 'company-documents',
+  policies: 'company-documents',
+  'doc-submissions': 'company-documents',
+  library: 'company-documents',
+};
 
 // ── Component ─────────────────────────────────────────────────────────────────
 
@@ -63,16 +55,15 @@ export default function SafetyContent() {
   const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
 
-  // Read the safetyTab param; fall back to default.
-  // Old tabs 'swms' and 'plans' are no longer in the tab strip — redirect them
-  // to Studio so users land in the right place.
+  // Read the safetyTab param; fall back to the company document list.
   const rawTab = searchParams.get('safetyTab');
 
   useEffect(() => {
-    if (rawTab === 'swms' || rawTab === 'plans') {
-      navigate('/studio/documents', { replace: true });
-    }
-  }, [rawTab, navigate]);
+    if (!rawTab || TABS.some((tab) => tab.id === rawTab)) return;
+    const next = new URLSearchParams(searchParams);
+    next.set('safetyTab', LEGACY_TAB_REDIRECTS[rawTab] ?? DEFAULT_TAB);
+    setSearchParams(next, { replace: true });
+  }, [rawTab, searchParams, setSearchParams]);
 
   const activeTab: TabId =
     TABS.some((t) => t.id === rawTab) ? (rawTab as TabId) : DEFAULT_TAB;
@@ -81,7 +72,7 @@ export default function SafetyContent() {
   const jobIdParam = searchParams.get('jobId');
   const initialJobId = jobIdParam ? Number(jobIdParam) : null;
 
-  // Doc templates — loaded once, shared between Policies & Docs and Doc Submissions tabs
+  // Company documents use the same records as the internal Studio builder.
   const [templates, setTemplates] = useState<DocTemplate[]>([]);
   const loadTemplates = useCallback(async () => {
     try {
@@ -93,7 +84,7 @@ export default function SafetyContent() {
   }, []);
 
   useEffect(() => {
-    if (activeTab === 'policies' || activeTab === 'doc-submissions') {
+    if (activeTab === 'company-documents') {
       void loadTemplates();
     }
   }, [activeTab, loadTemplates]);
@@ -150,16 +141,14 @@ export default function SafetyContent() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.2 }}
         >
-          {activeTab === 'documents'       && <JobSwmsTab initialJobId={initialJobId} />}
-          {activeTab === 'submissions'     && <SwmsSubmissionsTab />}
-          {activeTab === 'policies'        && (
+          {activeTab === 'company-documents' && (
             <>
-              {/* App Doc template list — the document building tool */}
+              {/* Company document list — the document building tool */}
               <div className="mb-6">
                 <div className="flex items-center justify-between mb-3">
                   <div className="flex items-center gap-2">
                     <Layers size={15} className="text-primary" />
-                    <h2 className="text-sm font-bold text-slate-800">Document Templates</h2>
+                    <h2 className="text-sm font-bold text-slate-800">Documents</h2>
                   </div>
                   <div className="flex items-center gap-2">
                     <button
@@ -186,8 +175,8 @@ export default function SafetyContent() {
                 {templates.length === 0 ? (
                   <div className="flex flex-col items-center justify-center py-10 text-center bg-slate-50 rounded-xl border border-slate-200">
                     <Layers size={20} className="text-slate-300 mb-2" />
-                    <p className="text-xs font-semibold text-slate-500">No document templates yet</p>
-                    <p className="text-xs text-slate-400 mt-0.5">Click "New Document" to build your first policy or procedure</p>
+                    <p className="text-xs font-semibold text-slate-500">No documents yet</p>
+                    <p className="text-xs text-slate-400 mt-0.5">Click "New Document" to build your first document</p>
                   </div>
                 ) : (
                   <div className="space-y-1.5">
@@ -214,17 +203,9 @@ export default function SafetyContent() {
                   </div>
                 )}
               </div>
-              {/* Existing policy files */}
-              <PoliciesTab />
             </>
           )}
-          {activeTab === 'doc-submissions' && <SubmissionsTab templates={templates} />}
-          {activeTab === 'library'         && (
-            <LibraryView
-              allowedTypes={SAFETY_LIBRARY_TYPES}
-              allTypesLabel="All safety"
-            />
-          )}
+          {activeTab === 'documents' && <JobSwmsTab initialJobId={initialJobId} />}
         </motion.div>
       </div>
     </div>
