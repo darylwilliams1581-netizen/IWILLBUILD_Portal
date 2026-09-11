@@ -70,12 +70,6 @@ const LAUNCHER_MODULES: LauncherModule[] = [
   href: '/studio/forms',
   color: '#6366f1',
   bg: '#eef2ff'
-}, {
-  label: 'Resource Library',
-  icon: BookOpen,
-  href: '/studio/library',
-  color: '#b45309',
-  bg: '#fffbeb'
 },
 // Row 4 — Assets & field
 {
@@ -110,6 +104,12 @@ const LAUNCHER_MODULES: LauncherModule[] = [
   href: '/incidents',
   color: '#b91c1c',
   bg: '#fff1f2'
+}, {
+  label: 'Resource Library',
+  icon: BookOpen,
+  href: '/studio/library',
+  color: '#b45309',
+  bg: '#fffbeb'
 }, {
   label: 'Equipment',
   icon: Building2,

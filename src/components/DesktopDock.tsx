@@ -106,6 +106,11 @@ const ALL_ITEMS: DockItem[] = [
   icon: TriangleAlert,
   href: '/risk-register',
   color: '#ea580c'
+}, {
+  label: 'Resource Library',
+  icon: BookOpen,
+  href: '/studio/library',
+  color: '#b45309'
 },
 // ── Resources / Tools ─────────────────────────────────────────────────────
 {
@@ -113,11 +118,6 @@ const ALL_ITEMS: DockItem[] = [
   icon: ClipboardList,
   href: '/studio/forms',
   color: '#7c3aed'
-}, {
-  label: 'Resource Library',
-  icon: BookOpen,
-  href: '/studio/library',
-  color: '#b45309'
 }, {
   label: 'Quick Links',
   icon: Link2,
