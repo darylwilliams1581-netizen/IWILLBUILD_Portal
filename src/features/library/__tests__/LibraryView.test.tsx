@@ -188,9 +188,9 @@ describe('LibraryView — structure', () => {
     mockFetchEmpty();
   });
 
-  it('renders the Content Library heading', async () => {
+  it('renders the Resource Library heading', async () => {
     renderView();
-    expect(screen.getByText('Content Library')).toBeInTheDocument();
+    expect(screen.getByText('Resource Library')).toBeInTheDocument();
   });
 
   it('renders the search input', async () => {
@@ -396,7 +396,7 @@ describe('LibraryView — no route responsibilities', () => {
 
   it('does not render a Navigate redirect element', async () => {
     renderView();
-    expect(screen.getByText('Content Library')).toBeInTheDocument();
+    expect(screen.getByText('Resource Library')).toBeInTheDocument();
   });
 });
 
