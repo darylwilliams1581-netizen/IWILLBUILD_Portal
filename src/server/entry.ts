@@ -773,6 +773,14 @@ import risk_register_id_get_740 from "./api/risk-register/[id]/GET";
 import risk_register_id_put_741 from "./api/risk-register/[id]/PUT";
 import risk_register_id_archive_post_742 from "./api/risk-register/[id]/archive/POST";
 import risk_register_id_unarchive_post_743 from "./api/risk-register/[id]/unarchive/POST";
+import risk_register_id_photo_post from "./api/risk-register/[id]/photo/POST";
+import risk_register_id_photo_delete from "./api/risk-register/[id]/photo/DELETE";
+import risk_register_id_photo_url_get from "./api/risk-register/[id]/photo-url/GET";
+import risk_register_id_share_token_post from "./api/risk-register/[id]/share-token/POST";
+import risk_register_id_share_token_delete from "./api/risk-register/[id]/share-token/DELETE";
+import risk_register_id_public_comments_get from "./api/risk-register/[id]/public-comments/GET";
+import public_hazard_token_get from "./api/public/hazard/[token]/GET";
+import public_hazard_token_close_post from "./api/public/hazard/[token]/close/POST";
 import rl_register_get_744 from "./api/rl-register/GET";
 import rl_register_post_745 from "./api/rl-register/POST";
 import rl_register_points_id_delete_746 from "./api/rl-register/points/[id]/DELETE";
@@ -1469,6 +1477,72 @@ async function runStartupMigrations() {
       if (!isDupColumnError(e)) {
         console.warn(`[startup-migration] risk_register.${colName} alter failed:`, msg);
       }
+    }
+  }
+
+  // 1a-rr-phase2. Add Phase 2 columns to risk_register (idempotent)
+  for (const colDef of [
+    "photo_path           VARCHAR(1000) NULL",
+    "responsible_user_id  VARCHAR(36) NULL",
+  ]) {
+    const colName = colDef.trim().split(/\s+/)[0];
+    try {
+      await db.execute(sql.raw(`ALTER TABLE risk_register ADD COLUMN ${colDef}`));
+      console.log(`[startup-migration] risk_register.${colName} added`);
+    } catch (e: unknown) {
+      if (!isDupColumnError(e)) {
+        console.warn(`[startup-migration] risk_register.${colName} alter failed:`, migrationErrMsg(e));
+      }
+    }
+  }
+
+  // 1a-rr-share-tokens. Hazard share tokens table
+  try {
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS hazard_share_tokens (
+        id                  INT AUTO_INCREMENT PRIMARY KEY,
+        hazard_id           INT NOT NULL,
+        company_id          INT NOT NULL,
+        token               VARCHAR(96) NOT NULL UNIQUE,
+        created_by_user_id  VARCHAR(36) NULL,
+        revoked             TINYINT(1) NOT NULL DEFAULT 0,
+        created_at          DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        INDEX idx_hst_token (token),
+        INDEX idx_hst_hazard (hazard_id),
+        INDEX idx_hst_company (company_id)
+      )
+    `);
+    console.log('[startup-migration] hazard_share_tokens table ready');
+  } catch (e: unknown) {
+    const msg = migrationErrMsg(e);
+    if (!msg.includes('already exists') && !msg.includes('ER_TABLE_EXISTS')) {
+      console.warn('[startup-migration] hazard_share_tokens CREATE failed:', msg);
+    }
+  }
+
+  // 1a-rr-public-comments. Hazard public comments table
+  try {
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS hazard_public_comments (
+        id               INT AUTO_INCREMENT PRIMARY KEY,
+        hazard_id        INT NOT NULL,
+        company_id       INT NOT NULL,
+        commenter_name   VARCHAR(255) NOT NULL,
+        comment          TEXT NOT NULL,
+        action_taken     VARCHAR(30) NOT NULL DEFAULT 'comment',
+        previous_status  VARCHAR(30) NULL,
+        new_status       VARCHAR(30) NULL,
+        ip_address       VARCHAR(100) NULL,
+        created_at       DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        INDEX idx_hpc_hazard (hazard_id),
+        INDEX idx_hpc_company (company_id)
+      )
+    `);
+    console.log('[startup-migration] hazard_public_comments table ready');
+  } catch (e: unknown) {
+    const msg = migrationErrMsg(e);
+    if (!msg.includes('already exists') && !msg.includes('ER_TABLE_EXISTS')) {
+      console.warn('[startup-migration] hazard_public_comments CREATE failed:', msg);
     }
   }
 
@@ -4261,6 +4335,14 @@ app.get("/api/risk-register/:id", risk_register_id_get_740);
 app.put("/api/risk-register/:id", risk_register_id_put_741);
 app.post("/api/risk-register/:id/archive", risk_register_id_archive_post_742);
 app.post("/api/risk-register/:id/unarchive", risk_register_id_unarchive_post_743);
+app.post("/api/risk-register/:id/photo", risk_register_id_photo_post);
+app.delete("/api/risk-register/:id/photo", risk_register_id_photo_delete);
+app.get("/api/risk-register/:id/photo-url", risk_register_id_photo_url_get);
+app.post("/api/risk-register/:id/share-token", risk_register_id_share_token_post);
+app.delete("/api/risk-register/:id/share-token", risk_register_id_share_token_delete);
+app.get("/api/risk-register/:id/public-comments", risk_register_id_public_comments_get);
+app.get("/api/public/hazard/:token", public_hazard_token_get);
+app.post("/api/public/hazard/:token/close", public_hazard_token_close_post);
 app.get("/api/rl-register", rl_register_get_744);
 app.post("/api/rl-register", rl_register_post_745);
 app.delete("/api/rl-register/points/:id", rl_register_points_id_delete_746);

@@ -35,6 +35,7 @@ export default async function handler(req: Request, res: Response) {
       risk_level,
       additional_controls,
       responsible_person,
+      responsible_user_id,
       due_date,
       identified_date,
       status = 'open',
@@ -51,7 +52,7 @@ export default async function handler(req: Request, res: Response) {
         company_id, job_id, title, description, category,
         hazard_source, who_is_at_risk, existing_controls,
         likelihood, consequence, risk_level,
-        additional_controls, responsible_person,
+        additional_controls, responsible_person, responsible_user_id,
         due_date, identified_date, status, review_date, notes,
         created_by, created_at, updated_at
       ) VALUES (
@@ -68,6 +69,7 @@ export default async function handler(req: Request, res: Response) {
         ${risk_level ? `'${String(risk_level).replace(/'/g, "''")}'` : `'medium'`},
         ${additional_controls ? `'${String(additional_controls).replace(/'/g, "''")}'` : 'NULL'},
         ${responsible_person ? `'${String(responsible_person).replace(/'/g, "''")}'` : 'NULL'},
+        ${responsible_user_id ? `'${String(responsible_user_id).replace(/'/g, "''")}'` : 'NULL'},
         ${due_date ? `'${String(due_date)}'` : 'NULL'},
         ${identified_date ? `'${String(identified_date)}'` : 'CURDATE()'},
         '${String(status).replace(/'/g, "''")}',
@@ -82,7 +84,7 @@ export default async function handler(req: Request, res: Response) {
     if (!insertId) return res.status(500).json({ error: 'Insert failed' });
 
     const [rows] = await db.execute(sql.raw(
-      `SELECT r.*, j.job_number, j.name AS job_name FROM risk_register r LEFT JOIN jobs j ON j.id = r.job_id WHERE r.id = ${insertId}`
+      `SELECT r.*, j.job_number, j.name AS job_name, u.name AS responsible_user_name FROM risk_register r LEFT JOIN jobs j ON j.id = r.job_id LEFT JOIN user u ON u.id = r.responsible_user_id WHERE r.id = ${insertId}`
     )) as unknown as [Array<Record<string, unknown>>, unknown];
 
     res.status(201).json(rows?.[0] ?? { id: insertId });

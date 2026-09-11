@@ -11,14 +11,15 @@
  *   Risk level:  low | medium | high | extreme
  */
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate, useSearchParams } from "react-router";
 import { Helmet } from '@dr.pogodin/react-helmet';
 import DesktopTopBar from '@/components/DesktopTopBar';
 import DesktopDock from '@/components/DesktopDock';
 import PortalSidebar from '@/components/PortalSidebar';
 import JobPickerSheet from '@/components/JobPickerSheet';
-import { ShieldAlert, Plus, Filter, X, ChevronRight, Loader2, Search, Home, AlertTriangle, CheckCircle2, Clock, User, CalendarDays, Briefcase, ChevronDown, ChevronUp, Archive, ArchiveRestore, Inbox } from 'lucide-react';
+import { goBack } from '@/lib/navigation';
+import { ShieldAlert, Plus, Filter, X, ChevronRight, Loader2, Search, Home, AlertTriangle, CheckCircle2, Clock, User, CalendarDays, Briefcase, ChevronDown, ChevronUp, Archive, ArchiveRestore, Inbox, Camera, Trash2, Share2, Copy, Link2, Mail, Phone } from 'lucide-react';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -40,6 +41,8 @@ export interface RiskEntry {
   risk_level: string;
   additional_controls: string | null;
   responsible_person: string | null;
+  responsible_user_id: string | null;
+  responsible_user_name: string | null;
   due_date: string | null;
   identified_date: string;
   status: string;
@@ -50,6 +53,7 @@ export interface RiskEntry {
   archived_at: string | null;
   archived_by: string | null;
   archive_reason: string | null;
+  photo_path: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -163,6 +167,108 @@ export function statusStyle(status: string) {
   return STATUS_OPTIONS.find(s => s.value === status)?.color ?? 'bg-slate-100 text-slate-500';
 }
 
+// ── Team Member Picker ────────────────────────────────────────────────────────
+
+interface TeamMember {
+  userId: string;
+  name: string;
+  role: string;
+}
+
+interface TeamMemberPickerProps {
+  value: { userId: string; name: string } | null;
+  onChange: (member: { userId: string; name: string } | null) => void;
+  placeholder?: string;
+}
+function TeamMemberPicker({ value, onChange, placeholder = 'Select team member…' }: TeamMemberPickerProps) {
+  const [members, setMembers] = useState<TeamMember[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [open, setOpen] = useState(false);
+  const [search, setSearch] = useState('');
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open || members.length) return;
+    setLoading(true);
+    void fetch('/api/team/members')
+      .then(r => r.ok ? r.json() as Promise<{ members: TeamMember[] }> : Promise.reject())
+      .then(d => setMembers(d.members ?? []))
+      .catch(() => {/* non-fatal */})
+      .finally(() => setLoading(false));
+  }, [open, members.length]);
+
+  // Close on outside click
+  useEffect(() => {
+    function handler(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    }
+    if (open) document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [open]);
+
+  const filtered = search.trim()
+    ? members.filter(m => m.name.toLowerCase().includes(search.toLowerCase()))
+    : members;
+
+  return (
+    <div className="relative" ref={ref}>
+      <button
+        type="button"
+        onClick={() => setOpen(o => !o)}
+        className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm text-left flex items-center gap-2 focus:outline-none focus:ring-2 focus:ring-orange-400 bg-white"
+      >
+        <User size={13} className="text-slate-400 shrink-0" />
+        <span className={value ? 'text-slate-800' : 'text-slate-400'}>{value?.name ?? placeholder}</span>
+        {value && (
+          <button
+            type="button"
+            onClick={e => { e.stopPropagation(); onChange(null); }}
+            className="ml-auto text-slate-300 hover:text-slate-500"
+          >
+            <X size={12} />
+          </button>
+        )}
+      </button>
+      {open && (
+        <div className="absolute z-50 top-full left-0 right-0 mt-1 bg-white border border-slate-200 rounded-xl shadow-lg overflow-hidden">
+          <div className="p-2 border-b border-slate-100">
+            <input
+              type="text"
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              placeholder="Search…"
+              className="w-full text-sm px-2 py-1.5 border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-orange-400"
+              autoFocus
+            />
+          </div>
+          <div className="max-h-48 overflow-y-auto">
+            {loading ? (
+              <div className="flex justify-center py-4"><Loader2 size={16} className="animate-spin text-slate-400" /></div>
+            ) : filtered.length === 0 ? (
+              <p className="text-xs text-slate-400 text-center py-4">No members found</p>
+            ) : filtered.map(m => (
+              <button
+                key={m.userId}
+                type="button"
+                onClick={() => { onChange({ userId: m.userId, name: m.name }); setOpen(false); setSearch(''); }}
+                className="w-full text-left px-3 py-2.5 text-sm hover:bg-orange-50 flex items-center gap-2"
+              >
+                <div className="w-6 h-6 rounded-full bg-orange-100 flex items-center justify-center text-orange-600 text-xs font-bold shrink-0">
+                  {m.name.charAt(0).toUpperCase()}
+                </div>
+                <div>
+                  <p className="font-medium text-slate-800">{m.name}</p>
+                  <p className="text-xs text-slate-400 capitalize">{m.role}</p>
+                </div>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── New Entry Modal ───────────────────────────────────────────────────────────
 
 interface NewRiskModalProps {
@@ -188,6 +294,7 @@ function NewRiskModal({
     name: string;
     jobNumber?: string | null;
   } | null>(preselectedJob ?? null);
+  const [responsibleMember, setResponsibleMember] = useState<{ userId: string; name: string } | null>(null);
   const [form, setForm] = useState({
     title: '',
     description: '',
@@ -228,7 +335,9 @@ function NewRiskModal({
         body: JSON.stringify({
           ...form,
           risk_level: riskLevel,
-          job_id: linkedJob?.id ?? null
+          job_id: linkedJob?.id ?? null,
+          responsible_user_id: responsibleMember?.userId ?? null,
+          responsible_person: responsibleMember?.name ?? form.responsible_person,
         })
       });
       if (!r.ok) {
@@ -351,7 +460,23 @@ function NewRiskModal({
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <label className="text-xs font-semibold text-slate-600 mb-1 block">Responsible person</label>
-              <input type="text" value={form.responsible_person} onChange={e => set('responsible_person', e.target.value)} placeholder="Name or role" className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400" />
+              <TeamMemberPicker
+                value={responsibleMember}
+                onChange={m => {
+                  setResponsibleMember(m);
+                  if (m) set('responsible_person', m.name);
+                }}
+                placeholder="Select team member…"
+              />
+              {!responsibleMember && (
+                <input
+                  type="text"
+                  value={form.responsible_person}
+                  onChange={e => set('responsible_person', e.target.value)}
+                  placeholder="Or type a name / role"
+                  className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400 mt-1.5"
+                />
+              )}
             </div>
             <div>
               <label className="text-xs font-semibold text-slate-600 mb-1 block">Due date</label>
@@ -401,6 +526,7 @@ interface RiskCardProps {
   onStatusChange: (id: number, status: string) => void;
   onArchived: (id: number) => void;
   onRestored: (id: number) => void;
+  onUpdated: (entry: RiskEntry) => void;
   isArchiveView?: boolean;
 }
 function RiskCard({
@@ -408,6 +534,7 @@ function RiskCard({
   onStatusChange,
   onArchived,
   onRestored,
+  onUpdated,
   isArchiveView
 }: RiskCardProps) {
   const [expanded, setExpanded] = useState(false);
@@ -416,38 +543,82 @@ function RiskCard({
   const [archiveReason, setArchiveReason] = useState('');
   const [archiving, setArchiving] = useState(false);
   const [restoring, setRestoring] = useState(false);
+
+  // Photo state
+  const [photoUrl, setPhotoUrl] = useState<string | null>(null);
+  const [photoLoading, setPhotoLoading] = useState(false);
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
+  const [removingPhoto, setRemovingPhoto] = useState(false);
+  const photoInputRef = useRef<HTMLInputElement>(null);
+
+  // Share state
+  const [showShareSheet, setShowShareSheet] = useState(false);
+  const [shareUrl, setShareUrl] = useState<string | null>(null);
+  const [generatingShare, setGeneratingShare] = useState(false);
+  const [copied, setCopied] = useState(false);
+  const [revokingShare, setRevokingShare] = useState(false);
+
+  // Public comments
+  const [publicComments, setPublicComments] = useState<Array<{
+    id: number; commenter_name: string; comment: string;
+    action_taken: string; new_status: string | null; created_at: string;
+  }> | null>(null);
+  const [loadingComments, setLoadingComments] = useState(false);
+
   const isOverdue = entry.due_date && entry.status !== 'closed' && new Date(entry.due_date) < new Date();
+  const hasPhoto = !!entry.photo_path;
+  const responsibleDisplay = entry.responsible_user_name ?? entry.responsible_person;
+
+  // Load photo URL when card is expanded and has a photo
+  useEffect(() => {
+    if (!expanded || !hasPhoto || photoUrl) return;
+    setPhotoLoading(true);
+    void fetch(`/api/risk-register/${entry.id}/photo-url`)
+      .then(r => r.ok ? r.json() as Promise<{ url: string | null }> : Promise.reject())
+      .then(d => setPhotoUrl(d.url))
+      .catch(() => {/* non-fatal */})
+      .finally(() => setPhotoLoading(false));
+  }, [expanded, hasPhoto, photoUrl, entry.id]);
+
+  // Load public comments when expanded
+  useEffect(() => {
+    if (!expanded || publicComments !== null) return;
+    setLoadingComments(true);
+    void fetch(`/api/risk-register/${entry.id}/public-comments`)
+      .then(r => r.ok ? r.json() as Promise<{ comments: typeof publicComments }> : Promise.resolve({ comments: [] }))
+      .then(d => setPublicComments(d.comments ?? []))
+      .catch(() => setPublicComments([]))
+      .finally(() => setLoadingComments(false));
+  }, [expanded, publicComments, entry.id]);
+
   async function handleStatusChange(newStatus: string) {
     setUpdatingStatus(true);
     try {
       const r = await fetch(`/api/risk-register/${entry.id}`, {
         method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json'
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           status: newStatus,
-          ...(newStatus === 'closed' ? {
-            closed_at: new Date().toISOString()
-          } : {})
+          ...(newStatus === 'closed' ? { closed_at: new Date().toISOString() } : {})
         })
       });
-      if (r.ok) onStatusChange(entry.id, newStatus);
+      if (r.ok) {
+        const updated = await r.json() as RiskEntry;
+        onStatusChange(entry.id, newStatus);
+        onUpdated(updated);
+      }
     } finally {
       setUpdatingStatus(false);
     }
   }
+
   async function handleArchive() {
     setArchiving(true);
     try {
       const r = await fetch(`/api/risk-register/${entry.id}/archive`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          reason: archiveReason
-        })
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ reason: archiveReason })
       });
       if (r.ok) {
         setShowArchiveModal(false);
@@ -457,17 +628,83 @@ function RiskCard({
       setArchiving(false);
     }
   }
+
   async function handleRestore() {
     setRestoring(true);
     try {
-      const r = await fetch(`/api/risk-register/${entry.id}/unarchive`, {
-        method: 'POST'
-      });
+      const r = await fetch(`/api/risk-register/${entry.id}/unarchive`, { method: 'POST' });
       if (r.ok) onRestored(entry.id);
     } finally {
       setRestoring(false);
     }
   }
+
+  async function handlePhotoUpload(file: File) {
+    setUploadingPhoto(true);
+    try {
+      const fd = new FormData();
+      fd.append('file', file);
+      const r = await fetch(`/api/risk-register/${entry.id}/photo`, { method: 'POST', body: fd });
+      if (!r.ok) throw new Error('Upload failed');
+      const d = await r.json() as { photo_path: string; url: string };
+      setPhotoUrl(d.url);
+      onUpdated({ ...entry, photo_path: d.photo_path });
+    } catch {/* non-fatal */}
+    finally { setUploadingPhoto(false); }
+  }
+
+  async function handleRemovePhoto() {
+    setRemovingPhoto(true);
+    try {
+      await fetch(`/api/risk-register/${entry.id}/photo`, { method: 'DELETE' });
+      setPhotoUrl(null);
+      onUpdated({ ...entry, photo_path: null });
+    } finally { setRemovingPhoto(false); }
+  }
+
+  async function handleShare() {
+    setShowShareSheet(true);
+    if (shareUrl) return;
+    setGeneratingShare(true);
+    try {
+      const r = await fetch(`/api/risk-register/${entry.id}/share-token`, { method: 'POST' });
+      if (r.ok) {
+        const d = await r.json() as { url: string };
+        setShareUrl(d.url);
+      }
+    } finally { setGeneratingShare(false); }
+  }
+
+  async function handleRevokeShare() {
+    setRevokingShare(true);
+    try {
+      await fetch(`/api/risk-register/${entry.id}/share-token`, { method: 'DELETE' });
+      setShareUrl(null);
+      setShowShareSheet(false);
+    } finally { setRevokingShare(false); }
+  }
+
+  function copyLink() {
+    if (!shareUrl) return;
+    void navigator.clipboard.writeText(shareUrl).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    });
+  }
+
+  function openSms() {
+    if (!shareUrl) return;
+    const body = encodeURIComponent(`Hazard: ${entry.title}\n${shareUrl}`);
+    window.open(`sms:?body=${body}`, '_self');
+  }
+
+  function openEmail() {
+    if (!shareUrl) return;
+    const subject = encodeURIComponent(`Hazard Register: ${entry.title}`);
+    const body = encodeURIComponent(`Please review this hazard:\n\n${entry.title}\nRisk level: ${entry.risk_level}\n\n${shareUrl}`);
+    window.open(`mailto:?subject=${subject}&body=${body}`, '_self');
+  }
+
   return <div className={`bg-white rounded-2xl shadow-sm border transition-colors ${entry.risk_level === 'extreme' ? 'border-red-200' : entry.risk_level === 'high' ? 'border-orange-200' : 'border-slate-100'}`}>
       {/* Main row */}
       <button type="button" onClick={() => setExpanded(e => !e)} className="w-full text-left p-4">
@@ -479,6 +716,7 @@ function RiskCard({
             <div className="flex items-start justify-between gap-2">
               <p className="text-sm font-semibold text-slate-800 leading-snug">{entry.title}</p>
               <div className="flex items-center gap-1.5 shrink-0">
+                {hasPhoto && <Camera size={11} className="text-slate-300" />}
                 <span className={`text-xs font-bold px-2 py-0.5 rounded-full border ${riskLevelStyle(entry.risk_level)}`}>
                   {entry.risk_level.charAt(0).toUpperCase() + entry.risk_level.slice(1)}
                 </span>
@@ -495,16 +733,13 @@ function RiskCard({
               {entry.job_name && <span className="flex items-center gap-1 text-xs text-slate-400">
                   <Briefcase size={10} /> {entry.job_name}
                 </span>}
-              {entry.responsible_person && <span className="flex items-center gap-1 text-xs text-slate-400">
-                  <User size={10} /> {entry.responsible_person}
+              {responsibleDisplay && <span className="flex items-center gap-1 text-xs text-slate-400">
+                  <User size={10} /> {responsibleDisplay}
                 </span>}
               {entry.due_date && <span className={`flex items-center gap-1 text-xs ${isOverdue ? 'text-red-500 font-semibold' : 'text-slate-400'}`}>
                   <CalendarDays size={10} />
                   {isOverdue ? 'Overdue · ' : ''}
-                  {new Date(entry.due_date).toLocaleDateString('en-AU', {
-                day: 'numeric',
-                month: 'short'
-              })}
+                  {new Date(entry.due_date).toLocaleDateString('en-AU', { day: 'numeric', month: 'short' })}
                 </span>}
             </div>
           </div>
@@ -513,6 +748,59 @@ function RiskCard({
 
       {/* Expanded detail */}
       {expanded && <div className="px-4 pb-4 border-t border-slate-50 pt-3 space-y-3">
+
+          {/* Snapshot photo */}
+          <div>
+            {photoLoading ? (
+              <div className="h-32 bg-slate-50 rounded-xl flex items-center justify-center">
+                <Loader2 size={20} className="animate-spin text-slate-300" />
+              </div>
+            ) : photoUrl ? (
+              <div className="relative rounded-xl overflow-hidden">
+                <img src={photoUrl} alt="Hazard photo" className="w-full max-h-56 object-cover" loading="lazy" />
+                <div className="absolute top-2 right-2 flex gap-1.5">
+                  <button
+                    type="button"
+                    onClick={() => photoInputRef.current?.click()}
+                    disabled={uploadingPhoto}
+                    className="bg-white/90 hover:bg-white text-slate-600 rounded-lg p-1.5 shadow text-xs flex items-center gap-1 transition-colors"
+                  >
+                    <Camera size={12} /> Replace
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => void handleRemovePhoto()}
+                    disabled={removingPhoto}
+                    className="bg-white/90 hover:bg-red-50 text-red-500 rounded-lg p-1.5 shadow transition-colors"
+                  >
+                    {removingPhoto ? <Loader2 size={12} className="animate-spin" /> : <Trash2 size={12} />}
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <button
+                type="button"
+                onClick={() => photoInputRef.current?.click()}
+                disabled={uploadingPhoto}
+                className="w-full h-20 border-2 border-dashed border-slate-200 rounded-xl flex items-center justify-center gap-2 text-slate-400 hover:border-orange-300 hover:text-orange-500 transition-colors text-sm"
+              >
+                {uploadingPhoto ? <Loader2 size={16} className="animate-spin" /> : <Camera size={16} />}
+                {uploadingPhoto ? 'Uploading…' : 'Add photo'}
+              </button>
+            )}
+            <input
+              ref={photoInputRef}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={e => {
+                const file = e.target.files?.[0];
+                if (file) void handlePhotoUpload(file);
+                e.target.value = '';
+              }}
+            />
+          </div>
+
           {/* Assessment row */}
           <div className="flex gap-4 text-xs">
             <div>
@@ -526,11 +814,7 @@ function RiskCard({
             <div>
               <span className="text-slate-400">Identified</span>
               <p className="font-semibold text-slate-700">
-                {new Date(entry.identified_date).toLocaleDateString('en-AU', {
-              day: 'numeric',
-              month: 'short',
-              year: 'numeric'
-            })}
+                {new Date(entry.identified_date).toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric' })}
               </p>
             </div>
           </div>
@@ -560,27 +844,53 @@ function RiskCard({
               <p className="text-sm text-slate-700">{entry.notes}</p>
             </div>}
 
-          {/* Status change buttons */}
-          {!isArchiveView && entry.status !== 'closed' && <div className="flex gap-2 pt-1">
-              {STATUS_OPTIONS.filter(s => s.value !== entry.status && s.value !== 'open').map(s => <button key={s.value} type="button" disabled={updatingStatus} onClick={() => void handleStatusChange(s.value)} className={`flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-xl border transition-colors disabled:opacity-50 ${s.color} border-current/20`}>
-                  {updatingStatus ? <Loader2 size={10} className="animate-spin" /> : s.value === 'closed' ? <CheckCircle2 size={10} /> : <Clock size={10} />}
-                  Mark {s.label.toLowerCase()}
-                </button>)}
-            </div>}
+          {/* Public comments */}
+          {loadingComments && <div className="flex items-center gap-1.5 text-xs text-slate-400"><Loader2 size={10} className="animate-spin" /> Loading comments…</div>}
+          {publicComments && publicComments.length > 0 && (
+            <div className="space-y-2">
+              <p className="text-xs font-semibold text-slate-500">Public comments</p>
+              {publicComments.map(c => (
+                <div key={c.id} className={`rounded-xl px-3 py-2.5 text-sm ${c.action_taken === 'closed' ? 'bg-emerald-50 border border-emerald-100' : 'bg-slate-50'}`}>
+                  <div className="flex items-center justify-between gap-2">
+                    <p className="font-semibold text-slate-800 text-xs">{c.commenter_name}</p>
+                    {c.action_taken === 'closed' && (
+                      <span className="flex items-center gap-1 text-xs text-emerald-600"><CheckCircle2 size={10} /> Closed</span>
+                    )}
+                  </div>
+                  <p className="text-slate-600 mt-0.5">{c.comment}</p>
+                  <p className="text-xs text-slate-400 mt-1">
+                    {new Date(c.created_at).toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric' })}
+                  </p>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Action row: status + share + archive */}
+          <div className="flex items-center gap-2 flex-wrap pt-1">
+            {/* Status change buttons */}
+            {!isArchiveView && entry.status !== 'closed' && STATUS_OPTIONS.filter(s => s.value !== entry.status && s.value !== 'open').map(s => (
+              <button key={s.value} type="button" disabled={updatingStatus} onClick={() => void handleStatusChange(s.value)} className={`flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-xl border transition-colors disabled:opacity-50 ${s.color} border-current/20`}>
+                {updatingStatus ? <Loader2 size={10} className="animate-spin" /> : s.value === 'closed' ? <CheckCircle2 size={10} /> : <Clock size={10} />}
+                Mark {s.label.toLowerCase()}
+              </button>
+            ))}
+
+            {/* Share button */}
+            {!isArchiveView && (
+              <button type="button" onClick={() => void handleShare()} className="flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-xl text-violet-600 bg-violet-50 hover:bg-violet-100 border border-violet-200 transition-colors ml-auto">
+                <Share2 size={10} /> Share
+              </button>
+            )}
+          </div>
 
           {/* Archive / Restore */}
           <div className="pt-1 border-t border-slate-50">
             {isArchiveView ? <div className="space-y-2">
-                {entry.archive_reason && <p className="text-xs text-slate-400 italic">
-                    Archived reason: {entry.archive_reason}
-                  </p>}
+                {entry.archive_reason && <p className="text-xs text-slate-400 italic">Archived reason: {entry.archive_reason}</p>}
                 {entry.archived_by && <p className="text-xs text-slate-400">
                     Archived by {entry.archived_by}
-                    {entry.archived_at ? ` · ${new Date(entry.archived_at).toLocaleDateString('en-AU', {
-              day: 'numeric',
-              month: 'short',
-              year: 'numeric'
-            })}` : ''}
+                    {entry.archived_at ? ` · ${new Date(entry.archived_at).toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric' })}` : ''}
                   </p>}
                 <button type="button" disabled={restoring} onClick={() => void handleRestore()} className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-xl bg-violet-50 text-violet-700 border border-violet-200 hover:bg-violet-100 transition-colors disabled:opacity-50">
                   {restoring ? <Loader2 size={10} className="animate-spin" /> : <ArchiveRestore size={10} />}
@@ -610,9 +920,7 @@ function RiskCard({
               <textarea value={archiveReason} onChange={e => setArchiveReason(e.target.value)} placeholder="e.g. Risk resolved, controls in place, no longer applicable…" rows={3} className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm text-slate-800 placeholder-slate-300 resize-none focus:outline-none focus:ring-2 focus:ring-violet-300" />
             </div>
             <div className="flex gap-2">
-              <button type="button" onClick={() => setShowArchiveModal(false)} className="flex-1 py-2.5 rounded-xl border border-slate-200 text-sm font-semibold text-slate-600 hover:bg-slate-50">
-                Cancel
-              </button>
+              <button type="button" onClick={() => setShowArchiveModal(false)} className="flex-1 py-2.5 rounded-xl border border-slate-200 text-sm font-semibold text-slate-600 hover:bg-slate-50">Cancel</button>
               <button type="button" disabled={archiving} onClick={() => void handleArchive()} className="flex-1 py-2.5 rounded-xl bg-slate-700 text-white text-sm font-semibold hover:bg-slate-800 disabled:opacity-50 flex items-center justify-center gap-2">
                 {archiving ? <Loader2 size={14} className="animate-spin" /> : <Archive size={14} />}
                 Archive
@@ -620,6 +928,56 @@ function RiskCard({
             </div>
           </div>
         </div>}
+
+      {/* Share sheet */}
+      {showShareSheet && (
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/40 px-0 sm:px-4">
+          <div className="bg-white w-full sm:max-w-sm rounded-t-3xl sm:rounded-2xl shadow-2xl p-5 space-y-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Share2 size={16} className="text-violet-500" />
+                <p className="font-bold text-slate-800 text-sm">Share hazard</p>
+              </div>
+              <button type="button" onClick={() => setShowShareSheet(false)} className="w-8 h-8 rounded-full flex items-center justify-center text-slate-400 hover:bg-slate-100">
+                <X size={16} />
+              </button>
+            </div>
+
+            {generatingShare ? (
+              <div className="flex justify-center py-4"><Loader2 size={20} className="animate-spin text-violet-400" /></div>
+            ) : shareUrl ? (
+              <>
+                <div className="bg-slate-50 rounded-xl px-3 py-2.5 flex items-center gap-2">
+                  <Link2 size={12} className="text-slate-400 shrink-0" />
+                  <p className="text-xs text-slate-600 truncate flex-1">{shareUrl}</p>
+                </div>
+                <div className="grid grid-cols-3 gap-2">
+                  <button type="button" onClick={copyLink} className={`flex flex-col items-center gap-1.5 py-3 rounded-xl border text-xs font-semibold transition-colors ${copied ? 'bg-emerald-50 border-emerald-200 text-emerald-700' : 'border-slate-200 text-slate-600 hover:bg-slate-50'}`}>
+                    <Copy size={16} />
+                    {copied ? 'Copied!' : 'Copy link'}
+                  </button>
+                  <button type="button" onClick={openSms} className="flex flex-col items-center gap-1.5 py-3 rounded-xl border border-slate-200 text-xs font-semibold text-slate-600 hover:bg-slate-50 transition-colors">
+                    <Phone size={16} />
+                    SMS
+                  </button>
+                  <button type="button" onClick={openEmail} className="flex flex-col items-center gap-1.5 py-3 rounded-xl border border-slate-200 text-xs font-semibold text-slate-600 hover:bg-slate-50 transition-colors">
+                    <Mail size={16} />
+                    Email
+                  </button>
+                </div>
+                <div className="pt-1 border-t border-slate-100">
+                  <button type="button" disabled={revokingShare} onClick={() => void handleRevokeShare()} className="flex items-center gap-1.5 text-xs text-red-400 hover:text-red-600 transition-colors disabled:opacity-50">
+                    {revokingShare ? <Loader2 size={10} className="animate-spin" /> : <X size={10} />}
+                    Revoke link
+                  </button>
+                </div>
+              </>
+            ) : (
+              <p className="text-sm text-slate-400 text-center py-4">Failed to generate share link</p>
+            )}
+          </div>
+        </div>
+      )}
     </div>;
 }
 
@@ -698,6 +1056,9 @@ export default function RiskRegisterPage() {
   }
   function handleRestored(id: number) {
     setEntries(prev => prev.filter(e => e.id !== id));
+  }
+  function handleUpdated(updated: RiskEntry) {
+    setEntries(prev => prev.map(e => e.id === updated.id ? updated : e));
   }
   return <div className="flex-1 bg-[#f5f6f8] flex flex-col lg-portal">
       <PortalSidebar />
@@ -843,7 +1204,7 @@ export default function RiskRegisterPage() {
                     </>}
                 </>}
             </div> : <div className="space-y-3">
-              {filtered.map(entry => <RiskCard key={entry.id} entry={entry} onStatusChange={handleStatusChange} onArchived={handleArchived} onRestored={handleRestored} isArchiveView={activeTab === 'archive'} />)}
+              {filtered.map(entry => <RiskCard key={entry.id} entry={entry} onStatusChange={handleStatusChange} onArchived={handleArchived} onRestored={handleRestored} onUpdated={handleUpdated} isArchiveView={activeTab === 'archive'} />)}
             </div>}
         </div>
       </div>

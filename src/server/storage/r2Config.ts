@@ -63,6 +63,7 @@ export const LOGICAL_NAMESPACES = [
   'drawings',
   'sds-register',
   'tender-attachments',
+  'hazard-photos',
 ] as const;
 
 export type LogicalNamespace = typeof LOGICAL_NAMESPACES[number];

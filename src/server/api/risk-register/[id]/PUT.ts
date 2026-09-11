@@ -13,7 +13,7 @@ import { eq } from 'drizzle-orm';
 const ALLOWED_FIELDS = [
   'job_id', 'title', 'description', 'category', 'hazard_source',
   'who_is_at_risk', 'existing_controls', 'likelihood', 'consequence',
-  'risk_level', 'additional_controls', 'responsible_person',
+  'risk_level', 'additional_controls', 'responsible_person', 'responsible_user_id',
   'due_date', 'identified_date', 'status', 'review_date', 'notes',
   'closed_at', 'closed_by',
 ] as const;
@@ -49,7 +49,7 @@ export default async function handler(req: Request, res: Response) {
       if (val === null || val === undefined || val === '') {
         // Allow explicit null for nullable fields
         if (['job_id', 'description', 'category', 'hazard_source', 'who_is_at_risk',
-             'existing_controls', 'additional_controls', 'responsible_person',
+             'existing_controls', 'additional_controls', 'responsible_person', 'responsible_user_id',
              'due_date', 'review_date', 'notes', 'closed_at', 'closed_by'].includes(field)) {
           setClauses.push(`\`${field}\` = NULL`);
         }
@@ -68,7 +68,7 @@ export default async function handler(req: Request, res: Response) {
     ));
 
     const [rows] = await db.execute(sql.raw(
-      `SELECT r.*, j.job_number, j.name AS job_name FROM risk_register r LEFT JOIN jobs j ON j.id = r.job_id WHERE r.id = ${id} AND r.company_id = ${profile.companyId} LIMIT 1`
+      `SELECT r.*, j.job_number, j.name AS job_name, u.name AS responsible_user_name FROM risk_register r LEFT JOIN jobs j ON j.id = r.job_id LEFT JOIN user u ON u.id = r.responsible_user_id WHERE r.id = ${id} AND r.company_id = ${profile.companyId} LIMIT 1`
     )) as unknown as [Array<Record<string, unknown>>, unknown];
 
     if (!rows?.length) return res.status(404).json({ error: 'Not found' });

@@ -92,6 +92,7 @@ const JobCardNewPage = lazy(() => import('./pages/job-card-new'));
 const JobCardDetailPage = lazy(() => import('./pages/job-card-detail'));
 const DocumentViewerPage = lazy(() => import('./pages/document-viewer'));
 const SwmsSignoffPage = lazy(() => import('./pages/swms-signoff'));
+const HazardPublicPage = lazy(() => import('./pages/hazard-public'));
 const FormFillPage = lazy(() => import('./pages/form-fill'));
 const PlanManagerPage = lazy(() => import('./pages/plan-manager'));
 const PlanManagerSharePage = lazy(() => import('./pages/plan-manager-share'));
@@ -289,6 +290,9 @@ export const routes: RouteObject[] = [{
 }, {
   path: '/safety/sign/:token',
   element: <Suspense fallback={<PageLoader />}><SwmsSignoffPage /></Suspense>
+}, {
+  path: '/hazard/:token',
+  element: <Suspense fallback={<PageLoader />}><HazardPublicPage /></Suspense>
 }, {
   path: '/forms/fill/:token',
   element: <Suspense fallback={<PageLoader />}><FormFillPage /></Suspense>

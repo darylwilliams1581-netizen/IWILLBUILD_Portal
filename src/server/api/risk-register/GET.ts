@@ -52,9 +52,12 @@ export default async function handler(req: Request, res: Response) {
       SELECT r.*,
         j.job_number,
         j.name AS job_name,
-        j.site_address
+        j.site_address,
+        u.name AS responsible_user_name
       FROM risk_register r
       LEFT JOIN jobs j ON j.id = r.job_id
+      LEFT JOIN profiles p ON p.user_id = r.responsible_user_id AND p.company_id = r.company_id
+      LEFT JOIN user u ON u.id = r.responsible_user_id
       ${where}
       ORDER BY
         FIELD(r.risk_level, 'extreme', 'high', 'medium', 'low') ASC,
