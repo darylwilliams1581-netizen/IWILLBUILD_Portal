@@ -229,6 +229,18 @@ const DESKTOP_NAV_GROUPS: DesktopNavGroup[] = [{
     icon: ShieldAlert,
     href: '/safety/posters'
   }, {
+    id: 'nav-16',
+    idx: '16',
+    label: 'Hazard Register',
+    icon: TriangleAlert,
+    href: '/risk-register'
+  }, {
+    id: 'nav-sds',
+    idx: '16a',
+    label: 'SDS Register',
+    icon: ShieldAlert,
+    href: '/sds-register'
+  }, {
     id: 'nav-16b',
     idx: '16b',
     label: 'Risk & Permits',
@@ -240,22 +252,16 @@ const DESKTOP_NAV_GROUPS: DesktopNavGroup[] = [{
     label: 'Incidents',
     icon: AlertCircle,
     href: '/incidents'
-  }, {
-    id: 'nav-16',
-    idx: '16',
-    label: 'Risk Register',
-    icon: TriangleAlert,
-    href: '/risk-register'
-  }, {
+  }]
+}, {
+  heading: 'Resources',
+  items: [{
     id: 'nav-19',
     idx: '19',
     label: 'Resource Library',
     icon: BookOpen,
     href: '/studio/library'
-  }]
-}, {
-  heading: 'Resources',
-  items: [{
+  }, {
     id: 'nav-20',
     idx: '20',
     label: 'Quick Links',

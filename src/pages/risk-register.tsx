@@ -252,7 +252,7 @@ function NewRiskModal({
         <div className="flex items-center justify-between px-5 pt-5 pb-3 border-b border-slate-100 shrink-0">
           <div className="flex items-center gap-2">
             <ShieldAlert size={18} className="text-orange-500" />
-            <h2 className="font-bold text-slate-800 text-base">New Risk Entry</h2>
+            <h2 className="font-bold text-slate-800 text-base">New Hazard</h2>
           </div>
           <button type="button" onClick={onClose} className="w-8 h-8 rounded-full flex items-center justify-center text-slate-400 hover:bg-slate-100">
             <X size={16} />
@@ -274,12 +274,12 @@ function NewRiskModal({
                 <button type="button" onClick={() => setLinkedJob(null)} className="text-slate-400 hover:text-slate-600 shrink-0">
                   <X size={14} />
                 </button>
-              </div> : <p className="text-xs text-slate-400 italic px-1">No job linked — company-wide risk</p>}
+              </div> : <p className="text-xs text-slate-400 italic px-1">No job linked — company-wide hazard</p>}
           </div>
 
           {/* Title */}
           <div>
-            <label className="text-xs font-semibold text-slate-600 mb-1 block">Risk / Hazard title <span className="text-red-500">*</span></label>
+            <label className="text-xs font-semibold text-slate-600 mb-1 block">Hazard title <span className="text-red-500">*</span></label>
             <input type="text" value={form.title} onChange={e => set('title', e.target.value)} placeholder="e.g. Working at heights — roof edge" className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400" required />
           </div>
 
@@ -295,7 +295,7 @@ function NewRiskModal({
           {/* Description */}
           <div>
             <label className="text-xs font-semibold text-slate-600 mb-1 block">Description</label>
-            <textarea value={form.description} onChange={e => set('description', e.target.value)} rows={2} placeholder="Describe the hazard or risk situation…" className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400 resize-none" />
+            <textarea value={form.description} onChange={e => set('description', e.target.value)} rows={2} placeholder="Describe the hazard and circumstances…" className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400 resize-none" />
           </div>
 
           {/* Hazard source + who is at risk */}
@@ -388,7 +388,7 @@ function NewRiskModal({
           </button>
           <button type="submit" form="" onClick={handleSubmit as unknown as React.MouseEventHandler<HTMLButtonElement>} disabled={saving} className="flex-1 py-2.5 rounded-xl bg-orange-500 hover:bg-orange-600 text-white text-sm font-bold transition-colors disabled:opacity-60 flex items-center justify-center gap-2">
             {saving ? <Loader2 size={14} className="animate-spin" /> : <Plus size={14} />}
-            {saving ? 'Saving…' : 'Save risk'}
+            {saving ? 'Saving…' : 'Save hazard'}
           </button>
         </div>
       </div>
@@ -602,13 +602,13 @@ function RiskCard({
                 <Archive size={16} className="text-slate-500" />
               </div>
               <div>
-                <h3 className="font-bold text-slate-800 text-base">Archive risk</h3>
+                <h3 className="font-bold text-slate-800 text-base">Archive hazard</h3>
                 <p className="text-xs text-slate-400">Moves to archive — never deleted</p>
               </div>
             </div>
             <div>
               <label className="text-xs font-semibold text-slate-600 mb-1 block">Reason (optional)</label>
-              <textarea value={archiveReason} onChange={e => setArchiveReason(e.target.value)} placeholder="e.g. Risk resolved, controls in place, no longer applicable…" rows={3} className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm text-slate-800 placeholder-slate-300 resize-none focus:outline-none focus:ring-2 focus:ring-violet-300" />
+              <textarea value={archiveReason} onChange={e => setArchiveReason(e.target.value)} placeholder="e.g. Hazard resolved, controls in place, no longer applicable…" rows={3} className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm text-slate-800 placeholder-slate-300 resize-none focus:outline-none focus:ring-2 focus:ring-violet-300" />
             </div>
             <div className="flex gap-2">
               <button type="button" onClick={() => setShowArchiveModal(false)} className="flex-1 py-2.5 rounded-xl border border-slate-200 text-sm font-semibold text-slate-600 hover:bg-slate-50">
@@ -705,8 +705,8 @@ export default function RiskRegisterPage() {
       <DesktopTopBar />
       <DesktopDock />
       <Helmet>
-        <title>Risk Register — IWIllBUIlD</title>
-        <meta name="description" content="Company risk register — identify, assess, and control workplace hazards and risks." />
+        <title>Hazard Register — IWIllBUIlD</title>
+        <meta name="description" content="Company hazard register — identify, assess, and control workplace hazards and risks." />
         <link rel="canonical" href="https://iwillbuild.com/risk-register" />
         <meta name="robots" content="noindex, nofollow" />
       </Helmet>
@@ -719,26 +719,26 @@ export default function RiskRegisterPage() {
               <Home size={11} /> Home
             </button>
             <ChevronRight size={10} className="text-orange-400" />
-            <span className="text-orange-100 font-medium">Risk Register</span>
+            <span className="text-orange-100 font-medium">Hazard Register</span>
           </div>
 
           <div className="flex items-center justify-between gap-3 mb-3">
             <div className="flex items-center gap-2">
               <ShieldAlert size={20} className="text-orange-200" />
-              <h1 className="font-bold text-base">Risk Register</h1>
+              <h1 className="font-bold text-base">Hazard Register</h1>
             </div>
             <button type="button" onClick={() => {
             setPendingJob('none');
             setShowJobPicker(true);
           }} className="flex items-center gap-1.5 bg-white/20 hover:bg-white/30 px-3 py-1.5 rounded-xl text-sm font-semibold transition-colors">
-              <Plus size={14} /> New risk
+              <Plus size={14} /> New hazard
             </button>
           </div>
 
           {/* Search */}
           <div className="relative">
             <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-orange-300" />
-            <input type="text" value={search} onChange={e => setSearch(e.target.value)} placeholder="Search risks…" className="w-full bg-white/15 border border-white/20 rounded-xl pl-8 pr-3 py-2 text-sm text-white placeholder-orange-300 focus:outline-none focus:bg-white/25" />
+            <input type="text" value={search} onChange={e => setSearch(e.target.value)} placeholder="Search hazards…" className="w-full bg-white/15 border border-white/20 rounded-xl pl-8 pr-3 py-2 text-sm text-white placeholder-orange-300 focus:outline-none focus:bg-white/25" />
           </div>
         </div>
 
@@ -830,16 +830,16 @@ export default function RiskRegisterPage() {
               {activeTab === 'archive' ? <>
                   <Inbox size={36} className="text-slate-200 mx-auto mb-3" />
                   <p className="text-slate-400 text-sm font-medium">Archive is empty</p>
-                  <p className="text-slate-300 text-xs mt-1">Archived risks appear here — they are never deleted</p>
+                  <p className="text-slate-300 text-xs mt-1">Archived hazards appear here — they are never deleted</p>
                 </> : <>
                   <ShieldAlert size={36} className="text-slate-200 mx-auto mb-3" />
                   <p className="text-slate-400 text-sm font-medium">
-                    {activeFilterCount > 0 || search ? 'No risks match your filters' : 'No risks recorded'}
+                    {activeFilterCount > 0 || search ? 'No hazards match your filters' : 'No hazards recorded'}
                   </p>
                   {!activeFilterCount && !search && <>
-                      <p className="text-slate-300 text-xs mt-1">Tap New risk to add the first entry</p>
+                      <p className="text-slate-300 text-xs mt-1">Tap New hazard to add the first entry</p>
                       <button type="button" onClick={() => setShowNewModal(true)} className="mt-4 flex items-center gap-2 mx-auto bg-orange-500 hover:bg-orange-600 text-white text-sm font-semibold px-5 py-2.5 rounded-xl transition-colors">
-                        <Plus size={14} /> Add first risk
+                        <Plus size={14} /> Add first hazard
                       </button>
                     </>}
                 </>}
@@ -850,7 +850,7 @@ export default function RiskRegisterPage() {
       </div>
 
       {/* Job picker — shown before new entry modal */}
-      <JobPickerSheet open={showJobPicker} onClose={() => setShowJobPicker(false)} title="Link to a job?" subtitle="Select a job or skip to log a company-wide risk" iconBg="bg-orange-100" iconFg="text-orange-600" Icon={Briefcase} onSelect={job => {
+      <JobPickerSheet open={showJobPicker} onClose={() => setShowJobPicker(false)} title="Link to a job?" subtitle="Select a job or skip to log a company-wide hazard" iconBg="bg-orange-100" iconFg="text-orange-600" Icon={Briefcase} onSelect={job => {
       setPendingJob({
         id: job.id,
         name: job.name,
@@ -866,7 +866,7 @@ export default function RiskRegisterPage() {
         setShowJobPicker(false);
         setShowNewModal(true);
       }} className="bg-white border border-slate-200 shadow-lg rounded-2xl px-5 py-2.5 text-sm font-semibold text-slate-600 hover:bg-slate-50 transition-colors">
-            No job — company-wide risk
+            No job — company-wide hazard
           </button>
         </div>}
 
