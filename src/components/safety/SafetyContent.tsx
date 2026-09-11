@@ -40,7 +40,7 @@ import { type DocTemplate } from '../../pages/studio-documents';
 // ── Tab definitions ───────────────────────────────────────────────────────────
 
 const TABS = [
-  { id: 'company-documents', label: 'Documents',         icon: FileText    },
+  { id: 'company-documents', label: 'Document Templates', icon: FileText    },
   { id: 'documents',         label: 'Safety Documents',  icon: ShieldCheck },
 ] as const;
 
