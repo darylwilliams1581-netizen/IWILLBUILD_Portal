@@ -889,5 +889,18 @@
       "/airo-assets/uploads/reference-screenshot-forms-3-f6557de8.jpg": "f38wenbvln_1789086499817_file_zoI2Vt2ENa.jpg"
     },
     "uploadContentHash": "8db80ea2e36d1e655ebd2d588f87e72774ec6eec513c7da5262c450d7fa14b6a"
+  },
+  "reference/screenshot-forms-4": {
+    "mediaType": "image",
+    "currentUrl": "/airo-assets/uploads/reference-screenshot-forms-4-eeb50706.jpg",
+    "searchQuery": "",
+    "alternatives": [],
+    "userModified": true,
+    "createdAt": "2026-09-11T01:35:19.959Z",
+    "lastUpdated": "2026-09-11T01:35:19.959Z",
+    "uploadSources": {
+      "/airo-assets/uploads/reference-screenshot-forms-4-eeb50706.jpg": "f38wenbvln_1789087408478_file_5d4CVSIcst.jpg"
+    },
+    "uploadContentHash": "558d05678aa0095560f724031904cbfe8de3c81ebcca1eceb8a5dd9c5f33fa6c"
   }
 }
