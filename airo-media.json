@@ -909,7 +909,7 @@
   "reference/screenshot-forms-5": {
     "mediaType": "image",
     "currentUrl": "/airo-assets/uploads/reference-screenshot-forms-5-19b01d34.jpg",
-    "searchQuery": "",
+    "searchQuery": "form template management interface dashboard",
     "alternatives": [],
     "userModified": true,
     "createdAt": "2026-09-11T01:35:20.251Z",
@@ -917,6 +917,7 @@
     "uploadSources": {
       "/airo-assets/uploads/reference-screenshot-forms-5-19b01d34.jpg": "f38wenbvln_1789088997197_file_EvckoacUQM.jpg"
     },
-    "uploadContentHash": "cf76af589ede9b3adf0c484e47bb5966ba07329a359ad80f3822600db0059e08"
+    "uploadContentHash": "cf76af589ede9b3adf0c484e47bb5966ba07329a359ad80f3822600db0059e08",
+    "caption": "form template management interface dashboard"
   }
 }
