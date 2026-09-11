@@ -3,6 +3,7 @@ import { flushSync } from "react-dom";
 import { isDevToolsElement, isContentElement, detectImage, getMediaSlotPath, isInsideNavSurface } from "../utils/element-detection";
 import { isTouchDevice } from "../utils/device";
 import { trackEventBus } from "../utils/eventBus";
+import { isOriginAllowed } from "../utils/postMessage";
 
 export interface HoveredImage {
   element: HTMLElement;
@@ -529,17 +530,24 @@ export function useImageHoverDetection(
       clearToolbarAnchor();
     };
 
+    const handleMessage = (event: MessageEvent): void => {
+      if (!isOriginAllowed(event)) return;
+      if (event.data?.type === "CLEAR_SELECTION") clearToolbarAnchor();
+    };
+
     document.addEventListener("mouseover", handleMouseOver);
     document.addEventListener("mouseout", handleMouseOut);
     document.addEventListener("mousedown", handleMouseDown, true);
     document.addEventListener("click", handleClick, true);
     document.addEventListener("keydown", handleEscapeDismiss);
+    window.addEventListener("message", handleMessage);
     return () => {
       document.removeEventListener("mouseover", handleMouseOver);
       document.removeEventListener("mouseout", handleMouseOut);
       document.removeEventListener("mousedown", handleMouseDown, true);
       document.removeEventListener("click", handleClick, true);
       document.removeEventListener("keydown", handleEscapeDismiss);
+      window.removeEventListener("message", handleMessage);
       clearToolbarAnchor();
     };
   }, [isEditModeActive, editingStateRef, updateHoveredImage, updateHoveredElement, setToolbarMode, clearToolbarAnchor, openToolbarFor]);

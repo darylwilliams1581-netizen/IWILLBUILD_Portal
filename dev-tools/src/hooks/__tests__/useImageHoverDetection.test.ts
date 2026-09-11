@@ -321,6 +321,51 @@ describe('useImageHoverDetection toolbar dismiss', () => {
     expect(result.current.hoveredElement).toBeNull();
   });
 
+  it('clears edit chrome without leaving edit mode when the parent clears selection', function clearsSelection(): void {
+    const { result, paragraph }: ReturnType<typeof renderWithOpenToolbar> = renderWithOpenToolbar();
+
+    act((): void => {
+      window.dispatchEvent(new MessageEvent('message', {
+        data: { type: 'CLEAR_SELECTION' },
+        origin: 'http://localhost:3000',
+      }));
+    });
+
+    expect(result.current.toolbarMode).toBe(false);
+    expect(result.current.hoveredElement).toBeNull();
+
+    fireClick(paragraph);
+    expect(result.current.toolbarMode).toBe(true);
+  });
+
+  it('ignores clear-selection messages from rejected origins', function rejectsOrigin(): void {
+    const { result, paragraph }: ReturnType<typeof renderWithOpenToolbar> = renderWithOpenToolbar();
+
+    act((): void => {
+      window.dispatchEvent(new MessageEvent('message', {
+        data: { type: 'CLEAR_SELECTION' },
+        origin: 'https://example.com',
+      }));
+    });
+
+    expect(result.current.toolbarMode).toBe(true);
+    expect(result.current.hoveredElement?.element).toBe(paragraph);
+  });
+
+  it('ignores unrelated messages from allowed origins', function ignoresUnrelated(): void {
+    const { result, paragraph }: ReturnType<typeof renderWithOpenToolbar> = renderWithOpenToolbar();
+
+    act((): void => {
+      window.dispatchEvent(new MessageEvent('message', {
+        data: { type: 'IFRAME_READY' },
+        origin: 'http://localhost:3000',
+      }));
+    });
+
+    expect(result.current.toolbarMode).toBe(true);
+    expect(result.current.hoveredElement?.element).toBe(paragraph);
+  });
+
   it('leaves Escape to the focused input so quick edit keeps its own dismissal', () => {
     const { result } = renderWithOpenToolbar();
     const input = document.createElement('input');
