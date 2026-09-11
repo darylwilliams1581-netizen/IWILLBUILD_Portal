@@ -104,8 +104,7 @@ export const SAFETY_ICON_DEFS: HomeIconDef[] = [
 export const MANAGEMENT_ICON_DEFS: HomeIconDef[] = [
   { key: 'profile',        label: 'My Profile',      icon: User,             href: '/profile',                bg: 'bg-slate-500',   fg: 'text-white', group: 'management' },
   { key: 'dazza_ai',       label: 'Dazza AI',        icon: Bot,              href: '/dazza-ai',               bg: 'bg-violet-700',  fg: 'text-white', group: 'management', platformOnly: true },
-  { key: 'app_docs',       label: 'Studio Documents', icon: FileText,         href: '/studio/documents',       bg: 'bg-slate-700',   fg: 'text-white', group: 'management', adminOnly: true },
-  { key: 'library',        label: 'Library',         icon: Library,          href: '/studio/library',         bg: 'bg-amber-700',   fg: 'text-white', group: 'management', adminOnly: true },
+  { key: 'library',        label: 'Resource Library', icon: Library,        href: '/studio/library',         bg: 'bg-amber-700',   fg: 'text-white', group: 'management', adminOnly: true },
   { key: 'quick_links',    label: 'Quick Links',     icon: Link2,            href: '/quick-links',            bg: 'bg-lime-700',    fg: 'text-white', group: 'management', adminOnly: true },
   { key: 'lists',          label: 'Lists',           icon: TableProperties,  href: '/lists',                  bg: 'bg-teal-600',    fg: 'text-white', group: 'management', adminOnly: true },
   { key: 'user_logs',      label: 'User Logs',       icon: ScrollText,       href: '/user-logs',              bg: 'bg-gray-700',    fg: 'text-white', group: 'management', adminOnly: true },

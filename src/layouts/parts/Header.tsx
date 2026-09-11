@@ -31,7 +31,7 @@ const MODULES = [{
   desc: 'Xero and QuickBooks sync'
 }, {
   href: '/studio',
-  label: 'Studio',
+  label: 'Documents',
   desc: 'Documents and safety packs'
 }, {
   href: '/lens',
