@@ -5,7 +5,7 @@ import { FileText, Plus, Pencil, Trash2, LayoutDashboard, Briefcase, Truck, X, Z
 import { motion, AnimatePresence } from 'motion/react';
 import FormFieldBuilder from '@/components/FormFieldBuilder';
 import { usePermissions } from '@/lib/usePermissions';
-import { LibraryView as LibraryPage } from '../features/library/LibraryView';
+// LibraryView removed from Forms — library tab now redirects to /studio/library
 import DazzaBuilderAssistant from '@/components/DazzaBuilderAssistant';
 import { buildFormsBuilderContext } from '@/components/DazzaBuilderAssistant/FormsBuilderAdapter';
 
@@ -1209,14 +1209,21 @@ export function FormsPage() {
     }
   }
 
-  // ── Document Builder state removed — Documents tab moved to Studio ───────────
-  // Initialise from ?tab= query param so returnTo links land on the right tab.
+  // ── Tab state ─────────────────────────────────────────────────────────────────
+  // Library tab removed from Forms — consolidated to /studio/library.
+  // ?tab=library deep links are redirected below; all other unknown tabs fall
+  // back to 'submissions'.
   const [searchParams] = useSearchParams();
   const tabParam = searchParams.get('tab');
-  const validTabs = ['submissions', 'forms', 'library'] as const;
+  const validTabs = ['submissions', 'forms'] as const;
   type TabId = typeof validTabs[number];
   const initialTab: TabId = validTabs.includes(tabParam as TabId) ? tabParam as TabId : 'submissions';
   const [pageTab, setPageTab] = useState<TabId>(initialTab);
+
+  // Redirect legacy ?tab=library deep links to the consolidated Global Library.
+  // Must be a Navigate element returned from the component, not a hook call,
+  // because hooks cannot be called conditionally.
+  const redirectToLibrary = tabParam === 'library';
   const fetchTemplates = useCallback(async () => {
     try {
       const res = await fetch('/api/form-templates', {
@@ -1384,6 +1391,11 @@ export function FormsPage() {
 
   // ── Template list view ──────────────────────────────────────────────────────
 
+  // Redirect legacy ?tab=library deep links to the consolidated Global Library
+  if (redirectToLibrary) {
+    return <Navigate to="/studio/library" replace />;
+  }
+
   return <>
     <div className="flex flex-col min-h-full">
         {/* Header */}
@@ -1412,10 +1424,6 @@ export function FormsPage() {
           key: 'forms',
           label: 'Templates',
           icon: FileText
-        }, {
-          key: 'library',
-          label: 'Library',
-          icon: BookOpen
         }] as const).map(({
           key,
           label,
@@ -1486,9 +1494,6 @@ export function FormsPage() {
 
           {/* ── Submissions tab ── */}
           {pageTab === 'submissions' && <SubmissionsInbox templates={templates} onFillForm={() => setFillFormPickerOpen(true)} />}
-
-          {/* ── Library tab ── */}
-          {pageTab === 'library' && <LibraryPage initialTypeFilter="form" />}
         </div>
       </div>
 
