@@ -40,9 +40,8 @@ export interface RiskEntry {
   consequence: string;
   risk_level: string;
   additional_controls: string | null;
+  /** Legacy free-text field — still stored and displayed as fallback when no task is linked */
   responsible_person: string | null;
-  responsible_user_id: string | null;
-  responsible_user_name: string | null;
   due_date: string | null;
   identified_date: string;
   status: string;
@@ -56,6 +55,19 @@ export interface RiskEntry {
   photo_path: string | null;
   created_at: string;
   updated_at: string;
+  // ── Phase 2 task-based assignment fields ──────────────────────────────────
+  /** FK to job_todos.id — NULL on legacy hazards */
+  task_id: number | null;
+  /** Status of the linked task, e.g. 'Open' | 'In Progress' | 'Completed' */
+  task_status: string | null;
+  /** user_id of the assigned team member (from job_todos.assigned_user_id) */
+  task_assigned_user_id: string | null;
+  /** Display name of the assigned team member (from job_todos.assigned_name) */
+  task_assigned_name: string | null;
+  /** Due date from the linked task */
+  task_due_date: string | null;
+  /** Title of the linked task */
+  task_title: string | null;
 }
 
 // ── Constants ─────────────────────────────────────────────────────────────────
@@ -336,7 +348,8 @@ function NewRiskModal({
           ...form,
           risk_level: riskLevel,
           job_id: linkedJob?.id ?? null,
-          responsible_user_id: responsibleMember?.userId ?? null,
+          // Phase 2: send assigned_user_id to create a linked task via hazardTaskService
+          assigned_user_id: responsibleMember?.userId ?? null,
           responsible_person: responsibleMember?.name ?? form.responsible_person,
         })
       });
@@ -567,7 +580,8 @@ function RiskCard({
 
   const isOverdue = entry.due_date && entry.status !== 'closed' && new Date(entry.due_date) < new Date();
   const hasPhoto = !!entry.photo_path;
-  const responsibleDisplay = entry.responsible_user_name ?? entry.responsible_person;
+  // Phase 2: prefer task_assigned_name; fall back to legacy responsible_person for old records
+  const responsibleDisplay = entry.task_assigned_name ?? entry.responsible_person;
 
   // Load photo URL when card is expanded and has a photo
   useEffect(() => {

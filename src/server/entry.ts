@@ -1498,6 +1498,38 @@ async function runStartupMigrations() {
     }
   }
 
+  // 1a-rr-phase2-task-idx. Add index on risk_register.task_id (idempotent).
+  // FK is advisory — MySQL silently skips if job_todos doesn't exist yet.
+  try {
+    await db.execute(sql.raw(
+      `ALTER TABLE risk_register ADD INDEX idx_rr_task_id (task_id)`
+    ));
+    console.log('[startup-migration] risk_register idx_rr_task_id added');
+  } catch (e: unknown) {
+    // ER_DUP_KEYNAME = index already exists — safe to ignore
+    const msg = migrationErrMsg(e);
+    if (!msg.includes('Duplicate key name') && !msg.includes('ER_DUP_KEYNAME')) {
+      console.warn('[startup-migration] risk_register idx_rr_task_id failed:', msg);
+    }
+  }
+  // FK: risk_register.task_id → job_todos.id ON DELETE SET NULL (idempotent)
+  try {
+    await db.execute(sql.raw(
+      `ALTER TABLE risk_register
+       ADD CONSTRAINT fk_rr_task_id
+       FOREIGN KEY (task_id) REFERENCES job_todos(id) ON DELETE SET NULL`
+    ));
+    console.log('[startup-migration] risk_register fk_rr_task_id added');
+  } catch (e: unknown) {
+    const msg = migrationErrMsg(e);
+    // ER_DUP_KEYNAME or FK already exists — safe to ignore
+    if (!msg.includes('Duplicate key name') && !msg.includes('ER_DUP_KEYNAME') &&
+        !msg.includes('Duplicate foreign key') && !msg.includes('ER_FK_DUP_NAME') &&
+        !msg.includes('already exists')) {
+      console.warn('[startup-migration] risk_register fk_rr_task_id failed:', msg);
+    }
+  }
+
   // 1a-rr-phase2-cleanup. Drop responsible_user_id if it was added by the
   // unpublished commit d16ace64 — task_id is the correct column.
   try {
