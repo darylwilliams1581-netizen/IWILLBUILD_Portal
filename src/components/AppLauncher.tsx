@@ -101,7 +101,7 @@ const LAUNCHER_MODULES: LauncherModule[] = [
 {
   label: 'Safety',
   icon: ShieldCheck,
-  href: '/safety?safetyTab=documents',
+  href: '/safety?safetyTab=company-documents',
   color: '#dc2626',
   bg: '#fef2f2'
 }, {

@@ -3,20 +3,20 @@
  * extracted so it can be embedded inside Studio without its own
  * page wrapper, sidebar, or Helmet.
  *
- * Visible tab order (spec):
- *   1. Documents          — JobSwmsTab (job-issued SWMS documents)
- *   2. Submissions        — SwmsSubmissionsTab (company sign-off register)
- *   3. Policies & Docs    — PoliciesTab + App Doc template list
- *   4. Doc Submissions    — SubmissionsTab (document template submissions)
- *   5. Policy Library     — LibraryView (scoped to policy, procedure, swms only)
+ * Visible tab order (Step 2 spec):
+ *   1. company-documents  — Documents tab: /api/document-templates list + PoliciesTab
+ *   2. documents          — Safety Documents tab: JobSwmsTab (job-assigned SWMS)
  *
- * Removed (moved to Studio → Apply Widget):
- *   SWMS               — SwmsLibraryTab  (master doc creation now in Studio)
- *   Safety Plans       — SafetyPlansTab  (master doc creation now in Studio)
+ * Removed from tab bar (components preserved, not deleted):
+ *   submissions     — SwmsSubmissionsTab  (sign-offs still visible inside each job)
+ *   policies        — PoliciesTab         (merged into company-documents)
+ *   doc-submissions — SubmissionsTab      (preserved, not rendered)
+ *   library         — LibraryView         (preserved, not rendered)
  *
- * Hidden (preserved, not deleted):
- *   Dashboard — SafetyDashboardTab (component intact, not rendered in tab strip)
- *   Posters   — PostersTab (component intact, not rendered in tab strip)
+ * Legacy redirect map (safetyTab param):
+ *   submissions, swms, plans → documents (Safety Documents)
+ *   policies, doc-submissions, library   → company-documents (Documents)
+ *   no param / unknown                   → company-documents (default)
  *
  * URL param: safetyTab (namespaced to avoid colliding with Studio's tab param).
  * Browser back/forward and reload retain the selected section.
@@ -27,33 +27,41 @@ import { useEffect, useRef, useState, useCallback } from 'react';
 import { useSearchParams, useNavigate } from 'react-router';
 import { motion } from 'motion/react';
 import {
-  FileText, ClipboardCheck, BookOpen, Library, Inbox, Plus, FileUp, Layers,
+  FileText, ShieldCheck, Plus, FileUp, Layers,
 } from 'lucide-react';
 
-// Tab components from safety.tsx (unchanged behaviour)
+// Tab components from safety.tsx (unchanged behaviour — kept for reuse elsewhere)
 import {
   PoliciesTab,
 } from '@/pages/safety';
 
-// New / feature components
+// Feature components
 import JobSwmsTab from './JobSwmsTab';
-import SwmsSubmissionsTab from './SwmsSubmissionsTab';
-import LibraryView from '../../features/library/LibraryView';
-import { SubmissionsTab, type DocTemplate } from '../../pages/studio-documents';
+import { type DocTemplate } from '../../pages/studio-documents';
 
 // ── Tab definitions ───────────────────────────────────────────────────────────
 
 const TABS = [
-  { id: 'documents',       label: 'Documents',       icon: FileText       },
-  { id: 'submissions',     label: 'Submissions',      icon: ClipboardCheck },
-  { id: 'policies',        label: 'Policies & Docs',  icon: BookOpen       },
-  { id: 'doc-submissions', label: 'Doc Submissions',  icon: Inbox          },
-  { id: 'library',         label: 'Policy Library',   icon: Library        },
+  { id: 'company-documents', label: 'Documents',         icon: FileText    },
+  { id: 'documents',         label: 'Safety Documents',  icon: ShieldCheck },
 ] as const;
 
 type TabId = typeof TABS[number]['id'];
 
-const DEFAULT_TAB: TabId = 'documents';
+const DEFAULT_TAB: TabId = 'company-documents';
+
+// ── Legacy tab → new tab redirect map ────────────────────────────────────────
+// Removed tabs redirect to the closest equivalent so old bookmarks/links still work.
+const LEGACY_REDIRECT: Record<string, TabId> = {
+  // Removed tabs that map to Safety Documents
+  submissions:      'documents',
+  swms:             'documents',
+  plans:            'documents',
+  // Removed tabs that map to Documents
+  policies:         'company-documents',
+  'doc-submissions':'company-documents',
+  library:          'company-documents',
+};
 
 // ── Component ─────────────────────────────────────────────────────────────────
 
@@ -61,25 +69,34 @@ export default function SafetyContent() {
   const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
 
-  // Read the safetyTab param; fall back to default.
-  // Old tabs 'swms' and 'plans' are no longer in the tab strip — redirect them
-  // to Studio so users land in the right place.
   const rawTab = searchParams.get('safetyTab');
 
+  // Redirect legacy tab IDs via URL replacement so the address bar is clean.
   useEffect(() => {
-    if (rawTab === 'swms' || rawTab === 'plans') {
-      navigate('/studio/documents', { replace: true });
+    if (!rawTab) return;
+    const redirect = LEGACY_REDIRECT[rawTab];
+    if (redirect) {
+      // Replace in-place so the legacy URL doesn't pollute history.
+      setSearchParams(
+        (prev) => {
+          const next = new URLSearchParams(prev);
+          next.set('safetyTab', redirect);
+          return next;
+        },
+        { replace: true },
+      );
     }
-  }, [rawTab, navigate]);
+  }, [rawTab, setSearchParams]);
 
   const activeTab: TabId =
     TABS.some((t) => t.id === rawTab) ? (rawTab as TabId) : DEFAULT_TAB;
 
-  // Optional jobId filter — passed through from /job-docs redirect or deep links
+  // Optional jobId filter — passed through from /job-docs redirect or deep links.
+  // Kept on the documents (Safety Documents) tab for job-specific filtering.
   const jobIdParam = searchParams.get('jobId');
   const initialJobId = jobIdParam ? Number(jobIdParam) : null;
 
-  // Doc templates — loaded once, shared between Policies & Docs and Doc Submissions tabs
+  // Doc templates — loaded for the company-documents tab
   const [templates, setTemplates] = useState<DocTemplate[]>([]);
   const loadTemplates = useCallback(async () => {
     try {
@@ -91,7 +108,7 @@ export default function SafetyContent() {
   }, []);
 
   useEffect(() => {
-    if (activeTab === 'policies' || activeTab === 'doc-submissions') {
+    if (activeTab === 'company-documents') {
       void loadTemplates();
     }
   }, [activeTab, loadTemplates]);
@@ -148,11 +165,10 @@ export default function SafetyContent() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.2 }}
         >
-          {activeTab === 'documents'       && <JobSwmsTab initialJobId={initialJobId} />}
-          {activeTab === 'submissions'     && <SwmsSubmissionsTab />}
-          {activeTab === 'policies'        && (
+          {/* ── Documents tab: company document templates + policy files ── */}
+          {activeTab === 'company-documents' && (
             <>
-              {/* App Doc template list — the document building tool */}
+              {/* /api/document-templates list — create, import, open in builder */}
               <div className="mb-6">
                 <div className="flex items-center justify-between mb-3">
                   <div className="flex items-center gap-2">
@@ -212,17 +228,13 @@ export default function SafetyContent() {
                   </div>
                 )}
               </div>
-              {/* Existing policy files */}
+              {/* Uploaded policy / procedure files (PoliciesTab — unchanged) */}
               <PoliciesTab />
             </>
           )}
-          {activeTab === 'doc-submissions' && <SubmissionsTab templates={templates} />}
-          {activeTab === 'library'         && (
-            <LibraryView
-              allowedTypes={['policy', 'procedure', 'swms']}
-              allTypesLabel="All safety"
-            />
-          )}
+
+          {/* ── Safety Documents tab: job-assigned SWMS (JobSwmsTab — unchanged) ── */}
+          {activeTab === 'documents' && <JobSwmsTab initialJobId={initialJobId} />}
         </motion.div>
       </div>
     </div>
