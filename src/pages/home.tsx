@@ -750,7 +750,7 @@ function RiskyJobPickerSheet({
   })} />;
 }
 
-// ── Phone Job Card creation sheet ─────────────────────────────────────────────
+// ── Phone Service Card creation sheet ─────────────────────────────────────────────
 // 3-step flow: form → completion (photos + sign-off) → done
 // Keeps each step focused and field-first.
 function PhoneJobCardSheet({
@@ -937,14 +937,14 @@ function PhoneJobCardSheet({
       {/* Backdrop */}
       <div className={`fixed inset-0 z-[65] bg-black/40 transition-opacity duration-300 ${open ? 'opacity-100' : 'opacity-0 pointer-events-none'}`} onClick={onClose} aria-hidden="true" />
       {/* Right-side sheet */}
-      <div className={`fixed top-0 right-0 bottom-0 z-[70] w-full max-w-md bg-white shadow-2xl flex flex-col transition-transform duration-300 ease-out ${open ? 'translate-x-0' : 'translate-x-full'}`} role="dialog" aria-modal="true" aria-label="New Job Card">
+      <div className={`fixed top-0 right-0 bottom-0 z-[70] w-full max-w-md bg-white shadow-2xl flex flex-col transition-transform duration-300 ease-out ${open ? 'translate-x-0' : 'translate-x-full'}`} role="dialog" aria-modal="true" aria-label="New Service Card">
         {/* Header */}
         <div className="flex items-center gap-3 px-5 py-4 border-b border-gray-100 shrink-0 safe-top">
           <div className="w-9 h-9 rounded-xl bg-yellow-100 flex items-center justify-center shrink-0">
             <Zap size={17} className="text-yellow-500" />
           </div>
           <div className="flex-1 min-w-0">
-            <h2 className="text-base font-bold text-gray-900 leading-tight">New Job Card</h2>
+            <h2 className="text-base font-bold text-gray-900 leading-tight">New Service Card</h2>
             <p className="text-[11px] text-gray-400 mt-0.5">
               {step === 'form' ? 'Step 1 of 2 — Details' : step === 'completion' ? 'Step 2 of 2 — Completion & Photos' : 'Created'}
             </p>
@@ -962,11 +962,11 @@ function PhoneJobCardSheet({
             <CheckCircle2 size={28} className="text-green-600" />
           </div>
           <div>
-            <p className="text-[17px] font-bold text-gray-900">Job Card created</p>
+            <p className="text-[17px] font-bold text-gray-900">Service Card created</p>
             <p className="text-[13px] text-gray-400 mt-1 font-mono">{createdNum}</p>
             {photoFiles.length > 0 && !photoUploadError && <p className="text-[12px] text-green-600 mt-1">{photoFiles.length} photo{photoFiles.length !== 1 ? 's' : ''} attached</p>}
             {photoUploadError && <p className="text-[12px] text-amber-600 mt-2 px-3 py-2 bg-amber-50 border border-amber-200 rounded-lg leading-snug">
-                Job Card saved, but photos could not be uploaded. Open the Job Card to retry.
+                Service Card saved, but photos could not be uploaded. Open the Service Card to retry.
                 <br /><span className="text-[11px] text-amber-500 font-mono">{photoUploadError}</span>
               </p>}
           </div>
@@ -975,13 +975,13 @@ function PhoneJobCardSheet({
               onClose();
               navigate(`/job-cards/${createdId}`);
             }} className="w-full py-3 rounded-xl bg-yellow-500 text-white font-bold text-[15px] hover:bg-yellow-600 transition-colors">
-              Open Job Card
+              Open Service Card
             </button>
             <button onClick={() => {
               onClose();
               navigate('/job-cards');
             }} className="w-full py-3 rounded-xl bg-gray-100 text-gray-700 font-semibold text-[14px] hover:bg-gray-200 transition-colors">
-              View all Job Cards
+              View all Service Jobs
             </button>
             <button onClick={onClose} className="w-full py-2 text-gray-400 text-[13px] font-medium hover:text-gray-600 transition-colors">
               Close
@@ -1054,7 +1054,7 @@ function PhoneJobCardSheet({
           <div className="flex flex-col gap-2 pt-2">
             <button onClick={() => void handleCreate()} disabled={saving} className="w-full py-4 rounded-2xl bg-yellow-500 hover:bg-yellow-600 text-white font-bold text-[16px] transition-colors disabled:opacity-50 flex items-center justify-center gap-2">
               {saving ? <RefreshCw size={18} className="animate-spin" /> : <Zap size={18} />}
-              Save Job Card
+              Save Service Card
             </button>
             <button onClick={() => setStep('form')} className="w-full py-2 text-gray-400 text-[13px] font-medium hover:text-gray-600 transition-colors">
               ← Back to details

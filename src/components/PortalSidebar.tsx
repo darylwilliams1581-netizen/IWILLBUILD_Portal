@@ -123,7 +123,7 @@ const DESKTOP_NAV_GROUPS: DesktopNavGroup[] = [{
   }, {
     id: 'nav-03',
     idx: '03',
-    label: 'Job Cards',
+    label: 'Service Jobs',
     icon: Zap,
     href: '/job-cards'
   }, {
@@ -326,7 +326,7 @@ function buildNavEntries(_workPlural: string): NavItem[] {
     href: '/jobs',
     permKey: 'jobs'
   }, {
-    label: 'Job Cards',
+    label: 'Service Jobs',
     icon: Zap,
     href: '/job-cards',
     permKey: 'jobs'

@@ -50,12 +50,12 @@ const featureGroups: FeatureGroup[] = [
   category: 'Jobs & operations', icon: HardHat, color: '#7c3aed', bg: '#f5f3ff',
   title: 'Jobs',
   desc: 'Create jobs, assign crews, track status and close out cleanly — from first contact to final invoice.',
-  bullets: ['Job register with status filters', 'Notes, tasks and cost tracking', 'Convert job cards to full jobs', 'Job history and audit trail']
+  bullets: ['Job register with status filters', 'Notes, tasks and cost tracking', 'Convert service jobs to full jobs', 'Job history and audit trail']
 }, {
   category: 'Jobs & operations', icon: Zap, color: '#ca8a04', bg: '#fefce8',
-  title: 'Job cards',
-  desc: 'Field-first job cards for day work and small jobs. Auto-numbered, photo-ready and signature-captured on site.',
-  bullets: ['Auto-numbered JC-XXXX', '3-step mobile flow', 'Photo capture & signature', 'Convert to invoice']
+  title: 'Service jobs',
+  desc: 'Service cards for call-outs, maintenance and do-and-charge work. Auto-numbered, photo-ready and signature-captured on site.',
+  bullets: ['Auto-numbered SC-XXXX', '3-step mobile flow', 'Photo capture & signature', 'Convert to invoice']
 }, {
   category: 'Jobs & operations', icon: Calendar, color: '#6366f1', bg: '#eef2ff',
   title: 'Scheduler',

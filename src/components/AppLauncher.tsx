@@ -37,7 +37,7 @@ const LAUNCHER_MODULES: LauncherModule[] = [
   color: '#0891b2',
   bg: '#ecfeff'
 }, {
-  label: 'Job Cards',
+  label: 'Service Jobs',
   icon: Zap,
   href: '/job-cards',
   color: '#ca8a04',

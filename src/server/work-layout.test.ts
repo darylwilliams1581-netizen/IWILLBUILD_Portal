@@ -114,7 +114,8 @@ describe('Sidebar Work links — consolidated', () => {
     expect(sidebar).toContain("href: '/jobs'");
   });
 
-  it('sidebar WORK section still has Job Cards', () => {
+  it('sidebar WORK section still has Service Jobs', () => {
+    expect(sidebar).toContain("label: 'Service Jobs'");
     expect(sidebar).toContain("href: '/job-cards'");
   });
 });
