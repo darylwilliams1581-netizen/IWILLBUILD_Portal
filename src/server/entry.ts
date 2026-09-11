@@ -1481,9 +1481,11 @@ async function runStartupMigrations() {
   }
 
   // 1a-rr-phase2. Add Phase 2 columns to risk_register (idempotent)
+  // NOTE: responsible_user_id is intentionally NOT added here.
+  // Assignment is handled via the existing job_todos task system (task_id column below).
   for (const colDef of [
-    "photo_path           VARCHAR(1000) NULL",
-    "responsible_user_id  VARCHAR(36) NULL",
+    "photo_path  VARCHAR(1000) NULL",
+    "task_id     INT NULL",
   ]) {
     const colName = colDef.trim().split(/\s+/)[0];
     try {
@@ -1494,6 +1496,21 @@ async function runStartupMigrations() {
         console.warn(`[startup-migration] risk_register.${colName} alter failed:`, migrationErrMsg(e));
       }
     }
+  }
+
+  // 1a-rr-phase2-cleanup. Drop responsible_user_id if it was added by the
+  // unpublished commit d16ace64 — task_id is the correct column.
+  try {
+    const [colCheck] = await db.execute(sql.raw(
+      `SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS
+       WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'risk_register' AND COLUMN_NAME = 'responsible_user_id'`
+    )) as unknown as [Array<{ COLUMN_NAME: string }>];
+    if (colCheck?.length) {
+      await db.execute(sql.raw(`ALTER TABLE risk_register DROP COLUMN responsible_user_id`));
+      console.log('[startup-migration] risk_register.responsible_user_id dropped (replaced by task_id)');
+    }
+  } catch (e: unknown) {
+    console.warn('[startup-migration] responsible_user_id drop check failed:', migrationErrMsg(e));
   }
 
   // 1a-rr-share-tokens. Hazard share tokens table (token_hash — raw token never stored)

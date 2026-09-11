@@ -26,9 +26,16 @@ export default async function handler(req: Request, res: Response) {
     if (isNaN(id)) return res.status(400).json({ error: 'Invalid id' });
 
     const [rows] = await db.execute(sql.raw(`
-      SELECT r.*, j.job_number, j.name AS job_name, j.site_address
+      SELECT r.*,
+             j.job_number, j.name AS job_name, j.site_address,
+             t.status AS task_status,
+             t.assigned_user_id AS task_assigned_user_id,
+             t.assigned_name AS task_assigned_name,
+             t.due_date AS task_due_date,
+             t.title AS task_title
       FROM risk_register r
       LEFT JOIN jobs j ON j.id = r.job_id
+      LEFT JOIN job_todos t ON t.id = r.task_id AND t.company_id = ${profile.companyId}
       WHERE r.id = ${id} AND r.company_id = ${profile.companyId}
       LIMIT 1
     `)) as unknown as [Array<Record<string, unknown>>, unknown];

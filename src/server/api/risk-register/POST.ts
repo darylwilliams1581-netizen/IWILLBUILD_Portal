@@ -1,6 +1,12 @@
 /**
  * POST /api/risk-register
  * Creates a new risk register entry for the authenticated user's company.
+ *
+ * Assignment:
+ *   - If assignedUserId is provided, it is validated against active same-company users.
+ *   - A linked job_todos task is created via hazardTaskService (jobId = NULL).
+ *   - The task ID is stored on risk_register.task_id.
+ *   - responsible_person (free-text) is kept for legacy/unlinked records.
  */
 import type { Request, Response } from 'express';
 import { db } from '../../db/client.js';
@@ -8,6 +14,7 @@ import { sql } from 'drizzle-orm';
 import { getAuth } from '../../../lib/auth/auth.js';
 import { profiles } from '../../db/schema.js';
 import { eq } from 'drizzle-orm';
+import { validateCompanyUser, ensureHazardTask } from '../../lib/hazardTaskService.js';
 
 export default async function handler(req: Request, res: Response) {
   try {
@@ -35,7 +42,7 @@ export default async function handler(req: Request, res: Response) {
       risk_level,
       additional_controls,
       responsible_person,
-      responsible_user_id,
+      assigned_user_id,   // new: links to a team member via task system
       due_date,
       identified_date,
       status = 'open',
@@ -47,21 +54,13 @@ export default async function handler(req: Request, res: Response) {
     if (!likelihood) return res.status(400).json({ error: 'likelihood is required' });
     if (!consequence) return res.status(400).json({ error: 'consequence is required' });
 
-    // Validate responsible_user_id: must belong to the same company and be active
-    let validatedResponsibleUserId: string | null = null;
-    if (responsible_user_id) {
-      const uid = String(responsible_user_id).trim();
-      const [userRows] = await db.execute(sql.raw(
-        `SELECT p.user_id FROM profiles p
-         JOIN user u ON u.id = p.user_id
-         WHERE p.user_id = '${uid.replace(/'/g, "''")}' AND p.company_id = ${profile.companyId}
-           AND (u.banned IS NULL OR u.banned = 0) AND (u.deleted_at IS NULL)
-         LIMIT 1`
-      )) as unknown as [Array<{ user_id: string }>];
-      if (!userRows?.length) {
-        return res.status(400).json({ error: 'responsible_user_id is not a valid active member of your company' });
+    // Validate assignee if provided
+    let assignee = null;
+    if (assigned_user_id) {
+      assignee = await validateCompanyUser(String(assigned_user_id), profile.companyId);
+      if (!assignee) {
+        return res.status(400).json({ error: 'assigned_user_id is not a valid active member of your company' });
       }
-      validatedResponsibleUserId = uid;
     }
 
     const [result] = await db.execute(sql.raw(`
@@ -69,7 +68,7 @@ export default async function handler(req: Request, res: Response) {
         company_id, job_id, title, description, category,
         hazard_source, who_is_at_risk, existing_controls,
         likelihood, consequence, risk_level,
-        additional_controls, responsible_person, responsible_user_id,
+        additional_controls, responsible_person,
         due_date, identified_date, status, review_date, notes,
         created_by, created_at, updated_at
       ) VALUES (
@@ -86,7 +85,6 @@ export default async function handler(req: Request, res: Response) {
         ${risk_level ? `'${String(risk_level).replace(/'/g, "''")}'` : `'medium'`},
         ${additional_controls ? `'${String(additional_controls).replace(/'/g, "''")}'` : 'NULL'},
         ${responsible_person ? `'${String(responsible_person).replace(/'/g, "''")}'` : 'NULL'},
-        ${validatedResponsibleUserId ? `'${validatedResponsibleUserId.replace(/'/g, "''")}'` : 'NULL'},
         ${due_date ? `'${String(due_date)}'` : 'NULL'},
         ${identified_date ? `'${String(identified_date)}'` : 'CURDATE()'},
         '${String(status).replace(/'/g, "''")}',
@@ -100,9 +98,35 @@ export default async function handler(req: Request, res: Response) {
     const insertId = (result as { insertId?: number })?.insertId;
     if (!insertId) return res.status(500).json({ error: 'Insert failed' });
 
-    const [rows] = await db.execute(sql.raw(
-      `SELECT r.*, j.job_number, j.name AS job_name, u.name AS responsible_user_name FROM risk_register r LEFT JOIN jobs j ON j.id = r.job_id LEFT JOIN user u ON u.id = r.responsible_user_id AND u.id IN (SELECT user_id FROM profiles WHERE company_id = ${profile.companyId}) WHERE r.id = ${insertId}`
-    )) as unknown as [Array<Record<string, unknown>>, unknown];
+    // Create linked task if an assignee was provided
+    if (assignee) {
+      try {
+        await ensureHazardTask({
+          hazardId: insertId,
+          hazardTitle: String(title),
+          companyId: profile.companyId,
+          assignee,
+          dueDate: due_date ? String(due_date) : null,
+          existingTaskId: null,
+        });
+      } catch (taskErr) {
+        console.warn('[POST /api/risk-register] task creation failed (non-fatal):', taskErr);
+      }
+    }
+
+    // Return the full row with linked task info
+    const [rows] = await db.execute(sql.raw(`
+      SELECT r.*,
+             j.job_number, j.name AS job_name,
+             t.status AS task_status,
+             t.assigned_user_id AS task_assigned_user_id,
+             t.assigned_name AS task_assigned_name,
+             t.due_date AS task_due_date
+      FROM risk_register r
+      LEFT JOIN jobs j ON j.id = r.job_id
+      LEFT JOIN job_todos t ON t.id = r.task_id AND t.company_id = ${profile.companyId}
+      WHERE r.id = ${insertId}
+    `)) as unknown as [Array<Record<string, unknown>>, unknown];
 
     res.status(201).json(rows?.[0] ?? { id: insertId });
   } catch (err) {

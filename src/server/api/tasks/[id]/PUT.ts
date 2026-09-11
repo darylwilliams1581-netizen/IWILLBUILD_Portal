@@ -3,6 +3,8 @@
  *
  * Update any task (job-linked or general).
  * Company-scoped — caller must own the task.
+ * If assignedUserId is provided it must be an active member of the caller's company.
+ * If status is set to 'Completed', any linked hazard is closed (idempotent).
  *
  * Body: { title?, description?, startDate?, dueDate?, status?,
  *          notes?, assignedUserId?, assignedName?, jobId? }
@@ -15,6 +17,7 @@ import { jobTodos, jobs, profiles } from '../../../db/schema.js';
 import { eq, and } from 'drizzle-orm';
 import { getAuth } from '../../../../lib/auth/auth.js';
 import { sql } from 'drizzle-orm';
+import { validateCompanyUser, closeLinkedHazard } from '../../../lib/hazardTaskService.js';
 
 const VALID_STATUSES = new Set(['Open', 'In Progress', 'Completed', 'Cancelled']);
 
@@ -67,6 +70,24 @@ export default async function handler(req: Request, res: Response) {
       return res.status(400).json({ error: `Invalid status` });
     }
 
+    // Validate assignedUserId: must be an active member of the caller's company
+    let resolvedAssignedUserId: string | null | undefined = undefined;
+    let resolvedAssignedName: string | null | undefined = undefined;
+    if (assignedUserId !== undefined) {
+      const uid = assignedUserId?.trim() || null;
+      if (uid) {
+        const validated = await validateCompanyUser(uid, profile.companyId);
+        if (!validated) {
+          return res.status(400).json({ error: 'assignedUserId is not a valid active member of your company' });
+        }
+        resolvedAssignedUserId = validated.userId;
+        resolvedAssignedName = assignedName?.trim() || validated.name;
+      } else {
+        resolvedAssignedUserId = null;
+        resolvedAssignedName = null;
+      }
+    }
+
     const update: Record<string, unknown> = {};
     if (title !== undefined)          update.title          = title.trim();
     if (description !== undefined)    update.description    = description?.trim() || null;
@@ -74,8 +95,8 @@ export default async function handler(req: Request, res: Response) {
     if (dueDate !== undefined)        update.dueDate        = dueDate?.trim() || null;
     if (status !== undefined)         update.status         = status;
     if (notes !== undefined)          update.notes          = notes?.trim() || null;
-    if (assignedUserId !== undefined) update.assignedUserId = assignedUserId?.trim() || null;
-    if (assignedName !== undefined)   update.assignedName   = assignedName?.trim() || null;
+    if (resolvedAssignedUserId !== undefined) update.assignedUserId = resolvedAssignedUserId;
+    if (resolvedAssignedName !== undefined)   update.assignedName   = resolvedAssignedName;
 
     // Handle jobId change (including clearing it)
     if ('jobId' in req.body) {
@@ -95,6 +116,15 @@ export default async function handler(req: Request, res: Response) {
 
     if (Object.keys(update).length > 0) {
       await db.update(jobTodos).set(update).where(eq(jobTodos.id, taskId));
+    }
+
+    // Bidirectional sync: completing a task closes its linked hazard (idempotent)
+    if (status === 'Completed') {
+      try {
+        await closeLinkedHazard(taskId, profile.companyId);
+      } catch (syncErr) {
+        console.warn('[PUT /api/tasks/:id] closeLinkedHazard failed (non-fatal):', syncErr);
+      }
     }
 
     // Fetch updated task with job info

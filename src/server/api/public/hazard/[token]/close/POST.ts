@@ -21,6 +21,7 @@ import type { Request, Response } from 'express';
 import { db } from '../../../../../db/client.js';
 import { sql } from 'drizzle-orm';
 import { toMySQLDatetime } from '../../../../../lib/datetime.js';
+import { completeLinkedTask } from '../../../../../lib/hazardTaskService.js';
 import { createHash } from 'node:crypto';
 
 // ── Rate limiter (in-process, keyed by token hash + IP hash) ─────────────────
@@ -110,15 +111,16 @@ export default async function handler(req: Request, res: Response) {
 
     const { hazard_id, company_id } = tokenRows[0];
 
-    // Fetch current status
+    // Fetch current status and task_id
     const [hazardRows] = await db.execute(sql`
-      SELECT id, status FROM risk_register
+      SELECT id, status, task_id FROM risk_register
       WHERE id = ${hazard_id} AND company_id = ${company_id} LIMIT 1
-    `) as unknown as [Array<{ id: number; status: string }>];
+    `) as unknown as [Array<{ id: number; status: string; task_id: number | null }>];
 
     if (!hazardRows?.length) return res.status(404).json({ error: 'Hazard not found' });
 
     const previousStatus = VALID_STATUSES.has(hazardRows[0].status) ? hazardRows[0].status : 'open';
+    const linkedTaskId = hazardRows[0].task_id ?? null;
     const isClose = action === 'close';
 
     // Idempotent close: if already closed, record comment but do not create another transition
@@ -144,6 +146,14 @@ export default async function handler(req: Request, res: Response) {
         SET status = 'closed', closed_at = ${now}, closed_by = ${rawName}, updated_at = ${now}
         WHERE id = ${hazard_id} AND company_id = ${company_id}
       `);
+      // Complete the linked task when present (idempotent)
+      if (linkedTaskId) {
+        try {
+          await completeLinkedTask(linkedTaskId, company_id);
+        } catch (syncErr) {
+          console.warn('[public close] completeLinkedTask failed (non-fatal):', syncErr);
+        }
+      }
     }
 
     return res.status(201).json({ ok: true, new_status: newStatus });

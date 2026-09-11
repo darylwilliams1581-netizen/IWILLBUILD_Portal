@@ -3,6 +3,7 @@
  *
  * Create a general task — job linkage is optional.
  * If jobId is provided it must belong to the caller's company.
+ * If assignedUserId is provided it must be an active member of the caller's company.
  *
  * Body: { title, description?, startDate?, dueDate?, status?, notes?,
  *          assignedUserId?, assignedName?, jobId? }
@@ -14,6 +15,7 @@ import { db } from '../../db/client.js';
 import { jobTodos, jobs, profiles } from '../../db/schema.js';
 import { eq, and } from 'drizzle-orm';
 import { getAuth } from '../../../lib/auth/auth.js';
+import { validateCompanyUser } from '../../lib/hazardTaskService.js';
 
 const VALID_STATUSES = new Set(['Open', 'In Progress', 'Completed', 'Cancelled']);
 
@@ -58,6 +60,19 @@ export default async function handler(req: Request, res: Response) {
 
     const resolvedStatus = status && VALID_STATUSES.has(status) ? status : 'Open';
 
+    // Validate assignedUserId: must be an active member of the caller's company
+    let resolvedAssignedUserId: string | null = assignedUserId?.trim() || null;
+    let resolvedAssignedName: string | null = assignedName?.trim() || null;
+    if (resolvedAssignedUserId) {
+      const validated = await validateCompanyUser(resolvedAssignedUserId, profile.companyId);
+      if (!validated) {
+        return res.status(400).json({ error: 'assignedUserId is not a valid active member of your company' });
+      }
+      resolvedAssignedUserId = validated.userId;
+      // Use DB name if caller didn't supply one
+      if (!resolvedAssignedName) resolvedAssignedName = validated.name;
+    }
+
     // Validate job linkage if provided
     let resolvedJobId: number | null = null;
     if (rawJobId != null && rawJobId !== '' && rawJobId !== 0) {
@@ -79,8 +94,8 @@ export default async function handler(req: Request, res: Response) {
       dueDate:        dueDate?.trim() || null,
       status:         resolvedStatus,
       notes:          notes?.trim() || null,
-      assignedUserId: assignedUserId?.trim() || null,
-      assignedName:   assignedName?.trim() || null,
+      assignedUserId: resolvedAssignedUserId,
+      assignedName:   resolvedAssignedName,
     });
 
     const task = await db.query.jobTodos.findFirst({
