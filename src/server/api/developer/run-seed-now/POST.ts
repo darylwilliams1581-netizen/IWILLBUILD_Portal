@@ -32,6 +32,17 @@ interface SwmsTemplate {
   revisionNumber: string; status: string;
 }
 
+// OC-format structured SWMS (swms-oc.json) — full swms_body with workSteps, criticalControls, etc.
+interface OcSwmsTemplate {
+  title: string;
+  category: string;
+  revisionNumber?: string;
+  status?: string;
+  buildMode?: string;
+  documentType?: string;
+  [key: string]: unknown;
+}
+
 interface FieldDef {
   label: string; fieldType: string; required?: boolean; options?: string[];
 }
@@ -69,9 +80,10 @@ export default async function handler(req: Request, res: Response) {
     const { companyId, companyName } = userRows[0];
 
     // Load all seed files in parallel
-    const [origSafety, extSafety, origForms, extForms, origCG, extCG] = await Promise.all([
+    const [origSafety, extSafety, ocSafety, origForms, extForms, origCG, extCG] = await Promise.all([
       loadJson<{ swms: SwmsTemplate[] }>('safety.json'),
       loadJson<{ swms: SwmsTemplate[] }>('safety-extended.json'),
+      loadJson<{ swms: OcSwmsTemplate[] }>('swms-oc.json'),
       loadJson<FormTemplateDef[]>('forms.json'),
       loadJson<FormTemplateDef[]>('forms-extended.json'),
       loadJson<CostGuideItem[]>('cost-guide.json'),
@@ -91,8 +103,9 @@ export default async function handler(req: Request, res: Response) {
     for (const item of [...origCG, ...extCG]) cgMap.set(item.description, item);
     const allCG = Array.from(cgMap.values());
 
-    // ── SWMS — batch insert ───────────────────────────────────────────────────
-    await db.execute(sql.raw(`DELETE FROM swms_templates WHERE company_id = ${companyId}`));
+    // ── SWMS — batch insert (flat format) ────────────────────────────────────
+    // Delete only flat/quick-mode rows; preserve any existing 'advanced' structured rows.
+    await db.execute(sql.raw(`DELETE FROM swms_templates WHERE company_id = ${companyId} AND (build_mode IS NULL OR build_mode IN ('simple','quick'))`));
 
     const swmsValues = allSwms.map(t =>
       `(${companyId},'${s(t.title)}','${s(t.workActivity)}','${s(t.hazards)}','${s(t.risks)}',` +
@@ -108,6 +121,39 @@ export default async function handler(req: Request, res: Response) {
          environmental_controls, sign_off_requirements, revision_number, status)
       VALUES ${swmsValues}
     `));
+
+    // ── OC SWMS — upsert structured SWMS with full swms_body ─────────────────
+    // These have rich workSteps, criticalControls, ppeRows, etc. stored in swms_body.
+    // Skip any title that already exists for this company (idempotent).
+    let ocSwmsCreated = 0;
+    let ocSwmsSkipped = 0;
+    for (const t of ocSafety.swms) {
+      const [existing] = await db.execute(sql.raw(
+        `SELECT id FROM swms_templates WHERE company_id = ${companyId} AND title = ${JSON.stringify(t.title)} LIMIT 1`
+      )) as unknown as [Array<{ id: number }>, unknown];
+      if (existing?.[0]) { ocSwmsSkipped++; continue; }
+
+      const swmsBodyJson = JSON.stringify(t);
+      await db.execute(sql.raw(`
+        INSERT INTO swms_templates
+          (company_id, title, category, revision_number, author_name, approved_by_name,
+           status, build_mode, document_type, swms_body, created_at, updated_at)
+        VALUES (
+          ${companyId},
+          '${s(t.title)}',
+          '${s(t.category ?? '')}',
+          '${s(String(t.revisionNumber ?? '1'))}',
+          'Site Supervisor',
+          'Principal Contractor',
+          'draft',
+          'advanced',
+          'swms',
+          '${s(swmsBodyJson)}',
+          NOW(), NOW()
+        )
+      `));
+      ocSwmsCreated++;
+    }
 
     // ── Forms — batch insert templates, then batch insert fields ─────────────
     const [existingTmpls] = await db.execute(
@@ -168,17 +214,17 @@ export default async function handler(req: Request, res: Response) {
       cgCreated += chunk.length;
     }
 
-    console.log(`[run-seed-now] Done — SWMS: ${allSwms.length}, Forms: ${formsCreated} (${fieldsCreated} fields), Cost Guide: ${cgCreated}`);
+    console.log(`[run-seed-now] Done — SWMS flat: ${allSwms.length}, SWMS OC: ${ocSwmsCreated} created / ${ocSwmsSkipped} skipped, Forms: ${formsCreated} (${fieldsCreated} fields), Cost Guide: ${cgCreated}`);
 
     return res.json({
       ok: true,
       targetEmail,
       companyId,
       companyName,
-      swms: { created: allSwms.length },
+      swms: { flatCreated: allSwms.length, ocCreated: ocSwmsCreated, ocSkipped: ocSwmsSkipped },
       forms: { created: formsCreated, fields: fieldsCreated },
       costGuide: { created: cgCreated },
-      message: `Seeded ${allSwms.length} SWMS, ${formsCreated} forms (${fieldsCreated} fields), ${cgCreated} cost guide items for ${companyName}.`,
+      message: `Seeded ${allSwms.length} flat SWMS + ${ocSwmsCreated} structured OC SWMS (${ocSwmsSkipped} skipped), ${formsCreated} forms (${fieldsCreated} fields), ${cgCreated} cost guide items for ${companyName}.`,
     });
 
   } catch (err) {

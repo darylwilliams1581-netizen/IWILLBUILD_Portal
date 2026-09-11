@@ -127,3 +127,19 @@ writeFileSync(
 );
 
 console.log("[publish-build] wrote dist/airo-secrets.mjs and dist/package.json");
+
+// ── Post-build: copy seed JSON files to dist/server/seed/ ────────────────────
+// The SSR bundle reads seed files at runtime via fs/promises.readFile.
+// seedDir() resolves relative to import.meta.url (the bundle), so the files
+// must exist at dist/server/seed/starter-packs/default/ in the publish container.
+import { cpSync, mkdirSync } from 'node:fs';
+
+const seedSrc = path.join(root, 'src', 'server', 'seed');
+const seedDst = path.join(root, 'dist', 'server', 'seed');
+try {
+  mkdirSync(seedDst, { recursive: true });
+  cpSync(seedSrc, seedDst, { recursive: true });
+  console.log('[publish-build] copied src/server/seed → dist/server/seed');
+} catch (e) {
+  console.warn('[publish-build] WARNING: could not copy seed files:', e.message);
+}
