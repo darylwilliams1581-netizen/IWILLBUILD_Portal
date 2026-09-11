@@ -895,7 +895,7 @@
   "reference/screenshot-forms-4": {
     "mediaType": "image",
     "currentUrl": "/airo-assets/uploads/reference-screenshot-forms-4-eeb50706.jpg",
-    "searchQuery": "",
+    "searchQuery": "subscription management platform interface screen",
     "alternatives": [],
     "userModified": true,
     "createdAt": "2026-09-11T01:35:19.959Z",
@@ -903,7 +903,8 @@
     "uploadSources": {
       "/airo-assets/uploads/reference-screenshot-forms-4-eeb50706.jpg": "f38wenbvln_1789087408478_file_5d4CVSIcst.jpg"
     },
-    "uploadContentHash": "558d05678aa0095560f724031904cbfe8de3c81ebcca1eceb8a5dd9c5f33fa6c"
+    "uploadContentHash": "558d05678aa0095560f724031904cbfe8de3c81ebcca1eceb8a5dd9c5f33fa6c",
+    "caption": "subscription management platform interface screen"
   },
   "reference/screenshot-forms-5": {
     "mediaType": "image",
