@@ -10,6 +10,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from "react-router";
+import { goBack } from '@/lib/navigation';
 import { Helmet } from '@dr.pogodin/react-helmet';
 import { Search, Download, ChevronUp, ChevronDown, ChevronsUpDown, Loader2, AlertCircle, ChevronLeft, ChevronRight, HardHat, CheckSquare, StickyNote, ShieldAlert, LogIn, DollarSign, Truck, LayoutDashboard, ChevronRight as Crumb, X, ListFilter, FileText, Users, Clock, Wrench, ClipboardList, FolderOpen, CalendarDays, Receipt, Calculator, ShoppingCart, Car, Gauge, Milestone, MapPin, UserCheck, Package, Play, Filter } from 'lucide-react';
 import DesktopTopBar from '@/components/DesktopTopBar';
