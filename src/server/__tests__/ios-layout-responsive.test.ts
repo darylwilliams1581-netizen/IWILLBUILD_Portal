@@ -16,7 +16,7 @@
  *   2. RootLayout wrapper has min-width:0 (prevents flex child overflow)
  *   3. PagedHomeScreen outer div has w-full max-w-full min-w-0
  *   4. Swipe container has overflow:hidden, width:100%, maxWidth:100%, minWidth:0
- *   5. Swipe track is 300% wide (3 pages) — correct for 3-page layout
+ *   5. Swipe track is 400% wide (4 pages) — correct for 4-page layout
  *   6. No element uses overflow:clip (unsupported on iOS Safari)
  *   7. No element uses contain:layout (causes flex miscalculation on iOS Safari)
  *   8. AppShell main element does NOT have contain:layout
@@ -71,8 +71,8 @@ describe('iOS layout — PagedHomeScreen swipe container', () => {
     expect(phs).toMatch(/minWidth:\s*0/);
   });
 
-  it('5. Swipe track is 300% wide (3 pages)', () => {
-    expect(phs).toMatch(/width:\s*['"]300%['"]/);
+  it('5. Swipe track is 400% wide (4 pages)', () => {
+    expect(phs).toMatch(/width:\s*['"]400%['"]/);
   });
 
   it('6. No element uses overflow:clip (unsupported on iOS Safari)', () => {

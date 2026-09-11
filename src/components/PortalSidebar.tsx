@@ -215,7 +215,7 @@ const DESKTOP_NAV_GROUPS: DesktopNavGroup[] = [{
     href: '/finance?financeTab=settings'
   }]
 }, {
-  heading: 'Safety Studio',
+  heading: 'Safety',
   items: [{
     id: 'nav-18',
     idx: '18',
@@ -225,7 +225,7 @@ const DESKTOP_NAV_GROUPS: DesktopNavGroup[] = [{
   }, {
     id: 'nav-13',
     idx: '13',
-    label: 'Safety',
+    label: 'Safety Docs',
     icon: ShieldCheck,
     href: '/safety?safetyTab=company-documents'
   }, {
@@ -234,6 +234,12 @@ const DESKTOP_NAV_GROUPS: DesktopNavGroup[] = [{
     label: 'Safety Posters',
     icon: ShieldAlert,
     href: '/safety/posters'
+  }, {
+    id: 'nav-16b',
+    idx: '16b',
+    label: 'Risk & Permits',
+    icon: ShieldAlert,
+    href: '/home?panel=risky-picker'
   }, {
     id: 'nav-15',
     idx: '15',

@@ -3,7 +3,8 @@
  *
  * Page 0 (centre)  — Dashboard: greeting, KPI widgets, tasks, notifications
  * Page 1 (left)    — Job features: all 14 job-scoped features from registry
- * Page 2 (right)   — Management icons: jobs, contacts, fleet, finance, settings
+ * Page 2           — Safety: incidents, risk register, risk & permits
+ * Page 3 (right)   — Manage: work/files/fleet/finance + administration
  *
  * Navigation:
  *   • Touch swipe left/right
@@ -44,8 +45,9 @@ const PLATFORM_ICONS: Omit<HomeIconDef, 'key' | 'group'>[] = [{
 
 // ── Page definitions ──────────────────────────────────────────────────────────
 
-const PAGE_LABELS = ['Dashboard', 'Work & Field', 'Manage'] as const;
-const PAGE_ICONS = [LayoutDashboard, Briefcase, Settings2] as const;
+const PAGE_LABELS = ['Dashboard', 'Work', 'Safety', 'Manage'] as const;
+const PAGE_ICONS = [LayoutDashboard, Briefcase, ShieldCheck, Settings2] as const;
+const PAGE_COUNT = PAGE_LABELS.length;
 
 // ── Props ─────────────────────────────────────────────────────────────────────
 
@@ -331,7 +333,6 @@ const MANAGE_GROUP_ORDER: Array<{ group: HomeIconDef['group']; label: string }> 
   { group: 'files',      label: 'Field & Files' },
   { group: 'fleet',      label: 'Fleet' },
   { group: 'finance',    label: 'Finance' },
-  { group: 'safety',     label: 'Safety' },
   { group: 'management', label: 'Administration' },
 ];
 
@@ -342,7 +343,6 @@ const MANAGE_GROUP_ORDER: Array<{ group: HomeIconDef['group']; label: string }> 
 
 const ADMIN_STORAGE_KEY   = 'manage_admin_open';
 const FINANCE_STORAGE_KEY = 'manage_finance_open';
-const SAFETY_STORAGE_KEY  = 'manage_safety_open';
 
 function CollapsibleSection({
   label,
@@ -409,7 +409,6 @@ function CollapsibleSection({
 // Which groups get a collapsible toggle and their config
 const COLLAPSIBLE_GROUPS: Record<string, { storageKey: string; testId: string }> = {
   finance:    { storageKey: FINANCE_STORAGE_KEY, testId: 'finance-collapsible' },
-  safety:     { storageKey: SAFETY_STORAGE_KEY,  testId: 'safety-collapsible'  },
   management: { storageKey: ADMIN_STORAGE_KEY,   testId: 'admin-collapsible'   },
 };
 
@@ -463,6 +462,34 @@ function ManagePage({
 }
 const ManagePageMemo = memo(ManagePage);
 
+function SafetyPage({
+  icons,
+  onNavigate
+}: {
+  icons: HomeIconDef[];
+  onNavigate: (href: string) => void;
+}) {
+  return (
+    <div className="h-full overflow-y-auto flex flex-col px-4 pt-2 gap-5" style={{
+      paddingBottom: 'max(env(safe-area-inset-bottom), 16px)'
+    }}>
+      <div className="mx-auto w-full" style={{ maxWidth: 480 }}>
+        <p className="text-[11px] font-bold text-rose-700 uppercase tracking-wider mb-2 px-0.5">Safety</p>
+        {icons.length === 0 ? (
+          <p className="text-sm text-muted-foreground px-0.5">No safety tools on this account.</p>
+        ) : (
+          <div className="grid grid-cols-2 gap-2">
+            {icons.map(item => (
+              <IconTile key={item.key} item={item} onNavigate={onNavigate} />
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+const SafetyPageMemo = memo(SafetyPage);
+
 // ── Main component ────────────────────────────────────────────────────────────
 
 export default memo(function PagedHomeScreen({
@@ -479,8 +506,8 @@ export default memo(function PagedHomeScreen({
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   // Support ?page=N deep-link so back buttons from feature pages can land on
-  // the correct home screen page (0 = Field, 1 = Work & Field, 2 = Manage)
-  const initialPage = Math.min(2, Math.max(0, Number(searchParams.get('page') ?? 0) || 0));
+  // the correct home screen page (0 = Dashboard, 1 = Work, 2 = Safety, 3 = Manage)
+  const initialPage = Math.min(PAGE_COUNT - 1, Math.max(0, Number(searchParams.get('page') ?? 0) || 0));
   const [page, setPage] = useState(initialPage);
   const [dragDelta, setDragDelta] = useState(0);
   const [isDragging, setIsDragging] = useState(false);
@@ -531,7 +558,8 @@ export default memo(function PagedHomeScreen({
     group: 'management' as const
   }));
   const allIcons: HomeIconDef[] = [...allowedIcons, ...(isPlatformOwner ? platformAsIconDef : [])];
-  const mgmtIcons = allIcons.filter(i => i.group !== 'comingSoon');
+  const safetyIcons = allIcons.filter(i => i.group === 'safety');
+  const mgmtIcons = allIcons.filter(i => i.group !== 'comingSoon' && i.group !== 'safety');
 
   // ── Swipe handlers ────────────────────────────────────────────────────────
   const handleTouchStart = useCallback((e: ReactTouchEvent) => {
@@ -550,7 +578,7 @@ export default memo(function PagedHomeScreen({
     }
     if (!isHorizontalSwipe.current) return;
     const atStart = page === 0 && dx > 0;
-    const atEnd = page === 2 && dx < 0;
+    const atEnd = page === PAGE_COUNT - 1 && dx < 0;
     const rubber = atStart || atEnd ? dx * 0.25 : dx;
     setIsDragging(true);
     setDragDelta(rubber);
@@ -562,7 +590,7 @@ export default memo(function PagedHomeScreen({
       return;
     }
     const threshold = 60;
-    if (dragDelta < -threshold && page < 2) setPage(p => p + 1);
+    if (dragDelta < -threshold && page < PAGE_COUNT - 1) setPage(p => p + 1);
     else if (dragDelta > threshold && page > 0) setPage(p => p - 1);
     setDragDelta(0);
     setIsDragging(false);
@@ -667,25 +695,30 @@ export default memo(function PagedHomeScreen({
         <div
           className="flex h-full"
           style={{
-            width: '300%',
+            width: '400%',
             minWidth: 0,
-            transform: `translateX(${totalTranslate / 3}%)`,
+            transform: `translateX(${totalTranslate / PAGE_COUNT}%)`,
             transition: isDragging ? 'none' : 'transform 0.32s cubic-bezier(0.25, 0.46, 0.45, 0.94)',
             willChange: 'transform',
           }}
         >
           {/* Page 0 — Dashboard */}
-          <div className="overflow-y-auto min-h-0" style={{ width: '33.333%', height: '100%', paddingBottom: 'max(env(safe-area-inset-bottom), 16px)' }}>
+          <div className="overflow-y-auto min-h-0" style={{ width: '25%', height: '100%', paddingBottom: 'max(env(safe-area-inset-bottom), 16px)' }}>
             <DashboardPage userId={userId} role={role} onNavigate={onNavigate} onNewJob={() => setNewJobOpen(true)} />
           </div>
 
-          {/* Page 1 — Work & Field */}
-          <div className="min-h-0" style={{ width: '33.333%', height: '100%' }}>
+          {/* Page 1 — Work */}
+          <div className="min-h-0" style={{ width: '25%', height: '100%' }}>
             <JobFeaturePage onFeatureClick={handleFeatureClick} />
           </div>
 
-          {/* Page 2 — Management */}
-          <div className="min-h-0" style={{ width: '33.333%', height: '100%' }}>
+          {/* Page 2 — Safety */}
+          <div className="min-h-0" style={{ width: '25%', height: '100%' }}>
+            <SafetyPageMemo icons={safetyIcons} onNavigate={onNavigate} />
+          </div>
+
+          {/* Page 3 — Manage */}
+          <div className="min-h-0" style={{ width: '25%', height: '100%' }}>
             <ManagePageMemo icons={mgmtIcons} onNavigate={onNavigate} />
           </div>
         </div>
@@ -696,7 +729,7 @@ export default memo(function PagedHomeScreen({
         className="flex items-center justify-center gap-2 py-1.5 shrink-0"
         style={{ paddingBottom: 'max(env(safe-area-inset-bottom), 6px)' }}
       >
-        {[0, 1, 2].map(i => (
+        {[0, 1, 2, 3].map(i => (
           <button
             key={i}
             onClick={() => setPage(i)}
