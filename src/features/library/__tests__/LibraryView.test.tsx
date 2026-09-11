@@ -140,6 +140,36 @@ function mockFetchWithDownloadSuccess() {
   }) as unknown as typeof fetch;
 }
 
+function mockFetchWithDownloadError() {
+  global.fetch = vi.fn().mockImplementation((url: string) => {
+    if (String(url).includes('/api/library/items') && String(url).includes('/install')) {
+      return Promise.resolve({
+        ok: false,
+        status: 500,
+        json: () => Promise.resolve({ error: 'Template copy failed.' }),
+      });
+    }
+    if (String(url).includes('/api/library/items')) {
+      return Promise.resolve({
+        ok: true,
+        json: () => Promise.resolve({
+          ok: true,
+          items: [
+            {
+              id: 1, type: 'form', category: null, title: 'Photo Record',
+              summary: null, tags: null, discipline: null, version: '1.0', status: 'active',
+              install_count: 0, avg_rating: 0, rating_count: 0,
+              source_file_name: null, has_file: 0, updated_at: '2026-01-01T00:00:00Z',
+            },
+          ],
+          pagination: { total: 1, page: 1, limit: 20, pages: 1 },
+        }),
+      });
+    }
+    return Promise.resolve({ ok: true, json: () => Promise.resolve({}) });
+  }) as unknown as typeof fetch;
+}
+
 // ── Render helper ─────────────────────────────────────────────────────────────
 
 function renderView(props: { initialTypeFilter?: string } = {}) {
@@ -244,6 +274,20 @@ describe('LibraryView — download button', () => {
       expect(screen.getByText('Site Safety Policy')).toBeInTheDocument();
     });
     expect(screen.queryByRole('button', { name: /^install$/i })).not.toBeInTheDocument();
+  });
+
+  it('shows the server error when a template copy fails', async () => {
+    mockFetchWithDownloadError();
+    renderView();
+
+    await waitFor(() => {
+      expect(screen.getByText('Photo Record')).toBeInTheDocument();
+    });
+    fireEvent.click(screen.getByRole('button', { name: /download to my templates/i }));
+
+    await waitFor(() => {
+      expect(screen.getByText('Template copy failed.')).toBeInTheDocument();
+    });
   });
 });
 

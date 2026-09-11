@@ -19,15 +19,13 @@
  * Each download always creates a fresh copy — users can download again if they
  * want a clean reset. No deduplication check.
  *
- * Access: owner, admin, estimator roles only.
+ * Access: any authenticated company user.
  */
 import type { Request, Response } from 'express';
 import { db } from '../../../../../db/client.js';
 import { sql } from 'drizzle-orm';
 import { getSessionAndProfile } from '../../../../../lib/auth-middleware.js';
 import type { ResultSetHeader } from 'mysql2';
-
-const ALLOWED_ROLES = new Set(['owner', 'admin', 'estimator']);
 
 // Types that map to form_templates
 const FORM_TYPES = new Set([
@@ -41,10 +39,6 @@ export default async function handler(req: Request, res: Response) {
   const auth = await getSessionAndProfile(req, res);
   if (!auth) return;
 
-  if (!ALLOWED_ROLES.has(auth.profile.role)) {
-    return res.status(403).json({ error: 'Only owners, admins, and estimators can download library items.' });
-  }
-
   const sourceId = parseInt(req.params.id);
   if (!sourceId) return res.status(400).json({ error: 'Invalid id' });
 
@@ -54,8 +48,7 @@ export default async function handler(req: Request, res: Response) {
     // ── Fetch source item ─────────────────────────────────────────────────────
     const [sourceRows] = await db.execute(
       sql.raw(`
-        SELECT id, type, category, title, builder_json, content, version,
-               page_layout_json, theme_json, pdf_settings_json
+        SELECT id, type, category, title, builder_json, content, version, metadata_json
         FROM library_items
         WHERE id = ${sourceId} AND visibility = 'public' AND status = 'active'
         LIMIT 1
@@ -63,7 +56,7 @@ export default async function handler(req: Request, res: Response) {
     ) as unknown as [Array<{
       id: number; type: string; category: string | null; title: string;
       builder_json: string | null; content: string | null; version: string;
-      page_layout_json: string | null; theme_json: string | null; pdf_settings_json: string | null;
+      metadata_json: string | null;
     }>, unknown];
 
     const source = sourceRows?.[0];
@@ -128,12 +121,12 @@ export default async function handler(req: Request, res: Response) {
           : 'NULL';
         await db.execute(
           sql.raw(`
-            INSERT INTO form_template_fields
-              (template_id, label, field_type, required, options_json, field_order)
+          INSERT INTO form_template_fields
+              (template_id, company_id, label, field_type, required, options_json, field_order)
             VALUES
-              (${newId}, '${safeLabel}', '${safeFieldType}', ${field.isRequired ? 1 : 0}, ${optionsJson}, ${field.sortOrder})
+              (${newId}, ${companyId}, '${safeLabel}', '${safeFieldType}', ${field.isRequired ? 1 : 0}, ${optionsJson}, ${field.sortOrder})
           `)
-        ).catch(() => { /* non-critical — template still usable without fields */ });
+        );
       }
 
       redirectTarget = '/forms';
@@ -163,10 +156,31 @@ export default async function handler(req: Request, res: Response) {
       const builderJson = source.builder_json ?? '{"blocks":[],"systemFields":[],"sourceAttachments":[]}';
       const safeBuilderJson = safe(builderJson);
       const tType = safe(source.type ?? 'document');
-      // Restore layout/theme/pdf_settings from library item
-      const pageLayoutVal  = source.page_layout_json  ? `'${safe(source.page_layout_json)}'`  : "'{}'";
-      const themeVal       = source.theme_json        ? `'${safe(source.theme_json)}'`        : "'{}'";
-      const pdfSettingsVal = source.pdf_settings_json ? `'${safe(source.pdf_settings_json)}'` : 'NULL';
+      // Document-only settings are carried inside the library item's metadata.
+      let metadata: Record<string, unknown> = {};
+      if (source.metadata_json) {
+        try {
+          metadata = JSON.parse(source.metadata_json) as Record<string, unknown>;
+        } catch { /* use document defaults */ }
+      }
+      const metadataValue = (value: unknown, fallback: unknown): string => {
+        const resolved = value ?? fallback;
+        return resolved === null
+          ? 'NULL'
+          : `'${safe(typeof resolved === 'string' ? resolved : JSON.stringify(resolved))}'`;
+      };
+      const pageLayoutVal = metadataValue(
+        metadata.page_layout_json ?? metadata.pageLayout,
+        {},
+      );
+      const themeVal = metadataValue(
+        metadata.theme_json ?? metadata.theme,
+        {},
+      );
+      const pdfSettingsVal = metadataValue(
+        metadata.pdf_settings_json ?? metadata.pdfSettings,
+        null,
+      );
 
       const [insertResult] = await db.execute(
         sql.raw(`

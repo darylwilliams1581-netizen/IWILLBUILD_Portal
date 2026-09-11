@@ -216,12 +216,12 @@ export function LibraryView({ initialTypeFilter }: LibraryViewProps = {}) {
         headers: { 'Content-Type': 'application/json' },
       });
       const data = (await res.json()) as {
-        ok: boolean; message: string;
+        ok?: boolean; message?: string; error?: string;
         redirectTarget?: string; redirectLabel?: string;
       };
       setDownloadMsg({
         id: item.id,
-        msg: data.message ?? (res.ok ? 'Downloaded.' : 'Failed.'),
+        msg: data.message ?? data.error ?? (res.ok ? 'Downloaded.' : 'Download failed. Please try again.'),
         ok: res.ok,
         redirectTarget: data.redirectTarget,
         redirectLabel: data.redirectLabel,
