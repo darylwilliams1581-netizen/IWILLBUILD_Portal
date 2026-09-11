@@ -36,6 +36,37 @@ export default async function handler(req: Request, res: Response) {
       });
     }
 
+    // ── Sole-user auto-promotion ──────────────────────────────────────────────
+    // If this user is the only active member of their company and their role is
+    // below admin (member / viewer / worker), promote them to admin so they can
+    // always manage their own subscription and company settings.
+    // This is a self-healing guard — it fires on every /api/me call.
+    const BELOW_ADMIN: ReadonlySet<string> = new Set(['member', 'viewer', 'worker', 'guest']);
+    if (profile?.companyId && BELOW_ADMIN.has(profile.role ?? '')) {
+      try {
+        const [countRows] = await db.execute(
+          sql`SELECT COUNT(*) AS cnt FROM profiles
+              WHERE company_id = ${profile.companyId}
+                AND status != 'inactive'`
+        ) as unknown as [Array<{ cnt: number }>, unknown];
+        const activeCount = Number(countRows?.[0]?.cnt ?? 0);
+        if (activeCount <= 1) {
+          const previousRole = profile.role;
+          await db.update(profiles)
+            .set({ role: 'admin' })
+            .where(eq(profiles.userId, session.user.id));
+          profile.role = 'admin';
+          authLog('me.sole-user-promoted', {
+            userId: session.user.id,
+            companyId: profile.companyId,
+            previousRole,
+          });
+        }
+      } catch (e) {
+        console.warn('[me] sole-user promotion check failed:', e);
+      }
+    }
+
     // Resolve platform developer status:
     // 1. Emergency email fallback (works even before migration runs)
     // 2. DB flag via raw SQL (platform_role column may not exist on fresh DBs)
