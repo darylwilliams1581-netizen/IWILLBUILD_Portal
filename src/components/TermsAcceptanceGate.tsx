@@ -19,7 +19,7 @@ export function hasAcceptedTerms(email?: string): boolean {
   }
 }
 
-function markTermsAccepted(): void {
+export function markTermsAccepted(): void {
   try {
     localStorage.setItem(TERMS_KEY, 'true');
   } catch { /* storage unavailable */ }

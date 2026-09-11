@@ -6,7 +6,6 @@ import { Eye, EyeOff, ArrowRight, Lock, Mail, AlertCircle, Smartphone, KeyRound,
 import { useSession, authClient, signIn, consumeTwoFactorRedirect } from '@/lib/auth/auth-client';
 import { InputOTP, InputOTPGroup, InputOTPSlot } from '@/components/ui/input-otp';
 import ForcedPasswordChangeModal from '@/components/auth/ForcedPasswordChangeModal';
-import TermsAcceptanceGate, { hasAcceptedTerms } from '@/components/TermsAcceptanceGate';
 import { goBack } from '@/lib/navigation';
 
 import { isNativeApp, WEB_PORTAL_URL, openExternalUrl } from '@/lib/native-routing';
@@ -99,8 +98,6 @@ export default function LoginPage() {
 
   // Forced password change state
   const [mustChangePassword, setMustChangePassword] = useState(false);
-  const [showLoginTerms, setShowLoginTerms] = useState(false);
-  const pendingDestRef = useRef('/home');
 
   // Just-verified banner — shown when redirected from email verification
   const [justVerified, setJustVerified] = useState(false);
@@ -137,9 +134,9 @@ export default function LoginPage() {
 
   // ── All hooks must be declared before any conditional return ──────────────
 
-  // Redirect if already authenticated (terms first if this device has not accepted)
+  // Redirect if already authenticated
   useEffect(() => {
-    if (isAuthenticated && !showLoginTerms && !mustChangePassword) {
+    if (isAuthenticated && !mustChangePassword) {
       const params = new URLSearchParams(location.search);
       const fromParam = params.get('from');
       const rawFrom = (location.state as {
@@ -152,22 +149,11 @@ export default function LoginPage() {
       authLog('already_authenticated', {
         redirectTo: from
       });
-      if (!hasAcceptedTerms(email)) {
-        pendingDestRef.current = from;
-        setShowLoginTerms(true);
-        return;
-      }
       finishLoginNavigation(from, navigate);
     }
-  }, [isAuthenticated, navigate, location.state, location.search, showLoginTerms, mustChangePassword, email]);
+  }, [isAuthenticated, navigate, location.state, location.search, mustChangePassword]);
 
   function completeLogin(destination: string) {
-    if (!hasAcceptedTerms(email)) {
-      pendingDestRef.current = destination;
-      setShowLoginTerms(true);
-      setLoading(false);
-      return;
-    }
     finishLoginNavigation(destination, navigate);
   }
 
@@ -197,7 +183,7 @@ export default function LoginPage() {
   if (isPending) return <div className="min-h-screen flex items-center justify-center bg-[#0F1117]">
       <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
     </div>;
-  if (isAuthenticated && !showLoginTerms && !mustChangePassword) return <div className="min-h-screen flex items-center justify-center bg-[#0F1117]">
+  if (isAuthenticated && !mustChangePassword) return <div className="min-h-screen flex items-center justify-center bg-[#0F1117]">
       <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
     </div>;
 
@@ -603,7 +589,7 @@ export default function LoginPage() {
       </Helmet>
 
       {/* Forced password change modal */}
-      {mustChangePassword && !showLoginTerms && <ForcedPasswordChangeModal onSuccess={() => {
+      {mustChangePassword && <ForcedPasswordChangeModal onSuccess={() => {
       setMustChangePassword(false);
       const rawFromPwChange = (location.state as {
         from?: {
@@ -639,15 +625,6 @@ export default function LoginPage() {
       duration: 0.4,
       ease: 'easeOut' as const
     }} className="relative z-10 w-full max-w-md mx-4">
-        {showLoginTerms ? (
-          <div className="h-[min(72dvh,640px)] min-h-0 overflow-hidden rounded-xl">
-            <TermsAcceptanceGate
-              userEmail={email}
-              onAccepted={() => finishLoginNavigation(pendingDestRef.current, navigate)}
-            />
-          </div>
-        ) : (
-        <>
         <div className="bg-[#1A1D23] border border-white/10 rounded-xl shadow-2xl overflow-hidden">
           {/* Header */}
           <div className="px-8 pt-8 pb-6 border-b border-white/10">
@@ -1011,8 +988,6 @@ export default function LoginPage() {
               &larr; Back to home
             </button>}
         </div>
-        </>
-        )}
       </motion.div>
     </div>;
 }

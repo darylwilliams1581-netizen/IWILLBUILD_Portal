@@ -23,7 +23,6 @@ import PagedHomeScreen from '@/components/home/PagedHomeScreen';
 import { fetchActiveJobs } from '@/lib/jobs-api';
 import { useFieldSheetScrollLock } from '@/lib/useFieldSheetScrollLock';
 
-import TermsAcceptanceGate, { hasAcceptedTerms } from '@/components/TermsAcceptanceGate';
 import { isNative } from '@/lib/capacitor-plugins';
 import { useOfflineQueue } from '@/lib/useOfflineQueue';
 import {
@@ -1855,14 +1854,6 @@ export default function HomeScreen() {
     };
   }, [loading]);
 
-  // ── Terms acceptance gate — shown once, BEFORE Home paints ───────────────────
-  // Dev account (support@iwillbuild.com) always sees the gate regardless of localStorage.
-  const [showTermsGate, setShowTermsGate] = useState(false);
-  useEffect(() => {
-    if (!email && loading) return; // session still loading — wait
-    setShowTermsGate(!hasAcceptedTerms(email));
-  }, [email, loading]);
-
   // ── Home icon permissions ──────────────────────────────────────────────────
   const [iconPermissions, setIconPermissions] = useState<string[] | null>(null);
   useEffect(() => {
@@ -1989,14 +1980,6 @@ export default function HomeScreen() {
     }}>
         <div className="w-8 h-8 border-2 border-violet-300 border-t-violet-600 rounded-full animate-spin" />
       </div>;
-  }
-  if (showTermsGate) {
-    return (
-      <TermsAcceptanceGate
-        onAccepted={() => setShowTermsGate(false)}
-        userEmail={email}
-      />
-    );
   }
   return <>
       <div className="flex-1 flex flex-col relative overflow-hidden min-h-0 w-full max-w-full min-w-0" style={{

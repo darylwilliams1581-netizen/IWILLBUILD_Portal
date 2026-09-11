@@ -6,6 +6,7 @@ import { Eye, EyeOff, Lock, Mail, User, AlertCircle, CheckCircle2, Building2, Ch
 import { signIn } from '@/lib/auth/auth-client';
 import { INDUSTRY_LIST, type IndustryId } from '@/lib/industry-config';
 import { goBack } from '@/lib/navigation';
+import { markTermsAccepted } from '@/components/TermsAcceptanceGate';
 
 // ── Password policy ───────────────────────────────────────────────────────────
 function getPasswordStrength(pw: string) {
@@ -126,6 +127,7 @@ export default function SignupPage() {
   const [step, setStep] = useState<1 | 2 | 3>(1);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [agreedToTerms, setAgreedToTerms] = useState(false);
 
   // Incomplete signup state — shown when server returns error: 'incomplete_signup'
   const [incompleteSignup, setIncompleteSignup] = useState<{
@@ -173,6 +175,10 @@ export default function SignupPage() {
       setError('Password does not meet the requirements below.');
       return;
     }
+    if (!agreedToTerms) {
+      setError('Please agree to the Terms of Use, Fair Use, Privacy and System Policy.');
+      return;
+    }
     setError('');
     setLoading(true);
     try {
@@ -216,6 +222,8 @@ export default function SignupPage() {
         setLoading(false);
         return;
       }
+
+      markTermsAccepted();
 
       // Auto sign-in so the session cookie is set
       const loginResult = await signIn.email({
@@ -580,6 +588,23 @@ export default function SignupPage() {
                           </div>}
                       </div>
 
+                      <label className="flex items-start gap-2.5 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={agreedToTerms}
+                          onChange={e => setAgreedToTerms(e.target.checked)}
+                          className="mt-0.5 h-4 w-4 shrink-0 rounded border-white/20 bg-white/5 text-primary"
+                        />
+                        <span className="text-[11px] leading-snug text-white/55">
+                          I agree to the{' '}
+                          <Link to="/terms" target="_blank" className="text-primary hover:text-violet-400 underline">Terms of Use</Link>,{' '}
+                          <Link to="/fair-use" target="_blank" className="text-primary hover:text-violet-400 underline">Fair Use</Link>,{' '}
+                          <Link to="/privacy" target="_blank" className="text-primary hover:text-violet-400 underline">Privacy</Link>
+                          {' '}and{' '}
+                          <Link to="/system-policy" target="_blank" className="text-primary hover:text-violet-400 underline">System Policy</Link>.
+                        </span>
+                      </label>
+
                       <div className="flex gap-2 mt-1">
                         <button type="button" onClick={() => {
                       setError('');
@@ -588,7 +613,7 @@ export default function SignupPage() {
                     }} className="flex-1 py-2.5 rounded-md border border-white/10 text-sm font-semibold text-white/50 hover:text-white hover:border-white/20 transition-colors duration-150">
                           Back
                         </button>
-                        <button type="submit" disabled={loading} className="flex-1 flex items-center justify-center gap-2 bg-primary hover:bg-violet-700 disabled:opacity-60 disabled:cursor-not-allowed text-white font-semibold text-sm py-2.5 rounded-md transition-colors duration-150">
+                        <button type="submit" disabled={loading || !agreedToTerms} className="flex-1 flex items-center justify-center gap-2 bg-primary hover:bg-violet-700 disabled:opacity-60 disabled:cursor-not-allowed text-white font-semibold text-sm py-2.5 rounded-md transition-colors duration-150">
                           {loading ? <span className="flex items-center gap-2">
                               <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                               Creating…
@@ -610,7 +635,7 @@ export default function SignupPage() {
           {/* Footer */}
           <div className="px-8 py-4 bg-black/20 border-t border-white/5 text-center">
             <p className="text-xs text-white/25">
-              IWIllBUIlD Pty Ltd &mdash; By signing up you agree to our Terms of Service
+              IWIllBUIlD Pty Ltd — Terms are accepted on this page before the account is created
             </p>
           </div>
         </div>
