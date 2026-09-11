@@ -36,12 +36,12 @@ async function getNextCardNumber(companyId: number): Promise<string> {
   const [rows] = await db.execute(
     sql`SELECT card_number FROM job_cards WHERE company_id = ${companyId} ORDER BY id DESC LIMIT 1`
   ) as unknown as [Array<{ card_number: string }>, unknown];
-  if (!rows?.length) return 'JC-0001';
+  if (!rows?.length) return 'SC-0001';
   const last = rows[0].card_number;
   const match = last.match(/(\d+)$/);
-  if (!match) return 'JC-0001';
+  if (!match) return 'SC-0001';
   const next = parseInt(match[1], 10) + 1;
-  return `JC-${String(next).padStart(4, '0')}`;
+  return `SC-${String(next).padStart(4, '0')}`;
 }
 
 export default async function handler(req: Request, res: Response) {

@@ -208,14 +208,14 @@ function CreateSheet({
       <div className={`fixed inset-0 z-40 bg-black/40 transition-opacity duration-300 ${open ? 'opacity-100' : 'opacity-0 pointer-events-none'}`} onClick={onClose} aria-hidden="true" />
 
       {/* Sheet */}
-      <div className={`fixed top-0 right-0 bottom-0 z-50 w-full max-w-md bg-white shadow-2xl flex flex-col transition-transform duration-300 ease-out ${open ? 'translate-x-0' : 'translate-x-full'}`} role="dialog" aria-modal="true" aria-label="New Job Card">
+      <div className={`fixed top-0 right-0 bottom-0 z-50 w-full max-w-md bg-white shadow-2xl flex flex-col transition-transform duration-300 ease-out ${open ? 'translate-x-0' : 'translate-x-full'}`} role="dialog" aria-modal="true" aria-label="New Service Card">
         {/* Sheet header */}
         <div className="flex items-center gap-3 px-6 py-5 border-b border-gray-100 shrink-0">
           <div className="w-9 h-9 rounded-xl bg-yellow-100 flex items-center justify-center shrink-0">
             <Zap size={17} className="text-yellow-600" />
           </div>
           <div className="flex-1 min-w-0">
-            <h2 className="text-base font-bold text-gray-900 leading-tight">New Job Card</h2>
+            <h2 className="text-base font-bold text-gray-900 leading-tight">New Service Card</h2>
             <p className="text-[11px] text-gray-400 mt-0.5">Quick work record — reactive / call-out</p>
           </div>
           <button onClick={onClose} className="p-2 rounded-xl text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors" aria-label="Close">
@@ -281,7 +281,7 @@ function CreateSheet({
           </button>
           <button type="submit" form="create-jc-form" disabled={saving} className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold bg-yellow-500 hover:bg-yellow-600 text-white transition-colors disabled:opacity-50 shadow-sm">
             {saving ? <RefreshCw size={14} className="animate-spin" /> : <Plus size={14} />}
-            Create Job Card
+            Create Service Card
           </button>
         </div>
       </div>
@@ -353,8 +353,8 @@ export default function JobCardsPage() {
   return <div className="flex-1 bg-[#f5f6f8] flex flex-col lg-portal">
       <PortalSidebar />
       <Helmet>
-        <title>Job Cards — IWIllBUIlD</title>
-        <meta name="description" content="Job Card register — reactive and call-out work records." />
+        <title>Service Jobs — IWIllBUIlD</title>
+        <meta name="description" content="Service Jobs register — create service cards for call-outs, maintenance and do-and-charge work." />
         <meta name="robots" content="noindex" />
         <link rel="canonical" href="https://iwillbuild.com/job-cards" />
       </Helmet>
@@ -367,11 +367,11 @@ export default function JobCardsPage() {
               <ArrowLeft size={18} />
             </button>
             <Zap size={16} className="text-yellow-500 shrink-0" />
-            <h1 className="font-heading font-bold text-base text-gray-900">Job Cards</h1>
+            <h1 className="font-heading font-bold text-base text-gray-900">Service Jobs</h1>
             {!loading && <span className="text-xs bg-gray-100 text-gray-500 font-semibold px-1.5 py-0.5 rounded-full">{total}</span>}
           </div>
           <button onClick={() => navigate('/job-cards/new')} className="flex items-center gap-1.5 bg-yellow-500 hover:bg-yellow-600 text-white text-xs font-bold px-3 py-1.5 rounded-lg transition-colors">
-            <Plus size={13} />New Job Card
+            <Plus size={13} />New Service Card
           </button>
         </header>
 
@@ -381,14 +381,14 @@ export default function JobCardsPage() {
             <ArrowLeft size={15} />
           </button>
           <Zap size={14} className="text-yellow-500 shrink-0" />
-          <span className="op-page-title flex-1 min-w-0">Job Cards</span>
+          <span className="op-page-title flex-1 min-w-0">Service Jobs</span>
           {!loading && <span className="text-[11px] bg-gray-100 text-gray-500 font-semibold px-1.5 py-0.5 rounded">{total}</span>}
           <div className="ml-auto flex items-center gap-2">
             <button onClick={() => void fetchCards()} className="p-1.5 rounded text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors" title="Refresh">
               <RefreshCw size={13} className={loading ? 'animate-spin' : ''} />
             </button>
             <button onClick={() => navigate('/job-cards/new')} className="op-btn op-btn-primary">
-              <Plus size={12} />New Job Card
+              <Plus size={12} />New Service Card
             </button>
           </div>
         </header>
@@ -444,13 +444,13 @@ export default function JobCardsPage() {
               <RefreshCw size={20} className="animate-spin text-gray-300" />
             </div> : cards.length === 0 ? <div className="flex flex-col items-center justify-center py-24 text-gray-400">
               <Zap size={32} className="mb-3 text-gray-200" />
-              <p className="text-sm font-medium text-gray-500">No job cards found</p>
+              <p className="text-sm font-medium text-gray-500">No service cards found</p>
               <p className="text-xs text-gray-400 mt-1">
-                {search || statusFilter !== 'all' || invoiceFilter !== 'all' ? 'Try adjusting your filters' : 'Create your first Job Card to get started'}
+                {search || statusFilter !== 'all' || invoiceFilter !== 'all' ? 'Try adjusting your filters' : 'Create your first Service Card to get started'}
               </p>
               {!search && statusFilter === 'all' && invoiceFilter === 'all' && <button onClick={() => navigate('/job-cards/new')} className="mt-4 flex items-center gap-2 px-4 py-2 rounded-lg bg-yellow-500 hover:bg-yellow-600 text-white text-sm font-semibold transition-colors">
                   <Plus size={14} />
-                  New Job Card
+                  New Service Card
                 </button>}
             </div> : <>
               {/* ── Mobile card list (< md) ── */}

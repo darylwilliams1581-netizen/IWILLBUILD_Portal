@@ -680,7 +680,7 @@ function InvoiceModal({
           {/* Supporting record note */}
           <div className="flex items-start gap-2 px-3 py-2 bg-blue-50 border border-blue-100 rounded-lg text-[12px] text-blue-700">
             <FileText size={13} className="shrink-0 mt-0.5" />
-            <span>This Job Card ({card.card_number}) will be attached as the supporting service record on the invoice.</span>
+            <span>This Service Card ({card.card_number}) will be attached as the supporting service record on the invoice.</span>
           </div>
 
           <div>
@@ -770,7 +770,7 @@ function ConvertModal({
           </div>
           <div className="flex-1">
             <h2 className="text-[15px] font-bold text-gray-900">Convert to Full Job</h2>
-            <p className="text-[11px] text-gray-400">This Job Card becomes the source record</p>
+            <p className="text-[11px] text-gray-400">This Service Card becomes the source record</p>
           </div>
           <button onClick={onClose} className="p-1.5 rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors">
             <X size={16} />
@@ -783,7 +783,7 @@ function ConvertModal({
               {error}
             </div>}
           <div className="bg-violet-50 rounded-lg p-3 text-sm text-violet-700">
-            A new Full Job will be created from this Job Card. The card is preserved as the original source record and marked Converted.
+            A new Full Job will be created from this Service Card. The card is preserved as the original source record and marked Converted.
           </div>
           <div>
             <label className="block text-[11px] font-semibold text-gray-500 uppercase tracking-wide mb-1">Job title (optional)</label>
@@ -1153,7 +1153,7 @@ export default function JobCardDetailPage() {
         credentials: 'include'
       });
       if (!res.ok) {
-        setError('Job card not found');
+        setError('Service card not found');
         return;
       }
       const data = (await res.json()) as {
@@ -1161,7 +1161,7 @@ export default function JobCardDetailPage() {
       };
       setCard(data.jobCard ?? null);
     } catch {
-      setError('Failed to load job card');
+      setError('Failed to load service card');
     } finally {
       setLoading(false);
     }
@@ -1197,8 +1197,8 @@ export default function JobCardDetailPage() {
         <DesktopDock />
         <div className="flex-1 flex flex-col items-center justify-center gap-3">
           <AlertCircle size={28} className="text-red-400" />
-          <p className="text-gray-600 font-medium">{error || 'Job card not found'}</p>
-          <Link to="/job-cards" className="text-sm text-yellow-600 hover:underline">← Back to Job Cards</Link>
+          <p className="text-gray-600 font-medium">{error || 'Service card not found'}</p>
+          <Link to="/job-cards" className="text-sm text-yellow-600 hover:underline">← Back to Service Jobs</Link>
         </div>
       </div>;
   }
@@ -1214,8 +1214,8 @@ export default function JobCardDetailPage() {
       <DesktopTopBar />
       <DesktopDock />
       <Helmet>
-        <title>{card.card_number} — Job Card — IWIllBUIlD</title>
-        <meta name="description" content={`Job Card ${card.card_number} — ${card.work_description.slice(0, 120)}`} />
+        <title>{card.card_number} — Service Card — IWIllBUIlD</title>
+        <meta name="description" content={`Service Card ${card.card_number} — ${card.work_description.slice(0, 120)}`} />
         <meta name="robots" content="noindex" />
         <link rel="canonical" href={`https://iwillbuild.com/job-cards/${card.id}`} />
       </Helmet>
@@ -1227,7 +1227,7 @@ export default function JobCardDetailPage() {
           <div className="flex items-center justify-between gap-2 mb-2">
             <Link to="/job-cards" className="flex items-center gap-1 text-sm font-semibold text-yellow-600 hover:text-yellow-700 transition-colors">
               <ChevronLeft size={17} />
-              Job Cards
+              Service Jobs
             </Link>
             <span className="font-mono text-[12px] font-bold text-gray-400 shrink-0">{card.card_number}</span>
           </div>
@@ -1258,7 +1258,7 @@ export default function JobCardDetailPage() {
               {!editing && <>
                   <Link to="/job-cards/new" className="hidden lg:flex items-center gap-1.5 px-3 py-2 rounded-lg border border-yellow-400 text-yellow-700 text-sm font-semibold hover:bg-yellow-50 transition-colors">
                     <Plus size={14} />
-                    Add New Job Card
+                    Add New Service Card
                   </Link>
                   {canConvert && <button onClick={() => setConvertOpen(true)} className="flex items-center gap-1.5 px-3 py-2 rounded-lg border border-violet-200 text-violet-700 text-sm font-semibold hover:bg-violet-50 transition-colors">
                       <ArrowRightLeft size={14} />
@@ -1282,7 +1282,7 @@ export default function JobCardDetailPage() {
           {editing ? <EditPanel card={card} customers={customers} team={team} onSave={updated => {
         setCard(updated);
         setEditing(false);
-        showToast('Job Card saved');
+        showToast('Service Card saved');
       }} onCancel={() => setEditing(false)} /> : <div className="max-w-3xl mx-auto flex flex-col gap-4">
               {/* ── Financial summary strip ── */}
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">

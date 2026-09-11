@@ -33,7 +33,7 @@ const ALL_ITEMS: DockItem[] = [
   href: '/jobs',
   color: '#0891b2'
 }, {
-  label: 'Job Cards',
+  label: 'Service Jobs',
   icon: Zap,
   href: '/job-cards',
   color: '#f59e0b'

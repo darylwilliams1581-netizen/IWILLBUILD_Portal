@@ -93,8 +93,8 @@ export default function JobCardNewPage() {
   }
   return <div className="flex h-screen bg-[#f5f6f8] overflow-hidden">
       <Helmet>
-        <title>New Job Card — IWIllBUIlD</title>
-        <meta name="description" content="Create a new job card for reactive or call-out work." />
+        <title>New Service Card — IWIllBUIlD</title>
+        <meta name="description" content="Create a new service card for call-out, maintenance or do-and-charge work." />
         <link rel="canonical" href="https://iwillbuild.com/job-cards/new" />
         <meta name="robots" content="noindex" />
       </Helmet>
@@ -108,14 +108,14 @@ export default function JobCardNewPage() {
           <div className="flex items-center gap-3">
             <button onClick={() => navigate('/job-cards')} className="flex items-center gap-1.5 text-sm font-semibold text-gray-500 hover:text-gray-800 transition-colors">
               <ChevronLeft size={18} />
-              <span>Job Cards</span>
+              <span>Service Jobs</span>
             </button>
             <span className="text-gray-200">/</span>
             <div className="flex items-center gap-2">
               <div className="w-7 h-7 rounded-lg bg-yellow-100 flex items-center justify-center shrink-0">
                 <Zap size={14} className="text-yellow-600" />
               </div>
-              <h1 className="text-[16px] font-bold text-gray-900">New Job Card</h1>
+              <h1 className="text-[16px] font-bold text-gray-900">New Service Card</h1>
             </div>
           </div>
         </div>
@@ -181,7 +181,7 @@ export default function JobCardNewPage() {
                 </button>
                 <button type="submit" form="new-jc-form" disabled={saving} className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl bg-yellow-500 hover:bg-yellow-600 text-white text-sm font-bold transition-colors disabled:opacity-50 shadow-sm">
                   {saving ? <RefreshCw size={15} className="animate-spin" /> : <Plus size={15} />}
-                  Create Job Card
+                  Create Service Card
                 </button>
               </div>
 
