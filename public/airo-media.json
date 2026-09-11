@@ -849,5 +849,75 @@
     },
     "uploadContentHash": "329a81a362efb2f5c1c2e619d788e9355005f271236e0f349df5d4fe79ff70fb",
     "caption": "variation request form kitchen project management"
+  },
+  "reference/screenshot-forms-1": {
+    "mediaType": "image",
+    "currentUrl": "/airo-assets/uploads/reference-screenshot-forms-1-016749bd.jpg",
+    "searchQuery": "subscription management interface cancelled plan",
+    "alternatives": [],
+    "userModified": true,
+    "createdAt": "2026-09-11T01:35:10.872Z",
+    "lastUpdated": "2026-09-11T01:35:10.872Z",
+    "uploadSources": {
+      "/airo-assets/uploads/reference-screenshot-forms-1-016749bd.jpg": "f38wenbvln_1789085657973_file_lxwInTssgU.jpg"
+    },
+    "uploadContentHash": "c43891c439efbc6126edb0b6958340259ea7722cc4b0b7b3363f33ee7ced1bf5",
+    "caption": "subscription management interface cancelled plan"
+  },
+  "reference/screenshot-forms-2": {
+    "mediaType": "image",
+    "currentUrl": "/airo-assets/uploads/reference-screenshot-forms-2-2f0c32cf.jpg",
+    "searchQuery": "subscription management dashboard platform developer plan",
+    "alternatives": [],
+    "userModified": true,
+    "createdAt": "2026-09-11T01:35:19.446Z",
+    "lastUpdated": "2026-09-11T01:35:19.446Z",
+    "uploadSources": {
+      "/airo-assets/uploads/reference-screenshot-forms-2-2f0c32cf.jpg": "f38wenbvln_1789086143450_file_I1B8pSHmxm.jpg"
+    },
+    "uploadContentHash": "e1f87f9e4c426d5cbdf6094569a408a25e300fa9b507a8c90d1c16e0ae9d129b",
+    "caption": "subscription management dashboard platform developer plan"
+  },
+  "reference/screenshot-forms-3": {
+    "mediaType": "image",
+    "currentUrl": "/airo-assets/uploads/reference-screenshot-forms-3-f6557de8.jpg",
+    "searchQuery": "subscription management dashboard platform developer plan",
+    "alternatives": [],
+    "userModified": true,
+    "createdAt": "2026-09-11T01:35:19.706Z",
+    "lastUpdated": "2026-09-11T01:35:19.706Z",
+    "uploadSources": {
+      "/airo-assets/uploads/reference-screenshot-forms-3-f6557de8.jpg": "f38wenbvln_1789086499817_file_zoI2Vt2ENa.jpg"
+    },
+    "uploadContentHash": "8db80ea2e36d1e655ebd2d588f87e72774ec6eec513c7da5262c450d7fa14b6a",
+    "caption": "subscription management dashboard platform developer plan"
+  },
+  "reference/screenshot-forms-4": {
+    "mediaType": "image",
+    "currentUrl": "/airo-assets/uploads/reference-screenshot-forms-4-eeb50706.jpg",
+    "searchQuery": "subscription management platform interface screen",
+    "alternatives": [],
+    "userModified": true,
+    "createdAt": "2026-09-11T01:35:19.959Z",
+    "lastUpdated": "2026-09-11T01:35:19.959Z",
+    "uploadSources": {
+      "/airo-assets/uploads/reference-screenshot-forms-4-eeb50706.jpg": "f38wenbvln_1789087408478_file_5d4CVSIcst.jpg"
+    },
+    "uploadContentHash": "558d05678aa0095560f724031904cbfe8de3c81ebcca1eceb8a5dd9c5f33fa6c",
+    "caption": "subscription management platform interface screen"
+  },
+  "reference/screenshot-forms-5": {
+    "mediaType": "image",
+    "currentUrl": "/airo-assets/uploads/reference-screenshot-forms-5-19b01d34.jpg",
+    "searchQuery": "form template management interface dashboard",
+    "alternatives": [],
+    "userModified": true,
+    "createdAt": "2026-09-11T01:35:20.251Z",
+    "lastUpdated": "2026-09-11T01:35:20.251Z",
+    "uploadSources": {
+      "/airo-assets/uploads/reference-screenshot-forms-5-19b01d34.jpg": "f38wenbvln_1789088997197_file_EvckoacUQM.jpg"
+    },
+    "uploadContentHash": "cf76af589ede9b3adf0c484e47bb5966ba07329a359ad80f3822600db0059e08",
+    "caption": "form template management interface dashboard"
   }
 }
