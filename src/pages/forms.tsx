@@ -289,16 +289,29 @@ function TemplateCard({
   const [menuOpen, setMenuOpen] = useState(false);
   const [dropUp, setDropUp] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
+  const dropdownRef = useRef<HTMLDivElement>(null);
 
   function openMenu() {
-    // Measure available space below the button before opening
+    // Measure available space below the button before opening.
+    // Use 280px threshold — tallest menu (5 items + dividers) is ~260px.
     if (menuRef.current) {
       const rect = menuRef.current.getBoundingClientRect();
       const spaceBelow = window.innerHeight - rect.bottom;
-      setDropUp(spaceBelow < 220); // dropdown is ~200px tall
+      setDropUp(spaceBelow < 280);
     }
     setMenuOpen(v => !v);
   }
+
+  // After the menu renders, verify it isn't clipping and flip direction if so
+  useEffect(() => {
+    if (!menuOpen || !dropdownRef.current) return;
+    const menuRect = dropdownRef.current.getBoundingClientRect();
+    if (menuRect.bottom > window.innerHeight - 8) {
+      setDropUp(true);
+    } else if (menuRect.top < 8) {
+      setDropUp(false);
+    }
+  }, [menuOpen]);
 
   // Close on outside click or Escape
   useEffect(() => {
@@ -368,7 +381,7 @@ function TemplateCard({
           </button>
 
           <AnimatePresence>
-            {menuOpen && <motion.div initial={{
+            {menuOpen && <motion.div ref={dropdownRef} initial={{
             opacity: 0,
             scale: 0.95,
             y: dropUp ? 4 : -4
