@@ -10,7 +10,7 @@ import React from 'react';
 import { useLocation, Link } from "react-router";
 import { usePermissions } from '@/lib/usePermissions';
 import { TOPBAR_HEIGHT_CSS } from '@/components/DesktopTopBar';
-import { Camera, LayoutDashboard, HardHat, Zap, Calculator, Receipt, CalendarDays, FileText, ClipboardList, BookOpen, FolderOpen, Map, ShieldCheck, AlertCircle, Building2, Users, TableProperties, ScrollText, Link2, History, Truck, ShieldAlert, TriangleAlert, UserCircle, CreditCard, HelpCircle } from 'lucide-react';
+import { Camera, LayoutDashboard, HardHat, Zap, Calculator, Receipt, CalendarDays, ClipboardList, BookOpen, FolderOpen, Map, ShieldCheck, AlertCircle, Building2, Users, TableProperties, ScrollText, Link2, History, Truck, ShieldAlert, TriangleAlert, UserCircle, CreditCard, HelpCircle } from 'lucide-react';
 interface DockItem {
   label: string;
   icon: React.ElementType;
@@ -107,19 +107,14 @@ const ALL_ITEMS: DockItem[] = [
   href: '/risk-register',
   color: '#ea580c'
 },
-// ── Studio / Tools ────────────────────────────────────────────────────────
+// ── Resources / Tools ─────────────────────────────────────────────────────
 {
-  label: 'Studio',
-  icon: FileText,
-  href: '/studio/documents',
-  color: '#6366f1'
-}, {
   label: 'Forms',
   icon: ClipboardList,
   href: '/studio/forms',
   color: '#7c3aed'
 }, {
-  label: 'Library',
+  label: 'Resource Library',
   icon: BookOpen,
   href: '/studio/library',
   color: '#b45309'

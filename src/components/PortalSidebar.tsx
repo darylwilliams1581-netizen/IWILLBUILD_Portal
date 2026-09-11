@@ -248,17 +248,11 @@ const DESKTOP_NAV_GROUPS: DesktopNavGroup[] = [{
     href: '/risk-register'
   }]
 }, {
-  heading: 'Studio',
+  heading: 'Resources',
   items: [{
-    id: 'nav-17',
-    idx: '17',
-    label: 'Studio',
-    icon: FileText,
-    href: '/studio/documents'
-  }, {
     id: 'nav-19',
     idx: '19',
-    label: 'Library',
+    label: 'Resource Library',
     icon: BookOpen,
     href: '/studio/library'
   }, {

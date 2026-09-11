@@ -19,8 +19,8 @@ export default function StudioLibraryPage() {
       <DesktopTopBar />
       <DesktopDock />
       <Helmet>
-        <title>Library — IWIllBUIlD</title>
-        <meta name="description" content="IWIllBUIlD content library — browse and install document and form templates." />
+        <title>Resource Library — IWIllBUIlD</title>
+        <meta name="description" content="IWIllBUIlD resource library — browse and install document and form templates." />
         <link rel="canonical" href="https://iwillbuild.com/studio/library" />
         <meta name="robots" content="noindex" />
       </Helmet>
@@ -33,7 +33,7 @@ export default function StudioLibraryPage() {
         </button>
         <span className="text-gray-300">|</span>
         <BookOpen size={17} className="text-primary shrink-0" />
-        <h1 className="font-heading font-bold text-base truncate flex-1">Library</h1>
+        <h1 className="font-heading font-bold text-base truncate flex-1">Resource Library</h1>
       </header>
 
       {/* Toggle tabs — Documents / Forms */}

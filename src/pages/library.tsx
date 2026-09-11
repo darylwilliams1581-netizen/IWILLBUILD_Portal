@@ -32,7 +32,7 @@ export default function LibraryRedirect() {
   return (
     <>
       <Helmet>
-        <title>Library — IWIllBUIlD</title>
+        <title>Resource Library — IWIllBUIlD</title>
         <meta
           name="description"
           content="Browse and install safety, compliance and document templates for your trades business."
@@ -40,7 +40,7 @@ export default function LibraryRedirect() {
         <link rel="canonical" href="https://iwillbuild.com/library" />
         <meta name="robots" content="noindex, follow" />
       </Helmet>
-      <h1 className="sr-only">Library</h1>
+      <h1 className="sr-only">Resource Library</h1>
       <Navigate to="/studio?tab=library" replace />
     </>
   );

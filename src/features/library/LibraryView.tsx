@@ -276,7 +276,7 @@ export function LibraryView({ initialTypeFilter, allowedTypes, allTypesLabel }: 
                 <BookOpen size={20} className="text-violet-600" />
               </div>
               <div>
-                <h1 className="text-xl font-bold text-slate-900">Content Library</h1>
+                <h1 className="text-xl font-bold text-slate-900">Resource Library</h1>
                 <p className="text-sm text-slate-500 mt-0.5">
                   Browse templates and download them into your account. Edit and tweak them like any template you created yourself.
                 </p>
