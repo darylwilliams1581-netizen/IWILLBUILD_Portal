@@ -1,7 +1,7 @@
 import { useState, Suspense } from 'react';
 import { useSearchParams, useNavigate } from "react-router";
 import { Helmet } from '@dr.pogodin/react-helmet';
-import { Building2, Bell, Calculator, Database, ChevronRight, Layers, Megaphone, FileText, Plug, Receipt, User, Truck, Home, ShieldCheck } from 'lucide-react';
+import { Building2, Bell, Calculator, Database, ChevronRight, Layers, Megaphone, FileText, Plug, Receipt, User, Truck, Home, ShieldCheck, Scale } from 'lucide-react';
 import { usePermissions } from '@/lib/usePermissions';
 import { goBack } from '@/lib/navigation';
 import CompanyStructureTab from '@/components/settings/CompanyStructureTab';
@@ -9,6 +9,7 @@ import DashboardBannerTab from '@/components/settings/DashboardBannerTab';
 import NotificationsTab from '@/components/settings/NotificationsTab';
 import PdfStyleTab from '@/components/settings/PdfStyleTab';
 import DataBackupTab from '@/components/settings/DataBackupTab';
+import LegalTab from '@/components/settings/LegalTab';
 import IntegrationsTab from '@/components/settings/IntegrationsTab';
 import AccountingTab from '@/components/settings/AccountingTab';
 import CompanyTab from '@/components/settings/CompanyTab';
@@ -66,6 +67,10 @@ const tabs = [{
   id: 'data',
   label: 'Data & Backup',
   icon: Database
+}, {
+  id: 'legal',
+  label: 'Legal & Policies',
+  icon: Scale
 }];
 
 /** Fallback shown while a settings sub-tab is loading */
@@ -175,6 +180,7 @@ export default function SettingsPage() {
                 {activeTab === 'costing' && <CostingTab />}
                 {activeTab === 'fleet' && <FleetAnalyticsTab isAdmin={isAdmin} />}
                 {activeTab === 'data' && <DataBackupTab isAdmin={isAdmin} />}
+                {activeTab === 'legal' && <LegalTab />}
               </Suspense>
             </div>
 
