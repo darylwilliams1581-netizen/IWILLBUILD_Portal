@@ -20,7 +20,7 @@ export default function JobLaunchTab({
   const jq = `?jobId=${job.id}`;
   const jqEncoded = `?jobId=${job.id}&jobName=${encodeURIComponent(job.name)}&jobNumber=${encodeURIComponent(job.jobNumber ?? '')}`;
   const modules: ModuleCard[] = [{
-    label: 'Studio',
+    label: 'Documents',
     description: 'Build documents, contracts, SWMS and reports for this job.',
     icon: FileText,
     color: 'bg-violet-50',

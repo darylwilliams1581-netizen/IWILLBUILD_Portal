@@ -101,7 +101,7 @@ export default function Footer() {
             label: 'Accounts'
           }, {
             href: '/studio',
-            label: 'Studio'
+            label: 'Documents'
           }, {
             href: '/scheduler',
             label: 'Scheduler'
