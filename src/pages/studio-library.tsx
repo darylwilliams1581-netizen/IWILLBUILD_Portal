@@ -4,6 +4,7 @@
  */
 import { useState } from 'react';
 import { useNavigate } from "react-router";
+import { goBack } from '@/lib/navigation';
 import { Helmet } from '@dr.pogodin/react-helmet';
 import { ArrowLeft, BookOpen, Layers, ClipboardList } from 'lucide-react';
 import { LibraryView as LibraryContent } from '../features/library/LibraryView';
