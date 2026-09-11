@@ -120,12 +120,38 @@ export function StarRating({ avg, count }: { avg: number; count: number }) {
 export interface LibraryViewProps {
   /** Pre-select a type filter on mount (e.g. "form", "document"). */
   initialTypeFilter?: string;
+  /**
+   * Restrict the type dropdown and all API requests to this subset of types.
+   * When provided the "All types" option becomes "All <label>" (e.g. "All safety"),
+   * and only the listed types appear in the dropdown.
+   * The server enforces the same restriction via the `types` query param.
+   * Example: ['policy', 'procedure', 'swms']
+   */
+  allowedTypes?: string[];
+  /** Label for the "All …" option when allowedTypes is set. Defaults to "All types". */
+  allTypesLabel?: string;
 }
 
 // ── LibraryView ───────────────────────────────────────────────────────────────
 
-export function LibraryView({ initialTypeFilter }: LibraryViewProps = {}) {
+export function LibraryView({ initialTypeFilter, allowedTypes, allTypesLabel }: LibraryViewProps = {}) {
   const { isPlatformOwner } = usePermissions();
+
+  // ── Derived type options (scoped when allowedTypes is set) ────────────────
+  const visibleTypes = allowedTypes && allowedTypes.length > 0
+    ? ITEM_TYPES.filter(t => t.value === '' || allowedTypes.includes(t.value))
+    : ITEM_TYPES;
+
+  // Override the "All types" label when a scope is active
+  const scopedAllLabel = allTypesLabel ?? (allowedTypes && allowedTypes.length > 0 ? 'All safety' : 'All types');
+  const typeOptions = visibleTypes.map(t =>
+    t.value === '' ? { ...t, label: scopedAllLabel } : t,
+  );
+
+  // Comma-separated scope string sent to the server on every request
+  const typesParam = allowedTypes && allowedTypes.length > 0
+    ? allowedTypes.join(',')
+    : undefined;
 
   // ── Browse state ─────────────────────────────────────────────────────────
   const [items, setItems] = useState<LibraryItem[]>([]);
@@ -161,6 +187,8 @@ export function LibraryView({ initialTypeFilter }: LibraryViewProps = {}) {
       if (opts.search) params.set('search', opts.search);
       if (opts.type) params.set('type', opts.type);
       if (opts.category) params.set('category', opts.category);
+      // Always send the scope restriction so the server enforces it independently
+      if (typesParam) params.set('types', typesParam);
       params.set('page', String(opts.page ?? 1));
       params.set('limit', '20');
       const res = await fetch(`/api/library/items?${params}`, { credentials: 'include' });
@@ -297,7 +325,7 @@ export function LibraryView({ initialTypeFilter }: LibraryViewProps = {}) {
                 onChange={e => setTypeFilter(e.target.value)}
                 className="appearance-none bg-white border border-slate-200 rounded-lg pl-8 pr-7 py-2.5 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-violet-600/30"
               >
-                {ITEM_TYPES.map(t => (
+                {typeOptions.map(t => (
                   <option key={t.value} value={t.value}>{t.label}</option>
                 ))}
               </select>

@@ -5,7 +5,11 @@
  * Returns summaries only — no full content payload.
  *
  * Query params:
- *   type        — filter by item type (policy|procedure|swms|form|recipe|estimate_recipe|scope_line)
+ *   type        — filter by a single item type (policy|procedure|swms|form|recipe|estimate_recipe|scope_line)
+ *   types       — comma-separated scope restriction (e.g. "policy,procedure,swms").
+ *                 Each value is validated against ALLOWED_TYPES; unknown values are silently
+ *                 dropped. If all values are invalid the param is ignored (no restriction).
+ *                 When both `type` and `types` are present, `type` must also be in `types`.
  *   category    — filter by category string
  *   tag         — filter by tag (substring match in tags column)
  *   discipline  — filter by discipline
@@ -21,7 +25,7 @@ import { db } from '../../../db/client.js';
 import { sql } from 'drizzle-orm';
 import { getSessionAndProfile } from '../../../lib/auth-middleware.js';
 
-const ALLOWED_TYPES = new Set([
+export const ALLOWED_TYPES = new Set([
   'policy', 'procedure', 'swms', 'form', 'recipe', 'estimate_recipe', 'scope_line',
 ]);
 
@@ -31,7 +35,7 @@ export default async function handler(req: Request, res: Response) {
 
   try {
     const {
-      type, category, tag, discipline, search,
+      type, types: rawTypes, category, tag, discipline, search,
       status = 'active',
       limit: rawLimit = '20',
       page: rawPage = '1',
@@ -51,8 +55,24 @@ export default async function handler(req: Request, res: Response) {
     const safeStatus = ['active', 'draft', 'archived'].includes(status) ? status : 'active';
     conditions[1] = `status = '${safeStatus}'`;
 
+    // `types` — comma-separated scope restriction (e.g. "policy,procedure,swms").
+    // Validated against ALLOWED_TYPES; unknown values silently dropped.
+    // Produces a type IN (...) clause that constrains the entire result set.
+    const scopedTypes: string[] = rawTypes
+      ? rawTypes.split(',').map(t => t.trim()).filter(t => ALLOWED_TYPES.has(t))
+      : [];
+    if (scopedTypes.length > 0) {
+      const inList = scopedTypes.map(t => `'${t}'`).join(', ');
+      conditions.push(`type IN (${inList})`);
+    }
+
+    // `type` — single-value filter (user-selected from dropdown).
+    // Only applied when it is also within the scoped set (or no scope is set).
     if (type && ALLOWED_TYPES.has(type)) {
-      conditions.push(`type = '${type}'`);
+      // If a scope is active, the single-type filter must be within that scope.
+      if (scopedTypes.length === 0 || scopedTypes.includes(type)) {
+        conditions.push(`type = '${type}'`);
+      }
     }
     if (category) {
       const safeCategory = category.replace(/'/g, '').slice(0, 100);

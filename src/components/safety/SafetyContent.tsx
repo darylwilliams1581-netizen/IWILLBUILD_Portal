@@ -8,7 +8,7 @@
  *   2. Submissions        — SwmsSubmissionsTab (company sign-off register)
  *   3. Policies & Docs    — PoliciesTab + App Doc template list
  *   4. Doc Submissions    — SubmissionsTab (document template submissions)
- *   5. Policy Library     — LibraryView (embedded, safety-filtered)
+ *   5. Policy Library     — LibraryView (scoped to policy, procedure, swms only)
  *
  * Removed (moved to Studio → Apply Widget):
  *   SWMS               — SwmsLibraryTab  (master doc creation now in Studio)
@@ -218,7 +218,10 @@ export default function SafetyContent() {
           )}
           {activeTab === 'doc-submissions' && <SubmissionsTab templates={templates} />}
           {activeTab === 'library'         && (
-            <LibraryView initialTypeFilter="safety" />
+            <LibraryView
+              allowedTypes={['policy', 'procedure', 'swms']}
+              allTypesLabel="All safety"
+            />
           )}
         </motion.div>
       </div>
