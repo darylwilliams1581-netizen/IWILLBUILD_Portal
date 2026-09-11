@@ -649,8 +649,25 @@ export default function JobSwmsTab({ initialJobId }: { initialJobId?: number | n
                       <Users size={12} />
                       {signoffsOpen ? <ChevronUp size={11} /> : <ChevronDown size={11} />}
                     </button>
-                    <button onClick={() => setPrinting(j)} className="p-1.5 rounded-lg text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition-colors" title="Print / PDF"><Printer size={14} /></button>
-                    <button onClick={() => setEditing(j)} className="p-1.5 rounded-lg text-slate-400 hover:text-primary hover:bg-violet-50 transition-colors" title="Edit"><Wand2 size={14} /></button>
+                    {/* Print / PDF — Studio docs use the snapshot-aware PDF endpoint;
+                        legacy SWMS use SwmsPrintModal (unchanged). */}
+                    {j.studio_document_id ? (
+                      <a
+                        href={`/api/document-templates/${j.studio_document_id}/export/pdf?job_swms_id=${j.id}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="p-1.5 rounded-lg text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition-colors"
+                        title="Print / PDF (attached snapshot)"
+                      >
+                        <Printer size={14} />
+                      </a>
+                    ) : (
+                      <button onClick={() => setPrinting(j)} className="p-1.5 rounded-lg text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition-colors" title="Print / PDF"><Printer size={14} /></button>
+                    )}
+                    {/* Edit — hidden for Studio/company documents (content lives in the snapshot) */}
+                    {!j.studio_document_id && (
+                      <button onClick={() => setEditing(j)} className="p-1.5 rounded-lg text-slate-400 hover:text-primary hover:bg-violet-50 transition-colors" title="Edit"><Wand2 size={14} /></button>
+                    )}
                     <button onClick={() => void handleDelete(j.id, j.title)} disabled={deleting === j.id} className="p-1.5 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 transition-colors" title="Delete">
                       {deleting === j.id ? <Loader2 size={14} className="animate-spin" /> : <Trash2 size={14} />}
                     </button>

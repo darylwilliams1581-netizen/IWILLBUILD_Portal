@@ -422,16 +422,32 @@ export default async function handler(req: Request, res: Response) {
     // ── BLOCKS-BASED FLOW ─────────────────────────────────────────────────────
 
     // ── Resolve builder_json ──────────────────────────────────────────────────
-    // If we have a snapshot, use its builderJson; otherwise use the live master.
+    // Priority: valid attached snapshot > live master.
+    //
+    // Snapshot format — two shapes are supported:
+    //   1. Wrapped:  { "builderJson": { "blocks": [...], ... } }
+    //      (historical format — POST /api/jobs/:id/studio-swms wrapped the
+    //       document_templates.builder_json string inside a builderJson key)
+    //   2. Direct:   { "blocks": [...], ... }
+    //      (current format — builder_json stored directly as the snapshot)
+    //
+    // In both cases the resolved value is the builder_json string that
+    // renderBlocksToSafeHtml expects (either a JSON string or a raw array).
+    // The snapshot is never mutated.
     let builderJsonStr = String(doc.builder_json ?? '{}');
     if (jobInfo?.contentSnapshot) {
       try {
-        const snap = JSON.parse(jobInfo.contentSnapshot) as { builderJson?: unknown };
-        if (snap.builderJson) {
+        const snap = JSON.parse(jobInfo.contentSnapshot) as Record<string, unknown>;
+        if (snap.builderJson !== undefined) {
+          // Wrapped format — unwrap
           builderJsonStr = typeof snap.builderJson === 'string'
             ? snap.builderJson
             : JSON.stringify(snap.builderJson);
+        } else if (Array.isArray(snap) || Array.isArray((snap as { blocks?: unknown }).blocks)) {
+          // Direct format — the snapshot IS the builder_json value
+          builderJsonStr = jobInfo.contentSnapshot;
         }
+        // else: snapshot exists but has no recognisable shape — fall back to live master (already set)
       } catch {
         // malformed snapshot — fall back to live master
       }

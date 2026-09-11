@@ -111,6 +111,10 @@ export interface JobSwms {
   supervisor: string | null;
   created_at: string;
   updated_at: string;
+  // Studio / company-document fields (set when attached via Add Doc to Job)
+  studio_document_id?: number | null;
+  studio_source_revision?: string | null;
+  content_snapshot_json?: string | null;
 }
 
 export interface SwmsPrintData {
