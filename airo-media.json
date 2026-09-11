@@ -853,7 +853,7 @@
   "reference/screenshot-forms-1": {
     "mediaType": "image",
     "currentUrl": "/airo-assets/uploads/reference-screenshot-forms-1-016749bd.jpg",
-    "searchQuery": "",
+    "searchQuery": "subscription management interface cancelled plan",
     "alternatives": [],
     "userModified": true,
     "createdAt": "2026-09-11T01:35:10.872Z",
@@ -861,6 +861,7 @@
     "uploadSources": {
       "/airo-assets/uploads/reference-screenshot-forms-1-016749bd.jpg": "f38wenbvln_1789085657973_file_lxwInTssgU.jpg"
     },
-    "uploadContentHash": "c43891c439efbc6126edb0b6958340259ea7722cc4b0b7b3363f33ee7ced1bf5"
+    "uploadContentHash": "c43891c439efbc6126edb0b6958340259ea7722cc4b0b7b3363f33ee7ced1bf5",
+    "caption": "subscription management interface cancelled plan"
   }
 }
