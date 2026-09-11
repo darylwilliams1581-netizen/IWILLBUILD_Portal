@@ -6,7 +6,7 @@ import {
   Link2, Copy, CheckCircle2, Users, Clock, ChevronDown, ChevronUp,
 } from 'lucide-react';
 import SwmsPrintModal from './SwmsPrintModal';
-import type { JobSwms, SwmsTemplate } from './safety-types';
+import type { JobSwms } from './safety-types';
 import { JOB_SWMS_STATUSES, statusBadge, fmtDate } from './safety-types';
 
 // ── JobSwmsEditModal ──────────────────────────────────────────────────────────
@@ -176,44 +176,60 @@ function JobSwmsEditModal({ initial, onClose, onSaved }: {
   );
 }
 
-// ── AddJobSwmsModal ───────────────────────────────────────────────────────────
+// ── AddDocToJobModal ──────────────────────────────────────────────────────────
+// Replaces the legacy AddJobSwmsModal.
+// - Loads company documents from GET /api/document-templates (active only)
+// - Attaches each selected doc via POST /api/jobs/:id/studio-swms
+//   with body { studioDocId, revision: "1" }
+// - Returns the created JobSwms records so they appear immediately in the list.
+// Legacy AddJobSwmsModal (POST /api/safety/job-swms) is preserved below for
+// reference; it is no longer rendered.
 
 interface Job { id: number; name: string; job_number: string | null; }
 
-function AddJobSwmsModal({ onClose, onAdded }: {
+interface DocTemplate {
+  id: number;
+  name: string;
+  template_type: string | null;
+  is_active: boolean;
+}
+
+function AddDocToJobModal({ onClose, onAdded }: {
   onClose: () => void;
   onAdded: (items: JobSwms[]) => void;
 }) {
   const [jobs, setJobs] = useState<Job[]>([]);
-  const [templates, setTemplates] = useState<SwmsTemplate[]>([]);
+  const [docs, setDocs] = useState<DocTemplate[]>([]);
   const [selectedJob, setSelectedJob] = useState<number | null>(null);
-  const [selectedTpls, setSelectedTpls] = useState<Set<number>>(new Set());
+  const [selectedDocs, setSelectedDocs] = useState<Set<number>>(new Set());
   const [jobSearch, setJobSearch] = useState('');
-  const [tplSearch, setTplSearch] = useState('');
+  const [docSearch, setDocSearch] = useState('');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [error, setError] = useState('');
+  const [errors, setErrors] = useState<string[]>([]);
 
   useEffect(() => {
     Promise.all([
       fetch('/api/jobs', { credentials: 'include' }).then((r) => r.json()),
-      fetch('/api/safety/swms', { credentials: 'include' }).then((r) => r.json()),
-    ]).then(([jd, sd]) => {
+      fetch('/api/document-templates', { credentials: 'include' }).then((r) => r.json()),
+    ]).then(([jd, dd]) => {
       setJobs(jd.jobs ?? []);
-      setTemplates((sd.swms ?? []).filter((s: SwmsTemplate) => s.status !== 'archived'));
+      // Only show active templates in the picker
+      setDocs((dd.templates ?? []).filter((d: DocTemplate) => d.is_active));
     }).catch(() => {}).finally(() => setLoading(false));
   }, []);
 
   const filteredJobs = jobs.filter((j) =>
-    !jobSearch || j.name.toLowerCase().includes(jobSearch.toLowerCase()) ||
+    !jobSearch ||
+    j.name.toLowerCase().includes(jobSearch.toLowerCase()) ||
     (j.job_number ?? '').toLowerCase().includes(jobSearch.toLowerCase())
   );
-  const filteredTpls = templates.filter((t) =>
-    !tplSearch || t.title.toLowerCase().includes(tplSearch.toLowerCase())
+  const filteredDocs = docs.filter((d) =>
+    !docSearch || d.name.toLowerCase().includes(docSearch.toLowerCase())
   );
 
-  function toggleTpl(id: number) {
-    setSelectedTpls((prev) => {
+  function toggleDoc(id: number) {
+    setSelectedDocs((prev) => {
       const next = new Set(prev);
       next.has(id) ? next.delete(id) : next.add(id);
       return next;
@@ -221,22 +237,43 @@ function AddJobSwmsModal({ onClose, onAdded }: {
   }
 
   async function handleAdd() {
-    if (!selectedJob) { setError('Select a job first'); return; }
-    if (selectedTpls.size === 0) { setError('Select at least one SWMS template'); return; }
-    setSaving(true); setError('');
-    try {
-      const r = await fetch('/api/safety/job-swms', {
-        method: 'POST', credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ jobId: selectedJob, templateIds: Array.from(selectedTpls) }),
-      });
-      const d = await r.json();
-      if (!r.ok) throw new Error(d.error ?? 'Failed');
-      onAdded(d.jobSwms ?? []);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed');
-    } finally {
-      setSaving(false);
+    if (!selectedJob) { setErrors(['Select a job first']); return; }
+    if (selectedDocs.size === 0) { setErrors(['Select at least one document']); return; }
+    setSaving(true); setErrors([]);
+
+    const added: JobSwms[] = [];
+    const failed: string[] = [];
+
+    // Attach each document individually; collect successes and failures separately
+    await Promise.all(
+      Array.from(selectedDocs).map(async (docId) => {
+        const doc = docs.find((d) => d.id === docId);
+        try {
+          const r = await fetch(`/api/jobs/${selectedJob}/studio-swms`, {
+            method: 'POST',
+            credentials: 'include',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ studioDocId: docId, revision: '1' }),
+          });
+          const d = await r.json() as { jobSwms?: JobSwms; error?: string };
+          if (!r.ok) throw new Error(d.error ?? `HTTP ${r.status}`);
+          if (d.jobSwms) added.push(d.jobSwms);
+        } catch (err) {
+          failed.push(`"${doc?.name ?? docId}": ${err instanceof Error ? err.message : 'Failed'}`);
+        }
+      })
+    );
+
+    setSaving(false);
+
+    if (added.length > 0) {
+      onAdded(added);
+      // If some failed, stay open to show errors; otherwise close
+      if (failed.length === 0) return;
+    }
+
+    if (failed.length > 0) {
+      setErrors(failed);
     }
   }
 
@@ -254,8 +291,8 @@ function AddJobSwmsModal({ onClose, onAdded }: {
           <div className="flex items-center gap-2.5">
             <div className="p-1.5 bg-violet-50 rounded-md"><HardHat size={16} className="text-primary" /></div>
             <div>
-              <h2 className="font-heading font-bold text-base">Add SWMS Document to Job</h2>
-              <p className="text-xs text-slate-400">Select a job and one or more templates</p>
+              <h2 className="font-heading font-bold text-base">Add Documents to Job</h2>
+              <p className="text-xs text-slate-400">Select a job and one or more documents</p>
             </div>
           </div>
           <button onClick={onClose} className="p-1.5 rounded-md text-slate-600 hover:text-slate-800 hover:bg-slate-100 transition-colors"><X size={16} /></button>
@@ -265,11 +302,12 @@ function AddJobSwmsModal({ onClose, onAdded }: {
           {loading && <div className="flex items-center justify-center py-10"><Loader2 size={20} className="animate-spin text-primary" /></div>}
           {!loading && (
             <>
+              {/* Job selector */}
               <div>
                 <label className="block text-xs font-bold text-slate-600 uppercase tracking-wide mb-2">Select Job</label>
                 <div className="relative mb-2">
                   <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-                  <input value={jobSearch} onChange={(e) => setJobSearch(e.target.value)} placeholder="Search jobs\u2026" className="w-full pl-8 pr-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 bg-white" />
+                  <input value={jobSearch} onChange={(e) => setJobSearch(e.target.value)} placeholder="Search jobs…" className="w-full pl-8 pr-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 bg-white" />
                 </div>
                 <div className="border border-slate-200 rounded-xl overflow-hidden max-h-44 overflow-y-auto">
                   {filteredJobs.length === 0 && <p className="text-sm text-slate-400 text-center py-6">No jobs found</p>}
@@ -284,41 +322,56 @@ function AddJobSwmsModal({ onClose, onAdded }: {
                 </div>
               </div>
 
+              {/* Document selector — loads from /api/document-templates */}
               <div>
                 <div className="flex items-center justify-between mb-2">
-                  <label className="block text-xs font-bold text-slate-600 uppercase tracking-wide">Select Templates</label>
-                  {selectedTpls.size > 0 && <span className="text-xs font-semibold text-primary">{selectedTpls.size} selected</span>}
+                  <label className="block text-xs font-bold text-slate-600 uppercase tracking-wide">Select Documents</label>
+                  {selectedDocs.size > 0 && <span className="text-xs font-semibold text-primary">{selectedDocs.size} selected</span>}
                 </div>
                 <div className="relative mb-2">
                   <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-                  <input value={tplSearch} onChange={(e) => setTplSearch(e.target.value)} placeholder="Search templates\u2026" className="w-full pl-8 pr-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 bg-white" />
+                  <input value={docSearch} onChange={(e) => setDocSearch(e.target.value)} placeholder="Search documents…" className="w-full pl-8 pr-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 bg-white" />
                 </div>
                 <div className="border border-slate-200 rounded-xl overflow-hidden max-h-52 overflow-y-auto">
-                  {filteredTpls.length === 0 && <p className="text-sm text-slate-400 text-center py-6">No templates found &mdash; create some in the SWMS Library first</p>}
-                  {filteredTpls.map((t) => (
-                    <button key={t.id} onClick={() => toggleTpl(t.id)}
-                      className={`w-full flex items-center gap-3 px-4 py-2.5 text-left text-sm transition-colors border-b border-slate-100 last:border-0 ${selectedTpls.has(t.id) ? 'bg-violet-50' : 'hover:bg-slate-50'}`}>
-                      {selectedTpls.has(t.id) ? <CheckSquare size={14} className="text-primary shrink-0" /> : <Square size={14} className="text-slate-300 shrink-0" />}
-                      <span className="flex-1 truncate font-medium text-slate-800">{t.title}</span>
-                      <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full border shrink-0 ${statusBadge(t.status)}`}>{t.status}</span>
+                  {filteredDocs.length === 0 && (
+                    <p className="text-sm text-slate-400 text-center py-6">
+                      No documents found — create or install one first
+                    </p>
+                  )}
+                  {filteredDocs.map((d) => (
+                    <button key={d.id} onClick={() => toggleDoc(d.id)}
+                      className={`w-full flex items-center gap-3 px-4 py-2.5 text-left text-sm transition-colors border-b border-slate-100 last:border-0 ${selectedDocs.has(d.id) ? 'bg-violet-50' : 'hover:bg-slate-50'}`}>
+                      {selectedDocs.has(d.id) ? <CheckSquare size={14} className="text-primary shrink-0" /> : <Square size={14} className="text-slate-300 shrink-0" />}
+                      <span className="flex-1 truncate font-medium text-slate-800">{d.name}</span>
+                      {d.template_type && (
+                        <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full border border-slate-200 bg-slate-50 text-slate-500 shrink-0 capitalize">
+                          {d.template_type.replace(/_/g, ' ')}
+                        </span>
+                      )}
                     </button>
                   ))}
                 </div>
               </div>
             </>
           )}
-          {error && (
-            <div className="flex items-center gap-2 text-red-700 bg-red-50 border border-red-200 rounded-lg px-3 py-2 text-sm">
-              <AlertCircle size={14} className="shrink-0" />{error}
+
+          {errors.length > 0 && (
+            <div className="flex flex-col gap-1.5">
+              {errors.map((e, i) => (
+                <div key={i} className="flex items-start gap-2 text-red-700 bg-red-50 border border-red-200 rounded-lg px-3 py-2 text-sm">
+                  <AlertCircle size={14} className="shrink-0 mt-0.5" />{e}
+                </div>
+              ))}
             </div>
           )}
         </div>
 
         <div className="px-6 pb-6 flex gap-3 border-t border-slate-100 pt-4">
           <button onClick={onClose} disabled={saving} className="flex-1 px-4 py-2.5 border border-slate-200 rounded-lg text-sm font-semibold text-slate-700 hover:bg-slate-50 transition-colors disabled:opacity-50">Cancel</button>
-          <button onClick={() => void handleAdd()} disabled={saving || !selectedJob || selectedTpls.size === 0} className="flex-1 px-4 py-2.5 bg-primary hover:bg-violet-700 text-white rounded-lg text-sm font-bold transition-colors disabled:opacity-50 flex items-center justify-center gap-2">
+          <button onClick={() => void handleAdd()} disabled={saving || !selectedJob || selectedDocs.size === 0}
+            className="flex-1 px-4 py-2.5 bg-primary hover:bg-violet-700 text-white rounded-lg text-sm font-bold transition-colors disabled:opacity-50 flex items-center justify-center gap-2">
             {saving ? <Loader2 size={14} className="animate-spin" /> : <Plus size={14} />}
-            Add {selectedTpls.size > 0 ? `${selectedTpls.size} SWMS` : 'SWMS'}
+            Add {selectedDocs.size > 0 ? `${selectedDocs.size} Document${selectedDocs.size !== 1 ? 's' : ''}` : 'Documents'}
           </button>
         </div>
       </motion.div>
@@ -518,7 +571,7 @@ export default function JobSwmsTab({ initialJobId }: { initialJobId?: number | n
           {JOB_SWMS_STATUSES.map((s) => <option key={s} value={s}>{s.charAt(0).toUpperCase() + s.slice(1)} {statusCounts[s] ? `(${statusCounts[s]})` : ''}</option>)}
         </select>
         <button onClick={() => setShowAdd(true)} className="flex items-center gap-2 bg-primary hover:bg-violet-700 text-white text-sm font-bold px-4 py-2 rounded-lg transition-colors shrink-0">
-          <Plus size={15} />Add SWMS to Job
+          <Plus size={15} />Add Doc to Job
         </button>
       </div>
 
@@ -538,10 +591,10 @@ export default function JobSwmsTab({ initialJobId }: { initialJobId?: number | n
       {!loading && filtered.length === 0 && (
         <div className="flex flex-col items-center justify-center py-16 text-center">
           <div className="w-14 h-14 bg-violet-50 rounded-xl flex items-center justify-center mb-4"><HardHat size={24} className="text-primary" /></div>
-          <p className="font-heading font-bold text-slate-700 mb-1">No job SWMS yet</p>
-          <p className="text-sm text-slate-400 mb-5 max-w-xs">Assign SWMS templates to specific jobs. Workers sign on before starting work.</p>
+          <p className="font-heading font-bold text-slate-700 mb-1">No safety documents assigned</p>
+          <p className="text-sm text-slate-400 mb-5 max-w-xs">Assign company documents to specific jobs. Workers sign on before starting work.</p>
           <button onClick={() => setShowAdd(true)} className="flex items-center gap-2 bg-primary hover:bg-violet-700 text-white text-sm font-bold px-5 py-2.5 rounded-lg transition-colors">
-            <Plus size={15} />Add SWMS to Job
+            <Plus size={15} />Add Doc to Job
           </button>
         </div>
       )}
@@ -613,7 +666,7 @@ export default function JobSwmsTab({ initialJobId }: { initialJobId?: number | n
       )}
 
       <AnimatePresence>
-        {showAdd && <AddJobSwmsModal onClose={() => setShowAdd(false)} onAdded={(items) => { setList((prev) => [...items, ...prev]); setShowAdd(false); }} />}
+        {showAdd && <AddDocToJobModal onClose={() => setShowAdd(false)} onAdded={(items) => { setList((prev) => [...items, ...prev]); setShowAdd(false); }} />}
         {editing && <JobSwmsEditModal initial={editing} onClose={() => setEditing(null)} onSaved={(updated) => { setList((prev) => prev.map((j) => j.id === updated.id ? updated : j)); setEditing(null); }} />}
         {printing && <SwmsPrintModal swms={printing} onClose={() => setPrinting(null)} />}
       </AnimatePresence>
