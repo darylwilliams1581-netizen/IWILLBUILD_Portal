@@ -107,19 +107,14 @@ const ALL_ITEMS: DockItem[] = [
   href: '/risk-register',
   color: '#ea580c'
 },
-// ── Studio / Tools ────────────────────────────────────────────────────────
+// ── Resources ─────────────────────────────────────────────────────────────
 {
-  label: 'Studio',
-  icon: FileText,
-  href: '/studio/documents',
-  color: '#6366f1'
-}, {
   label: 'Forms',
   icon: ClipboardList,
   href: '/studio/forms',
   color: '#7c3aed'
 }, {
-  label: 'Library',
+  label: 'Resource Library',
   icon: BookOpen,
   href: '/studio/library',
   color: '#b45309'

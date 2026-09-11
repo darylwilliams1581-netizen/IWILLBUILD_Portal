@@ -65,19 +65,13 @@ const LAUNCHER_MODULES: LauncherModule[] = [
 },
 // Row 3 — Docs & content
 {
-  label: 'Studio',
-  icon: FileText,
-  href: '/studio/documents',
-  color: '#0891b2',
-  bg: '#ecfeff'
-}, {
   label: 'Forms',
   icon: ClipboardList,
   href: '/studio/forms',
   color: '#6366f1',
   bg: '#eef2ff'
 }, {
-  label: 'Library',
+  label: 'Resource Library',
   icon: BookOpen,
   href: '/studio/library',
   color: '#b45309',
