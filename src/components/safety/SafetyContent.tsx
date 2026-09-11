@@ -4,7 +4,7 @@
  * page wrapper, sidebar, or Helmet.
  *
  * Visible tab order:
- *   1. Documents          — company document templates
+ *   1. Document Templates — company document templates
  *   2. Safety Documents   — documents assigned to jobs, with sign-offs
  *
  * Removed (moved to Studio → Apply Widget):
@@ -32,7 +32,7 @@ import type { DocTemplate } from '../../pages/studio-documents';
 // ── Tab definitions ───────────────────────────────────────────────────────────
 
 const TABS = [
-  { id: 'company-documents', label: 'Documents',        icon: FileText },
+  { id: 'company-documents', label: 'Document Templates', icon: FileText },
   { id: 'documents',         label: 'Safety Documents', icon: ClipboardCheck },
 ] as const;
 
@@ -148,7 +148,7 @@ export default function SafetyContent() {
                 <div className="flex items-center justify-between mb-3">
                   <div className="flex items-center gap-2">
                     <Layers size={15} className="text-primary" />
-                    <h2 className="text-sm font-bold text-slate-800">Documents</h2>
+                    <h2 className="text-sm font-bold text-slate-800">Document Templates</h2>
                   </div>
                   <div className="flex items-center gap-2">
                     <button
