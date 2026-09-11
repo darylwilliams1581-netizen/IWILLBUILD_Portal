@@ -215,7 +215,7 @@ const DESKTOP_NAV_GROUPS: DesktopNavGroup[] = [{
     href: '/finance?financeTab=settings'
   }]
 }, {
-  heading: 'Safety',
+  heading: 'Safety Studio',
   items: [{
     id: 'nav-18',
     idx: '18',
