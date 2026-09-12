@@ -16,7 +16,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate, useSearchParams, useLocation } from "react-router";
 import { Helmet } from '@dr.pogodin/react-helmet';
-import { Camera, X, ChevronLeft, ChevronRight, Lock, ImageOff, Loader2, Upload, CheckSquare, Home, LayoutGrid, Briefcase, Calendar, MapPin, ArrowUpDown, User, Clock, Download, Pencil, Trash2, MoreVertical, AlertCircle } from 'lucide-react';
+import { Camera, X, ChevronLeft, ChevronRight, Lock, ImageOff, Loader2, Upload, CheckSquare, Home, LayoutGrid, Briefcase, Calendar, MapPin, ArrowUpDown, User, Clock, Download, Pencil, Trash2, MoreVertical, AlertCircle, Search } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import JobPickerSheet from '@/components/JobPickerSheet';
@@ -430,7 +430,9 @@ export default function LensPage() {
   const [searchParams, setSearchParams] = useSearchParams();
 
   // Filter state
-  const [uploadedBy, setUploadedBy] = useState(searchParams.get('uploadedBy') ?? '');
+  const [searchQuery, setSearchQuery] = useState(
+    searchParams.get('search') ?? searchParams.get('uploadedBy') ?? '',
+  );
 
   // Data state
   const [photos, setPhotos] = useState<LensPhoto[]>([]);
@@ -480,7 +482,7 @@ export default function LensPage() {
         page: String(pg),
         limit: String(LIMIT)
       });
-      if (uploadedBy) params.set('uploadedBy', uploadedBy);
+      if (searchQuery) params.set('search', searchQuery);
       const r = await fetch(`/api/lens/photos?${params}`, {
         credentials: 'include'
       });
@@ -500,18 +502,18 @@ export default function LensPage() {
     } finally {
       setLoading(false);
     }
-  }, [uploadedBy]);
+  }, [searchQuery]);
 
-  // Initial load + uploadedBy changes
+  // Initial load + Find changes
   useEffect(() => {
     fetchPhotos(1, true);
     const p: Record<string, string> = {};
-    if (uploadedBy) p.uploadedBy = uploadedBy;
+    if (searchQuery) p.search = searchQuery;
     setSearchParams(p, {
       replace: true
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [uploadedBy]);
+  }, [searchQuery]);
 
   // Refresh on return from camera
   useEffect(() => {
@@ -529,9 +531,9 @@ export default function LensPage() {
   }, [location.search]);
 
   // ── Handlers ──────────────────────────────────────────────────────────────
-  function handleUploadedByChange(value: string) {
+  function handleSearchChange(value: string) {
     if (searchTimer.current) clearTimeout(searchTimer.current);
-    searchTimer.current = setTimeout(() => setUploadedBy(value), 350);
+    searchTimer.current = setTimeout(() => setSearchQuery(value), 350);
   }
   function handleLoadMore() {
     if (!loading && hasMore) fetchPhotos(page + 1, false);
@@ -818,13 +820,19 @@ export default function LensPage() {
               </div>
             </div>
 
-            {/* ── Row 2: uploaded-by filter + view controls ── */}
+            {/* ── Row 2: Find + view controls ── */}
             <div className="flex items-center gap-2">
 
-              {/* Uploaded by filter */}
               <div className="flex-1 relative min-w-0">
-                <User size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
-                <Input type="search" placeholder="Uploaded by…" defaultValue={uploadedBy} onChange={e => handleUploadedByChange(e.target.value)} className="pl-8 h-8 text-sm" />
+                <Search size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                <Input
+                  type="search"
+                  placeholder="Find"
+                  aria-label="Find photos by job, label, person or caption"
+                  defaultValue={searchQuery}
+                  onChange={e => handleSearchChange(e.target.value)}
+                  className="pl-8 h-8 text-sm"
+                />
               </div>
 
               {/* View controls */}
@@ -871,10 +879,10 @@ export default function LensPage() {
           {!loading && !error && photos.length === 0 && <div className="flex flex-col items-center justify-center py-24 gap-3 text-slate-400">
               <Camera size={40} className="text-slate-300" />
               <p className="text-base font-medium text-slate-500">
-                {uploadedBy ? 'No photos match that uploader' : 'No photos yet'}
+                {searchQuery ? 'No photos match that search' : 'No photos yet'}
               </p>
-              {uploadedBy && <Button variant="outline" size="sm" onClick={() => setUploadedBy('')}>
-                  Clear filter
+              {searchQuery && <Button variant="outline" size="sm" onClick={() => setSearchQuery('')}>
+                  Clear search
                 </Button>}
             </div>}
 

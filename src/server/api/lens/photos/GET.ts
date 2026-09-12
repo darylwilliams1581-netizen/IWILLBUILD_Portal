@@ -71,11 +71,15 @@ export default async function handler(req: Request, res: Response) {
     if (search) {
       const like = `%${search.replace(/[%_\\]/g, '\\$&')}%`;
       conditions.push(sql`(
-        jp.original_name LIKE ${like}
-        OR jp.label       LIKE ${like}
-        OR jp.caption     LIKE ${like}
-        OR j.name         LIKE ${like}
-        OR j.job_number   LIKE ${like}
+        jp.original_name     LIKE ${like}
+        OR jp.label          LIKE ${like}
+        OR jp.caption        LIKE ${like}
+        OR jp.category       LIKE ${like}
+        OR jp.filename       LIKE ${like}
+        OR jp.uploaded_by_name LIKE ${like}
+        OR j.name            LIKE ${like}
+        OR j.job_number      LIKE ${like}
+        OR j.address         LIKE ${like}
       )`);
     }
 
