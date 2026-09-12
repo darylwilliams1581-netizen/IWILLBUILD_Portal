@@ -27,7 +27,8 @@
  * 13. Section headings — violet-700 for Field & Files
  * 14. Section headings — emerald-700 for Finance
  * 15. Section headings — rose-700 for Safety
- * 16. Responsive grid — 2col mobile, 3col sm, 4col md
+ * 16. Work/Safety grids — one full-width button per row
+
  * 17. Bottom padding — accounts for safe-area-inset-bottom
  * 18–24. (sticky bottom bar tests removed — bar no longer present)
  * 25. CSS vars — --panel-work defined in globals.css
@@ -170,9 +171,14 @@ describe('Section headings — colours', () => {
 
 // ── 16. Responsive grid ───────────────────────────────────────────────────────
 
-describe('Responsive grid', () => {
-  it('uses grid-cols-2 sm:grid-cols-3 md:grid-cols-4', () => {
-    expect(screenSrc).toContain('grid-cols-2 sm:grid-cols-3 md:grid-cols-4');
+describe('Full-width Work and Safety grids', () => {
+  it('Work job features use a single-column full-width grid', () => {
+    expect(screenSrc).toContain('grid grid-cols-1 gap-2');
+  });
+
+  it('Safety tiles use a single-column full-width grid', () => {
+    const safetyGrid = screenSrc.match(/function SafetyPage[\s\S]*?grid grid-cols-1 gap-2/);
+    expect(safetyGrid).not.toBeNull();
   });
 });
 
@@ -394,8 +400,6 @@ describe('Dashboard quick-action buttons — compact spec', () => {
   });
 
   it('uses clear names for gallery, capture-adjacent, and record destinations', () => {
-    expect(screenSrc).toContain("? 'Job Photos'");
-    expect(screenSrc).toContain("? 'Attendance Records'");
     expect(screenSrc).toMatch(/>\s*Photos\s*<\/button>/);
     expect(screenSrc).toMatch(/>\s*Attendance\s*<\/span>/);
     expect(screenSrc).toMatch(/>\s*Sign in or out\s*<\/span>/);

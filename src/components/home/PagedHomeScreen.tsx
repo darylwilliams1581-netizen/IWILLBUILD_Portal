@@ -96,60 +96,26 @@ function SectionHeading({ label, headingColor }: { label: string; headingColor: 
 function JobFeatureCard({
   feature,
   onClick,
-  colSpan,
-  rowSpan,
 }: {
   feature: JobFeature;
   onClick: (f: JobFeature) => void;
-  colSpan?: 2;
-  rowSpan?: 2;
 }) {
   const Icon = feature.icon;
-  const displayLabel = feature.label;
-  const spanCls = [
-    colSpan === 2 ? 'col-span-2' : '',
-    rowSpan === 2 ? 'row-span-2' : '',
-  ].filter(Boolean).join(' ');
 
-  const isDoubleHeight = rowSpan === 2;
-
-  if (isDoubleHeight) {
-    // Tall card — icon + label stacked, centred
-    return (
-      <button
-        type="button"
-        onClick={() => onClick(feature)}
-        data-testid={`opening-page-card-${feature.key}`}
-        aria-label={displayLabel}
-        className={`${spanCls} flex flex-col items-center justify-center gap-3 py-4 bg-white rounded-xl border border-gray-100 shadow-sm hover:shadow-md hover:border-violet-200 active:scale-[0.97] transition-all duration-150 w-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-1`}
-      >
-        <div className={`w-12 h-12 rounded-xl ${feature.bg} flex items-center justify-center`}>
-          <Icon size={22} className={feature.fg} />
-        </div>
-        <span className="text-[13px] font-semibold text-gray-800 leading-tight text-center w-full px-2">
-          {displayLabel}
-        </span>
-      </button>
-    );
-  }
-
-  // Default compact horizontal card
   return (
     <button
       type="button"
       onClick={() => onClick(feature)}
       data-testid={`opening-page-card-${feature.key}`}
-      aria-label={displayLabel}
-      className={`${spanCls} flex items-center gap-2.5 px-3 py-2.5 bg-white rounded-xl border border-gray-100 shadow-sm hover:shadow-md hover:border-violet-200 active:scale-[0.97] transition-all duration-150 w-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-1`}
+      aria-label={feature.label}
+      className="w-full flex items-center gap-2.5 px-3 py-2.5 bg-white rounded-xl border border-gray-100 shadow-sm hover:shadow-md hover:border-violet-200 active:scale-[0.97] transition-all duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-1"
       style={{ minHeight: 52 }}
     >
-      {/* Icon badge — 32×32 */}
       <div className={`w-8 h-8 rounded-lg ${feature.bg} flex items-center justify-center shrink-0`}>
         <Icon size={16} className={feature.fg} />
       </div>
-      {/* Label — wraps naturally, never truncates */}
       <span className="text-[13px] font-semibold text-gray-800 leading-tight text-left">
-        {displayLabel}
+        {feature.label}
       </span>
     </button>
   );
@@ -184,12 +150,7 @@ const JobFeaturePage = memo(function JobFeaturePage({
               aria-label={`${group.label} features`}
             >
               <SectionHeading label={group.label} headingColor={panel.headingColor} />
-              {/*
-                Grid: 2 col mobile (≥320px) → 3 col sm (≥640px) → 4 col md (≥768px)
-                Very narrow (<340px): still 2 col — labels wrap rather than clip.
-                Row spans need explicit grid-rows to work correctly.
-              */}
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2" style={{ gridAutoRows: '1fr' }}>
+              <div className="grid grid-cols-1 gap-2">
                 {features.map(feature => {
                   return (
                     <JobFeatureCard
@@ -468,7 +429,7 @@ function SafetyPage({
         {icons.length === 0 ? (
           <p className="text-sm text-muted-foreground px-0.5">No safety tools on this account.</p>
         ) : (
-          <div className="grid grid-cols-2 gap-2">
+          <div className="grid grid-cols-1 gap-2">
             {icons.map(item => (
               <IconTile key={item.key} item={item} onNavigate={onNavigate} />
             ))}
