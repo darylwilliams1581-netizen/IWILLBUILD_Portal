@@ -601,11 +601,11 @@ export const routes: RouteObject[] = [{
 // Asset Manager
 {
   path: '/studio/asset-manager',
-  element: protectDesktop(<AssetManagerPage />, 'Asset Manager'),
+  element: protect(<AssetManagerPage />),
   errorElement: routeError
 }, {
   path: '/studio/asset-manager/:assetId',
-  element: protectDesktop(<AssetManagerDetailPage />, 'Asset Manager'),
+  element: protect(<AssetManagerDetailPage />),
   errorElement: routeError
 }, {
   path: '/share/asset-report/:token',

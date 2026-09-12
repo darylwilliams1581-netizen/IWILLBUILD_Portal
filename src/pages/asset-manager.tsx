@@ -9,6 +9,7 @@ import { goBack } from '@/lib/navigation';
 import AMAssetsTab from '@/components/AssetManager/AMAssetsTab';
 import EquipmentDetailPanel from '@/components/AssetManager/EquipmentDetailPanel';
 import PortalSidebar from '@/components/PortalSidebar';
+import DesktopDock from '@/components/DesktopDock';
 function TabFallback() {
   return <div className="flex items-center justify-center py-16 text-slate-400">
       <Loader2 size={20} className="animate-spin mr-2" /> Loading...
@@ -26,14 +27,13 @@ export default function AssetManagerPage() {
     }
   }, [searchParams]);
 
-  // Run migration on mount to ensure new columns exist
   useEffect(() => {
     fetch('/api/migrate-asset-manager', {
       method: 'POST',
       credentials: 'include'
     }).catch(() => {});
   }, []);
-  return <div className="portal-page">
+  return <div className="portal-page bg-[#F4F5F7] text-slate-900">
       <Helmet>
         <title>Equipment Manager — IWIllBUIlD</title>
         <meta name="description" content="Manage equipment, tools, plant, safety gear and hire items." />
@@ -41,15 +41,15 @@ export default function AssetManagerPage() {
         <meta name="robots" content="noindex" />
       </Helmet>
       <PortalSidebar />
-      <div className="portal-main lg-portal">
+      <DesktopDock />
+      <div className="portal-content flex flex-col h-[100dvh] overflow-hidden">
 
         {selectedAssetId !== null ? <Suspense fallback={<TabFallback />}>
             <EquipmentDetailPanel assetId={selectedAssetId} onBack={() => setSelectedAssetId(null)} />
           </Suspense> : <>
-            {/* Header */}
-            <div className="flex-shrink-0 border-b border-slate-200 bg-white/80 backdrop-blur-sm px-4 md:px-6 py-4">
+            <div className="flex-shrink-0 border-b border-slate-200 bg-white px-4 md:px-6 py-4">
               <div className="flex items-center gap-3">
-                <button onClick={() => goBack(navigate, '/home?page=1')} className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors shrink-0" aria-label="Back to Home">
+                <button onClick={() => goBack(navigate, '/home?page=1')} className="lg:hidden flex items-center justify-center w-9 h-9 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-600 transition-colors shrink-0" aria-label="Back to Home">
                   <ArrowLeft size={16} />
                 </button>
                 <div className="w-9 h-9 rounded-lg bg-violet-500/10 border border-violet-600/20 flex items-center justify-center shrink-0">
@@ -62,7 +62,6 @@ export default function AssetManagerPage() {
               </div>
             </div>
 
-            {/* Content */}
             <div className="flex-1 overflow-y-auto">
               <Suspense fallback={<TabFallback />}>
                 <AMAssetsTab onSelectAsset={setSelectedAssetId} />
