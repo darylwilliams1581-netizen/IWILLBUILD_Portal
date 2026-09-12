@@ -38,33 +38,41 @@ export function useDazzaBuilderChat({ builderContext, onApplied }: UseDazzaBuild
   // Guards against double-apply (button click + keyboard on same frame)
   const applyingRef = useRef(false);
 
-  // Load version history when template changes
+  // Load version history when template changes.
+  // Use canonicalTemplateId (URL param) as the authoritative ID — it's always
+  // correct even before the Zustand store has finished loading the template.
   useEffect(() => {
-    if (!builderContext.templateId) { setVersions([]); return; }
+    const effectiveId = builderContext.canonicalTemplateId ?? builderContext.templateId ?? null;
+    if (!effectiveId) { setVersions([]); return; }
     fetch(
-      `/api/dazza/builder/versions?templateId=${builderContext.templateId}&builderType=${builderContext.builderType}&limit=10`,
+      `/api/dazza/builder/versions?templateId=${effectiveId}&builderType=${builderContext.builderType}&limit=10`,
       { credentials: 'include' },
     )
       .then(r => r.ok ? r.json() : null)
       .then(data => { if (data?.versions) setVersions(data.versions); })
       .catch(() => {});
-  }, [builderContext.templateId, builderContext.builderType]);
+  }, [builderContext.canonicalTemplateId, builderContext.templateId, builderContext.builderType]);
 
   // ── Stale-context guard ────────────────────────────────────────────────────
-  // When the target template changes (e.g. user navigates from builder back to
-  // the list page, or opens a different template), clear any pending proposal
-  // and reset the conversation ID so old proposal cards can't be applied against
-  // the wrong template.  Messages are intentionally kept so the user can read
-  // the conversation history — only the actionable pending change is cleared.
-  const prevTemplateIdRef = useRef<number | null | undefined>(undefined);
+  // Watch canonicalTemplateId (from the URL route param) — it changes immediately
+  // when the user navigates to a different template, before the Zustand store has
+  // had a chance to call loadTemplate().  Watching templateId (storeTemplateId)
+  // instead would miss the window between navigation and store hydration, which
+  // is exactly when the stale-ID bug occurs.
+  //
+  // When the canonical template changes: abort any in-flight stream, clear pending
+  // proposals, strip proposal cards from previous messages, clear the error, and
+  // reset the conversation ID so the next request starts fresh for the new template.
+  const prevCanonicalIdRef = useRef<number | null | undefined>(undefined);
   useEffect(() => {
     // undefined = first render, skip
-    if (prevTemplateIdRef.current === undefined) {
-      prevTemplateIdRef.current = builderContext.templateId;
+    if (prevCanonicalIdRef.current === undefined) {
+      prevCanonicalIdRef.current = builderContext.canonicalTemplateId ?? null;
       return;
     }
-    if (prevTemplateIdRef.current !== builderContext.templateId) {
-      prevTemplateIdRef.current = builderContext.templateId;
+    const incoming = builderContext.canonicalTemplateId ?? null;
+    if (prevCanonicalIdRef.current !== incoming) {
+      prevCanonicalIdRef.current = incoming;
       // Abort any in-flight stream
       abortRef.current?.abort();
       // Clear actionable state — stale proposals must not be applied
@@ -81,7 +89,7 @@ export function useDazzaBuilderChat({ builderContext, onApplied }: UseDazzaBuild
         prev.map(m => m.proposedChange ? { ...m, proposedChange: undefined } : m),
       );
     }
-  }, [builderContext.templateId]);
+  }, [builderContext.canonicalTemplateId]);
 
   const sendMessage = useCallback(async (text: string, attachmentIds?: string[]) => {
     if (!text.trim() || phase === 'reading' || phase === 'planning' || phase === 'applying') return;
@@ -126,7 +134,13 @@ export function useDazzaBuilderChat({ builderContext, onApplied }: UseDazzaBuild
         body: JSON.stringify({
           message: text.trim(),
           conversationId: conversationIdRef.current,
-          builderContext,
+          // Stamp templateId with the canonical route ID before sending so the
+          // server always sees the correct template, even when the Zustand store
+          // hasn't finished loading the new template yet (stale store ID window).
+          builderContext: {
+            ...builderContext,
+            templateId: builderContext.canonicalTemplateId ?? builderContext.templateId,
+          },
           attachmentIds: attachmentIds?.length ? attachmentIds : undefined,
         }),
       });
@@ -231,13 +245,20 @@ export function useDazzaBuilderChat({ builderContext, onApplied }: UseDazzaBuild
     applyingRef.current = true;
 
     // ── Resolve the authoritative template ID ────────────────────────────────
-    // Use canonicalTemplateId (from the URL route param) as the ground truth
-    // when the Zustand store hasn't populated yet (templateId still null on
-    // first render). This prevents a null templateId being sent to the server
-    // when the user clicks Apply before the store's loadTemplate has run.
+    // canonicalTemplateId (from the URL route param) is ALWAYS authoritative —
+    // it reflects the currently open template immediately on navigation, before
+    // the Zustand store has had a chance to call loadTemplate().
+    //
+    // OLD (buggy):  templateId ?? canonicalTemplateId
+    //   → preferred the stale store ID (template A) over the correct URL ID (B)
+    //   → proposal stamped with B, apply sent A → mismatch → "no longer exists" error
+    //
+    // NEW (correct): canonicalTemplateId ?? templateId
+    //   → URL param is ground truth; store ID is only a fallback for new-doc flows
+    //     where canonicalTemplateId is null (isNew=true).
     const effectiveTemplateId =
-      builderContext.templateId ??
       builderContext.canonicalTemplateId ??
+      builderContext.templateId ??
       null;
 
     // ── Pre-flight validation ────────────────────────────────────────────────
@@ -353,7 +374,10 @@ export function useDazzaBuilderChat({ builderContext, onApplied }: UseDazzaBuild
         : msg;
       setError(friendlyMsg);
       setPhase('failed');
-      setPhaseLabel(friendlyMsg);
+      // Do NOT echo the error into phaseLabel — the error div already shows it,
+      // and setting phaseLabel to the same text causes the message to appear twice
+      // (once in the error banner, once in the PhaseIndicator).
+      setPhaseLabel('');
       // Clear the stale proposal so the user can try again cleanly
       setPendingChange(null);
       setMessages(prev => prev.map(m =>
@@ -363,7 +387,7 @@ export function useDazzaBuilderChat({ builderContext, onApplied }: UseDazzaBuild
       setIsApplying(false);
       applyingRef.current = false;
     }
-  }, [builderContext.templateId, builderContext.canonicalTemplateId, builderContext.builderType, isApplying, onApplied, navigate]);
+  }, [builderContext.canonicalTemplateId, builderContext.templateId, builderContext.builderType, isApplying, onApplied, navigate]);
 
   const undoChange = useCallback(() => {
     setPendingChange(null);

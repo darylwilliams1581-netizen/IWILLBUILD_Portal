@@ -371,8 +371,9 @@ export default function DazzaBuilderAssistant({ builderContext, onApplied, onOpe
         <div ref={messagesEndRef} />
       </div>
 
-      {/* Phase indicator */}
-      {phase !== 'idle' && (
+      {/* Phase indicator — hidden when phase=failed because the error banner
+          already shows the message; showing both would duplicate the text. */}
+      {phase !== 'idle' && phase !== 'failed' && (
         <div className="px-3 py-1.5 border-t border-border/50 shrink-0">
           <PhaseIndicator phase={phase} label={phaseLabel} />
         </div>

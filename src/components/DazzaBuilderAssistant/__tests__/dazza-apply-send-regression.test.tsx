@@ -580,8 +580,9 @@ describe('Integration: canonicalTemplateId stamped on proposal when store is nul
     expect(streamCall).toBeTruthy();
     const body = JSON.parse(streamCall![1].body as string);
     expect(body.builderContext.canonicalTemplateId).toBe(71);
-    // templateId may be null (store not loaded) — that's fine, server uses canonicalTemplateId
-    expect(body.builderContext.templateId).toBeNull();
+    // templateId is now stamped with canonicalTemplateId before sending (fix for stale-store bug)
+    // so the server always receives the correct ID even when the Zustand store hasn't loaded yet.
+    expect(body.builderContext.templateId).toBe(71);
   });
 
   /**

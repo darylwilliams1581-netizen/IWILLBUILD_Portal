@@ -60,26 +60,61 @@ export default async function handler(req: Request, res: Response) {
       }
     }
 
-    // 7. Non-null templateId → verify the template exists and type matches
+    // 7. Non-null templateId → verify the template exists AND belongs to the
+    //    authenticated owner's company.  This prevents a stale or crafted
+    //    templateId from targeting a template owned by a different company.
+    //
+    //    Platform-owner access: the owner's company_id is resolved from their
+    //    profiles row (same lookup used by document-adapter for createNewTemplate).
+    //    This correctly resolves the developer company even when the platform owner
+    //    is not a regular company member.
     if (typeof templateId === 'number') {
+      // Resolve the owner's company_id from their profile
+      const [profileRows] = await db.execute(sql`
+        SELECT company_id FROM profiles WHERE user_id = ${ownerInfo.userId} LIMIT 1
+      `) as unknown as [Array<{ company_id: number | null }>, unknown];
+      const ownerCompanyId = profileRows?.[0]?.company_id ?? null;
+
+      if (!ownerCompanyId) {
+        return res.status(403).json({ error: 'Owner has no company profile — cannot verify template ownership.' });
+      }
+
       if (builderType === 'document') {
         const rows = await db.execute(sql`
-          SELECT id FROM document_templates WHERE id = ${templateId} LIMIT 1
+          SELECT id FROM document_templates
+          WHERE id = ${templateId} AND company_id = ${ownerCompanyId}
+          LIMIT 1
         `);
         const found = ((rows as { rows: unknown[] }).rows ?? []).length > 0;
         if (!found) {
+          // Distinguish "exists but wrong company" from "doesn't exist at all"
+          // by checking without the company filter — gives a clearer error message.
+          const anyRows = await db.execute(sql`
+            SELECT id FROM document_templates WHERE id = ${templateId} LIMIT 1
+          `);
+          const exists = ((anyRows as { rows: unknown[] }).rows ?? []).length > 0;
           return res.status(404).json({
-            error: `Template not found: document template #${templateId} does not exist or has been deleted. Open an existing template and re-run your request.`,
+            error: exists
+              ? `Template #${templateId} does not belong to your company. Open the correct template and re-run your request.`
+              : `Template not found: document template #${templateId} does not exist or has been deleted. Open an existing template and re-run your request.`,
           });
         }
       } else {
         const rows = await db.execute(sql`
-          SELECT id FROM form_templates WHERE id = ${templateId} LIMIT 1
+          SELECT id FROM form_templates
+          WHERE id = ${templateId} AND company_id = ${ownerCompanyId}
+          LIMIT 1
         `);
         const found = ((rows as { rows: unknown[] }).rows ?? []).length > 0;
         if (!found) {
+          const anyRows = await db.execute(sql`
+            SELECT id FROM form_templates WHERE id = ${templateId} LIMIT 1
+          `);
+          const exists = ((anyRows as { rows: unknown[] }).rows ?? []).length > 0;
           return res.status(404).json({
-            error: `Template not found: form template #${templateId} does not exist or has been deleted. Open an existing template and re-run your request.`,
+            error: exists
+              ? `Form template #${templateId} does not belong to your company. Open the correct template and re-run your request.`
+              : `Template not found: form template #${templateId} does not exist or has been deleted. Open an existing template and re-run your request.`,
           });
         }
       }

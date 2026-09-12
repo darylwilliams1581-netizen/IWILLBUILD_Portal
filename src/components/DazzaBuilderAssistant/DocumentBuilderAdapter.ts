@@ -57,9 +57,18 @@ export function buildDocumentBuilderContext(
   currentVersion: number,
   canonicalTemplateId: number | null = null,
 ): BuilderContext {
+  // canonicalTemplateId (from the URL route param) is always authoritative.
+  // Use it as templateId so every downstream consumer — including the stale-context
+  // guard and effectiveTemplateId resolution in applyChange — sees the correct ID
+  // immediately on navigation, before the Zustand store has called loadTemplate().
+  //
+  // The store's templateId is kept as a fallback for new-doc flows (isNew=true)
+  // where canonicalTemplateId is null.
+  const effectiveTemplateId = canonicalTemplateId ?? snapshot.templateId;
+
   return {
     builderType: 'document',
-    templateId: snapshot.templateId,
+    templateId: effectiveTemplateId,
     templateName: snapshot.templateName,
     templateType: snapshot.templateType,
     currentVersion,
@@ -68,7 +77,9 @@ export function buildDocumentBuilderContext(
     hasUnsavedChanges: snapshot.isDirty,
     validationErrors,
     isPreviewMode: snapshot.mode === 'use',
-    // Canonical ID from the URL route — authoritative when store templateId is null
+    // canonicalTemplateId is always the URL route ID — kept separately so
+    // consumers can distinguish "URL says B" from "store says A" during the
+    // hydration window.
     canonicalTemplateId: canonicalTemplateId ?? snapshot.templateId,
   };
 }

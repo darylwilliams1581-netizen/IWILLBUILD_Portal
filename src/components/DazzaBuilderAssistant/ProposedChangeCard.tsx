@@ -16,15 +16,16 @@ interface Props {
 
 /**
  * Returns a human-readable reason why Apply should be blocked, or null if it's safe.
- * Uses canonicalTemplateId (from URL route) as the authoritative open-template ID
- * so a null store templateId doesn't falsely block a valid proposal.
+ * Uses canonicalTemplateId (from URL route) as the authoritative open-template ID —
+ * it is always correct even before the Zustand store has finished loading the template.
+ * Falls back to templateId (store) only when canonicalTemplateId is null (new-doc flow).
  */
 function getApplyBlockReason(change: ProposedChange, ctx: BuilderContext): string | null {
   if (change.targetBuilderType !== ctx.builderType) {
     return `Proposal targets "${change.targetBuilderType}" builder but current builder is "${ctx.builderType}".`;
   }
-  // Effective open template ID: prefer store value, fall back to canonical route ID
-  const effectiveId = ctx.templateId ?? ctx.canonicalTemplateId ?? null;
+  // Effective open template ID: canonical URL param first, then store value
+  const effectiveId = ctx.canonicalTemplateId ?? ctx.templateId ?? null;
   if (change.targetTemplateId !== null && change.targetTemplateId !== effectiveId) {
     return `Proposal targets template #${change.targetTemplateId} but template #${effectiveId ?? 'none'} is open. Re-run the request.`;
   }

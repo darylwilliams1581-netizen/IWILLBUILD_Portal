@@ -19,6 +19,8 @@
  * 13.  Apply button shows "Applying…" while in-flight
  * 14.  Apply button shows "Cannot Apply" when blocked
  * 15.  Error is cleared on new sendMessage
+ * 16.  canonicalTemplateId takes precedence over stale storeTemplateId (core bug fix)
+ * 17.  Stale guard fires on canonicalTemplateId change, not storeTemplateId change
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
@@ -344,5 +346,43 @@ describe('useDazzaBuilderChat — applyChange', () => {
     // Error should be cleared at the start of sendMessage
     // (it's cleared synchronously before the fetch, so after the call it's null)
     expect(result.current.error).toBeNull();
+  });
+
+  it('16. canonicalTemplateId takes precedence over stale storeTemplateId', async () => {
+    // Simulate: store has stale A (100), URL says B (200).
+    // effectiveTemplateId must be 200 (canonicalTemplateId), not 100 (storeTemplateId).
+    // Proposal was stamped with 200 (server uses canonicalTemplateId first).
+    const ctx = makeDocContext({
+      templateId: 100,           // stale store ID (template A)
+      canonicalTemplateId: 200,  // correct URL ID (template B)
+    });
+    const { result } = renderChatHook(ctx);
+    mockApplySuccess();
+
+    await act(async () => {
+      // Proposal targets 200 (canonical B) — should NOT be rejected
+      await result.current.applyChange(makeProposal({ targetTemplateId: 200 }));
+    });
+
+    // Apply should have been sent (no pre-flight rejection)
+    const applyCall = mockFetch.mock.calls.find(c => String(c[0]).includes('/apply'));
+    expect(applyCall).toBeTruthy();
+    const body = JSON.parse(applyCall![1].body as string);
+    // templateId sent to server must be 200 (canonical), not 100 (stale store)
+    expect(body.templateId).toBe(200);
+    expect(result.current.error).toBeNull();
+  });
+
+  it('17. ProposedChangeCard: canonicalTemplateId takes precedence in getApplyBlockReason', () => {
+    // Store has stale A (100), URL says B (200). Proposal targets B (200).
+    // Apply should be ENABLED — canonical ID matches proposal.
+    const ctx = makeDocContext({
+      templateId: 100,           // stale store ID
+      canonicalTemplateId: 200,  // correct URL ID
+    });
+    const change = makeProposal({ targetTemplateId: 200 });
+    renderCard(change, ctx);
+    const btn = screen.getByRole('button', { name: /^apply$/i });
+    expect(btn).not.toBeDisabled();
   });
 });
