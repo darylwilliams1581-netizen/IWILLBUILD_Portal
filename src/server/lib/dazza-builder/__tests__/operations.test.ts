@@ -165,11 +165,14 @@ describe('buildBlock — other block types unaffected by image fix', () => {
     expect(block.content).toBe('Hello world');
   });
 
-  it('11. banner block still works', () => {
-    const block = buildBlock(makeOp({ blockType: 'banner', variant: 'warning', content: 'Watch out' }));
+  it('11. banner block uses title/body schema (not content)', () => {
+    const block = buildBlock(makeOp({ blockType: 'banner', variant: 'warning', title: 'Watch out', body: 'Be careful' }));
     expect(block.type).toBe('banner');
     expect(block.variant).toBe('warning');
-    expect(block.content).toBe('Watch out');
+    expect(block.title).toBe('Watch out');
+    expect(block.body).toBe('Be careful');
+    // content field must NOT exist on a banner block
+    expect('content' in block).toBe(false);
   });
 
   it('12. divider block still works', () => {

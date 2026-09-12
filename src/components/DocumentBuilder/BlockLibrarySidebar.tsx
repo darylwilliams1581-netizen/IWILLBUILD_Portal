@@ -14,6 +14,9 @@ import {
 import { motion, AnimatePresence } from 'motion/react';
 import { useDocumentStore, newId } from './useDocumentStore';
 import type { DocumentBlock } from './types';
+// Import catalogue factories so the manual buttons and Dazza share the same
+// canonical block payloads — no duplicate definitions.
+import { CATALOGUE_BY_TOOL_ID } from '../../server/lib/dazza-builder/document-tool-catalogue';
 
 interface BlockDef {
   type: string;
@@ -36,21 +39,13 @@ const BLOCK_GROUPS: BlockGroup[] = [
     blocks: [
       {
         type: 'image', label: 'PPE Banner', icon: ShieldCheck, description: 'Full PPE required — icon strip image, single block',
-        factory: () => ({
-          id: newId(), type: 'image',
-          src: '/airo-assets/images/safety-badges/ppe-banner-strip',
-          alt: 'PPE Required — Personal Protective Equipment',
-          size: 'full', align: 'center', preserveAspectRatio: true,
-        }),
+        // Uses the canonical catalogue factory — same payload as Dazza's advanced.ppe_banner
+        factory: () => CATALOGUE_BY_TOOL_ID['advanced.ppe_banner']!.factory!() as DocumentBlock,
       },
       {
         type: 'image', label: 'Risk Matrix', icon: BarChart2, description: 'Risk Matrix reference — consequence, likelihood and degree of control',
-        factory: () => ({
-          id: newId(), type: 'image',
-          src: '/airo-assets/images/safety-badges/risk-matrix',
-          alt: 'Risk Matrix — consequence, likelihood and degree of control',
-          size: 'full', align: 'center', preserveAspectRatio: true,
-        }),
+        // Uses the canonical catalogue factory — same payload as Dazza's advanced.risk_matrix_image
+        factory: () => CATALOGUE_BY_TOOL_ID['advanced.risk_matrix_image']!.factory!() as DocumentBlock,
       },
       {
         type: 'risk_matrix_banner', label: 'Risk Matrix Banner', icon: BarChart2, description: 'Compact risk level strip — drop at top of any document',

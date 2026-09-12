@@ -9,6 +9,7 @@
  *   the context it needs to answer the current request.
  */
 import type { BuilderContext } from './types.js';
+import { buildDocumentToolsPromptSection } from './document-tool-catalogue.js';
 
 // ── Tool definitions (closed allowlist) ───────────────────────────────────────
 
@@ -114,16 +115,27 @@ export const BUILDER_TOOL_DEFINITIONS = [
       required: ['templateId', 'builderType', 'operations'],
     },
   },
+  {
+    type: 'function' as const,
+    name: 'builder_list_document_tools',
+    description: 'Return the full Document Builder tool catalogue grouped by category. Use this to answer "what tools can you use?" or to look up a tool\'s canonical operation shape before proposing.',
+    parameters: {
+      type: 'object',
+      properties: {},
+      required: [],
+    },
+  },
 ];
 
 // ── Tool labels (safe for SSE — never include args or results) ────────────────
 
 export const TOOL_LABELS: Record<string, string> = {
-  builder_get_template:        'Loading template…',
-  builder_list_templates:      'Searching templates…',
-  builder_get_versions:        'Loading version history…',
-  builder_propose_changes:     'Preparing proposed changes…',
-  builder_validate_operations: 'Validating operations…',
+  builder_get_template:          'Loading template…',
+  builder_list_templates:        'Searching templates…',
+  builder_get_versions:          'Loading version history…',
+  builder_propose_changes:       'Preparing proposed changes…',
+  builder_validate_operations:   'Validating operations…',
+  builder_list_document_tools:   'Loading document tools catalogue…',
 };
 
 // ── System prompt ─────────────────────────────────────────────────────────────
@@ -152,35 +164,29 @@ ${ctx.schemaSummary || 'No schema loaded.'}
 ${ctx.builderType === 'document' ? `
 You can help with Studio Document Builder operations:
 - createNewTemplate: Create a brand-new document template (MUST be first op when no template is open). Required fields: name (string), templateType (string, e.g. "swms", "policy", "procedure", "emp", "generic"), docStatus ("draft"), docKind ("doc").
-- addBlock: Add a new block (heading, text, rich_text, divider, spacer, page_break, columns, banner, safety_badge_row, risk_matrix, risk_matrix_banner, table, image, field, system_field).
+- addBlock: Add a block using either:
+    a) toolId (preferred): { "op": "addBlock", "toolId": "advanced.ppe_banner" }
+       The server resolves the canonical block from the catalogue. Protected fields cannot be overridden.
+    b) blockType (fallback): { "op": "addBlock", "blockType": "heading", "content": "..." }
+       Use only when no catalogue toolId exists for the block.
   Block type aliases — map these common user phrases to the correct type:
-    • "text box", "text block", "text area", "paragraph" → type: "text"
-    • "rich text", "formatted text", "editor" → type: "rich_text"
-    • "heading", "title", "header" → type: "heading"
-    • "divider", "line", "separator", "horizontal rule" → type: "divider"
-  IMAGE BLOCK — CRITICAL SCHEMA RULE:
-    Image blocks use top-level op properties, NOT a "content" field.
-    The correct shape is ALWAYS:
-      { "op": "addBlock", "blockType": "image", "src": "...", "alt": "...", "size": "full", "align": "center", "preserveAspectRatio": true }
-    NEVER put image data inside "content". NEVER use "content" for an image block.
-    If you put anything in "content" for an image block it will be ignored.
-  BUNDLED SAFETY ASSETS — use these exact src values, never invent paths:
-    • PPE Banner (Advanced PPE Banner, Personal Protective Equipment banner):
-        src: "/airo-assets/images/safety-badges/ppe-banner-strip"
-        alt: "PPE Required — Personal Protective Equipment"
-        size: "full", align: "center", preserveAspectRatio: true
-    • Risk Matrix:
-        src: "/airo-assets/images/safety-badges/risk-matrix"
-        alt: "Risk Assessment Matrix"
-        size: "full", align: "center", preserveAspectRatio: true
-    • Risk Assessment Banner:
-        src: "/airo-assets/images/safety-badges/risk-assessment-banner"
-        alt: "Risk Assessment"
-        size: "full", align: "center", preserveAspectRatio: true
-    • Safety Icons Sheet:
-        src: "/airo-assets/images/safety-badges/icons-sheet"
-        alt: "Safety Icons"
-        size: "full", align: "center", preserveAspectRatio: true
+    • "text box", "text block", "text area", "paragraph" → blockType: "text"
+    • "rich text", "formatted text", "editor" → blockType: "rich_text"
+    • "heading", "title", "header" → blockType: "heading"
+    • "divider", "line", "separator", "horizontal rule" → blockType: "divider"
+  BANNER BLOCK SCHEMA RULE:
+    Banner blocks use title/body fields, NOT a "content" field.
+    { "op": "addBlock", "blockType": "banner", "variant": "info", "title": "...", "body": "..." }
+    NEVER put banner text in "content" — it will be ignored.
+  IMAGE BLOCK SCHEMA RULE:
+    Image blocks use top-level src/alt/size/align/preserveAspectRatio, NOT a "content" field.
+    { "op": "addBlock", "blockType": "image", "src": "...", "alt": "...", "size": "full", "align": "center", "preserveAspectRatio": true }
+    NEVER put image data in "content" — it will produce "[object Object]".
+  SYSTEM FIELD SCHEMA RULE:
+    { "op": "addBlock", "blockType": "system_field", "fieldKey": "job_name", "label": "Job Name", "fallback": "[Job Name]", "showLabel": true }
+  TABLE SCHEMA RULE:
+    Tables use columns/rows schema — specify "columns" (count) and "rows" (count).
+    The server generates proper TableColumn objects with IDs.
   Insertion position (choose one — omit for append-to-end):
     • insertPosition: "top"  → prepend before all existing blocks
     • afterBlockId: "<id>"   → insert immediately after the block with that ID
@@ -196,6 +202,8 @@ You can help with Studio Document Builder operations:
 - moveBlock: Reorder blocks
 - removeBlock: Remove a block
 - updateTemplateSettings: Change template name, type, PDF settings, acknowledgement settings
+
+${buildDocumentToolsPromptSection()}
 ` : `
 You can help with Forms Builder operations:
 - createNewTemplate: Create a brand-new form template (MUST be first op when no template is open). Required fields: name (string), formType (string, e.g. "Job", "Safety", "Inspection", "General"), category (string).

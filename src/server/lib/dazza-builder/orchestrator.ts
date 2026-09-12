@@ -34,6 +34,7 @@ import type { OAIMessage, OAIToolCall } from './conversation.js';
 import { loadHistory, saveMessage, sanitiseHistory, CONTEXT_RECENT_TURNS } from './conversation.js';
 import { auditBuilder } from './audit.js';
 import { resolveAndExtractEvidence, buildUntrustedEvidenceBlock } from '../../lib/dazza-attachment-service.js';
+import { getGroupedCatalogue } from './document-tool-catalogue.js';
 
 const TOOL_ROUNDS_MAX = 6;
 const MAX_TOKENS = 8000;
@@ -290,6 +291,16 @@ async function executeBuilderTool(
         const opsToCheck = ops.filter(op => (op as { op?: string }).op !== 'createNewTemplate');
         const errors = validateOperations(opsToCheck, type as 'document' | 'form');
         return ok({ valid: errors.length === 0, errors, note: id ? undefined : 'templateId is null — createNewTemplate path, server-side validation will run on apply' });
+      }
+
+      case 'builder_list_document_tools': {
+        // Return the full grouped catalogue so Dazza can answer "what tools can you use?"
+        // and look up canonical operation shapes before proposing.
+        const groups = getGroupedCatalogue();
+        return ok({
+          note: 'Document Builder tool catalogue. Use toolId in addBlock operations for named tools.',
+          groups,
+        });
       }
 
       default:
