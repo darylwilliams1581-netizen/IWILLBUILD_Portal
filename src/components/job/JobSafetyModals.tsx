@@ -1,6 +1,8 @@
 import { useState, useEffect, useRef } from 'react';
 import { motion } from 'motion/react';
 import { openPrintWindow } from '@/lib/print-html';
+import { isNative } from '@/lib/capacitor-plugins';
+import { saveAuthenticatedExport } from '@/lib/authenticated-export';
 import { ShieldAlert, Plus, Loader2, X, AlertCircle, UserCheck, Printer, Wand2, CheckSquare, Square, Search, ClipboardList, Check } from 'lucide-react';
 import { Link } from "react-router";
 import { escapeHtml, safeUrl } from '@/lib/html-escape';
@@ -550,7 +552,20 @@ export function SwmsPrintModal({
     month: 'long',
     year: 'numeric'
   });
-  function handlePrint() {
+  async function handlePrint() {
+    if (isNative() && swms.template_id) {
+      try {
+        await saveAuthenticatedExport({
+          url: `/api/safety/swms/${swms.template_id}/export?format=pdf`,
+          filename: `${swms.title || 'swms'}.pdf`,
+          fileType: 'pdf',
+          title: swms.title || 'SWMS',
+        });
+      } catch (err) {
+        alert(err instanceof Error ? err.message : 'PDF export failed');
+      }
+      return;
+    }
     const content = printRef.current;
     if (!content) return;
     const safeTitle = swms.title.replace(/[&<>"']/g, c => ({

@@ -13,11 +13,25 @@ import UploadDocModal from '@/components/safety/UploadDocModal';
 import NewDocModal from '@/components/safety/NewDocModal';
 import { type SwmsTemplate, type SafetyPlan, type SafetyDocument, type SafetyPoster, type GeneratedPoster, POLICY_TYPES, POSTER_TYPES, fmtBytes, fmtDate, statusBadge } from '@/components/safety/safety-types';
 import { useNavigate as _useNavigate } from 'react-router';
-import { resolveDownloadUrl } from '@/lib/native-api';
+import { goBack } from '@/lib/navigation';
+import { saveAuthenticatedExport } from '@/lib/authenticated-export';
 import SafetyContent from '@/components/safety/SafetyContent';
 import DesktopTopBar from '@/components/DesktopTopBar';
 import DesktopDock from '@/components/DesktopDock';
 import PortalSidebar from '@/components/PortalSidebar';
+
+async function exportSafetyFile(
+  url: string,
+  filename: string,
+  title: string,
+  fileType: 'pdf' | 'file' = 'pdf',
+) {
+  try {
+    await saveAuthenticatedExport({ url, filename, fileType, title });
+  } catch (err) {
+    alert(err instanceof Error ? err.message : 'Export failed');
+  }
+}
 
 // ── SWMS Library Tab ──────────────────────────────────────────────────────────
 
@@ -253,12 +267,31 @@ export function SwmsLibraryTab() {
                 <button onClick={() => setPrinting(s)} className="p-1.5 rounded-lg text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition-colors" title="Print / PDF">
                   <Printer size={14} />
                 </button>
-                <a href={resolveDownloadUrl(`/api/safety/swms/${s.id}/export?format=pdf`)} target="_blank" rel="noopener noreferrer" className="p-1.5 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 transition-colors" title="Export PDF">
+                <button
+                  type="button"
+                  onClick={() => void exportSafetyFile(
+                    `/api/safety/swms/${s.id}/export?format=pdf`,
+                    `${s.title || 'swms'}.pdf`,
+                    s.title || 'SWMS',
+                  )}
+                  className="p-1.5 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 transition-colors"
+                  title="Export PDF"
+                >
                   <FileDown size={14} />
-                </a>
-                <a href={resolveDownloadUrl(`/api/safety/swms/${s.id}/export?format=docx`)} target="_blank" rel="noopener noreferrer" className="p-1.5 rounded-lg text-slate-400 hover:text-blue-600 hover:bg-blue-50 transition-colors" title="Export DOCX">
+                </button>
+                <button
+                  type="button"
+                  onClick={() => void exportSafetyFile(
+                    `/api/safety/swms/${s.id}/export?format=docx`,
+                    `${s.title || 'swms'}.docx`,
+                    s.title || 'SWMS',
+                    'file',
+                  )}
+                  className="p-1.5 rounded-lg text-slate-400 hover:text-blue-600 hover:bg-blue-50 transition-colors"
+                  title="Export DOCX"
+                >
                   <FileText size={14} />
-                </a>
+                </button>
                 <button onClick={() => {
             setEditing(s);
             setShowModal(true);
@@ -475,13 +508,31 @@ export function SafetyPlansTab() {
                   <Share2 size={12} /><span className="hidden sm:inline">Share</span>
                 </button>
                 {/* Print */}
-                <a href={resolveDownloadUrl(`/api/safety/plans/${p.id}/export?format=pdf`)} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 px-2 py-1.5 rounded-lg text-xs font-semibold text-slate-600 hover:text-emerald-600 hover:bg-emerald-50 border border-slate-200 hover:border-emerald-200 transition-colors" title="Print / Export PDF">
+                <button
+                  type="button"
+                  onClick={() => void exportSafetyFile(
+                    `/api/safety/plans/${p.id}/export?format=pdf`,
+                    `${p.title || 'safety-plan'}.pdf`,
+                    p.title || 'Safety plan',
+                  )}
+                  className="flex items-center gap-1 px-2 py-1.5 rounded-lg text-xs font-semibold text-slate-600 hover:text-emerald-600 hover:bg-emerald-50 border border-slate-200 hover:border-emerald-200 transition-colors"
+                  title="Print / Export PDF"
+                >
                   <Printer size={12} /><span className="hidden sm:inline">Print</span>
-                </a>
-                {/* Safety Pack */}
-                <a href={resolveDownloadUrl(`/api/safety/plans/${p.id}/pack`)} target="_blank" rel="noopener noreferrer" className="p-1.5 rounded-lg text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 transition-colors" title="Download Safety Pack">
+                </button>
+                <button
+                  type="button"
+                  onClick={() => void exportSafetyFile(
+                    `/api/safety/plans/${p.id}/pack`,
+                    `${p.title || 'safety-pack'}.zip`,
+                    p.title || 'Safety pack',
+                    'file',
+                  )}
+                  className="p-1.5 rounded-lg text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 transition-colors"
+                  title="Download Safety Pack"
+                >
                   <Package size={14} />
-                </a>
+                </button>
                 {/* Delete */}
                 <button onClick={() => handleDelete(p.id, p.title)} disabled={deleting === p.id} className="p-1.5 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 transition-colors" title="Delete plan">
                   {deleting === p.id ? <Loader2 size={14} className="animate-spin" /> : <Trash2 size={14} />}
@@ -589,9 +640,19 @@ export function PoliciesTab() {
                 </div>
               </div>
               <div className="flex items-center gap-1 shrink-0">
-                <a href={resolveDownloadUrl(`/api/safety/documents/${d.id}/download`)} className="p-1.5 rounded-lg text-slate-400 hover:text-primary hover:bg-violet-50 transition-colors" title="Download">
+                <button
+                  type="button"
+                  onClick={() => void exportSafetyFile(
+                    `/api/safety/documents/${d.id}/download`,
+                    d.title || 'document',
+                    d.title || 'Safety document',
+                    'file',
+                  )}
+                  className="p-1.5 rounded-lg text-slate-400 hover:text-primary hover:bg-violet-50 transition-colors"
+                  title="Download"
+                >
                   <Download size={14} />
-                </a>
+                </button>
                 <button onClick={() => handleDelete(d.id)} disabled={deleting === d.id} className="p-1.5 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 transition-colors" title="Delete">
                   {deleting === d.id ? <Loader2 size={14} className="animate-spin" /> : <Trash2 size={14} />}
                 </button>
@@ -737,9 +798,19 @@ export function PostersTab() {
                   <p className="text-xs text-slate-400 mt-0.5">{p.poster_type} · {fmtBytes(p.size_bytes)}</p>
                 </div>
                 <div className="flex items-center gap-1 shrink-0">
-                  <a href={resolveDownloadUrl(`/api/safety/posters/${p.id}/download`)} download className="p-1.5 rounded-lg text-slate-400 hover:text-primary hover:bg-violet-50 transition-colors" title="Download poster">
+                  <button
+                    type="button"
+                    onClick={() => void exportSafetyFile(
+                      `/api/safety/posters/${p.id}/download`,
+                      p.title || 'poster',
+                      p.title || 'Poster',
+                      'file',
+                    )}
+                    className="p-1.5 rounded-lg text-slate-400 hover:text-primary hover:bg-violet-50 transition-colors"
+                    title="Download poster"
+                  >
                     <Download size={14} />
-                  </a>
+                  </button>
                   <button onClick={() => handleDelete(p.id)} disabled={deleting === p.id} className="p-1.5 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 transition-colors">
                     {deleting === p.id ? <Loader2 size={14} className="animate-spin" /> : <Trash2 size={14} />}
                   </button>
@@ -909,7 +980,7 @@ export default function SafetyPage() {
 
       {/* Header — matches fleet/jobs pattern */}
       <header className="sticky top-0 z-30 h-12 bg-white border-b border-border flex items-center px-4 shrink-0 gap-2 safe-top">
-        <button onClick={() => navigate('/home')} className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors shrink-0" aria-label="Home">
+        <button onClick={() => goBack(navigate, '/home?page=2')} className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors shrink-0" aria-label="Home">
           <ArrowLeft size={16} />
           <span className="hidden sm:inline">Home</span>
         </button>

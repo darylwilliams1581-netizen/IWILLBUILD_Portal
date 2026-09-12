@@ -2,6 +2,8 @@ import { useRef } from 'react';
 import { motion } from 'motion/react';
 import { Printer, X } from 'lucide-react';
 import { openPrintWindow } from '@/lib/print-html';
+import { isNative } from '@/lib/capacitor-plugins';
+import { saveAuthenticatedExport } from '@/lib/authenticated-export';
 import PPEBanner from '@/components/safety-posters/PPEBanner';
 import type { SwmsPrintData } from './safety-types';
 import { fmtDate } from './safety-types';
@@ -473,7 +475,20 @@ interface Props {
 export default function SwmsPrintModal({ swms, onClose }: Props) {
   const today = new Date().toLocaleDateString('en-AU', { day: 'numeric', month: 'long', year: 'numeric' });
 
-  function handlePrint() {
+  async function handlePrint() {
+    if (isNative() && swms.id) {
+      try {
+        await saveAuthenticatedExport({
+          url: `/api/safety/swms/${swms.id}/export?format=pdf`,
+          filename: `${swms.title || 'swms'}.pdf`,
+          fileType: 'pdf',
+          title: swms.title || 'SWMS',
+        });
+      } catch (err) {
+        alert(err instanceof Error ? err.message : 'PDF export failed');
+      }
+      return;
+    }
     openPrintWindow(buildPrintHtml(swms, today), true);
   }
 

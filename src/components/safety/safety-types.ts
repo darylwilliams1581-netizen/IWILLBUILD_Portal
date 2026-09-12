@@ -114,6 +114,7 @@ export interface JobSwms {
 }
 
 export interface SwmsPrintData {
+  id?: number;
   title: string;
   work_activity?: string | null;
   revision_number?: string;

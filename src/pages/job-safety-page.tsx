@@ -51,7 +51,7 @@ export default function JobSafetyPage() {
             featureLabel={FEATURE.label}
             jobName={job.name}
             jobNumber={job.jobNumber}
-            backTo="/home"
+            backTo="/home?page=2"
             onChangeJob={handleChangeJob}
           >
             <div className="p-4">

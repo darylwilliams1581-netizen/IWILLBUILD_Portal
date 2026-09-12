@@ -6,7 +6,7 @@ import {
 } from '@/lib/capacitor-plugins';
 import { resolveDownloadUrl } from '@/lib/native-api';
 
-export type ExportFileType = 'csv' | 'pdf';
+export type ExportFileType = 'csv' | 'pdf' | 'file';
 
 interface SaveAuthenticatedExportOptions {
   url: string;
