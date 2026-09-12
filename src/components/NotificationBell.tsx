@@ -164,7 +164,7 @@ export default function NotificationBell({
           </span>}
       </button>
 
-      {/* Dropdown panel */}
+      {/* Dropdown panel — fixed on phone so it cannot hang off-screen left of the bell */}
       <AnimatePresence>
         {open && <motion.div initial={{
         opacity: 0,
@@ -181,14 +181,12 @@ export default function NotificationBell({
       }} transition={{
         duration: 0.15,
         ease: 'easeOut'
-      }} className="absolute right-0 top-10 w-80 bg-white rounded-xl shadow-2xl border border-slate-200 z-[200] overflow-hidden" style={{
-        maxHeight: '480px'
-      }}>
+      }} className="fixed z-[200] overflow-hidden bg-white rounded-xl shadow-2xl border border-slate-200 left-3 right-3 top-[calc(env(safe-area-inset-top,0px)+52px)] max-h-[min(70dvh,480px)] md:absolute md:left-auto md:right-0 md:top-10 md:w-80 md:inset-x-auto">
             {/* Header */}
-            <div className="flex items-center justify-between px-4 py-3 border-b border-slate-100">
-              <div className="flex items-center gap-2">
-                <Bell size={14} className="text-slate-500" />
-                <span className="font-heading font-bold text-sm text-slate-800">Notifications</span>
+            <div className="flex items-center justify-between px-3 py-3 border-b border-slate-100 gap-2 min-w-0">
+              <div className="flex items-center gap-2 min-w-0">
+                <Bell size={14} className="text-slate-500 shrink-0" />
+                <span className="font-heading font-bold text-sm text-slate-800 truncate">Notifications</span>
                 {unreadCount > 0 && <span className="bg-red-100 text-red-600 text-[10px] font-bold px-1.5 py-0.5 rounded-full">
                     {unreadCount} new
                   </span>}
@@ -205,8 +203,8 @@ export default function NotificationBell({
             </div>
 
             {/* Alert list */}
-            <div className="overflow-y-auto" style={{
-          maxHeight: '400px'
+            <div className="overflow-y-auto overscroll-contain" style={{
+          maxHeight: 'min(calc(70dvh - 56px), 400px)'
         }}>
               {alerts.length === 0 ? <div className="flex flex-col items-center justify-center py-10 text-slate-400">
                   <HardHat size={28} className="mb-2 opacity-30" />
