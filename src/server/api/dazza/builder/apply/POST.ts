@@ -68,6 +68,17 @@ export default async function handler(req: Request, res: Response) {
     //    profiles row (same lookup used by document-adapter for createNewTemplate).
     //    This correctly resolves the developer company even when the platform owner
     //    is not a regular company member.
+    //
+    //    TENANT ISOLATION: a single WHERE id=? AND company_id=? query is used.
+    //    We intentionally return the same HTTP 404 / code: TEMPLATE_NOT_FOUND for
+    //    both "nonexistent" and "belongs to another company" — never reveal that a
+    //    document exists in another tenant (information-disclosure prevention).
+    //    No second "does it exist at all?" probe is performed.
+    //
+    //    MYSQL2 TUPLE: db.execute returns [rows, metadata].  Use destructuring:
+    //      const [rows] = await db.execute(...) as unknown as [Array<T>, unknown]
+    //    Never use (result as { rows: T[] }).rows — that property does not exist
+    //    on the tuple and is always undefined, making every template appear missing.
     if (typeof templateId === 'number') {
       // Resolve the owner's company_id from their profile
       const [profileRows] = await db.execute(sql`
@@ -79,44 +90,19 @@ export default async function handler(req: Request, res: Response) {
         return res.status(403).json({ error: 'Owner has no company profile — cannot verify template ownership.' });
       }
 
-      if (builderType === 'document') {
-        const rows = await db.execute(sql`
-          SELECT id FROM document_templates
-          WHERE id = ${templateId} AND company_id = ${ownerCompanyId}
-          LIMIT 1
-        `);
-        const found = ((rows as { rows: unknown[] }).rows ?? []).length > 0;
-        if (!found) {
-          // Distinguish "exists but wrong company" from "doesn't exist at all"
-          // by checking without the company filter — gives a clearer error message.
-          const anyRows = await db.execute(sql`
-            SELECT id FROM document_templates WHERE id = ${templateId} LIMIT 1
-          `);
-          const exists = ((anyRows as { rows: unknown[] }).rows ?? []).length > 0;
-          return res.status(404).json({
-            error: exists
-              ? `Template #${templateId} does not belong to your company. Open the correct template and re-run your request.`
-              : `Template not found: document template #${templateId} does not exist or has been deleted. Open an existing template and re-run your request.`,
-          });
-        }
-      } else {
-        const rows = await db.execute(sql`
-          SELECT id FROM form_templates
-          WHERE id = ${templateId} AND company_id = ${ownerCompanyId}
-          LIMIT 1
-        `);
-        const found = ((rows as { rows: unknown[] }).rows ?? []).length > 0;
-        if (!found) {
-          const anyRows = await db.execute(sql`
-            SELECT id FROM form_templates WHERE id = ${templateId} LIMIT 1
-          `);
-          const exists = ((anyRows as { rows: unknown[] }).rows ?? []).length > 0;
-          return res.status(404).json({
-            error: exists
-              ? `Form template #${templateId} does not belong to your company. Open the correct template and re-run your request.`
-              : `Template not found: form template #${templateId} does not exist or has been deleted. Open an existing template and re-run your request.`,
-          });
-        }
+      const table = builderType === 'document' ? sql`document_templates` : sql`form_templates`;
+      const [existRows] = await db.execute(sql`
+        SELECT id FROM ${table}
+        WHERE id = ${templateId} AND company_id = ${ownerCompanyId}
+        LIMIT 1
+      `) as unknown as [Array<{ id: number }>, unknown];
+
+      if (!existRows?.[0]) {
+        // Same response for nonexistent and cross-tenant — never reveal cross-tenant existence.
+        return res.status(404).json({
+          code: 'TEMPLATE_NOT_FOUND',
+          error: 'Template not found.',
+        });
       }
     }
 

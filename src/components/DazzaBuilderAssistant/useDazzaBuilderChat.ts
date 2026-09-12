@@ -329,7 +329,11 @@ export function useDazzaBuilderChat({ builderContext, onApplied }: UseDazzaBuild
         newTemplateName?: string;
       };
       if (!resp.ok || !data.ok) {
-        throw new Error(data.error ?? `Apply failed (${resp.status})`);
+        // Carry the server's `code` field through as a prefix so the catch block
+        // can identify TEMPLATE_NOT_FOUND by code, not by phrase-matching the
+        // human-readable error string (which may change).
+        const codePrefix = data.code ? `${data.code}: ` : '';
+        throw new Error(`${codePrefix}${data.error ?? `Apply failed (${resp.status})`}`);
       }
 
       setPendingChange(null);
@@ -362,13 +366,13 @@ export function useDazzaBuilderChat({ builderContext, onApplied }: UseDazzaBuild
       setTimeout(() => { setPhase('idle'); setPhaseLabel(''); }, 2000);
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
-      // Only show the "no longer exists" friendly message for a confirmed
-      // TEMPLATE_NOT_FOUND (404) error from the server.  Any other failure
-      // (validation error, 400, network error) shows the raw server message
-      // so the user can see what actually went wrong.
-      const isTemplateGone =
-        msg.includes('TEMPLATE_NOT_FOUND') ||
-        (msg.includes('does not exist') && msg.includes('deleted'));
+      // Only show the "no longer exists" friendly message when the server
+      // returned code: TEMPLATE_NOT_FOUND.  The code is carried as a prefix
+      // on the thrown Error message ("TEMPLATE_NOT_FOUND: …") so we can
+      // identify it reliably without phrase-matching the human-readable text.
+      // Any other failure (validation error, 400, network error) shows the
+      // raw server message so the user can see what actually went wrong.
+      const isTemplateGone = msg.startsWith('TEMPLATE_NOT_FOUND:');
       const friendlyMsg = isTemplateGone
         ? 'The template this proposal was created for no longer exists. Please re-run your request on the currently open template.'
         : msg;

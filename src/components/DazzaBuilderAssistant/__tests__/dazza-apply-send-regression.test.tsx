@@ -707,11 +707,16 @@ describe('Integration: canonicalTemplateId stamped on proposal when store is nul
   });
 
   /**
-   * 15. TEMPLATE_NOT_FOUND error shows the friendly "no longer exists" message.
+   * 15. TEMPLATE_NOT_FOUND code shows the friendly "no longer exists" message.
+   *     The server returns { code: 'TEMPLATE_NOT_FOUND', error: 'Template not found.' }
+   *     The client prefixes the thrown Error with the code: "TEMPLATE_NOT_FOUND: …"
+   *     isTemplateGone detects msg.startsWith('TEMPLATE_NOT_FOUND:') — code only,
+   *     not phrase-matching the human-readable error text.
    */
-  it('15. TEMPLATE_NOT_FOUND error shows friendly "no longer exists" message', async () => {
+  it('15. TEMPLATE_NOT_FOUND code shows friendly "no longer exists" message', async () => {
     const ctx = makeCtx();
-    mockApplyError(404, { ok: false, error: 'TEMPLATE_NOT_FOUND: template 71 does not exist' });
+    // Server returns the new shape: { code: 'TEMPLATE_NOT_FOUND', error: 'Template not found.' }
+    mockApplyError(404, { ok: false, code: 'TEMPLATE_NOT_FOUND', error: 'Template not found.' });
 
     const { result } = renderChatHook(ctx);
 
@@ -720,5 +725,24 @@ describe('Integration: canonicalTemplateId stamped on proposal when store is nul
     });
 
     expect(result.current.error).toContain('no longer exists');
+  });
+
+  /**
+   * 15b. A 404 WITHOUT code: TEMPLATE_NOT_FOUND does NOT show "no longer exists".
+   *      Only the code field triggers the friendly message — not the HTTP status alone.
+   */
+  it('15b. 404 without TEMPLATE_NOT_FOUND code shows raw error, not "no longer exists"', async () => {
+    const ctx = makeCtx();
+    // A 404 with a different error (e.g. route not found) — no code field
+    mockApplyError(404, { ok: false, error: 'Not found' });
+
+    const { result } = renderChatHook(ctx);
+
+    await act(async () => {
+      await result.current.applyChange(makeProposal());
+    });
+
+    expect(result.current.error).not.toContain('no longer exists');
+    expect(result.current.error).toBe('Not found');
   });
 });
