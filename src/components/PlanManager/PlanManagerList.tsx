@@ -6,7 +6,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { Link } from "react-router";
 import { motion, AnimatePresence } from 'motion/react';
-import { Search, FileText, Archive, RotateCcw, Trash2, Loader2, HardHat, GitBranch, ChevronDown, FolderOpen, Eye, Briefcase, AlertCircle, ChevronRight, Lock, Share2, Mail, Download } from 'lucide-react';
+import { Search, FileText, Archive, RotateCcw, Trash2, Loader2, HardHat, GitBranch, ChevronDown, FolderOpen, Eye, Briefcase, ChevronRight, Lock, Share2, Mail, Download } from 'lucide-react';
 import type { Drawing } from './types';
 import ShareModal from './ShareModal';
 interface JobGroup {
@@ -292,14 +292,6 @@ export default function PlanManagerList({
           {totalDrawings} drawing{totalDrawings !== 1 ? 's' : ''}
         </div>
       </div>
-
-      {/* Info banner */}
-      {tab === 'active' && <div className="mx-4 mt-3 flex items-start gap-2 bg-blue-50 border border-blue-100 rounded-xl px-3 py-2">
-          <AlertCircle size={12} className="text-blue-400 shrink-0 mt-0.5" />
-          <p className="text-[11px] text-slate-600">
-            Use <span className="font-semibold text-slate-800">Upload Plan</span> to add drawings here, or add them via the Drawings tab inside each job. Hover a row to share, email, or archive.
-          </p>
-        </div>}
 
       {/* List */}
       <div className="flex-1 overflow-y-auto px-4 py-3 flex flex-col gap-2">

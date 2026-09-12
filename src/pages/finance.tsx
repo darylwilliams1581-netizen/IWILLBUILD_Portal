@@ -10,6 +10,7 @@
 // @seo-exempt
 import { useEffect } from 'react';
 import { useSearchParams, useNavigate } from 'react-router';
+import { goBack } from '@/lib/navigation';
 import { Helmet } from '@dr.pogodin/react-helmet';
 import { DollarSign, FileText, BookOpen, Settings, Receipt, ShoppingCart, Clock, ArrowLeft } from 'lucide-react';
 import PortalSidebar from '@/components/PortalSidebar';

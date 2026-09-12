@@ -5,6 +5,7 @@
  */
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from "react-router";
+import { goBack } from '@/lib/navigation';
 import { AnimatePresence, motion } from 'motion/react';
 import { Helmet } from '@dr.pogodin/react-helmet';
 import { Search, Plus, Loader2, FileCheck, Users, ChevronDown, ChevronUp, CheckCircle2, Clock, X, AlertCircle, Check, CheckSquare, Square, Copy, Link2, ClipboardCheck, FileText, UserCheck, Printer, PenLine, ChevronRight, ArrowLeft } from 'lucide-react';

@@ -8,6 +8,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { Helmet } from '@dr.pogodin/react-helmet';
 import { useNavigate } from 'react-router';
 import { Map, Archive, Layers, AlertTriangle, RefreshCw, Upload, ChevronLeft } from 'lucide-react';
+import { goBack } from '@/lib/navigation';
 import PortalSidebar from '@/components/PortalSidebar';
 import DesktopDock from '@/components/DesktopDock';
 import JobContextTab from '@/components/JobContextTab';
@@ -132,7 +133,7 @@ export default function PlanManagerPage() {
           <div className="flex items-center gap-3 px-4 md:px-6 py-4 border-b border-slate-200 flex-shrink-0 bg-white">
             {/* Mobile back button */}
             <button
-              onClick={() => goBack(navigate, '/home')}
+              onClick={() => goBack(navigate, '/home?page=1')}
               className="lg:hidden flex items-center justify-center w-9 h-9 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-600 transition-colors shrink-0"
               aria-label="Go back"
             >

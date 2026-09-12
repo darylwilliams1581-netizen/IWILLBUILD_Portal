@@ -1,6 +1,7 @@
 import { Helmet } from '@dr.pogodin/react-helmet';
 import { ClipboardList, ArrowLeft } from 'lucide-react';
 import { useNavigate } from 'react-router';
+import { goBack } from '@/lib/navigation';
 import PortalSidebar from '@/components/PortalSidebar';
 import TakeoffPad from '@/components/estimating/TakeoffPad';
 

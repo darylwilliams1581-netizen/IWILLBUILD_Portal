@@ -35,7 +35,7 @@ function src(rel: string): string {
 
 // ── 1. Opening page hides duplicate tiles ────────────────────────────────────
 
-const HIDDEN_ON_OPENING_PAGE = ['attendance', 'photos', 'forms', 'safety'];
+const HIDDEN_ON_OPENING_PAGE = ['attendance', 'photos', 'forms', 'safety', 'drawings'];
 
 describe('Registry — Work page hides duplicate tiles', () => {
   it('has exactly 14 features', async () => {
@@ -43,7 +43,7 @@ describe('Registry — Work page hides duplicate tiles', () => {
     expect(JOB_FEATURES).toHaveLength(14);
   });
 
-  it('hides attendance, photos, forms and safety from the opening page', async () => {
+  it('hides attendance, photos, forms, safety and drawings from the opening page', async () => {
     const { JOB_FEATURES } = await import('@/lib/jobFeatureRegistry');
     for (const key of HIDDEN_ON_OPENING_PAGE) {
       expect(JOB_FEATURES.find(f => f.key === key)?.inOpeningPage).toBe(false);
@@ -51,9 +51,9 @@ describe('Registry — Work page hides duplicate tiles', () => {
     }
   });
 
-  it('OPENING_PAGE_FEATURES has 10 entries', async () => {
+  it('OPENING_PAGE_FEATURES has 9 entries', async () => {
     const { OPENING_PAGE_FEATURES } = await import('@/lib/jobFeatureRegistry');
-    expect(OPENING_PAGE_FEATURES).toHaveLength(10);
+    expect(OPENING_PAGE_FEATURES).toHaveLength(9);
     expect(OPENING_PAGE_FEATURES.map(f => f.key)).not.toEqual(
       expect.arrayContaining(HIDDEN_ON_OPENING_PAGE),
     );

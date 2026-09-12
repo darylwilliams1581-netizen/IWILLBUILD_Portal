@@ -191,8 +191,8 @@ export const JOB_FEATURES: JobFeature[] = [
     pickerRoute: '/home?picker=drawings',
     launcherRoute: '/work-field/drawings',
     inDropdown: true,
-    inOpeningPage: true,
-    inLauncher: true,
+    inOpeningPage: false,
+    inLauncher: false,
     group: 'Field & Files',
   },
   {

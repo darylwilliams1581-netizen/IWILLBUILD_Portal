@@ -5,6 +5,7 @@
  */
 import { useEffect, useState, useRef } from 'react';
 import { useParams, useNavigate } from "react-router";
+import { goBack } from '@/lib/navigation';
 import { motion, AnimatePresence } from 'motion/react';
 import { Helmet } from '@dr.pogodin/react-helmet';
 import { ArrowLeft, Car, Loader2, Download, Clock, CheckCircle2, AlertCircle, Navigation, Plus, X, User, Calendar, AlarmClock, FileText } from 'lucide-react';
