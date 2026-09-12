@@ -9,10 +9,29 @@ export default function BuildersCalcPage() {
   return (
     <div className="portal-page">
       <Helmet>
-        <title>Builders Calc — IWIllBUIlD</title>
+        <title>Builders Calc — IWILLBUILD</title>
         <meta name="description" content="Quick construction calculations — areas, volumes, materials and cost estimates." />
         <link rel="canonical" href="https://iwillbuild.com/builders-calc" />
         <meta name="robots" content="noindex,nofollow" />
+        {/* OG / Twitter — required by SEO scanner even on noindex portal pages */}
+        <meta property="og:title" content="Builders Calc — IWILLBUILD" />
+        <meta property="og:description" content="Quick construction calculations — areas, volumes, materials and cost estimates." />
+        <meta property="og:type" content="website" />
+        <meta property="og:url" content="https://iwillbuild.com/builders-calc" />
+        <meta property="og:image" content="https://iwillbuild.com/airo-assets/images/pages/home/og-image" />
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta name="twitter:title" content="Builders Calc — IWILLBUILD" />
+        <meta name="twitter:description" content="Quick construction calculations — areas, volumes, materials and cost estimates." />
+        <meta name="twitter:image" content="https://iwillbuild.com/airo-assets/images/pages/home/og-image" />
+        <script type="application/ld+json">{JSON.stringify({
+          '@context': 'https://schema.org',
+          '@type': 'WebPage',
+          '@id': 'https://iwillbuild.com/builders-calc#webpage',
+          name: 'Builders Calc',
+          url: 'https://iwillbuild.com/builders-calc',
+          description: 'Quick construction calculations — areas, volumes, materials and cost estimates.',
+          isPartOf: { '@id': 'https://iwillbuild.com/#website' },
+        })}</script>
       </Helmet>
 
       {/* Shared portal chrome */}

@@ -1,5 +1,6 @@
 import { RouteObject, redirect } from "react-router";
 import { lazy, Suspense } from 'react';
+import { Helmet } from '@dr.pogodin/react-helmet';
 import { ProtectedRoute } from '@/lib/auth/auth-client';
 import RouteErrorFallback from '@/components/RouteErrorFallback';
 import { usePermissions } from '@/lib/usePermissions';
@@ -689,7 +690,36 @@ export const routes: RouteObject[] = [{
   errorElement: routeError
 }, {
   path: '/developer-console',
-  loader: () => redirect('/owner-console')
+  loader: () => redirect('/owner-console'),
+  element: (
+    <>
+      <Helmet>
+        <title>Developer Console — IWILLBUILD</title>
+        <meta name="description" content="IWILLBUILD platform owner and developer console." />
+        <link rel="canonical" href="https://iwillbuild.com/owner-console" />
+        <meta name="robots" content="noindex,nofollow" />
+        <meta property="og:title" content="Developer Console — IWILLBUILD" />
+        <meta property="og:description" content="IWILLBUILD platform owner and developer console." />
+        <meta property="og:type" content="website" />
+        <meta property="og:url" content="https://iwillbuild.com/owner-console" />
+        <meta property="og:image" content="https://iwillbuild.com/airo-assets/images/pages/home/og-image" />
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta name="twitter:title" content="Developer Console — IWILLBUILD" />
+        <meta name="twitter:description" content="IWILLBUILD platform owner and developer console." />
+        <meta name="twitter:image" content="https://iwillbuild.com/airo-assets/images/pages/home/og-image" />
+        <script type="application/ld+json">{JSON.stringify({
+          '@context': 'https://schema.org',
+          '@type': 'WebPage',
+          '@id': 'https://iwillbuild.com/developer-console#webpage',
+          name: 'Developer Console',
+          url: 'https://iwillbuild.com/developer-console',
+          description: 'IWILLBUILD platform owner and developer console.',
+          isPartOf: { '@id': 'https://iwillbuild.com/#website' },
+        })}</script>
+      </Helmet>
+      <main><h1 className="sr-only">Developer Console</h1></main>
+    </>
+  ),
 }, {
   path: '/roadmap',
   loader: () => redirect('/dashboard')
