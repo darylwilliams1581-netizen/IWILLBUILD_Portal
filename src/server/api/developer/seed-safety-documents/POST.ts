@@ -43,6 +43,7 @@ import { db } from '../../../db/client.js';
 import { sql } from 'drizzle-orm';
 import { getAuth } from '../../../../lib/auth/auth.js';
 import { readFile } from 'fs/promises';
+import { existsSync } from 'fs';
 import { resolve, dirname } from 'path';
 import { fileURLToPath } from 'url';
 import type { ResultSetHeader } from 'mysql2';
@@ -68,9 +69,34 @@ const OC_REPLACES_FLAT: Record<string, string> = {
 };
 
 // ── Seed directory ────────────────────────────────────────────────────────────
+//
+// Path resolution must work in two environments:
+//
+//   DEV  — import.meta.url = file:///project/src/server/api/developer/seed-safety-documents/POST.ts
+//          dirname = .../src/server/api/developer/seed-safety-documents
+//          → resolve(here, '..','..','..','seed','starter-packs','default')
+//            = .../src/server/seed/starter-packs/default  ✓
+//
+//   PROD — import.meta.url = file:///app/dist/server.bundle.mjs  (all modules bundled into one file)
+//          dirname = /app/dist
+//          → the old resolve(here,'..','..','..','seed',...) = /seed/...  ✗  (ENOENT)
+//          → correct path: resolve(here, 'server','seed','starter-packs','default')
+//            = /app/dist/server/seed/starter-packs/default  ✓
+//            (publish-build.mjs copies src/server/seed → dist/server/seed)
+//
+// Strategy: try the prod path first (dist/server/seed/...); if it doesn't
+// contain the expected files, fall back to the dev path (../../../seed/...).
+// This avoids any import.meta.url string-sniffing that could break if the
+// bundle filename ever changes.
 
 function seedDir(): string {
   const here = dirname(fileURLToPath(import.meta.url));
+
+  // Prod bundle path: /app/dist/server/seed/starter-packs/default
+  const prodPath = resolve(here, 'server', 'seed', 'starter-packs', 'default');
+  if (existsSync(prodPath)) return prodPath;
+
+  // Dev source path: .../src/server/seed/starter-packs/default
   return resolve(here, '..', '..', '..', 'seed', 'starter-packs', 'default');
 }
 
@@ -1112,10 +1138,12 @@ async function runVerification(companyId: number): Promise<VerificationResult> {
      LIMIT 1`
   )) as unknown as [Array<{ id: number; name: string; is_active: number; fieldCount: number }>, unknown];
 
-  // Global library check — document_templates with is_platform_master = 1
+  // Global library check — document_templates has no is_platform_master column.
+  // The global library lives in swms_templates (is_platform_master=1), not here.
+  // We simply confirm zero rows were inserted with company_id=0 (platform rows)
+  // as a proxy — all our inserts use the real companyId so this is always 0.
   const [globalRows] = await db.execute(sql.raw(
-    `SELECT COUNT(*) AS cnt FROM document_templates
-     WHERE company_id = ${companyId} AND is_platform_master = 1`
+    `SELECT COUNT(*) AS cnt FROM document_templates WHERE company_id = 0`
   )) as unknown as [Array<{ cnt: number }>, unknown];
 
   // swms_templates check — should be unchanged

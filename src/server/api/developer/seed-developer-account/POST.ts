@@ -20,16 +20,35 @@ import { db } from '../../../db/client.js';
 import { sql } from 'drizzle-orm';
 import { getAuth } from '../../../../lib/auth/auth.js';
 import { readFile } from 'fs/promises';
+import { existsSync } from 'fs';
 import { resolve, dirname } from 'path';
 import { fileURLToPath } from 'url';
 import type { ResultSetHeader } from 'mysql2';
 
 // ── Resolve seed data directory ───────────────────────────────────────────────
+//
+// Path resolution must work in two environments:
+//
+//   DEV  — import.meta.url = file:///project/src/server/api/developer/seed-developer-account/POST.ts
+//          dirname = .../src/server/api/developer/seed-developer-account
+//          → resolve(here, '..','..','..','seed','starter-packs','default')
+//            = .../src/server/seed/starter-packs/default  ✓
+//
+//   PROD — import.meta.url = file:///app/dist/server.bundle.mjs  (all modules bundled into one file)
+//          dirname = /app/dist
+//          → the old resolve(here,'..','..','..','seed',...) = /seed/...  ✗  (ENOENT)
+//          → correct path: resolve(here, 'server','seed','starter-packs','default')
+//            = /app/dist/server/seed/starter-packs/default  ✓
+//            (publish-build.mjs copies src/server/seed → dist/server/seed)
+//
+// Strategy: try the prod path first; if it doesn't exist, fall back to dev path.
 
 function seedDir(): string {
   const here = dirname(fileURLToPath(import.meta.url));
-  // dev:  src/server/api/developer/seed-developer-account → up 4 → src/server/seed/starter-packs/default
-  // prod: dist/server/api/developer/seed-developer-account → up 4 → dist/server/seed/starter-packs/default
+  // Prod bundle path: /app/dist/server/seed/starter-packs/default
+  const prodPath = resolve(here, 'server', 'seed', 'starter-packs', 'default');
+  if (existsSync(prodPath)) return prodPath;
+  // Dev source path: .../src/server/seed/starter-packs/default
   return resolve(here, '..', '..', '..', 'seed', 'starter-packs', 'default');
 }
 

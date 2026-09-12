@@ -132,11 +132,11 @@ export default function SafetyDocSeedTab() {
         headers: { 'Content-Type': 'application/json' },
         body: '{}',
       });
-      const data = await res.json() as DryRunResponse & { error?: string; sourceMismatch?: string[] };
+      const data = await res.json() as DryRunResponse & { error?: string; detail?: string; sourceMismatch?: string[] };
       if (!res.ok || data.error) {
         const msg = data.sourceMismatch
           ? `Source mismatch: ${data.sourceMismatch.join('; ')}`
-          : (data.error ?? `HTTP ${res.status}`);
+          : [data.error, data.detail].filter(Boolean).join(' — ') || `HTTP ${res.status}`;
         setError(msg);
         toast.error('Dry run failed: ' + msg);
         return;
@@ -162,10 +162,11 @@ export default function SafetyDocSeedTab() {
         headers: { 'Content-Type': 'application/json' },
         body: '{}',
       });
-      const data = await res.json() as LiveResponse & { error?: string };
+      const data = await res.json() as LiveResponse & { error?: string; detail?: string };
       if (!res.ok || data.error) {
-        setError(data.error ?? `HTTP ${res.status}`);
-        toast.error('Import failed: ' + (data.error ?? `HTTP ${res.status}`));
+        const msg = [data.error, data.detail].filter(Boolean).join(' — ') || `HTTP ${res.status}`;
+        setError(msg);
+        toast.error('Import failed: ' + msg);
         return;
       }
       setLiveResult(data);
