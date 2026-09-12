@@ -382,11 +382,15 @@ export function useDazzaBuilderChat({ builderContext, onApplied }: UseDazzaBuild
       // and setting phaseLabel to the same text causes the message to appear twice
       // (once in the error banner, once in the PhaseIndicator).
       setPhaseLabel('');
-      // Clear the stale proposal so the user can try again cleanly
-      setPendingChange(null);
-      setMessages(prev => prev.map(m =>
-        m.proposedChange ? { ...m, proposedChange: undefined } : m,
-      ));
+      // Only discard the proposal when the template is genuinely gone (TEMPLATE_NOT_FOUND).
+      // For transient failures (network error, 422, 500) retain the proposal so the
+      // user can retry Apply without having to re-run the Dazza conversation.
+      if (isTemplateGone) {
+        setPendingChange(null);
+        setMessages(prev => prev.map(m =>
+          m.proposedChange ? { ...m, proposedChange: undefined } : m,
+        ));
+      }
     } finally {
       setIsApplying(false);
       applyingRef.current = false;

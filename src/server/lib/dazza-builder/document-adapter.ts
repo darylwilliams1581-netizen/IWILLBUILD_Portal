@@ -77,11 +77,29 @@ export async function applyDocumentOperations(
     });
   }
 
-  // ── Load current template ──────────────────────────────────────────────────
-  const rows = await db.execute(sql`
-    SELECT builder_json FROM document_templates WHERE id = ${resolvedTemplateId} LIMIT 1
-  `);
-  const row = (rows as { rows: unknown[] }).rows?.[0] as Record<string, unknown> | undefined;
+  // ── Load current template (tenant-isolated) ───────────────────────────────
+  //
+  //  MYSQL2 TUPLE: db.execute returns [rows, metadata].  Use destructuring:
+  //    const [rows] = await db.execute(...) as unknown as [Array<T>, unknown]
+  //  Never use (result as { rows: T[] }).rows — that property does not exist
+  //  on the tuple and is always undefined, making every template appear missing.
+  //
+  //  TENANT ISOLATION: the SELECT includes AND company_id = ownerCompanyId so
+  //  a stale or crafted templateId can never reach a different company's data.
+  //  We resolve ownerCompanyId via the same Drizzle profiles lookup used by
+  //  the create-new path above and by the normal document-template GET route.
+  const [ownerProfileForLoad] = await db.select().from(profiles).where(eq(profiles.userId, ownerUserId)).limit(1);
+  if (!ownerProfileForLoad?.companyId) {
+    return { ok: false, versionId: '', versionNumber: 0, operationsApplied: 0, validationErrors: [], error: 'Owner has no company profile — cannot apply operations.' };
+  }
+  const ownerCompanyId = ownerProfileForLoad.companyId;
+
+  const [templateRows] = await db.execute(sql`
+    SELECT builder_json FROM document_templates
+    WHERE id = ${resolvedTemplateId} AND company_id = ${ownerCompanyId}
+    LIMIT 1
+  `) as unknown as [Array<Record<string, unknown>>, unknown];
+  const row = templateRows?.[0];
   if (!row) {
     return { ok: false, versionId: '', versionNumber: 0, operationsApplied: 0, validationErrors: [], error: 'Template not found' };
   }

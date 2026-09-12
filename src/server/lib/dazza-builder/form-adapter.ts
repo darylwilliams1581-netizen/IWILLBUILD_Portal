@@ -72,19 +72,24 @@ export async function applyFormOperations(
     });
   }
   // Load current fields for snapshot — before any mutations
-  const fieldRows = await db.execute(sql`
+  //
+  //  MYSQL2 TUPLE: db.execute returns [rows, metadata].  Use destructuring:
+  //    const [rows] = await db.execute(...) as unknown as [Array<T>, unknown]
+  //  Never use (result as { rows: T[] }).rows — that property does not exist
+  //  on the tuple and is always undefined.
+  const [fieldRowsArr] = await db.execute(sql`
     SELECT * FROM form_fields WHERE template_id = ${resolvedTemplateId} ORDER BY field_order ASC
-  `);
-  const previousSnapshot = JSON.stringify((fieldRows as { rows: unknown[] }).rows ?? []);
+  `) as unknown as [Array<Record<string, unknown>>, unknown];
+  const previousSnapshot = JSON.stringify(fieldRowsArr ?? []);
   let applied = 0;
 
   for (const op of operations) {
     switch (op.op) {
       case 'addField': {
-        const maxOrderRows = await db.execute(sql`
+        const [maxOrderRowsArr] = await db.execute(sql`
           SELECT COALESCE(MAX(field_order), 0) AS max_o FROM form_fields WHERE template_id = ${resolvedTemplateId}
-        `);
-        const maxOrder = Number(((maxOrderRows as { rows: unknown[] }).rows?.[0] as Record<string, unknown>)?.max_o ?? 0);
+        `) as unknown as [Array<Record<string, unknown>>, unknown];
+        const maxOrder = Number((maxOrderRowsArr?.[0] as Record<string, unknown>)?.max_o ?? 0);
         const afterOrder = op.afterFieldId
           ? await getFieldOrder(resolvedTemplateId, op.afterFieldId as string)
           : null;
@@ -173,10 +178,10 @@ export async function applyFormOperations(
   }
 
   // Load new snapshot after all mutations
-  const newFieldRows = await db.execute(sql`
+  const [newFieldRowsArr] = await db.execute(sql`
     SELECT * FROM form_fields WHERE template_id = ${resolvedTemplateId} ORDER BY field_order ASC
-  `);
-  const newSnapshot = JSON.stringify((newFieldRows as { rows: unknown[] }).rows ?? []);
+  `) as unknown as [Array<Record<string, unknown>>, unknown];
+  const newSnapshot = JSON.stringify(newFieldRowsArr ?? []);
 
   const { versionId, versionNumber } = await createBuilderVersion(
     resolvedTemplateId, 'form', ownerUserId,
@@ -196,10 +201,10 @@ export async function applyFormOperations(
 
 async function getFieldOrder(templateId: number, fieldId: string): Promise<number | null> {
   try {
-    const rows = await db.execute(sql`
+    const [rows] = await db.execute(sql`
       SELECT field_order FROM form_fields WHERE id = ${Number(fieldId)} AND template_id = ${templateId} LIMIT 1
-    `);
-    const row = (rows as { rows: unknown[] }).rows?.[0] as Record<string, unknown> | undefined;
+    `) as unknown as [Array<Record<string, unknown>>, unknown];
+    const row = rows?.[0];
     return row ? Number(row.field_order) : null;
   } catch { return null; }
 }

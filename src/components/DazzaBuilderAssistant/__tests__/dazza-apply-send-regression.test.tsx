@@ -745,4 +745,75 @@ describe('Integration: canonicalTemplateId stamped on proposal when store is nul
     expect(result.current.error).not.toContain('no longer exists');
     expect(result.current.error).toBe('Not found');
   });
+
+  /**
+   * 16. Transient failure (422 / 500) retains the proposal so the user can retry.
+   *     Only TEMPLATE_NOT_FOUND should clear the proposal — a server error must not.
+   *
+   *     Flow:
+   *       1. sendMessage → SSE returns a proposed_change → pendingChange is set
+   *       2. applyChange → server returns 422 (transient error)
+   *       3. pendingChange must still be set (not cleared) so the user can retry
+   */
+  it('16. Transient 422 failure retains the proposal for retry', async () => {
+    const ctx = makeCtx();
+    const { result } = renderChatHook(ctx);
+
+    // Step 1: send a message that produces a proposal
+    const proposalEvent = JSON.stringify({
+      type: 'proposed_change',
+      change: {
+        summary: 'Replace PPE block',
+        affectedSections: ['PPE'],
+        affectedItems: ['PPE Banner'],
+        validationImpact: 'None',
+        operations: [{ op: 'addBlock', blockType: 'ppe_banner', content: '' }],
+        conversationId: 'conv-71',
+        targetTemplateId: 71,
+        targetBuilderType: 'document',
+      },
+    });
+    const doneEvent = JSON.stringify({ type: 'done', conversationId: 'conv-71' });
+    mockStreamResponse([proposalEvent, doneEvent]);
+
+    await act(async () => {
+      await result.current.sendMessage('Replace PPE block with Advanced PPE Banner');
+    });
+
+    // Proposal is now set
+    expect(result.current.pendingChange).not.toBeNull();
+    expect(result.current.pendingChange?.targetTemplateId).toBe(71);
+
+    // Step 2: apply fails with a transient 422
+    mockApplyError(422, { ok: false, error: 'Validation failed: unknown block type' });
+
+    await act(async () => {
+      await result.current.applyChange(result.current.pendingChange!);
+    });
+
+    // Error is shown
+    expect(result.current.error).toBe('Validation failed: unknown block type');
+    // Proposal is RETAINED — pendingChange must still be set for retry
+    expect(result.current.pendingChange).not.toBeNull();
+    expect(result.current.pendingChange?.targetTemplateId).toBe(71);
+  });
+
+  /**
+   * 16b. TEMPLATE_NOT_FOUND clears the proposal (stale — cannot be retried).
+   */
+  it('16b. TEMPLATE_NOT_FOUND clears the proposal (stale proposal cannot be retried)', async () => {
+    const ctx = makeCtx();
+    mockApplyError(404, { ok: false, code: 'TEMPLATE_NOT_FOUND', error: 'Template not found.' });
+
+    const { result } = renderChatHook(ctx);
+
+    await act(async () => {
+      await result.current.applyChange(makeProposal());
+    });
+
+    // Friendly message shown
+    expect(result.current.error).toContain('no longer exists');
+    // Proposal is cleared — it cannot be retried against a deleted template
+    expect(result.current.pendingChange).toBeNull();
+  });
 });
