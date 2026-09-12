@@ -404,7 +404,7 @@ const DashboardPage = memo(function DashboardPage({
       </div>
 
       <NotificationList />
-      <MyTasksPanel userRole={role} />
+      <MyTasksPanel userRole={role} collapsible />
       </div>
     </div>;
 });

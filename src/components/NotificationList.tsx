@@ -6,7 +6,7 @@
  */
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from "react-router";
-import { Bell, CheckCheck, AlertTriangle, Clock, Truck, FileText, DollarSign, HardHat, Loader2 } from 'lucide-react';
+import { Bell, CheckCheck, AlertTriangle, Clock, Truck, FileText, DollarSign, HardHat, Loader2, ChevronDown } from 'lucide-react';
 interface Alert {
   id: string;
   type: string;
@@ -55,6 +55,10 @@ export default function NotificationList() {
   const [unreadCount, setUnread] = useState(0);
   const [loading, setLoading] = useState(false);
   const [fetching, setFetching] = useState(true);
+  const [open, setOpen] = useState(() => {
+    try { return sessionStorage.getItem('dash_notifications_open') === '1'; }
+    catch { return false; }
+  });
   const navigate = useNavigate();
   const fetchAlerts = useCallback(async () => {
     try {
@@ -118,22 +122,51 @@ export default function NotificationList() {
     if (alert.link) navigate(alert.link);
   }
   return <div className="rounded-xl border border-slate-200 bg-white overflow-hidden">
-      {/* Header */}
-      <div className="flex items-center justify-between px-4 py-3 border-b border-slate-100">
-        <div className="flex items-center gap-2">
-          <Bell size={14} className="text-slate-500" />
+      <button
+        type="button"
+        onClick={() => {
+          setOpen(prev => {
+            const next = !prev;
+            try { sessionStorage.setItem('dash_notifications_open', next ? '1' : '0'); }
+            catch { /* ignore */ }
+            return next;
+          });
+        }}
+        className={`w-full flex items-center justify-between px-4 py-3 ${open ? 'border-b border-slate-100' : ''}`}
+        aria-expanded={open}
+        aria-label={open ? 'Collapse notifications' : 'Expand notifications'}
+      >
+        <div className="flex items-center gap-2 min-w-0">
+          <Bell size={14} className="text-slate-500 shrink-0" />
           <span className="font-heading font-bold text-sm text-slate-800">Notifications</span>
           {unreadCount > 0 && <span className="bg-red-100 text-red-600 text-[10px] font-bold px-1.5 py-0.5 rounded-full">
               {unreadCount} new
             </span>}
         </div>
-        {unreadCount > 0 && <button onClick={markAllRead} disabled={loading} className="flex items-center gap-1 text-[10px] text-slate-500 hover:text-slate-800 transition-colors px-2 py-1 rounded hover:bg-slate-100">
+        <div className="flex items-center gap-1 shrink-0">
+          {open && unreadCount > 0 && <span
+            role="button"
+            tabIndex={0}
+            onClick={e => {
+              e.stopPropagation();
+              void markAllRead();
+            }}
+            onKeyDown={e => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.stopPropagation();
+                void markAllRead();
+              }
+            }}
+            className="flex items-center gap-1 text-[10px] text-slate-500 hover:text-slate-800 transition-colors px-2 py-1 rounded hover:bg-slate-100"
+          >
             {loading ? <Loader2 size={10} className="animate-spin" /> : <CheckCheck size={10} />}
             Mark all read
-          </button>}
-      </div>
+          </span>}
+          <ChevronDown size={16} className={`text-slate-400 transition-transform ${open ? 'rotate-180' : ''}`} />
+        </div>
+      </button>
 
-      {/* List */}
+      {open && (
       <div>
         {fetching ? <div className="flex items-center justify-center py-8">
             <Loader2 size={18} className="animate-spin text-slate-300" />
@@ -160,5 +193,6 @@ export default function NotificationList() {
               </div>;
       })}
       </div>
+      )}
     </div>;
 }

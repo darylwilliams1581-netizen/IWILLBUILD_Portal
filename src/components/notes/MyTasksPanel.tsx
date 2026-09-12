@@ -5,17 +5,19 @@
  * and fleet assets. Supports open/completed toggle, search, and entity links.
  */
 import { useState, useEffect, useCallback } from 'react';
-import { CheckSquare, Loader2, AlertCircle, Search, X, ExternalLink, RefreshCw } from 'lucide-react';
+import { CheckSquare, Loader2, AlertCircle, Search, X, ExternalLink, RefreshCw, ChevronDown } from 'lucide-react';
 import { Link } from "react-router";
 import TagTaskCard from './TagTaskCard';
 import { type TagTask, getTaskUrgency } from '@/lib/notes-types';
 import { useSession } from '@/lib/auth/auth-client';
 interface Props {
   userRole?: string;
+  collapsible?: boolean;
 }
 type StatusFilter = 'open' | 'completed';
 export default function MyTasksPanel({
-  userRole = ''
+  userRole = '',
+  collapsible = false,
 }: Props) {
   const {
     user
@@ -29,6 +31,11 @@ export default function MyTasksPanel({
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
+  const [open, setOpen] = useState(() => {
+    if (!collapsible) return true;
+    try { return sessionStorage.getItem('dash_tasks_open') === '1'; }
+    catch { return false; }
+  });
   const load = useCallback(async () => {
     setLoading(true);
     setError('');
@@ -75,8 +82,22 @@ export default function MyTasksPanel({
   }
   const overdueCount = tasks.filter(t => getTaskUrgency(t.dueDate) === 'overdue' && t.status === 'open').length;
   return <div className="bg-white rounded-lg border border-slate-200 overflow-hidden mb-2">
-      {/* Header */}
-      <div className="flex items-center gap-2 px-3 py-2 border-b border-slate-100">
+      <button
+        type="button"
+        disabled={!collapsible}
+        onClick={() => {
+          if (!collapsible) return;
+          setOpen(prev => {
+            const next = !prev;
+            try { sessionStorage.setItem('dash_tasks_open', next ? '1' : '0'); }
+            catch { /* ignore */ }
+            return next;
+          });
+        }}
+        className={`w-full flex items-center gap-2 px-3 py-2 ${open || !collapsible ? 'border-b border-slate-100' : ''} ${collapsible ? '' : 'cursor-default'}`}
+        aria-expanded={open}
+        aria-label={collapsible ? (open ? 'Collapse tasks' : 'Expand tasks') : undefined}
+      >
         <CheckSquare size={13} className="text-primary" />
         <h3 className="text-xs font-bold text-slate-700">My Tasks</h3>
         {total > 0 && <span className="px-1.5 py-0.5 rounded-full bg-primary/10 text-primary text-[10px] font-bold">
@@ -85,11 +106,32 @@ export default function MyTasksPanel({
         {overdueCount > 0 && <span className="px-1.5 py-0.5 rounded-full bg-red-100 text-red-600 text-[10px] font-bold">
             {overdueCount} overdue
           </span>}
-        <button type="button" onClick={() => void load()} className="ml-auto text-slate-300 hover:text-slate-500 transition-colors" title="Refresh">
-          <RefreshCw size={11} />
-        </button>
-      </div>
+        <span className="ml-auto flex items-center gap-1">
+          <span
+            role="button"
+            tabIndex={0}
+            onClick={e => {
+              e.stopPropagation();
+              void load();
+            }}
+            onKeyDown={e => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.stopPropagation();
+                void load();
+              }
+            }}
+            className="text-slate-300 hover:text-slate-500 transition-colors"
+            title="Refresh"
+          >
+            <RefreshCw size={11} />
+          </span>
+          {collapsible && (
+            <ChevronDown size={14} className={`text-slate-400 transition-transform ${open ? 'rotate-180' : ''}`} />
+          )}
+        </span>
+      </button>
 
+      {(open || !collapsible) && <>
       {/* Filters */}
       <div className="flex items-center gap-2 px-3 py-1.5 border-b border-slate-100">
         <div className="flex rounded border border-slate-200 overflow-hidden">
@@ -149,5 +191,6 @@ export default function MyTasksPanel({
             </button>
           </div>}
       </div>
+      </>}
     </div>;
 }
