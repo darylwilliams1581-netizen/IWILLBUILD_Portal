@@ -19,12 +19,13 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams, useLocation, useNavigate } from "react-router";
 import { Helmet } from '@dr.pogodin/react-helmet';
-import { Loader2, AlertTriangle, ChevronLeft, CheckCircle2, Pencil, Save } from 'lucide-react';
+import { Loader2, AlertTriangle, ChevronLeft, CheckCircle2, Pencil, Save, FileDown } from 'lucide-react';
 import FormRunner from '@/components/job/FormRunner';
 import type { FormSubmission } from '@/components/job/form-types';
 import { fetchJob, type Job } from '@/lib/jobs-api';
 import { cacheFormShell, readCachedFormShell } from '@/lib/offlineFormStore';
 import { goBack } from '@/lib/navigation';
+import { useDocumentActions } from '@/lib/document-actions-context';
 interface LocationState {
   returnTo?: string;
 }
@@ -38,6 +39,7 @@ export default function JobFormRunnerPage() {
   }>();
   const location = useLocation();
   const navigate = useNavigate();
+  const { openModal } = useDocumentActions();
   const jobId = Number(id);
   const submissionId = Number(formInstanceId);
   const locationState = (location.state ?? {}) as LocationState;
@@ -117,7 +119,9 @@ export default function JobFormRunnerPage() {
     void load();
   }, [jobId, submissionId]);
   function handleBack() {
-    const parentFallback = Number.isFinite(jobId) && jobId > 0 ? `/jobs/${jobId}` : '/home';
+    const parentFallback = Number.isFinite(jobId) && jobId > 0
+      ? `/jobs/${jobId}/forms`
+      : '/studio/forms';
     const fallback = explicitReturnTo?.startsWith('/') && !explicitReturnTo.startsWith('//')
       ? explicitReturnTo
       : parentFallback;
@@ -207,13 +211,13 @@ export default function JobFormRunnerPage() {
       <div className="min-h-screen bg-slate-50 flex flex-col">
 
         {/* ── Sticky top header ─────────────────────────────────────────────── */}
-        <header className="sticky top-0 z-30 bg-white border-b border-slate-200 shadow-sm" style={{
+        <header className="sticky top-0 z-50 bg-white border-b border-slate-200 shadow-sm" style={{
         paddingTop: 'env(safe-area-inset-top)'
       }}>
           <div className="max-w-2xl mx-auto px-3 h-14 flex items-center gap-2">
 
             {/* Back */}
-            <button onClick={handleBack} className="p-2 -ml-1 rounded-xl hover:bg-slate-100 text-slate-500 transition-colors shrink-0" aria-label="Back">
+            <button type="button" onClick={handleBack} className="relative z-10 p-2 -ml-1 rounded-xl hover:bg-slate-100 text-slate-500 transition-colors shrink-0" aria-label="Back">
               <ChevronLeft size={20} />
             </button>
 
@@ -242,6 +246,17 @@ export default function JobFormRunnerPage() {
               minute: '2-digit'
             })}
               </span>}
+
+            {isDone && (
+              <button
+                type="button"
+                onClick={openModal}
+                className="relative z-10 flex items-center justify-center w-10 h-10 rounded-xl bg-violet-600 text-white shrink-0"
+                aria-label="Print, PDF, email or share"
+              >
+                <FileDown size={18} />
+              </button>
+            )}
 
 
           </div>

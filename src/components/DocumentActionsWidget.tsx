@@ -73,8 +73,7 @@ export default function DocumentActionsWidget() {
         className={[
           // Position: top-left, below nav. Use safe-area-inset for mobile.
           'fixed z-40 print:hidden',
-          // Desktop: top-left with comfortable offset from nav
-          'top-[calc(env(safe-area-inset-top,0px)+56px)] left-[calc(env(safe-area-inset-left,0px)+12px)]',
+          'bottom-[calc(env(safe-area-inset-bottom,0px)+72px)] right-[calc(env(safe-area-inset-right,0px)+12px)]',
         ].join(' ')}
         aria-label="Document actions"
       >

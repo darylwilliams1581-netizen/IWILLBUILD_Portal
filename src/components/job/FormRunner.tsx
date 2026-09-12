@@ -106,7 +106,7 @@ export default function FormRunner({
 
   // ── Global Document Actions widget registration ───────────────────────────
   useDocumentActionsRegistration(
-    readOnly && submission.status === 'completed'
+    readOnly && (submission.status === 'completed' || submission.status === 'submitted')
       ? {
           documentType: 'completed_form',
           recordId: submission.id,
