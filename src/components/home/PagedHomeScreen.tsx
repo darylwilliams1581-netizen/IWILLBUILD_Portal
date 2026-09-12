@@ -174,6 +174,7 @@ const MANAGE_HIDDEN_KEYS = new Set([
   'log_cost',
   'scheduler',
   'job_card',
+  'jobs',
   'plan_mgr',
   'asset_mgr',
 ]);
@@ -289,6 +290,21 @@ const DashboardPage = memo(function DashboardPage({
     }}>
       {/* ── Banner — sits at the very top so it's immediately visible ── */}
       <DashboardBanner userId={userId} />
+
+      <button
+        onClick={() => onNavigate('/jobs')}
+        className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl bg-violet-500 text-white shadow-sm active:scale-95 transition-transform"
+        data-testid="jobs-launcher-btn"
+        style={{ minHeight: 52 }}
+      >
+        <div className="w-8 h-8 rounded-lg bg-white/20 flex items-center justify-center shrink-0">
+          <HardHat size={16} strokeWidth={2} />
+        </div>
+        <div className="flex flex-col items-start">
+          <span className="text-[13px] font-bold leading-tight">Jobs</span>
+          <span className="text-[10px] text-white/60 leading-tight">Open a job — most of the app lives here</span>
+        </div>
+      </button>
 
       {/* Full-width Photos gallery + Add Job row */}
       <div className="flex items-center gap-3">
