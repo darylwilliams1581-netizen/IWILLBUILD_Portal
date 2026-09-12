@@ -41,7 +41,7 @@ import { db } from '../db/client.js';
 import { sql } from 'drizzle-orm';
 import { randomUUID, createHash } from 'node:crypto';
 import { saveFile, getDownloadBuffer } from '../storage/storage-service.js';
-import mammoth from 'mammoth';
+import { extractDocxStructured, buildSectionSummary } from './dazza-docx-extractor.js';
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -75,8 +75,12 @@ export const DAZZA_ATTACHMENT_MAX_PER_QUESTION = 4;
 /** Max combined extracted characters sent to the model */
 export const DAZZA_ATTACHMENT_MAX_EXTRACT_CHARS = 16_000;
 
-/** Parser version — bump when extraction logic changes */
-export const DAZZA_ATTACHMENT_PARSER_VERSION = '1.0';
+/** Parser version — bump when extraction logic changes.
+ *  Version 2.0: structured DOCX extraction (headings + tables as Markdown).
+ *  Bumping this version causes re-extraction of any previously-cached DOCX
+ *  that was stored with the old raw-text extractor (version 1.0).
+ */
+export const DAZZA_ATTACHMENT_PARSER_VERSION = '2.0';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -475,22 +479,30 @@ export async function extractBoundedExcerpt(
   let jsonPath: string | null = null;
 
   if (ext === 'docx') {
-    // Word document: extract plain text via mammoth
+    // Word document: structured extraction — headings, paragraphs, tables as Markdown.
+    // This replaces the old mammoth.extractRawText() which lost all structure.
+    // The structured extractor uses mammoth.convertToHtml() and parses the HTML
+    // into sections, rendering each table as a Markdown pipe table and each
+    // heading as a Markdown heading.  No JavaScript objects are passed to the model.
     try {
-      const result = await mammoth.extractRawText({ buffer: rawBuffer });
-      const fullText = result.value.trim();
-      const charBudget = Math.min(remainingChars, 8000);
-      const lines = fullText.split('\n');
-      let budget = charBudget;
-      const selectedLines: string[] = [];
-      for (const line of lines) {
-        if (budget <= 0) break;
-        selectedLines.push(line);
-        budget -= line.length + 1;
-      }
-      extractedText = selectedLines.join('\n');
+      const charBudget = Math.min(remainingChars, 12_000);
+      const docxResult = await extractDocxStructured(rawBuffer, charBudget);
+
+      // Build a structured header that tells Dazza what sections are present
+      const sectionSummary = buildSectionSummary(docxResult);
+      const header = [
+        `[DOCX STRUCTURE: ${docxResult.headingCount} heading(s), ${docxResult.tableCount} table(s), ${docxResult.paragraphCount} paragraph(s)]`,
+        `[SECTIONS FOUND IN THIS DOCUMENT:]`,
+        sectionSummary,
+        docxResult.truncated ? '[NOTE: content was truncated at character limit]' : '',
+        '',
+        '--- DOCUMENT CONTENT ---',
+        '',
+      ].filter(Boolean).join('\n');
+
+      extractedText = header + docxResult.markdown;
       lineStart = 1;
-      lineEnd = selectedLines.length;
+      lineEnd = extractedText.split('\n').length;
     } catch {
       return null; // Corrupt or unreadable .docx
     }

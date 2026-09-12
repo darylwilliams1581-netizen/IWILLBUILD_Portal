@@ -43,12 +43,187 @@ export const VALID_FORM_OPS = new Set([
   'createNewTemplate', 'addField', 'updateField', 'moveField', 'removeField', 'addSection', 'updateTemplateSettings',
 ]);
 
+// ── Block-type-aware value validation ─────────────────────────────────────────
+
+/**
+ * Valid banner variant values.
+ */
+export const VALID_BANNER_VARIANTS = new Set([
+  'info', 'warning', 'danger', 'success', 'safety', 'safety_first',
+  'first_aid', 'caution', 'notice', 'custom',
+]);
+
+/**
+ * Valid banner size values.
+ */
+export const VALID_BANNER_SIZES = new Set(['compact', 'standard', 'large']);
+
+/**
+ * Valid image size values.
+ */
+export const VALID_IMAGE_SIZES = new Set(['small', 'medium', 'large', 'full']);
+
+/**
+ * Valid alignment values.
+ */
+export const VALID_ALIGNMENTS = new Set(['left', 'center', 'right', 'justify']);
+
+/**
+ * Validate that a field value is a plain string (not an array or object).
+ * Returns an error string if invalid, null if valid.
+ *
+ * This is the core guard against [object Object] rendering.
+ * Arrays and objects supplied to string fields are REJECTED — never coerced
+ * with String(value), because String([1,2,3]) = "1,2,3" and
+ * String({a:1}) = "[object Object]".
+ */
+export function validateStringField(
+  value: unknown,
+  fieldName: string,
+  blockType: string,
+): string | null {
+  if (value === undefined || value === null) return null; // absent is fine
+  if (typeof value === 'string') return null; // correct
+  if (Array.isArray(value)) {
+    return `${blockType}.${fieldName}: expected string, got array — arrays are not valid for this field`;
+  }
+  if (typeof value === 'object') {
+    return `${blockType}.${fieldName}: expected string, got object — objects are not valid for this field (would render as [object Object])`;
+  }
+  // number/boolean — coercible, not an error but worth noting
+  return null;
+}
+
+/**
+ * Validate block-type-aware field values in an addBlock or updateBlock operation.
+ *
+ * Rules:
+ *   heading/text:  content must be string
+ *   rich_text:     html must be string
+ *   banner:        title and body must be strings; variant/size/align must be valid enums
+ *   image:         src and alt must be strings; size/align must be valid; preserveAspectRatio must be boolean
+ *   table:         columns and rows must match canonical TableBlock schema (arrays of objects)
+ *   system_field:  fieldKey/label/fallback must be strings
+ *
+ * Returns an array of error strings (empty = valid).
+ * Does NOT reject operations — errors are collected and reported in the proposal.
+ */
+export function validateBlockFieldTypes(op: BuilderOperation): string[] {
+  const errors: string[] = [];
+  const blockType = String(op.blockType ?? op.toolId ?? 'unknown');
+
+  // ── Determine the effective type for validation ────────────────────────────
+  // For toolId ops, we check the resolved block type from the catalogue.
+  // For blockType ops, we use the blockType directly.
+  // We validate the fields that the AI supplied — not the factory defaults.
+
+  // String field checks — apply to all ops that supply these fields
+  const stringFields: Array<[string, unknown]> = [
+    ['content', op.content],
+    ['html',    op.html],
+    ['title',   op.title],
+    ['body',    op.body],
+    ['src',     op.src],
+    ['alt',     op.alt],
+    ['label',   op.label],
+    ['fallback', op.fallback],
+    ['fieldKey', op.fieldKey],
+  ];
+
+  for (const [field, value] of stringFields) {
+    if (value !== undefined) {
+      const err = validateStringField(value, field, blockType);
+      if (err) errors.push(err);
+    }
+  }
+
+  // ── Banner-specific enum validation ───────────────────────────────────────
+  const isExplicitBanner = op.blockType === 'banner' ||
+    (typeof op.toolId === 'string' && op.toolId.includes('banner'));
+
+  if (isExplicitBanner) {
+    if (op.variant !== undefined && !VALID_BANNER_VARIANTS.has(String(op.variant))) {
+      errors.push(`banner.variant: "${op.variant}" is not a valid banner variant. Valid values: ${[...VALID_BANNER_VARIANTS].join(', ')}`);
+    }
+    if (op.size !== undefined && !VALID_BANNER_SIZES.has(String(op.size))) {
+      errors.push(`banner.size: "${op.size}" is not a valid banner size. Valid values: ${[...VALID_BANNER_SIZES].join(', ')}`);
+    }
+  }
+
+  // ── Image-specific validation ─────────────────────────────────────────────
+  const isExplicitImage = op.blockType === 'image' ||
+    (typeof op.toolId === 'string' && (op.toolId.includes('image') || op.toolId.includes('ppe') || op.toolId.includes('risk_matrix')));
+
+  if (isExplicitImage) {
+    if (op.size !== undefined && !VALID_IMAGE_SIZES.has(String(op.size))) {
+      errors.push(`image.size: "${op.size}" is not a valid image size. Valid values: ${[...VALID_IMAGE_SIZES].join(', ')}`);
+    }
+    if (op.preserveAspectRatio !== undefined && typeof op.preserveAspectRatio !== 'boolean') {
+      errors.push(`image.preserveAspectRatio: expected boolean, got ${typeof op.preserveAspectRatio}`);
+    }
+  }
+
+  // ── Alignment validation (all block types) ────────────────────────────────
+  if (op.align !== undefined && !VALID_ALIGNMENTS.has(String(op.align))) {
+    errors.push(`${blockType}.align: "${op.align}" is not a valid alignment. Valid values: ${[...VALID_ALIGNMENTS].join(', ')}`);
+  }
+
+  // ── Table schema validation ───────────────────────────────────────────────
+  const isExplicitTable = op.blockType === 'table' ||
+    (typeof op.toolId === 'string' && op.toolId.startsWith('tables.'));
+
+  if (isExplicitTable) {
+    // If the AI supplied columns/rows as arrays, validate they are arrays of objects
+    if (op.columns !== undefined) {
+      if (!Array.isArray(op.columns)) {
+        errors.push(`table.columns: expected array of column objects, got ${typeof op.columns}`);
+      } else {
+        for (let i = 0; i < (op.columns as unknown[]).length; i++) {
+          const col = (op.columns as unknown[])[i];
+          if (typeof col !== 'object' || col === null || Array.isArray(col)) {
+            errors.push(`table.columns[${i}]: expected column object with id/header/cellType, got ${Array.isArray(col) ? 'array' : typeof col}`);
+          }
+        }
+      }
+    }
+    if (op.rows !== undefined && !Array.isArray(op.rows) && typeof op.rows !== 'number') {
+      errors.push(`table.rows: expected array of row objects or a row count number, got ${typeof op.rows}`);
+    }
+  }
+
+  return errors;
+}
+
+/**
+ * Validate block field types in a sanitiseBlockUpdate operation.
+ * Same rules as validateBlockFieldTypes but applied to the update patch.
+ * The existing block's type is passed in as existingBlockType.
+ *
+ * Returns an array of error strings (empty = valid).
+ */
+export function validateUpdateFieldTypes(
+  op: BuilderOperation,
+  existingBlockType: string,
+): string[] {
+  // Use the existing block type as the context for validation
+  const opWithType = { ...op, blockType: existingBlockType };
+  return validateBlockFieldTypes(opWithType);
+}
+
 // ── Validation ────────────────────────────────────────────────────────────────
 
 /**
  * Validate a set of operations against the builder type.
  * Returns an array of error strings (empty = valid).
  * AI output is treated as untrusted input — every operation is schema-validated here.
+ *
+ * Includes block-type-aware field value validation:
+ *   - String fields (content, html, title, body, src, alt, label, fallback, fieldKey)
+ *     must be strings — arrays and objects are rejected.
+ *   - Banner variant/size must be valid enum values.
+ *   - Image size must be valid; preserveAspectRatio must be boolean.
+ *   - Alignment must be a valid value.
+ *   - Table columns/rows must be arrays of objects (not flat arrays of strings).
  */
 export function validateOperations(ops: BuilderOperation[], builderType: BuilderType): string[] {
   const errors: string[] = [];
@@ -77,6 +252,10 @@ export function validateOperations(ops: BuilderOperation[], builderType: Builder
             errors.push(`Unknown block type: ${blockType}`);
           }
         }
+
+        // Block-type-aware field value validation (applies to both paths)
+        const fieldErrors = validateBlockFieldTypes(op);
+        errors.push(...fieldErrors);
       }
     } else {
       if (!VALID_FORM_OPS.has(op.op)) {
@@ -315,8 +494,20 @@ export function buildBlock(op: BuilderOperation): Record<string, unknown> {
 /**
  * Extract only the allowed mutable fields from an updateBlock operation.
  * Prevents injection of arbitrary keys into the block object.
+ *
+ * SECURITY: validates value types before copying.
+ *   - String fields: must be strings — arrays and objects are DROPPED (not coerced).
+ *     String(array) = "a,b,c" and String(object) = "[object Object]" — both wrong.
+ *   - Boolean fields: must be booleans — strings/numbers are coerced.
+ *   - Number fields: must be numbers — strings are coerced.
+ *
+ * The existingBlockType parameter is used to apply type-specific rules.
+ * If not provided, all allowed keys are copied with type checking.
  */
-export function sanitiseBlockUpdate(op: BuilderOperation): Record<string, unknown> {
+export function sanitiseBlockUpdate(
+  op: BuilderOperation,
+  existingBlockType?: string,
+): Record<string, unknown> {
   const ALLOWED_KEYS = [
     // Text / heading
     'content', 'html', 'level', 'align', 'color', 'bold', 'italic', 'fontSize',
@@ -339,9 +530,56 @@ export function sanitiseBlockUpdate(op: BuilderOperation): Record<string, unknow
     // Risk matrix
     'showLegend',
   ];
+
+  // Fields that must be strings — arrays/objects are DROPPED, not coerced
+  const STRING_FIELDS = new Set([
+    'content', 'html', 'title', 'body', 'src', 'alt',
+    'label', 'fallback', 'fieldKey', 'placeholder', 'helpText',
+    'color', 'fontSize', 'style', 'variant', 'size', 'align',
+    'customBgColor', 'customBorderColor', 'headerBgColor', 'headerTextColor',
+    'backgroundColor', 'borderColor', 'fieldType',
+  ]);
+
+  // Fields that must be booleans
+  const BOOLEAN_FIELDS = new Set([
+    'bold', 'italic', 'showOnExport', 'preserveAspectRatio',
+    'showLabel', 'required', 'stripedRows', 'repeatable', 'showRowNumbers', 'showLegend',
+  ]);
+
+  // Fields that must be numbers
+  const NUMBER_FIELDS = new Set(['level', 'thickness', 'height', 'padding']);
+
   const out: Record<string, unknown> = {};
+
   for (const key of ALLOWED_KEYS) {
-    if (key in op) out[key] = op[key];
+    if (!(key in op)) continue;
+    const value = op[key];
+
+    if (STRING_FIELDS.has(key)) {
+      // Must be a string — drop arrays and objects
+      if (typeof value === 'string') {
+        out[key] = value;
+      } else if (Array.isArray(value) || (typeof value === 'object' && value !== null)) {
+        // Drop silently — the validation step already reported this error
+        // Never coerce: String([]) = "" and String({}) = "[object Object]"
+      } else if (value !== undefined && value !== null) {
+        // number/boolean — coerce to string
+        out[key] = String(value);
+      }
+    } else if (BOOLEAN_FIELDS.has(key)) {
+      if (value !== undefined && value !== null) {
+        out[key] = Boolean(value);
+      }
+    } else if (NUMBER_FIELDS.has(key)) {
+      if (value !== undefined && value !== null) {
+        const n = Number(value);
+        if (!isNaN(n)) out[key] = n;
+      }
+    } else {
+      // Other fields (e.g. padding object, columns/rows for table updates)
+      out[key] = value;
+    }
   }
+
   return out;
 }
