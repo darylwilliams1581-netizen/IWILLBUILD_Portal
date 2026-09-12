@@ -7,6 +7,7 @@ describe('goBack', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    delete (window as unknown as { Capacitor?: unknown }).Capacitor;
     window.history.replaceState({ idx: 0 }, '', '/jobs/42/camera');
   });
 
@@ -42,5 +43,17 @@ describe('goBack', () => {
     goBack(navigate, '/jobs/42/camera');
 
     expect(navigate).toHaveBeenCalledWith('/home', { replace: true });
+  });
+
+  it('never uses history -1 on Capacitor native, even when idx > 0', () => {
+    window.history.replaceState({ idx: 4 }, '', '/jobs/42/camera');
+    (window as unknown as { Capacitor?: { isNativePlatform?: () => boolean } }).Capacitor = {
+      isNativePlatform: () => true,
+    };
+
+    goBack(navigate, '/jobs/42/photos');
+
+    expect(navigate).toHaveBeenCalledWith('/jobs/42/photos', { replace: true });
+    delete (window as unknown as { Capacitor?: unknown }).Capacitor;
   });
 });

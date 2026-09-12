@@ -555,9 +555,9 @@ export default function SdsRegisterPage() {
         {/* ── Header ── */}
         <div className="flex items-center gap-3 px-4 py-3 border-b border-border bg-background shrink-0">
           <button
-            onClick={() => goBack(navigate, '/work?workTab=tools')}
+            onClick={() => goBack(navigate, '/home?page=2')}
             className="flex items-center justify-center w-9 h-9 rounded-xl border border-border hover:bg-muted transition-colors shrink-0"
-            aria-label="Back to Tools"
+            aria-label="Back to Safety"
           >
             <ChevronLeft size={17} />
           </button>

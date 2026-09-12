@@ -245,17 +245,10 @@ export default function FleetPage() {
 
     if (view === 'live-map' && v === 'assets') {
       setView('assets');
-      const state = location.state as {
-        fleetLiveMapFromAssets?: boolean;
-      } | null;
-      if (state?.fleetLiveMapFromAssets) {
-        navigate(-1);
-      } else {
-        setSearchParams({ fleetView: 'assets' }, {
-          replace: true,
-          state: {}
-        });
-      }
+      setSearchParams({ fleetView: 'assets' }, {
+        replace: true,
+        state: {}
+      });
       return;
     }
 
