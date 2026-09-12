@@ -2,8 +2,8 @@
  * /lens — Lens Gallery with Layout & Filtering Overhaul
  *
  * Views:
+ *   - Group by Job — default on open; collapsible job sections, pre-seeded Upload/Camera
  *   - All Photos   — 4-col square grid, newest-first
- *   - Group by Job — collapsible job sections, pre-seeded Upload/Camera
  *   - Sort by Date — day-grouped, newest/oldest toggle
  *   - Group by Location — collapsible address sections
  *
@@ -441,7 +441,7 @@ export default function LensPage() {
   const [error, setError] = useState<string | null>(null);
 
   // View mode
-  const [viewMode, setViewMode] = useState<ViewMode>('all');
+  const [viewMode, setViewMode] = useState<ViewMode>('byJob');
   const [dateOrder, setDateOrder] = useState<DateOrder>('newest');
 
   // Lightbox — tracks photo + context array (for grouped views)
