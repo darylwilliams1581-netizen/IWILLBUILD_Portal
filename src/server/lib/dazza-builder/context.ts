@@ -188,6 +188,73 @@ export const BUILDER_TOOL_DEFINITIONS = [
       required: ['documentId'],
     },
   },
+  {
+    type: 'function' as const,
+    name: 'builder_create_swms_draft',
+    description: [
+      'Build and propose a complete SWMS (Safe Work Method Statement) draft from gathered details.',
+      'Call this ONLY when ALL 8 critical details are present: jurisdiction, workLocation, equipmentMethod,',
+      'heightFallExposure, workersCompetencies, publicTrafficInteraction, specialHazards, emergencyRescue.',
+      'If any critical detail is missing, DO NOT call this tool — ask for the missing details first.',
+      'The tool returns a full proposal with all sections. Show the proposal to the owner before they click Apply.',
+      'INVARIANTS (enforced server-side, cannot be overridden):',
+      '  - docStatus is always "draft" — never published, never active.',
+      '  - The document is never added to the Global Resource Library.',
+      '  - The document is never assigned to a job.',
+      '  - No regulatory compliance is claimed.',
+      'After creation, Dazza can inspect, repair, reorder and replace blocks through the Document Tools catalogue.',
+    ].join(' '),
+    parameters: {
+      type: 'object',
+      properties: {
+        title: {
+          type: 'string',
+          description: 'SWMS title / activity name (e.g. "Cleaning High-Rise Windows from Crane-Suspended Work Box")',
+        },
+        jurisdiction: {
+          type: 'string',
+          description: 'Australian state or territory (e.g. "NSW", "QLD", "VIC")',
+        },
+        workLocation: {
+          type: 'string',
+          description: 'Physical work location or site address',
+        },
+        equipmentMethod: {
+          type: 'string',
+          description: 'Equipment and access method (e.g. "crane-suspended work box", "EWP", "scaffolding")',
+        },
+        heightFallExposure: {
+          type: 'string',
+          description: 'Working height and fall exposure (e.g. "40m above ground level")',
+        },
+        workersCompetencies: {
+          type: 'string',
+          description: 'Number of workers and required competencies',
+        },
+        publicTrafficInteraction: {
+          type: 'string',
+          description: 'Public or traffic interaction at the work site',
+        },
+        specialHazards: {
+          type: 'string',
+          description: 'Special hazards beyond standard fall risk',
+        },
+        emergencyRescue: {
+          type: 'string',
+          description: 'Emergency and rescue arrangements',
+        },
+        referenceDocId: {
+          type: 'number',
+          description: 'Optional: ID of the approved reference document used for style (from builder_search_reference_docs)',
+        },
+        referenceDocName: {
+          type: 'string',
+          description: 'Optional: Name of the approved reference document used for style',
+        },
+      },
+      required: ['title', 'jurisdiction', 'workLocation', 'equipmentMethod', 'heightFallExposure', 'workersCompetencies', 'publicTrafficInteraction', 'specialHazards', 'emergencyRescue'],
+    },
+  },
 ];
 
 // ── Tool labels (safe for SSE — never include args or results) ────────────────
@@ -201,6 +268,7 @@ export const TOOL_LABELS: Record<string, string> = {
   builder_list_document_tools:     'Loading document tools catalogue…',
   builder_search_reference_docs:   'Searching reference documents…',
   builder_get_document_style:      'Reading document style…',
+  builder_create_swms_draft:       'Building SWMS draft…',
 };
 
 // ── System prompt ─────────────────────────────────────────────────────────────
@@ -305,6 +373,54 @@ When the user asks you to create a new document or add a major section:
 3. Apply the style profile to your proposal (pageLayout, theme, heading levels, table column patterns, banner variants, safety images)
 4. In your response, state: "Based on reference document #ID '[Name]' — [provenance note]"
 5. If no approved references exist, proceed with the IWILLBUILD default style (A4 portrait, standard margins, navy accent #1e3a5f)
+
+## SWMS Draft Creation Workflow
+When the user asks to build, create, or generate a SWMS (Safe Work Method Statement):
+
+### Step 1 — Identify the activity
+Extract the activity title from the user's request (e.g. "Cleaning high-rise windows from a crane-suspended work box").
+
+### Step 2 — Identify missing critical details
+The 8 critical details required are:
+1. **Jurisdiction** — which Australian state or territory
+2. **Work location** — site address or description
+3. **Equipment / access method** — how workers access the work area
+4. **Height and fall exposure** — working height above ground
+5. **Workers and competencies** — number of workers and required licences
+6. **Public / traffic interaction** — exclusion zones, road closures, etc.
+7. **Special hazards** — beyond standard fall risk
+8. **Emergency and rescue arrangements** — rescue plan, standby team, etc.
+
+If ANY of these are missing, ask for ALL missing fields in ONE message. Do NOT ask one question at a time. Do NOT ask for a detail the user already supplied in their request.
+
+Example: if the user said "crane-suspended work box" — equipmentMethod is already known. Do NOT ask for it again.
+
+### Step 3 — Search approved SWMS references
+Call builder_search_reference_docs with documentType: "swms" and a relevant titleKeyword or workActivity.
+
+### Step 4 — Read reference style (if found)
+If approved SWMS references exist, call builder_get_document_style on the best match.
+
+### Step 5 — Show the complete proposal
+Call builder_create_swms_draft with ALL 8 critical details plus the activity title.
+The tool returns a full proposal text. Show it to the owner BEFORE they click Apply.
+State clearly: "This will be created as a PRIVATE DRAFT only — not published, not added to the Global Resource Library, not assigned to any job."
+
+### Step 6 — Wait for Apply
+Do NOT say the SWMS was created until the owner clicks Apply and the server confirms success.
+
+### After creation
+Dazza can inspect, repair, reorder, and replace blocks through the Document Tools catalogue.
+Use builder_get_template to inspect the created document.
+Use builder_propose_changes with addBlock/updateBlock/moveBlock/removeBlock to make changes.
+
+### SWMS invariants — NEVER violate these
+- NEVER automatically approve, publish, or change doc_status away from 'draft'
+- NEVER add the document to the Global Resource Library
+- NEVER assign the document to a job
+- NEVER claim regulatory compliance — always state it is a starting point for review
+- NEVER ask for a detail the user already supplied
+- NEVER ask one question at a time — ask ALL missing fields in ONE message
 
 ## Workflow
 For SIMPLE requests (add/remove a single block or field with no ambiguity):

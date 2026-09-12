@@ -279,6 +279,31 @@ export const DOCUMENT_TOOL_CATALOGUE: CatalogueEntry[] = [
     aiInputs: [],
     protectedFields: ['type', 'mode'],
   },
+  {
+    toolId: 'tables.revision',
+    label: 'Revision Table',
+    description: 'Rev / Date / Description / Author document revision history table',
+    category: 'tables',
+    dazzaEnabled: true,
+    factory: () => {
+      const cRev = newId(); const cDate = newId(); const cDesc = newId(); const cAuthor = newId();
+      return {
+        id: newId(), type: 'table', mode: 'static', stripedRows: true,
+        columns: [
+          { id: cRev,    header: 'Rev',         cellType: 'text', width: 1 },
+          { id: cDate,   header: 'Date',         cellType: 'date', width: 1 },
+          { id: cDesc,   header: 'Description',  cellType: 'text', width: 3 },
+          { id: cAuthor, header: 'Author',        cellType: 'text', width: 1 },
+        ],
+        rows: [
+          { id: newId(), cells: { [cRev]: '0', [cDate]: '', [cDesc]: 'Initial issue', [cAuthor]: '' } },
+          { id: newId(), cells: { [cRev]: '',  [cDate]: '', [cDesc]: '',              [cAuthor]: '' } },
+        ],
+      };
+    },
+    aiInputs: [],
+    protectedFields: ['type', 'mode'],
+  },
 
   // ── ADVANCED BANNERS ───────────────────────────────────────────────────────
 

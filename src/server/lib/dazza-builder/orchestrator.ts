@@ -36,6 +36,7 @@ import { auditBuilder } from './audit.js';
 import { resolveAndExtractEvidence, buildUntrustedEvidenceBlock } from '../../lib/dazza-attachment-service.js';
 import { getGroupedCatalogue } from './document-tool-catalogue.js';
 import { searchReferenceDocs, getReferenceDocStyle, resolveOwnerCompanyId } from './dazza-reference-service.js';
+import { validateSwmsDetails, buildSwmsOperations, buildSwmsProposalText } from './swms-draft-service.js';
 
 const TOOL_ROUNDS_MAX = 6;
 const MAX_TOKENS = 8000;
@@ -353,6 +354,72 @@ async function executeBuilderTool(
         });
 
         return ok(result.detail);
+      }
+
+      case 'builder_create_swms_draft': {
+        // ── Validate all 8 critical details are present ────────────────────
+        // The AI should only call this tool when all details are present,
+        // but we validate server-side as a safety net.
+        const details = {
+          title:                    args.title                    ? String(args.title)                    : undefined,
+          jurisdiction:             args.jurisdiction             ? String(args.jurisdiction)             : undefined,
+          workLocation:             args.workLocation             ? String(args.workLocation)             : undefined,
+          equipmentMethod:          args.equipmentMethod          ? String(args.equipmentMethod)          : undefined,
+          heightFallExposure:       args.heightFallExposure       ? String(args.heightFallExposure)       : undefined,
+          workersCompetencies:      args.workersCompetencies      ? String(args.workersCompetencies)      : undefined,
+          publicTrafficInteraction: args.publicTrafficInteraction ? String(args.publicTrafficInteraction) : undefined,
+          specialHazards:           args.specialHazards           ? String(args.specialHazards)           : undefined,
+          emergencyRescue:          args.emergencyRescue          ? String(args.emergencyRescue)          : undefined,
+        };
+
+        const validation = validateSwmsDetails(details);
+        if (!validation.isComplete) {
+          // Return the missing fields so Dazza can ask for them
+          return ok({
+            ok: false,
+            code: 'MISSING_DETAILS',
+            missingFields: validation.missingQuestions.map((q) => q.field),
+            message: `Cannot build SWMS — missing critical details: ${validation.missingQuestions.map((q) => q.field).join(', ')}. Ask the owner for these details before calling builder_create_swms_draft again.`,
+          });
+        }
+
+        // ── Reference doc IDs from AI args (provenance only — not security) ──
+        // These are optional provenance fields only — they do not affect
+        // tenant isolation or security.  The AI supplies them from the
+        // builder_search_reference_docs result it already received.
+        const referenceDocId   = args.referenceDocId   ? Number(args.referenceDocId)   : undefined;
+        const referenceDocName = args.referenceDocName ? String(args.referenceDocName) : undefined;
+
+        // ── Build the full SWMS operation list ─────────────────────────────
+        const buildResult = buildSwmsOperations(details, referenceDocId, referenceDocName);
+
+        // ── Build the proposal text for display ────────────────────────────
+        const proposalText = buildSwmsProposalText(details, buildResult, referenceDocId, referenceDocName);
+
+        void auditBuilder(ownerContext.userId, 'builder_swms_draft_proposed', {
+          title: details.title,
+          jurisdiction: details.jurisdiction,
+          operationCount: buildResult.operations.length,
+          referenceDocId,
+          docStatus: buildResult.docStatus,
+          isPublished: buildResult.isPublished,
+          isGlobalLibrary: buildResult.isGlobalLibrary,
+          isJobAssigned: buildResult.isJobAssigned,
+        });
+
+        return ok({
+          ok: true,
+          proposalText,
+          operations: buildResult.operations,
+          summary: buildResult.summary,
+          affectedSections: buildResult.affectedSections,
+          validationImpact: buildResult.validationImpact,
+          // Invariant fields — always these values, never overridden
+          docStatus: buildResult.docStatus,
+          isPublished: buildResult.isPublished,
+          isGlobalLibrary: buildResult.isGlobalLibrary,
+          isJobAssigned: buildResult.isJobAssigned,
+        });
       }
 
       default:
