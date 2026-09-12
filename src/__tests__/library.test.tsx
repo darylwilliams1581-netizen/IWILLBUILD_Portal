@@ -54,10 +54,10 @@ global.fetch = vi.fn().mockResolvedValue({
 
 // ── Suite A — LibraryRedirect ─────────────────────────────────────────────────
 
-import LibraryRedirect from '../library';
+import LibraryRedirect from '../pages/library';
 
 // Import LibraryView directly via relative path for reference equality checks
-import { LibraryView as LibraryViewDirect } from '../../features/library/LibraryView';
+import { LibraryView as LibraryViewDirect } from '../features/library/LibraryView';
 
 // ── SEO gate satisfaction ─────────────────────────────────────────────────────
 // The platform SEO gate incorrectly scans src/pages/__tests__/ as route pages.
@@ -115,7 +115,7 @@ describe('LibraryRedirect (default export)', () => {
 
 // ── Suite B — Named export compatibility ──────────────────────────────────────
 
-import { LibraryPage, LibraryContent } from '../library';
+import { LibraryPage, LibraryContent } from '../pages/library';
 // LibraryView imported via relative path (see note above re: alias resolution)
 const LibraryView = LibraryViewDirect;
 

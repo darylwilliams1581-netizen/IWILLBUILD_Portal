@@ -67,7 +67,7 @@ global.fetch = vi.fn().mockImplementation((url: string) => {
   });
 }) as unknown as typeof fetch;
 
-import { LibraryView, ITEM_TYPES } from '../../features/library/LibraryView';
+import { LibraryView, ITEM_TYPES } from '../features/library/LibraryView';
 
 // ── Suite A — allowedTypes prop restricts the type dropdown ──────────────────
 

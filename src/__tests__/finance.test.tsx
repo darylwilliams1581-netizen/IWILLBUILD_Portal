@@ -41,7 +41,7 @@ vi.mock('@/components/finance/FinanceSettingsTab', () => ({
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 async function renderFinance(search = '?financeTab=estimates') {
-  const { default: FinancePage } = await import('../finance');
+  const { default: FinancePage } = await import('../pages/finance');
   render(
     <HelmetProvider>
       <MemoryRouter initialEntries={[`/finance${search}`]}>
@@ -142,37 +142,37 @@ describe('Finance workspace — Invoices tab', () => {
 
 describe('Finance workspace — route compatibility', () => {
   it('/finance route exists in routes.tsx', async () => {
-    const { routes } = await import('../../routes');
+    const { routes } = await import('../routes');
     const financeRoute = routes.find(r => r.path === '/finance');
     expect(financeRoute).toBeDefined();
   });
 
   it('/estimating route still exists', async () => {
-    const { routes } = await import('../../routes');
+    const { routes } = await import('../routes');
     const estimatingRoute = routes.find(r => r.path === '/estimating');
     expect(estimatingRoute).toBeDefined();
   });
 
   it('/estimates/:id route still exists', async () => {
-    const { routes } = await import('../../routes');
+    const { routes } = await import('../routes');
     const editorRoute = routes.find(r => r.path === '/estimates/:id');
     expect(editorRoute).toBeDefined();
   });
 
   it('/invoices route still exists', async () => {
-    const { routes } = await import('../../routes');
+    const { routes } = await import('../routes');
     const invoicesRoute = routes.find(r => r.path === '/invoices');
     expect(invoicesRoute).toBeDefined();
   });
 
   it('/jobs/:id/costs route still exists', async () => {
-    const { routes } = await import('../../routes');
+    const { routes } = await import('../routes');
     const costsRoute = routes.find(r => r.path === '/jobs/:id/costs');
     expect(costsRoute).toBeDefined();
   });
 
   it('/settings route still exists', async () => {
-    const { routes } = await import('../../routes');
+    const { routes } = await import('../routes');
     const settingsRoute = routes.find(r => r.path === '/settings');
     expect(settingsRoute).toBeDefined();
   });
@@ -182,12 +182,12 @@ describe('Finance workspace — route compatibility', () => {
 
 describe('Finance API endpoints', () => {
   it('GET /api/finance/estimates handler exports a default function', async () => {
-    const mod = await import('../../server/api/finance/estimates/GET');
+    const mod = await import('../server/api/finance/estimates/GET');
     expect(typeof mod.default).toBe('function');
   });
 
   it('GET /api/finance/ledger handler exports a default function', async () => {
-    const mod = await import('../../server/api/finance/ledger/GET');
+    const mod = await import('../server/api/finance/ledger/GET');
     expect(typeof mod.default).toBe('function');
   });
 });
@@ -196,14 +196,14 @@ describe('Finance API endpoints', () => {
 
 describe('FinanceEstimatesTab — no duplicate estimate creation', () => {
   it('FinanceEstimatesTab component exists and is a function', async () => {
-    const mod = await import('../../components/finance/FinanceEstimatesTab');
+    const mod = await import('../components/finance/FinanceEstimatesTab');
     expect(typeof mod.default).toBe('function');
   });
 
   it('does not export a createEstimate function (creation goes through job quotes route)', async () => {
     // The estimates tab navigates to /jobs/:id/quotes — it must NOT export its own
     // createEstimate function, which would indicate a duplicate creation path.
-    const { default: FinanceEstimatesTab, ...rest } = await import('../../components/finance/FinanceEstimatesTab');
+    const { default: FinanceEstimatesTab, ...rest } = await import('../components/finance/FinanceEstimatesTab');
     expect(typeof FinanceEstimatesTab).toBe('function');
     expect((rest as Record<string, unknown>).createEstimate).toBeUndefined();
   });
@@ -213,18 +213,18 @@ describe('FinanceEstimatesTab — no duplicate estimate creation', () => {
 
 describe('FinanceLedgerTab — AddEntryModal reuse', () => {
   it('AddEntryModal is exported from JobCosts', async () => {
-    const mod = await import('../../components/job/JobCosts');
+    const mod = await import('../components/job/JobCosts');
     expect(typeof mod.AddEntryModal).toBe('function');
   });
 
   it('LedgerEntry type is exported from JobCosts', async () => {
     // Type exports don't exist at runtime — just verify the module loads
-    const mod = await import('../../components/job/JobCosts');
+    const mod = await import('../components/job/JobCosts');
     expect(mod).toBeDefined();
   });
 
   it('FinanceLedgerTab component exists and is a function', async () => {
-    const mod = await import('../../components/finance/FinanceLedgerTab');
+    const mod = await import('../components/finance/FinanceLedgerTab');
     expect(typeof mod.default).toBe('function');
   });
 });
@@ -233,22 +233,22 @@ describe('FinanceLedgerTab — AddEntryModal reuse', () => {
 
 describe('FinanceSettingsTab — component reuse', () => {
   it('FinanceSettingsTab imports AccountingTab', async () => {
-    const mod = await import('../../components/finance/FinanceSettingsTab');
+    const mod = await import('../components/finance/FinanceSettingsTab');
     expect(typeof mod.default).toBe('function');
   });
 
   it('AccountingTab still exists at original path', async () => {
-    const mod = await import('../../components/settings/AccountingTab');
+    const mod = await import('../components/settings/AccountingTab');
     expect(typeof mod.default).toBe('function');
   });
 
   it('CostingTab still exists at original path', async () => {
-    const mod = await import('../../components/settings/CostingTab');
+    const mod = await import('../components/settings/CostingTab');
     expect(typeof mod.default).toBe('function');
   });
 
   it('PdfStyleTab still exists at original path', async () => {
-    const mod = await import('../../components/settings/PdfStyleTab');
+    const mod = await import('../components/settings/PdfStyleTab');
     expect(typeof mod.default).toBe('function');
   });
 });

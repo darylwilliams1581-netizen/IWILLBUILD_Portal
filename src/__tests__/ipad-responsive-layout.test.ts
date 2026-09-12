@@ -20,7 +20,7 @@ import fs from 'fs';
 import path from 'path';
 
 // __dirname = src/pages/__tests__ → go up 3 levels to reach src/
-const SRC = path.resolve(__dirname, '../../');
+const SRC = path.resolve(__dirname, '../');
 
 function readSrc(rel: string) {
   return fs.readFileSync(path.join(SRC, rel), 'utf8');

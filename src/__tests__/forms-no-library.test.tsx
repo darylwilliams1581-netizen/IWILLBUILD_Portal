@@ -70,7 +70,7 @@ vi.mock('@/components/DazzaBuilderAssistant/FormsBuilderAdapter', () => ({
 }));
 
 // Import the inner content component (not the /forms redirect wrapper)
-import { FormsContent } from '../forms';
+import { FormsContent } from '../pages/forms';
 
 // Alias for readability in tests
 const StudioFormsContent = FormsContent;

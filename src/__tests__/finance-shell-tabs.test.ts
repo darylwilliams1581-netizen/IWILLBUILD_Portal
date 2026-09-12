@@ -38,7 +38,7 @@ import { describe, it, expect } from 'vitest';
 import fs from 'fs';
 import path from 'path';
 
-const SRC = path.resolve(__dirname, '../../');
+const SRC = path.resolve(__dirname, '../');
 
 function readSrc(rel: string) {
   return fs.readFileSync(path.join(SRC, rel), 'utf8');

@@ -56,7 +56,7 @@ vi.mock('@/components/PortalSidebar', () => ({
   ),
 }));
 
-import SafetyPostersPage from '../safety-posters';
+import SafetyPostersPage from '../pages/safety-posters';
 
 describe('SafetyPostersPage — page unit test', () => {
   function renderPage() {
