@@ -198,7 +198,7 @@ export default function StudioBuilderPage() {
     }).catch((e: unknown) => setError(e instanceof Error ? e.message : 'Failed to load document')).finally(() => setLoading(false));
   }, [id, isNew]);
   function handleClose() {
-    navigate('/studio/documents');
+    navigate('/safety?safetyTab=company-documents', { replace: true });
   }
   function handleSaved(savedId: number) {
     // If we just created a new doc, update the URL to the real ID

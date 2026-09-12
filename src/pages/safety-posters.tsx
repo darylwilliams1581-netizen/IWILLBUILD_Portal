@@ -1,6 +1,7 @@
 import { useNavigate } from "react-router";
 import { Helmet } from '@dr.pogodin/react-helmet';
 import { ArrowLeft, Image } from 'lucide-react';
+import { goBack } from '@/lib/navigation';
 import { PostersTab } from '@/pages/safety';
 import DesktopDock from '@/components/DesktopDock';
 import PortalSidebar from '@/components/PortalSidebar';

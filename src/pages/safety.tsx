@@ -4,7 +4,7 @@ import { AnimatePresence } from 'motion/react';
 import { ShieldAlert, ShieldCheck, FileText, AlertTriangle, Plus, Search, Loader2, Check, Download, Trash2, Copy, BookOpen, Image, AlertCircle, Calendar, Building2, ChevronDown, Wand2, FileDown, Package, Printer, Share2, Pencil, Eye, ArrowLeft } from 'lucide-react';
 import ShareLinkModal from '@/components/ShareLinkModal';
 import { usePermissions } from '@/lib/usePermissions';
-import { goBack } from '@/lib/navigation';
+import { useNavigate as _useNavigate } from 'react-router';
 import PosterPreviewModal from '@/components/safety-posters/PosterPreviewModal';
 import SwmsBodyBuilder from '@/components/safety/SwmsBodyBuilder';
 import PlanFormModal from '@/components/safety/PlanFormModal';
@@ -13,7 +13,6 @@ import WHS_PlanBuilder from '@/components/safety/WHS_PlanBuilder';
 import UploadDocModal from '@/components/safety/UploadDocModal';
 import NewDocModal from '@/components/safety/NewDocModal';
 import { type SwmsTemplate, type SafetyPlan, type SafetyDocument, type SafetyPoster, type GeneratedPoster, POLICY_TYPES, POSTER_TYPES, fmtBytes, fmtDate, statusBadge } from '@/components/safety/safety-types';
-import { useNavigate as _useNavigate } from 'react-router';
 import { resolveDownloadUrl } from '@/lib/native-api';
 import SafetyContent from '@/components/safety/SafetyContent';
 import DesktopTopBar from '@/components/DesktopTopBar';
@@ -910,7 +909,7 @@ export default function SafetyPage() {
 
       {/* Header — matches fleet/jobs pattern */}
       <header className="sticky top-0 z-30 h-12 bg-white border-b border-border flex items-center px-4 shrink-0 gap-2 safe-top">
-        <button onClick={() => goBack(navigate, '/home')} className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors shrink-0" aria-label="Back to Home">
+        <button onClick={() => navigate('/home', { replace: true })} className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors shrink-0" aria-label="Back to Home">
           <ArrowLeft size={16} />
           <span className="hidden sm:inline">Home</span>
         </button>

@@ -118,7 +118,7 @@ export default function SafetyContent() {
         next.set('safetyTab', id);
         return next;
       },
-      { replace: false },
+      { replace: true },
     );
   }
 

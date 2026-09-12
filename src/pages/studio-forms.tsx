@@ -1,6 +1,7 @@
 import { useNavigate } from "react-router";
 import { Helmet } from '@dr.pogodin/react-helmet';
 import { ArrowLeft, ClipboardList } from 'lucide-react';
+import { goBack } from '@/lib/navigation';
 import { FormsPage } from '@/pages/forms';
 import DesktopTopBar from '@/components/DesktopTopBar';
 import DesktopDock from '@/components/DesktopDock';
