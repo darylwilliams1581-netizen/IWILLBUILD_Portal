@@ -207,6 +207,7 @@ import developer_media_backfill_report_get_174 from "./api/developer/media-backf
 import developer_provision_apple_review_account_post_175 from "./api/developer/provision-apple-review-account/POST";
 import developer_run_seed_now_post_176 from "./api/developer/run-seed-now/POST";
 import developer_seed_developer_account_post_177 from "./api/developer/seed-developer-account/POST";
+import developer_seed_safety_documents_post from "./api/developer/seed-safety-documents/POST";
 import developer_support_notes_get_178 from "./api/developer/support-notes/GET";
 import developer_support_notes_post_179 from "./api/developer/support-notes/POST";
 import developer_support_notes_id_delete_180 from "./api/developer/support-notes/[id]/DELETE";
@@ -3867,7 +3868,8 @@ app.post("/api/developer/email-settings/test", developer_email_settings_test_pos
 app.get("/api/developer/media-backfill-report", developer_media_backfill_report_get_174);
 app.post("/api/developer/provision-apple-review-account", developer_provision_apple_review_account_post_175);
 app.post("/api/developer/run-seed-now", developer_run_seed_now_post_176);
-app.post("/api/developer/seed-developer-account", developer_seed_developer_account_post_177);
+app.post("/api/developer/seed-developer-account", requirePlatformOwner, developer_seed_developer_account_post_177);
+app.post("/api/developer/seed-safety-documents", requirePlatformOwner, developer_seed_safety_documents_post);
 app.get("/api/developer/support-notes", developer_support_notes_get_178);
 app.post("/api/developer/support-notes", developer_support_notes_post_179);
 app.delete("/api/developer/support-notes/:id", developer_support_notes_id_delete_180);
