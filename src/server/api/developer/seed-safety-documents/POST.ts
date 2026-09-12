@@ -156,10 +156,34 @@ interface OcCriticalControl {
 }
 
 interface OcCompetencyRow {
-  id: string;
-  role: string;
-  licenceOrCert: string;
-  trainingRequired: string;
+  // OC format (from seed JSON): requirement/applies/evidenceOrAuth
+  requirement?: string;
+  applies?: boolean;
+  evidenceOrAuth?: string;
+  // Legacy format (role/licenceOrCert/trainingRequired) — kept for backward compat
+  id?: string;
+  role?: string;
+  licenceOrCert?: string;
+  trainingRequired?: string;
+}
+
+interface OcEnvControl {
+  type?: string;
+  description?: string;
+  responsiblePerson?: string;
+}
+
+interface OcEmergencyAction {
+  id?: string;
+  action?: string;
+}
+
+interface OcRelatedDoc {
+  id?: string;
+  type?: string;
+  document?: string;
+  revision?: string;
+  status?: string;
 }
 
 interface OcSwms {
@@ -178,11 +202,14 @@ interface OcSwms {
   plantItems?: OcPlantItem[];
   ppeRows?: OcPpeRow[];
   workSteps?: OcWorkStep[];
-  envControls?: string[];
-  emergencyActions?: string[];
+  // envControls: may be string[] (legacy) or OcEnvControl[] (structured)
+  envControls?: string[] | OcEnvControl[];
+  // emergencyActions: may be string[] (legacy) or OcEmergencyAction[] (structured)
+  emergencyActions?: string[] | OcEmergencyAction[];
   competencyRows?: OcCompetencyRow[];
   definitions?: Array<{ term: string; definition: string }>;
-  relatedDocs?: string[];
+  // relatedDocs: may be string[] (legacy) or OcRelatedDoc[] (structured)
+  relatedDocs?: string[] | OcRelatedDoc[];
 }
 
 interface FieldDef {
@@ -393,26 +420,43 @@ function plantItemsToTable(items: OcPlantItem[]): object {
 }
 
 // ── Competency rows → table ───────────────────────────────────────────────────
+// Handles two formats:
+//   OC format (seed JSON):  { requirement, applies, evidenceOrAuth }
+//   Legacy format:          { role, licenceOrCert, trainingRequired }
 
 function competencyToTable(rows: OcCompetencyRow[]): object {
-  const colRole    = bid();
-  const colLicence = bid();
-  const colTrain   = bid();
+  const colReq     = bid();
+  const colApplies = bid();
+  const colEvid    = bid();
 
   const columns = [
-    { id: colRole,    header: 'Role',                 cellType: 'text', width: 2 },
-    { id: colLicence, header: 'Licence / Certificate', cellType: 'text', width: 2 },
-    { id: colTrain,   header: 'Training Required',    cellType: 'text', width: 2 },
+    { id: colReq,     header: 'Requirement / Role',       cellType: 'text', width: 3 },
+    { id: colApplies, header: 'Applies',                  cellType: 'text', width: 1 },
+    { id: colEvid,    header: 'Evidence / Authorisation', cellType: 'text', width: 2 },
   ];
 
-  const tableRows = rows.map((r) => ({
-    id: bid(),
-    cells: {
-      [colRole]:    r.role,
-      [colLicence]: r.licenceOrCert,
-      [colTrain]:   r.trainingRequired,
-    },
-  }));
+  const tableRows = rows.map((r) => {
+    // OC format: requirement field present
+    if (r.requirement !== undefined) {
+      return {
+        id: bid(),
+        cells: {
+          [colReq]:     r.requirement,
+          [colApplies]: r.applies ? 'Yes' : 'No',
+          [colEvid]:    r.evidenceOrAuth ?? '',
+        },
+      };
+    }
+    // Legacy format: role/licenceOrCert/trainingRequired
+    return {
+      id: bid(),
+      cells: {
+        [colReq]:     [r.role, r.licenceOrCert].filter(Boolean).join(' — '),
+        [colApplies]: 'Yes',
+        [colEvid]:    r.trainingRequired ?? '',
+      },
+    };
+  });
 
   return {
     id: bid(),
@@ -556,15 +600,31 @@ function ocSwmsToBlocks(t: OcSwms): object[] {
 
   if (t.envControls?.length) {
     blocks.push(headingBlock('Environmental Controls', 2));
-    blocks.push(textBlock(t.envControls.join('\n')));
+    // envControls may be string[] (legacy) or OcEnvControl[] (structured objects).
+    // Calling .join('\n') on an object array produces "[object Object]" — render
+    // each entry as "Type: Description (Responsible: Person)" instead.
+    const envLines = (t.envControls as Array<string | OcEnvControl>).map((e) => {
+      if (typeof e === 'string') return e;
+      const parts: string[] = [];
+      if (e.type) parts.push(e.type);
+      if (e.description) parts.push(e.description);
+      if (e.responsiblePerson) parts.push(`Responsible: ${e.responsiblePerson}`);
+      return parts.join(' — ');
+    });
+    blocks.push(textBlock(envLines.join('\n')));
     blocks.push(spacerBlock(4));
   }
 
   if (t.emergencyActions?.length) {
     blocks.push(headingBlock('Emergency Response', 2));
+    // emergencyActions may be string[] (legacy) or OcEmergencyAction[] (structured).
+    // Render each action's text — never join objects directly.
+    const actionLines = (t.emergencyActions as Array<string | OcEmergencyAction>).map((a) =>
+      typeof a === 'string' ? a : (a.action ?? ''),
+    ).filter(Boolean);
     blocks.push(bannerBlock(
       'Emergency Actions',
-      t.emergencyActions.join('\n'),
+      actionLines.join('\n'),
       'emergency',
     ));
     blocks.push(spacerBlock(4));
@@ -581,7 +641,20 @@ function ocSwmsToBlocks(t: OcSwms): object[] {
 
   if (t.relatedDocs?.length) {
     blocks.push(headingBlock('Related Documents', 3));
-    blocks.push(textBlock(t.relatedDocs.join('\n')));
+    // relatedDocs may be string[] (legacy) or OcRelatedDoc[] (structured objects).
+    // Render each entry as "Type — Document (Revision, Status)" — never join objects.
+    const docLines = (t.relatedDocs as Array<string | OcRelatedDoc>).map((d) => {
+      if (typeof d === 'string') return d;
+      const parts: string[] = [];
+      if (d.type) parts.push(d.type);
+      if (d.document) parts.push(d.document);
+      const meta: string[] = [];
+      if (d.revision) meta.push(`Rev: ${d.revision}`);
+      if (d.status) meta.push(d.status);
+      if (meta.length) parts.push(`(${meta.join(', ')})`);
+      return parts.join(' — ');
+    });
+    blocks.push(textBlock(docLines.join('\n')));
     blocks.push(spacerBlock(4));
   }
 

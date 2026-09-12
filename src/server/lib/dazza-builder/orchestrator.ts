@@ -66,6 +66,7 @@ async function executeBuilderTool(
   name: string,
   args: Record<string, unknown>,
   ownerContext: BuilderOwnerContext,
+  builderContext: import('./types.js').BuilderContext,
 ): Promise<string> {
   function ok(data: unknown): string { return JSON.stringify({ ok: true, data }); }
   function err(msg: string): string { return JSON.stringify({ ok: false, error: msg }); }
@@ -73,47 +74,159 @@ async function executeBuilderTool(
   try {
     switch (name) {
       case 'builder_get_template': {
-        const id = Number(args.templateId) || null;
-        const type = String(args.builderType);
+        // ── Security: use the canonical route ID from the open BuilderContext,
+        //    never the AI-supplied args.templateId.  The AI may hallucinate or
+        //    be prompted to supply a different ID; the canonical ID is the one
+        //    the authenticated user actually has open in their browser.
+        //
+        //    canonicalTemplateId is the URL route param (e.g. /studio/builder/111 → 111).
+        //    It is always authoritative — it is set server-side from the client's
+        //    BuilderContext, which is validated by the platform-owner middleware.
+        //
+        //    args.templateId is accepted ONLY as a fallback when the context has
+        //    no canonical ID (list-page context, isNew flow) — and even then it
+        //    must match the context's own templateId to prevent ID injection.
+        const canonicalId = builderContext.canonicalTemplateId ?? builderContext.templateId ?? null;
+        const aiId = Number(args.templateId) || null;
+
+        // If the AI supplied an ID that differs from the canonical context ID,
+        // ignore it — the canonical ID is ground truth.
+        const id = canonicalId ?? aiId;
+        const type = builderContext.builderType;   // always from context, never AI args
+
         if (!id) return ok({ note: 'No template is currently open (list-page context). Use createNewTemplate as the first operation to create one.' });
 
+        // ── Resolve the owner's company_id for tenant-scoped access control ──
+        // Platform-owner access: the owner's company_id is resolved from their
+        // profiles row.  This correctly resolves the developer company even when
+        // the platform owner is not a regular company member.
+        const [profileRows] = await db.execute(sql`
+          SELECT company_id FROM profiles WHERE user_id = ${ownerContext.userId} LIMIT 1
+        `) as unknown as [Array<{ company_id: number | null }>, unknown];
+        const ownerCompanyId = profileRows?.[0]?.company_id ?? null;
+
+        if (!ownerCompanyId) {
+          return err('Owner has no company profile — cannot verify template ownership.');
+        }
+
         if (type === 'document') {
-          const rows = await db.execute(sql`
+          // ── MySQL2/Drizzle db.execute returns [rows, metadata] tuple ──────
+          // Destructure with [rows] — do NOT use (result as {rows:[]}).rows
+          // which would be undefined (result IS the rows array, not an object
+          // with a rows property).
+          const [docRows] = await db.execute(sql`
             SELECT id, name, template_type, doc_status, doc_kind,
                    requires_acknowledgement, submit_label, requires_signature,
                    builder_json, pdf_settings_json, created_at, updated_at
             FROM document_templates
             WHERE id = ${id}
+              AND company_id = ${ownerCompanyId}
             LIMIT 1
-          `);
-          const row = (rows as { rows: unknown[] }).rows?.[0] as Record<string, unknown> | undefined;
-          if (!row) return err('Template not found');
+          `) as unknown as [Array<Record<string, unknown>>, unknown];
+
+          if (!docRows?.[0]) {
+            // Distinguish "exists but wrong company" from "doesn't exist at all"
+            // so the error message is precise rather than generic.
+            const [anyRows] = await db.execute(sql`
+              SELECT id FROM document_templates WHERE id = ${id} LIMIT 1
+            `) as unknown as [Array<{ id: number }>, unknown];
+            const exists = (anyRows?.length ?? 0) > 0;
+            return err(
+              exists
+                ? `Document template #${id} does not belong to your company. Open the correct template and re-run your request.`
+                : `Document template #${id} not found. It may have been deleted. Open an existing template and re-run your request.`,
+            );
+          }
+
+          const row = docRows[0];
           const builderJson = row.builder_json as string | null;
-          const truncated = builderJson && builderJson.length > 8000
-            ? builderJson.slice(0, 8000) + '…[truncated]'
-            : builderJson;
-          return ok({ ...row, builder_json: truncated });
+
+          // ── Structured representation — no character truncation ───────────
+          // Truncating builder_json at 8 000 chars silently cuts the document
+          // mid-block, making the last block unreadable and hiding sections
+          // (Environmental Controls, Emergency Response, Related Documents, etc.)
+          // that appear near the end of a long SWMS.
+          //
+          // Instead: parse the JSON and return a structured summary that gives
+          // the AI a complete, bounded view of every block without the raw JSON
+          // overhead.  The full raw JSON is included only when it fits within a
+          // safe token budget (≤ 32 000 chars); otherwise the structured summary
+          // is the sole representation.
+          const FULL_JSON_CHAR_LIMIT = 32_000;
+          let builderJsonField: unknown;
+          if (!builderJson) {
+            builderJsonField = null;
+          } else if (builderJson.length <= FULL_JSON_CHAR_LIMIT) {
+            // Small enough — return the full parsed structure so the AI can
+            // read every field of every block without loss.
+            try {
+              builderJsonField = JSON.parse(builderJson);
+            } catch {
+              builderJsonField = builderJson; // malformed JSON — return as-is
+            }
+          } else {
+            // Large document — return a structured block summary instead of
+            // a truncated string.  Each entry names the block type and its
+            // primary text content so the AI can audit the full document.
+            try {
+              const parsed = JSON.parse(builderJson) as { pages?: Array<{ blocks?: Array<Record<string, unknown>> }> };
+              const summary: Array<{ type: string; preview: string }> = [];
+              for (const page of parsed.pages ?? []) {
+                for (const block of page.blocks ?? []) {
+                  const btype = String(block.type ?? 'unknown');
+                  let preview = '';
+                  if (typeof block.content === 'string') preview = block.content.slice(0, 120);
+                  else if (typeof block.title === 'string') preview = block.title.slice(0, 80);
+                  else if (typeof block.body === 'string') preview = block.body.slice(0, 80);
+                  else if (Array.isArray(block.rows)) preview = `${(block.rows as unknown[]).length} rows`;
+                  else if (Array.isArray(block.badges)) preview = `${(block.badges as unknown[]).length} badges`;
+                  summary.push({ type: btype, preview });
+                }
+              }
+              builderJsonField = {
+                _note: `Document is ${builderJson.length} chars — structured block summary returned (${summary.length} blocks across ${(parsed.pages ?? []).length} pages). Request specific sections by block type or heading if you need full cell content.`,
+                blockSummary: summary,
+              };
+            } catch {
+              builderJsonField = { _note: `builder_json is ${builderJson.length} chars and could not be parsed. The document may be malformed.` };
+            }
+          }
+
+          return ok({ ...row, builder_json: builderJsonField });
         } else {
-          const rows = await db.execute(sql`
+          // ── Form template ─────────────────────────────────────────────────
+          const [ftRows] = await db.execute(sql`
             SELECT ft.id, ft.name, ft.form_type, ft.category, ft.description,
                    ft.is_active, ft.on_dashboard, ft.on_jobs, ft.on_fleet,
                    ft.created_at, ft.updated_at
             FROM form_templates ft
             WHERE ft.id = ${id}
+              AND ft.company_id = ${ownerCompanyId}
             LIMIT 1
-          `);
-          const row = (rows as { rows: unknown[] }).rows?.[0] as Record<string, unknown> | undefined;
-          if (!row) return err('Form template not found');
+          `) as unknown as [Array<Record<string, unknown>>, unknown];
 
-          const fieldRows = await db.execute(sql`
+          if (!ftRows?.[0]) {
+            const [anyRows] = await db.execute(sql`
+              SELECT id FROM form_templates WHERE id = ${id} LIMIT 1
+            `) as unknown as [Array<{ id: number }>, unknown];
+            const exists = (anyRows?.length ?? 0) > 0;
+            return err(
+              exists
+                ? `Form template #${id} does not belong to your company.`
+                : `Form template #${id} not found.`,
+            );
+          }
+
+          const [fieldRows] = await db.execute(sql`
             SELECT id, label, field_type, required, options_json, settings_json,
                    logic_json, field_order
             FROM form_fields
             WHERE template_id = ${id}
             ORDER BY field_order ASC
             LIMIT 200
-          `);
-          return ok({ template: row, fields: (fieldRows as { rows: unknown[] }).rows ?? [] });
+          `) as unknown as [Array<Record<string, unknown>>, unknown];
+
+          return ok({ template: ftRows[0], fields: fieldRows ?? [] });
         }
       }
 
@@ -121,22 +234,31 @@ async function executeBuilderTool(
         const type = String(args.builderType);
         const limit = Math.min(Number(args.limit ?? 20), 50);
 
+        // Resolve owner's company_id for tenant-scoped listing
+        const [profileRowsList] = await db.execute(sql`
+          SELECT company_id FROM profiles WHERE user_id = ${ownerContext.userId} LIMIT 1
+        `) as unknown as [Array<{ company_id: number | null }>, unknown];
+        const listCompanyId = profileRowsList?.[0]?.company_id ?? null;
+        if (!listCompanyId) return err('Owner has no company profile.');
+
         if (type === 'document') {
-          const rows = await db.execute(sql`
+          const [listRows] = await db.execute(sql`
             SELECT id, name, template_type, doc_status, created_at, updated_at
             FROM document_templates
+            WHERE company_id = ${listCompanyId}
             ORDER BY updated_at DESC
             LIMIT ${limit}
-          `);
-          return ok((rows as { rows: unknown[] }).rows ?? []);
+          `) as unknown as [Array<Record<string, unknown>>, unknown];
+          return ok(listRows ?? []);
         } else {
-          const rows = await db.execute(sql`
+          const [listRows] = await db.execute(sql`
             SELECT id, name, form_type, category, is_active, created_at, updated_at
             FROM form_templates
+            WHERE company_id = ${listCompanyId}
             ORDER BY updated_at DESC
             LIMIT ${limit}
-          `);
-          return ok((rows as { rows: unknown[] }).rows ?? []);
+          `) as unknown as [Array<Record<string, unknown>>, unknown];
+          return ok(listRows ?? []);
         }
       }
 
@@ -146,15 +268,15 @@ async function executeBuilderTool(
         const limit = Math.min(Number(args.limit ?? 10), 50);
         if (!id) return err('templateId required');
 
-        const rows = await db.execute(sql`
+        const [versionRows] = await db.execute(sql`
           SELECT id, version_number, instruction_summary, operations_count,
                  validation_result, created_at
           FROM dazza_builder_versions
           WHERE template_id = ${id} AND builder_type = ${type}
           ORDER BY version_number DESC
           LIMIT ${limit}
-        `);
-        return ok((rows as { rows: unknown[] }).rows ?? []);
+        `) as unknown as [Array<Record<string, unknown>>, unknown];
+        return ok(versionRows ?? []);
       }
 
       case 'builder_propose_changes': {
@@ -401,7 +523,7 @@ export async function streamBuilderAssistant(opts: BuilderStreamOptions): Promis
           onProposedChange(proposed);
         }
 
-        const result = await executeBuilderTool(tc.name, args, ownerContext);
+        const result = await executeBuilderTool(tc.name, args, ownerContext, builderContext);
         onToolCall(tc.name, 'done');
         toolResults.push({ role: 'tool', tool_call_id: tc.id, content: result });
       }
