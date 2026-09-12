@@ -17,7 +17,7 @@ import { createPortal } from 'react-dom';
 import { useSearchParams, useNavigate } from 'react-router';
 import { Helmet } from '@dr.pogodin/react-helmet';
 import {
-  Briefcase, Wrench, ShieldAlert, MapPin,
+  Briefcase, Wrench, MapPin,
   Plus, Calculator, Ruler, ChevronDown, Home, ArrowLeft,
   Search, ChevronRight, HardHat, Loader2, Zap,
 } from 'lucide-react';
@@ -35,7 +35,6 @@ const MAPS_TOILET_URL = 'https://www.google.com/maps/search/?api=1&query=public+
 const TOOL_ITEMS = [
   { label: 'Builders Calculator', icon: Calculator,  href: '/builders-calc',   iconBg: 'bg-violet-100', iconFg: 'text-violet-600',  description: 'Areas, volumes, materials and cost estimates',           external: false },
   { label: 'Takeoff Pad',         icon: Ruler,        href: '/takeoff-pad',     iconBg: 'bg-blue-100',   iconFg: 'text-blue-600',    description: 'Measure and quantify from plans',                       external: false },
-  { label: 'SDS / MSDS Register', icon: ShieldAlert,  href: '/sds-register',   iconBg: 'bg-rose-100',   iconFg: 'text-rose-600',    description: 'Safety data sheets — upload and view on-site',          external: false },
   { label: 'RL Register',         icon: Ruler,        href: '/rl-register',    iconBg: 'bg-emerald-100', iconFg: 'text-emerald-600', description: 'Record site levels and calculate rise/fall differences', external: false },
   { label: 'Electrical Tests',    icon: Zap,          href: '/electrical-tests', iconBg: 'bg-yellow-100', iconFg: 'text-yellow-600', description: 'Record electrical test results with sign-off and PDF report', external: false },
   { label: 'Public Toilet Finder', icon: MapPin,      href: MAPS_TOILET_URL,   iconBg: 'bg-teal-100',   iconFg: 'text-teal-600',    description: 'Find nearby public toilets in Google Maps',             external: true  },

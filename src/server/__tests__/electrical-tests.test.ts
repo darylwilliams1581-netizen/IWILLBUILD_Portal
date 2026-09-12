@@ -22,7 +22,7 @@
  * 18. Audit trail — all write handlers insert to electrical_test_audit
  * 19. PDF export — safety notice in source
  * 20. CSV export — BOM + column headers in source
- * 21. homeIcons — electrical_tests key in SAFETY_ICON_DEFS
+ * 21. homeIcons — electrical_tests is Tools, not Safety
  * 22. Routes — /electrical-tests registered in routes.tsx
  * 23. Tools launcher — Electrical Tests in work.tsx TOOL_ITEMS
  * 24. WorkToolsTab — Electrical Tests in TOOLS array
@@ -704,22 +704,10 @@ describe('Electrical tests — CSV export', () => {
 // ── 21. homeIcons ─────────────────────────────────────────────────────────────
 
 describe('Electrical tests — homeIcons.ts', () => {
-  it('SAFETY_ICON_DEFS contains electrical_tests key', async () => {
+  it('SAFETY_ICON_DEFS does not contain electrical_tests (Tools, not Safety)', async () => {
     const { SAFETY_ICON_DEFS } = await import('../../lib/homeIcons');
     const keys = SAFETY_ICON_DEFS.map((i: { key: string }) => i.key);
-    expect(keys).toContain('electrical_tests');
-  });
-
-  it('electrical_tests href is /electrical-tests', async () => {
-    const { SAFETY_ICON_DEFS } = await import('../../lib/homeIcons');
-    const entry = SAFETY_ICON_DEFS.find((i: { key: string }) => i.key === 'electrical_tests');
-    expect(entry?.href).toBe('/electrical-tests');
-  });
-
-  it('electrical_tests group is safety', async () => {
-    const { SAFETY_ICON_DEFS } = await import('../../lib/homeIcons');
-    const entry = SAFETY_ICON_DEFS.find((i: { key: string }) => i.key === 'electrical_tests');
-    expect(entry?.group).toBe('safety');
+    expect(keys).not.toContain('electrical_tests');
   });
 });
 

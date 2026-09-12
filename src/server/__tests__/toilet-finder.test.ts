@@ -11,7 +11,7 @@
  * 7. No backend API route for toilet finder
  * 8. No database table for toilet/location data
  * 9. Error fallback message present in source
- * 10. Existing tools remain unchanged (Builders Calc, Takeoff Pad, SDS Register)
+ * 10. Existing tools remain unchanged (Builders Calc, Takeoff Pad)
  * 11. MapPin icon used (no new icon library imported)
  * 12. window.open used for cross-platform launch (Safari, Capacitor, desktop)
  */
@@ -201,9 +201,8 @@ describe('Public Toilet Finder — existing tools unchanged', () => {
     expect(toolsTabSrc).toContain("href: '/takeoff-pad'");
   });
 
-  it('WorkToolsTab still has SDS / MSDS Register', () => {
-    expect(toolsTabSrc).toContain('SDS / MSDS Register');
-    expect(toolsTabSrc).toContain("href: '/sds-register'");
+  it('WorkToolsTab does not list SDS (Safety, not Tools)', () => {
+    expect(toolsTabSrc).not.toContain('SDS / MSDS Register');
   });
 
   it('work.tsx TOOL_ITEMS still has Builders Calculator', () => {
@@ -216,9 +215,8 @@ describe('Public Toilet Finder — existing tools unchanged', () => {
     expect(workSrc).toContain("href: '/takeoff-pad'");
   });
 
-  it('work.tsx TOOL_ITEMS still has SDS / MSDS Register', () => {
-    expect(workSrc).toContain('SDS / MSDS Register');
-    expect(workSrc).toContain("href: '/sds-register'");
+  it('work.tsx TOOL_ITEMS does not list SDS (Safety, not Tools)', () => {
+    expect(workSrc).not.toContain('SDS / MSDS Register');
   });
 });
 

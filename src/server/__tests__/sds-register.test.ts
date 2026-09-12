@@ -12,8 +12,8 @@
  * 8. Replace endpoint — POST /:id/replace marks old entry with replaced_by_id
  * 9. homeIcons — sds_register key present in SAFETY_ICON_DEFS
  * 10. Routes — /sds-register route registered in routes.tsx
- * 11. Tools launcher — SDS card present in TOOL_ITEMS (work.tsx)
- * 12. WorkToolsTab — SDS card present in TOOLS array
+ * 11. Tools launcher — SDS is Safety, not Tools (work.tsx)
+ * 12. WorkToolsTab — SDS is not in TOOLS array
  */
 
 import { describe, it, expect, vi } from 'vitest';
@@ -337,12 +337,8 @@ describe('SDS register — routes.tsx', () => {
 describe('SDS register — MobileToolsLauncher (work.tsx)', () => {
   const src = fs.readFileSync(path.resolve('src/pages/work.tsx'), 'utf8');
 
-  it('TOOL_ITEMS includes SDS / MSDS Register', () => {
-    expect(src).toContain('SDS / MSDS Register');
-  });
-
-  it('TOOL_ITEMS SDS entry href is /sds-register', () => {
-    expect(src).toContain("href: '/sds-register'");
+  it('TOOL_ITEMS does not include SDS / MSDS Register (Safety, not Tools)', () => {
+    expect(src).not.toContain('SDS / MSDS Register');
   });
 });
 
@@ -351,11 +347,7 @@ describe('SDS register — MobileToolsLauncher (work.tsx)', () => {
 describe('SDS register — WorkToolsTab', () => {
   const src = fs.readFileSync(path.resolve('src/components/work/WorkToolsTab.tsx'), 'utf8');
 
-  it('WorkToolsTab TOOLS array includes SDS / MSDS Register', () => {
-    expect(src).toContain('SDS / MSDS Register');
-  });
-
-  it('WorkToolsTab SDS entry href is /sds-register', () => {
-    expect(src).toContain("href: '/sds-register'");
+  it('WorkToolsTab TOOLS array does not include SDS / MSDS Register', () => {
+    expect(src).not.toContain('SDS / MSDS Register');
   });
 });

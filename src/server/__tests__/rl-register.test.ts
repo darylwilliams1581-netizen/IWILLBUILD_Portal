@@ -20,7 +20,7 @@
  * 16. Soft-archive vs hard-delete — DELETE handler
  * 17. PDF export — signed values present in source
  * 18. CSV export — signed values present in source
- * 19. homeIcons — rl_register key in SAFETY_ICON_DEFS
+ * 19. homeIcons — rl_register is Tools, not Safety
  * 20. Routes — /rl-register registered in routes.tsx
  * 21. Tools launcher — RL Register in work.tsx TOOL_ITEMS
  * 22. WorkToolsTab — RL Register in TOOLS array
@@ -588,22 +588,10 @@ describe('RL register — CSV export signed values', () => {
 // ── 19. homeIcons ─────────────────────────────────────────────────────────────
 
 describe('RL register — homeIcons.ts', () => {
-  it('SAFETY_ICON_DEFS contains rl_register key', async () => {
+  it('SAFETY_ICON_DEFS does not contain rl_register (Tools, not Safety)', async () => {
     const { SAFETY_ICON_DEFS } = await import('../../lib/homeIcons');
     const keys = SAFETY_ICON_DEFS.map((i: { key: string }) => i.key);
-    expect(keys).toContain('rl_register');
-  });
-
-  it('rl_register icon href is /rl-register', async () => {
-    const { SAFETY_ICON_DEFS } = await import('../../lib/homeIcons');
-    const entry = SAFETY_ICON_DEFS.find((i: { key: string }) => i.key === 'rl_register');
-    expect(entry?.href).toBe('/rl-register');
-  });
-
-  it('rl_register icon group is safety', async () => {
-    const { SAFETY_ICON_DEFS } = await import('../../lib/homeIcons');
-    const entry = SAFETY_ICON_DEFS.find((i: { key: string }) => i.key === 'rl_register');
-    expect(entry?.group).toBe('safety');
+    expect(keys).not.toContain('rl_register');
   });
 });
 
