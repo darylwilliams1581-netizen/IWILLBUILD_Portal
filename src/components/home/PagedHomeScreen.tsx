@@ -105,11 +105,7 @@ function JobFeatureCard({
   rowSpan?: 2;
 }) {
   const Icon = feature.icon;
-  const displayLabel = feature.key === 'photos'
-    ? 'Job Photos'
-    : feature.key === 'attendance'
-      ? 'Attendance Records'
-      : feature.label;
+  const displayLabel = feature.label;
   const spanCls = [
     colSpan === 2 ? 'col-span-2' : '',
     rowSpan === 2 ? 'row-span-2' : '',
@@ -195,17 +191,11 @@ const JobFeaturePage = memo(function JobFeaturePage({
               */}
               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2" style={{ gridAutoRows: '1fr' }}>
                 {features.map(feature => {
-                  // Work group: Attendance is the 5th item — full width
-                  const isAttendance = group.label === 'Work' && feature.key === 'attendance';
-                  // Field & Files: Photos double-height, Files moves to fill void
-                  const isPhotos = group.label === 'Field & Files' && feature.key === 'photos';
                   return (
                     <JobFeatureCard
                       key={feature.key}
                       feature={feature}
                       onClick={onFeatureClick}
-                      colSpan={isAttendance ? 2 : undefined}
-                      rowSpan={isPhotos ? 2 : undefined}
                     />
                   );
                 })}

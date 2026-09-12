@@ -3,10 +3,10 @@
  * ─────────────────────────────────────────────────────────────────────────────
  * Tests for the simplified navigation model:
  *
- *   Home screen (Page 1) → 14 job-feature icons → Job picker → standalone page
+ *   Home screen (Page 1) → job-feature icons → Job picker → standalone page
  *
  * Covers:
- *  1. All 14 icons appear directly on the opening page (registry check)
+ *  1. Opening page hides duplicates (attendance, photos, forms, safety)
  *  2. No duplicate feature icons (unique keys)
  *  3. Work & Field button no longer appears in PortalSidebar or homeIcons
  *  4. Each icon has a pickerRoute pointing to /?picker=<key>
@@ -19,7 +19,7 @@
  * 11. Timesheets not using the Job picker
  * 12. JobFeatureShell fallback is / not /work-field
  * 13. PagedHomeScreen imports SharedJobPickerSheet (not local copy)
- * 14. Registry has exactly 14 features, all inOpeningPage
+ * 14. Registry has 14 features; 10 on opening page
  * 15. No /work-field hrefs remain in homeIcons.ts
  */
 
@@ -33,24 +33,30 @@ function src(rel: string): string {
   return fs.readFileSync(path.join(ROOT, rel), 'utf8');
 }
 
-// ── 1. All 14 features have inOpeningPage: true ───────────────────────────────
+// ── 1. Opening page hides duplicate tiles ────────────────────────────────────
 
-describe('Registry — all 14 features on opening page', () => {
+const HIDDEN_ON_OPENING_PAGE = ['attendance', 'photos', 'forms', 'safety'];
+
+describe('Registry — Work page hides duplicate tiles', () => {
   it('has exactly 14 features', async () => {
     const { JOB_FEATURES } = await import('@/lib/jobFeatureRegistry');
     expect(JOB_FEATURES).toHaveLength(14);
   });
 
-  it('all 14 features have inOpeningPage: true', async () => {
+  it('hides attendance, photos, forms and safety from the opening page', async () => {
     const { JOB_FEATURES } = await import('@/lib/jobFeatureRegistry');
-    JOB_FEATURES.forEach(f => {
-      expect(f.inOpeningPage).toBe(true);
-    });
+    for (const key of HIDDEN_ON_OPENING_PAGE) {
+      expect(JOB_FEATURES.find(f => f.key === key)?.inOpeningPage).toBe(false);
+      expect(JOB_FEATURES.find(f => f.key === key)?.inDropdown).toBe(true);
+    }
   });
 
-  it('OPENING_PAGE_FEATURES has 14 entries', async () => {
+  it('OPENING_PAGE_FEATURES has 10 entries', async () => {
     const { OPENING_PAGE_FEATURES } = await import('@/lib/jobFeatureRegistry');
-    expect(OPENING_PAGE_FEATURES).toHaveLength(14);
+    expect(OPENING_PAGE_FEATURES).toHaveLength(10);
+    expect(OPENING_PAGE_FEATURES.map(f => f.key)).not.toEqual(
+      expect.arrayContaining(HIDDEN_ON_OPENING_PAGE),
+    );
   });
 });
 
