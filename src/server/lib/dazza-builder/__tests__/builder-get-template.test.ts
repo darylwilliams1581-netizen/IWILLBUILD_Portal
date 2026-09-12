@@ -131,12 +131,9 @@ async function executeBuilderTool(
       const [docRows] = await db.execute(sql`SELECT id, name, builder_json FROM document_templates WHERE id = ${id} AND company_id = ${ownerCompanyId} LIMIT 1`) as unknown as [Array<Record<string, unknown>>, unknown];
 
       if (!docRows?.[0]) {
-        const [anyRows] = await db.execute(sql`SELECT id FROM document_templates WHERE id = ${id} LIMIT 1`) as unknown as [Array<{ id: number }>, unknown];
-        const exists = (anyRows?.length ?? 0) > 0;
+        // Single generic 404 — never reveal cross-tenant existence
         return err(
-          exists
-            ? `Document template #${id} does not belong to your company. Open the correct template and re-run your request.`
-            : `Document template #${id} not found. It may have been deleted. Open an existing template and re-run your request.`,
+          `Document template #${id} not found. It may have been deleted, or you may not have access. Open an existing template and re-run your request.`,
         );
       }
 
@@ -227,35 +224,50 @@ describe('builder_get_template — inspection read path', () => {
     expect(result.data.fieldCount).toBeUndefined();
   });
 
-  // ── Test 3: Wrong-company document is denied ──────────────────────────────
-  it('3. Wrong-company document returns "does not belong" error', async () => {
+  // ── Test 3: Wrong-company document returns generic 404 ───────────────────
+  it('3. Wrong-company document returns generic 404 — cross-tenant existence not revealed', async () => {
+    // Security requirement: the error message must be identical whether the
+    // document doesn't exist at all OR belongs to another company.
+    // A second "does it exist at all?" query would leak cross-tenant existence
+    // (information-disclosure vulnerability) — so there must be exactly ONE
+    // document_templates query (the tenant-scoped one), and the error message
+    // must NOT say "does not belong to your company".
     mockDbExecute
       .mockResolvedValueOnce(mysqlTuple([makeProfileRow(7)]))   // profiles → company 7
-      .mockResolvedValueOnce(mysqlTuple([]))                    // document_templates WHERE company_id=7 → empty
-      .mockResolvedValueOnce(mysqlTuple([{ id: 111 }]));        // document_templates (any) → exists
+      .mockResolvedValueOnce(mysqlTuple([]));                   // document_templates WHERE id=111 AND company_id=7 → empty
 
     const result = JSON.parse(await executeBuilderTool('builder_get_template', { templateId: 111 }, OWNER, CTX_111));
 
     expect(result.ok).toBe(false);
-    expect(result.error).toMatch(/does not belong to your company/i);
+    // Generic 404 — same message regardless of reason
+    expect(result.error).toMatch(/not found|deleted|access/i);
     expect(result.error).toContain('111');
+    // Must NOT reveal cross-tenant existence
+    expect(result.error).not.toMatch(/does not belong/i);
+    expect(result.error).not.toMatch(/another company/i);
+    // Exactly 2 calls: profiles + one tenant-scoped document_templates query.
+    // No third "does it exist at all?" probe.
+    expect(mockDbExecute).toHaveBeenCalledTimes(2);
   });
 
-  // ── Test 4: Nonexistent ID returns a precise 404 ──────────────────────────
-  it('4. Nonexistent template ID returns "not found / deleted" error', async () => {
+  // ── Test 4: Nonexistent ID returns the same generic 404 ──────────────────
+  it('4. Nonexistent template ID returns the same generic 404 as wrong-company', async () => {
+    // The error message for a genuinely nonexistent ID must be indistinguishable
+    // from the wrong-company case (test 3) — same wording, same call count.
     const CTX_999: BuilderContext = { builderType: 'document', templateId: null, canonicalTemplateId: 999 };
     mockDbExecute
       .mockResolvedValueOnce(mysqlTuple([makeProfileRow(7)]))   // profiles
-      .mockResolvedValueOnce(mysqlTuple([]))                    // document_templates WHERE id=999 AND company_id=7 → empty
-      .mockResolvedValueOnce(mysqlTuple([]));                   // document_templates WHERE id=999 (any) → empty
+      .mockResolvedValueOnce(mysqlTuple([]));                   // document_templates WHERE id=999 AND company_id=7 → empty
 
     const result = JSON.parse(await executeBuilderTool('builder_get_template', { templateId: 999 }, OWNER, CTX_999));
 
     expect(result.ok).toBe(false);
-    expect(result.error).toMatch(/not found|deleted/i);
+    expect(result.error).toMatch(/not found|deleted|access/i);
     expect(result.error).toContain('999');
-    // Must NOT say "does not belong" — the template simply doesn't exist
+    // Must NOT say "does not belong" — same generic message as test 3
     expect(result.error).not.toMatch(/does not belong/i);
+    // Exactly 2 calls — no extra existence probe
+    expect(mockDbExecute).toHaveBeenCalledTimes(2);
   });
 
   // ── Test 5: AI-requested templateId cannot override canonical ID ──────────

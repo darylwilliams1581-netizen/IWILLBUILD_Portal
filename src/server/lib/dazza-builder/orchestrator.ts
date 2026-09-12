@@ -114,6 +114,13 @@ async function executeBuilderTool(
           // Destructure with [rows] — do NOT use (result as {rows:[]}).rows
           // which would be undefined (result IS the rows array, not an object
           // with a rows property).
+          //
+          // ── Single tenant-scoped query — no cross-tenant existence probe ──
+          // We intentionally use a single WHERE id = ? AND company_id = ? query
+          // and return the same generic 404 for both "nonexistent" and
+          // "belongs to another company".  A second "does it exist at all?"
+          // query would leak the fact that a document exists in another tenant,
+          // which is an information-disclosure vulnerability.
           const [docRows] = await db.execute(sql`
             SELECT id, name, template_type, doc_status, doc_kind,
                    requires_acknowledgement, submit_label, requires_signature,
@@ -125,16 +132,11 @@ async function executeBuilderTool(
           `) as unknown as [Array<Record<string, unknown>>, unknown];
 
           if (!docRows?.[0]) {
-            // Distinguish "exists but wrong company" from "doesn't exist at all"
-            // so the error message is precise rather than generic.
-            const [anyRows] = await db.execute(sql`
-              SELECT id FROM document_templates WHERE id = ${id} LIMIT 1
-            `) as unknown as [Array<{ id: number }>, unknown];
-            const exists = (anyRows?.length ?? 0) > 0;
+            // Return the same message regardless of whether the document
+            // doesn't exist or belongs to another company — never reveal
+            // cross-tenant existence.
             return err(
-              exists
-                ? `Document template #${id} does not belong to your company. Open the correct template and re-run your request.`
-                : `Document template #${id} not found. It may have been deleted. Open an existing template and re-run your request.`,
+              `Document template #${id} not found. It may have been deleted, or you may not have access. Open an existing template and re-run your request.`,
             );
           }
 
@@ -206,15 +208,9 @@ async function executeBuilderTool(
           `) as unknown as [Array<Record<string, unknown>>, unknown];
 
           if (!ftRows?.[0]) {
-            const [anyRows] = await db.execute(sql`
-              SELECT id FROM form_templates WHERE id = ${id} LIMIT 1
-            `) as unknown as [Array<{ id: number }>, unknown];
-            const exists = (anyRows?.length ?? 0) > 0;
-            return err(
-              exists
-                ? `Form template #${id} does not belong to your company.`
-                : `Form template #${id} not found.`,
-            );
+            // Same single-message 404 for both nonexistent and cross-tenant —
+            // never reveal that a form template exists in another company.
+            return err(`Form template #${id} not found. It may have been deleted, or you may not have access.`);
           }
 
           const [fieldRows] = await db.execute(sql`
