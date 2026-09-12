@@ -14,7 +14,7 @@
 
 import { useState, useRef, useCallback, useEffect, memo, type TouchEvent as ReactTouchEvent } from 'react';
 import { useNavigate, useSearchParams } from "react-router";
-import { LayoutDashboard, Briefcase, Settings2, ShieldCheck, Plus, LogIn, Car, HardHat, Camera as CameraIcon, User, LogOut, Users, ChevronDown } from 'lucide-react';
+import { LayoutDashboard, Briefcase, Settings2, ShieldCheck, Plus, LogIn, Car, HardHat, Camera as CameraIcon, User, LogOut, Users, ChevronDown, Zap, CalendarDays, Map, DollarSign, Wrench } from 'lucide-react';
 import * as Collapsible from '@radix-ui/react-collapsible';
 import DashboardBanner from '@/components/dashboard/DashboardBanner';
 import NotificationList from '@/components/NotificationList';
@@ -123,23 +123,106 @@ function JobFeatureCard({
 
 // ── Job feature page (Page 1) ─────────────────────────────────────────────────
 
+type WorkDirectTile = {
+  key: string;
+  label: string;
+  group: 'Work' | 'Field & Files' | 'Finance';
+  href: string;
+  bg: string;
+  fg: string;
+  icon: JobFeature['icon'];
+};
+
+const WORK_DIRECT_TILES: WorkDirectTile[] = [
+  {
+    key: 'equipment',
+    label: 'Equipment Manager',
+    group: 'Work',
+    href: '/studio/asset-manager',
+    bg: 'bg-sky-700',
+    fg: 'text-white',
+    icon: Wrench,
+  },
+  {
+    key: 'plan_mgr',
+    label: 'Plan Manager',
+    group: 'Field & Files',
+    href: '/plan-manager',
+    bg: 'bg-blue-500',
+    fg: 'text-white',
+    icon: Map,
+  },
+  {
+    key: 'log_cost',
+    label: 'Log Cost',
+    group: 'Finance',
+    href: '?panel=log-cost',
+    bg: 'bg-emerald-500',
+    fg: 'text-white',
+    icon: DollarSign,
+  },
+];
+
+const MANAGE_HIDDEN_KEYS = new Set([
+  'lens',
+  'fleet',
+  'files',
+  'quotes',
+  'invoices_mgmt',
+  'ledger',
+  'purchase_orders',
+  'log_cost',
+  'scheduler',
+  'job_card',
+  'plan_mgr',
+  'asset_mgr',
+]);
+
+function DirectWorkCard({
+  tile,
+  onClick,
+}: {
+  tile: WorkDirectTile;
+  onClick: (href: string) => void;
+}) {
+  const Icon = tile.icon;
+  return (
+    <button
+      type="button"
+      onClick={() => onClick(tile.href)}
+      data-testid={`opening-page-card-${tile.key}`}
+      aria-label={tile.label}
+      className="w-full flex items-center gap-2.5 px-3 py-2.5 bg-white rounded-xl border border-gray-100 shadow-sm hover:shadow-md hover:border-violet-200 active:scale-[0.97] transition-all duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-1"
+      style={{ minHeight: 52 }}
+    >
+      <div className={`w-8 h-8 rounded-lg ${tile.bg} flex items-center justify-center shrink-0`}>
+        <Icon size={16} className={tile.fg} />
+      </div>
+      <span className="text-[13px] font-semibold text-gray-800 leading-tight text-left">
+        {tile.label}
+      </span>
+    </button>
+  );
+}
+
 const JobFeaturePage = memo(function JobFeaturePage({
   onFeatureClick,
+  onNavigate,
 }: {
   onFeatureClick: (f: JobFeature) => void;
+  onNavigate: (href: string) => void;
 }) {
   return (
     <div
       className="h-full overflow-y-auto bg-gray-50/60"
       data-testid="opening-page-job-features"
-      // Normal bottom padding — no sticky bar on this page.
       style={{ paddingBottom: 'max(env(safe-area-inset-bottom), 16px)' }}
     >
-      {/* Content column — max 640px, centred on wide screens */}
       <div className="mx-auto w-full px-3 pt-2 flex flex-col gap-3" style={{ maxWidth: 640 }}>
         {FEATURE_GROUPS.map(group => {
           const features = group.features.filter(f => f.inOpeningPage);
-          if (features.length === 0) return null;
+          const extras = WORK_DIRECT_TILES.filter(t => t.group === group.label);
+          if (features.length === 0 && extras.length === 0) return null;
           const panel = GROUP_PANEL[group.label] ?? { panelVar: 'hsl(var(--muted))', headingColor: 'text-muted-foreground' };
           return (
             <section
@@ -151,15 +234,20 @@ const JobFeaturePage = memo(function JobFeaturePage({
             >
               <SectionHeading label={group.label} headingColor={panel.headingColor} />
               <div className="grid grid-cols-1 gap-2">
-                {features.map(feature => {
-                  return (
-                    <JobFeatureCard
-                      key={feature.key}
-                      feature={feature}
-                      onClick={onFeatureClick}
-                    />
-                  );
-                })}
+                {features.map(feature => (
+                  <JobFeatureCard
+                    key={feature.key}
+                    feature={feature}
+                    onClick={onFeatureClick}
+                  />
+                ))}
+                {extras.map(tile => (
+                  <DirectWorkCard
+                    key={tile.key}
+                    tile={tile}
+                    onClick={onNavigate}
+                  />
+                ))}
               </div>
             </section>
           );
@@ -269,6 +357,34 @@ const DashboardPage = memo(function DashboardPage({
             </span>
           )}
         </button>
+        <button
+          onClick={() => onNavigate('/job-cards')}
+          className="col-span-2 flex items-center gap-2.5 px-3 py-2.5 rounded-xl bg-yellow-500 text-white shadow-sm active:scale-95 transition-transform"
+          data-testid="job-cards-launcher-btn"
+          style={{ minHeight: 52 }}
+        >
+          <div className="w-8 h-8 rounded-lg bg-white/20 flex items-center justify-center shrink-0">
+            <Zap size={16} strokeWidth={2} />
+          </div>
+          <div className="flex flex-col items-start">
+            <span className="text-[13px] font-bold leading-tight">Job Cards</span>
+            <span className="text-[10px] text-white/60 leading-tight">Site job cards</span>
+          </div>
+        </button>
+        <button
+          onClick={() => onNavigate('/scheduler')}
+          className="col-span-2 flex items-center gap-2.5 px-3 py-2.5 rounded-xl bg-indigo-500 text-white shadow-sm active:scale-95 transition-transform"
+          data-testid="scheduler-launcher-btn"
+          style={{ minHeight: 52 }}
+        >
+          <div className="w-8 h-8 rounded-lg bg-white/20 flex items-center justify-center shrink-0">
+            <CalendarDays size={16} strokeWidth={2} />
+          </div>
+          <div className="flex flex-col items-start">
+            <span className="text-[13px] font-bold leading-tight">Scheduler</span>
+            <span className="text-[10px] text-white/60 leading-tight">Crew and plant roster</span>
+          </div>
+        </button>
       </div>
 
       <NotificationList />
@@ -376,7 +492,7 @@ function ManagePage({
     }}>
       <div className="mx-auto w-full" style={{ maxWidth: 480 }}>
         {MANAGE_GROUP_ORDER.map(({ group, label }) => {
-          const groupIcons = icons.filter(i => i.group === group);
+          const groupIcons = icons.filter(i => i.group === group && !MANAGE_HIDDEN_KEYS.has(i.key));
           if (groupIcons.length === 0) return null;
 
           const collapsibleCfg = COLLAPSIBLE_GROUPS[group];
@@ -660,7 +776,7 @@ export default memo(function PagedHomeScreen({
 
           {/* Page 1 — Work */}
           <div className="min-h-0" style={{ width: '25%', height: '100%' }}>
-            <JobFeaturePage onFeatureClick={handleFeatureClick} />
+            <JobFeaturePage onFeatureClick={handleFeatureClick} onNavigate={onNavigate} />
           </div>
 
           {/* Page 2 — Safety */}

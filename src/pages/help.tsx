@@ -80,8 +80,8 @@ const ICON_DOCS: Record<string, IconDoc> = {
   },
   asset_mgr: {
     purpose: 'Manage and track company assets — equipment, tools, and plant. Log service records, check maintenance schedules, and record usage.',
-    howTo: ['Tap Asset Manager on the home screen (Admin only).', 'Browse the asset list or search by name.', 'Tap an asset to view its details, service history, and documents.', 'Use the + button to log a new service or usage record.'],
-    tip: 'Asset Manager is visible to Admins and Owners only.',
+    howTo: ['Tap Equipment Manager on Work.', 'Browse the equipment list or search by name.', 'Tap an item to view details, service history, and documents.', 'Use the + button to log a new service or usage record.'],
+    tip: 'Equipment Manager is on the Work tab.',
   },
 
   // ── FLEET ──────────────────────────────────────────────────────────────────

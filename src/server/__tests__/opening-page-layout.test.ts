@@ -403,6 +403,8 @@ describe('Dashboard quick-action buttons — compact spec', () => {
     expect(screenSrc).toMatch(/>\s*Photos\s*<\/button>/);
     expect(screenSrc).toMatch(/>\s*Attendance\s*<\/span>/);
     expect(screenSrc).toMatch(/>\s*Sign in or out\s*<\/span>/);
+    expect(screenSrc).toContain('Job Cards');
+    expect(screenSrc).toContain('/scheduler');
   });
 
   it('Add Job glyph is 16px', () => {

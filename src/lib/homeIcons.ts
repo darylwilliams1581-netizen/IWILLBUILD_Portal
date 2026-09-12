@@ -60,6 +60,7 @@ export const FIELD_ICON_DEFS: HomeIconDef[] = [
   { key: 'job_card',    label: 'Job Cards',   icon: Zap,          href: '/job-cards',                   bg: 'bg-yellow-500',  fg: 'text-white', group: 'field' },
   { key: 'log_cost',    label: 'Log Cost',    icon: DollarSign,   href: '?panel=log-cost',              bg: 'bg-emerald-500', fg: 'text-white', group: 'field' },
   { key: 'scheduler',   label: 'Scheduler',   icon: CalendarDays, href: '/scheduler',                   bg: 'bg-indigo-500',  fg: 'text-white', group: 'field' },
+  { key: 'asset_mgr',  label: 'Equipment Manager', icon: HardDriveUpload, href: '/studio/asset-manager', bg: 'bg-sky-700',     fg: 'text-white', group: 'field' },
 ];
 
 // ── FILES (mirrors desktop sidebar "Field & Files" heading) ───────────────────
@@ -67,7 +68,6 @@ export const FILES_ICON_DEFS: HomeIconDef[] = [
   { key: 'lens',        label: 'Lens',        icon: Camera,       href: '/lens',                        bg: 'bg-violet-600',  fg: 'text-white', group: 'files' },
   { key: 'plan_mgr',   label: 'Plan Manager',icon: Map,          href: '/plan-manager',                bg: 'bg-blue-500',    fg: 'text-white', group: 'files' },
   { key: 'files',       label: 'Files',       icon: FolderOpen,   href: '/files',                       bg: 'bg-violet-700',  fg: 'text-white', group: 'files' },
-  { key: 'asset_mgr',  label: 'Asset Manager', icon: HardDriveUpload, href: '/studio/asset-manager',   bg: 'bg-sky-700',     fg: 'text-white', group: 'files', adminOnly: true },
 ];
 
 // ── FLEET (mirrors desktop sidebar "Fleet" heading) ───────────────────────────

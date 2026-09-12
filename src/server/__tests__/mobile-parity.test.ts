@@ -74,9 +74,10 @@ describe('Role-gating flags on homeIcons', () => {
     expect(line).toContain('ownerOnly: true');
   });
 
-  it('asset_mgr is adminOnly', () => {
+  it('asset_mgr is Equipment Manager on Work, not admin-only', () => {
     const line = homeIconsSrc.match(/key: 'asset_mgr'[^\n]*/)?.[0] ?? '';
-    expect(line).toContain('adminOnly: true');
+    expect(line).toContain("label: 'Equipment Manager'");
+    expect(line).not.toContain('adminOnly: true');
   });
 
   it('finance_settings is adminOnly', () => {
