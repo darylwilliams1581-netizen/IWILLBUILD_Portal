@@ -125,17 +125,82 @@ export const BUILDER_TOOL_DEFINITIONS = [
       required: [],
     },
   },
+  {
+    type: 'function' as const,
+    name: 'builder_search_reference_docs',
+    description: [
+      'Search approved reference documents (doc_status=published or active, is_active=1) for this tenant.',
+      'Use this to find existing documents that match a type, safety category, work activity, or title keyword.',
+      'Returns document IDs, names, types, and a provenance note listing which documents were found.',
+      'NEVER use this to find draft or broken documents — those are excluded automatically.',
+      'Always report the provenance note in your response so the owner knows which references were used.',
+    ].join(' '),
+    parameters: {
+      type: 'object',
+      properties: {
+        documentType: {
+          type: 'string',
+          description: 'Filter by template_type (e.g. "swms", "safety_plan", "policy", "procedure", "emp", "generic")',
+        },
+        safetyCategory: {
+          type: 'string',
+          description: 'Safety category keyword to match against document name and headings (e.g. "electrical", "working at heights", "confined space")',
+        },
+        titleKeyword: {
+          type: 'string',
+          description: 'Keyword to match against document name (e.g. "Bricklaying", "Concreting")',
+        },
+        workActivity: {
+          type: 'string',
+          description: 'Work activity keyword to match against document name and headings (e.g. "excavation", "scaffolding")',
+        },
+        tags: {
+          type: 'array',
+          items: { type: 'string' },
+          description: 'Tag keywords — ALL must match somewhere in name or headings',
+        },
+        limit: {
+          type: 'number',
+          description: 'Max results to return (default 10, max 20)',
+        },
+      },
+      required: [],
+    },
+  },
+  {
+    type: 'function' as const,
+    name: 'builder_get_document_style',
+    description: [
+      'Read the style profile of a specific approved reference document.',
+      'Returns page layout, theme colours, heading hierarchy, table patterns, banner variants, safety images, and sign-off/revision patterns.',
+      'Only works on approved documents (published or active). Draft and broken documents are rejected.',
+      'Always report the provenance note in your response so the owner knows which reference was used.',
+      'Use this BEFORE proposing a new document to ensure consistent styling.',
+    ].join(' '),
+    parameters: {
+      type: 'object',
+      properties: {
+        documentId: {
+          type: 'number',
+          description: 'The document_templates.id of the approved reference document to read',
+        },
+      },
+      required: ['documentId'],
+    },
+  },
 ];
 
 // ── Tool labels (safe for SSE — never include args or results) ────────────────
 
 export const TOOL_LABELS: Record<string, string> = {
-  builder_get_template:          'Loading template…',
-  builder_list_templates:        'Searching templates…',
-  builder_get_versions:          'Loading version history…',
-  builder_propose_changes:       'Preparing proposed changes…',
-  builder_validate_operations:   'Validating operations…',
-  builder_list_document_tools:   'Loading document tools catalogue…',
+  builder_get_template:            'Loading template…',
+  builder_list_templates:          'Searching templates…',
+  builder_get_versions:            'Loading version history…',
+  builder_propose_changes:         'Preparing proposed changes…',
+  builder_validate_operations:     'Validating operations…',
+  builder_list_document_tools:     'Loading document tools catalogue…',
+  builder_search_reference_docs:   'Searching reference documents…',
+  builder_get_document_style:      'Reading document style…',
 };
 
 // ── System prompt ─────────────────────────────────────────────────────────────
@@ -230,6 +295,16 @@ You can help with Forms Builder operations:
 12. ATTACHMENTS: When a message in the conversation history contains a [QUOTED ATTACHMENT] block, that is the content source. If the user says "use the attachment", "the doc here", "insert from the attachment", "use that file", "just insert on this doc", or any similar shorthand — look back through the conversation history for the most recent [QUOTED ATTACHMENT] block and use it as the content source. Do NOT ask the user to re-upload or re-describe the attachment. Do NOT ask "what content?" when an attachment is already present in the conversation history.
 13. TRUTHFULNESS: Never say a template was "created", "updated", "saved" or "applied" until the owner clicks Apply and the server returns success. Your role is to PROPOSE — the owner decides whether to apply. Use future tense: "This will create…", "The proposal includes…", "Once applied, this will…".
 14. TARGET INTEGRITY: The proposal's target template is always the currently open template (or null for new). Never substitute a different template ID. If no template is open and the user wants to edit an existing one, ask them to open it first.
+15. REFERENCE DOCUMENTS: When creating a new document or adding sections to an existing one, call builder_search_reference_docs first to find approved reference documents of the same type. Then call builder_get_document_style on the best match to read its style profile. Apply the same pageLayout, theme, heading hierarchy, table patterns, and safety image conventions. Always report which reference documents you used (include the provenance note from the tool result).
+16. APPROVED REFERENCES ONLY: Never cite, copy from, or use as a style guide any document that is not returned by builder_search_reference_docs. Draft, broken, and inactive documents are excluded automatically — do not attempt to access them directly.
+
+## Reference Document Workflow
+When the user asks you to create a new document or add a major section:
+1. Call builder_search_reference_docs with the appropriate documentType and/or titleKeyword/workActivity
+2. If results are found, call builder_get_document_style on the best-matching document
+3. Apply the style profile to your proposal (pageLayout, theme, heading levels, table column patterns, banner variants, safety images)
+4. In your response, state: "Based on reference document #ID '[Name]' — [provenance note]"
+5. If no approved references exist, proceed with the IWILLBUILD default style (A4 portrait, standard margins, navy accent #1e3a5f)
 
 ## Workflow
 For SIMPLE requests (add/remove a single block or field with no ambiguity):

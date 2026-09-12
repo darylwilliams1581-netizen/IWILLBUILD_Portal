@@ -35,6 +35,7 @@ import { loadHistory, saveMessage, sanitiseHistory, CONTEXT_RECENT_TURNS } from 
 import { auditBuilder } from './audit.js';
 import { resolveAndExtractEvidence, buildUntrustedEvidenceBlock } from '../../lib/dazza-attachment-service.js';
 import { getGroupedCatalogue } from './document-tool-catalogue.js';
+import { searchReferenceDocs, getReferenceDocStyle, resolveOwnerCompanyId } from './dazza-reference-service.js';
 
 const TOOL_ROUNDS_MAX = 6;
 const MAX_TOKENS = 8000;
@@ -301,6 +302,57 @@ async function executeBuilderTool(
           note: 'Document Builder tool catalogue. Use toolId in addBlock operations for named tools.',
           groups,
         });
+      }
+
+      case 'builder_search_reference_docs': {
+        // ── Security: resolve ownerCompanyId server-side — never from AI args ──
+        // The AI cannot supply or influence the company_id used for tenant isolation.
+        const companyId = await resolveOwnerCompanyId(ownerContext.userId);
+        if (!companyId) return err('Owner has no company profile — cannot search reference documents.');
+
+        const result = await searchReferenceDocs({
+          ownerCompanyId: companyId,
+          documentType:   args.documentType   ? String(args.documentType)   : undefined,
+          safetyCategory: args.safetyCategory ? String(args.safetyCategory) : undefined,
+          titleKeyword:   args.titleKeyword   ? String(args.titleKeyword)   : undefined,
+          workActivity:   args.workActivity   ? String(args.workActivity)   : undefined,
+          tags:           Array.isArray(args.tags) ? (args.tags as string[]).map(String) : undefined,
+          limit:          args.limit ? Math.min(Number(args.limit), 20) : 10,
+        });
+
+        void auditBuilder(ownerContext.userId, 'builder_reference_search', {
+          documentType: args.documentType,
+          titleKeyword: args.titleKeyword,
+          workActivity: args.workActivity,
+          resultsCount: result.documents.length,
+          totalApproved: result.totalApproved,
+        });
+
+        return ok(result);
+      }
+
+      case 'builder_get_document_style': {
+        // ── Security: resolve ownerCompanyId server-side — never from AI args ──
+        const companyId = await resolveOwnerCompanyId(ownerContext.userId);
+        if (!companyId) return err('Owner has no company profile — cannot read document style.');
+
+        const documentId = Number(args.documentId);
+        if (!documentId || documentId <= 0) return err('documentId must be a positive integer.');
+
+        const result = await getReferenceDocStyle(documentId, companyId);
+
+        if (!result.ok) {
+          // Return the error code and message — Dazza will explain to the user
+          return ok({ ok: false, code: result.code, message: result.message });
+        }
+
+        void auditBuilder(ownerContext.userId, 'builder_reference_style_read', {
+          documentId,
+          documentName: result.detail.name,
+          documentType: result.detail.templateType,
+        });
+
+        return ok(result.detail);
       }
 
       default:
