@@ -28,6 +28,7 @@ import CompanyHealthTab from '@/components/owner-console/CompanyHealthTab';
 import SupportNotesTab from '@/components/owner-console/SupportNotesTab';
 import AccountingSmokeTestTab from '@/components/owner-console/AccountingSmokeTestTab';
 import SwmsMasterLibraryTab from '@/components/owner-console/SwmsMasterLibraryTab';
+import SafetyDocSeedTab from '@/components/owner-console/SafetyDocSeedTab';
 import LibraryManagerTab from '@/components/owner-console/LibraryManagerTab';
 import GlobalLibraryTab from '@/components/owner-console/GlobalLibraryTab';
 import BugReportsTab from '@/components/owner-console/BugReportsTab';
@@ -353,8 +354,8 @@ export default function OwnerConsolePage() {
   const [activity, setActivity] = useState<ActivityEvent[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  type ConsoleTab = 'overview' | 'companies' | 'users' | 'activity' | 'support-setup' | 'usage' | 'storage' | 'cancellation-feedback' | 'system-ai' | 'audit-log' | 'activity-log' | 'email-log' | 'platform-email' | 'company-health' | 'support-notes' | 'accounting-smoke' | 'health-check' | 'swms-seed' | 'bug-reports' | 'incidents' | 'client-rescue' | 'anatomy' | 'global-library' | 'twilio' | 'image-safeguard';
-  const VALID_TABS: ReadonlySet<string> = new Set<ConsoleTab>(['overview','companies','users','activity','support-setup','usage','storage','cancellation-feedback','system-ai','audit-log','activity-log','email-log','platform-email','company-health','support-notes','accounting-smoke','health-check','swms-seed','bug-reports','incidents','client-rescue','anatomy','global-library','twilio','image-safeguard']);
+  type ConsoleTab = 'overview' | 'companies' | 'users' | 'activity' | 'support-setup' | 'usage' | 'storage' | 'cancellation-feedback' | 'system-ai' | 'audit-log' | 'activity-log' | 'email-log' | 'platform-email' | 'company-health' | 'support-notes' | 'accounting-smoke' | 'health-check' | 'swms-seed' | 'safety-doc-seed' | 'bug-reports' | 'incidents' | 'client-rescue' | 'anatomy' | 'global-library' | 'twilio' | 'image-safeguard';
+  const VALID_TABS: ReadonlySet<string> = new Set<ConsoleTab>(['overview','companies','users','activity','support-setup','usage','storage','cancellation-feedback','system-ai','audit-log','activity-log','email-log','platform-email','company-health','support-notes','accounting-smoke','health-check','swms-seed','safety-doc-seed','bug-reports','incidents','client-rescue','anatomy','global-library','twilio','image-safeguard']);
   const rawTab = searchParams.get('tab') ?? 'overview';
   const [tab, setTab] = useState<ConsoleTab>(VALID_TABS.has(rawTab) ? (rawTab as ConsoleTab) : 'overview');
   const [bugReportCount, setBugReportCount] = useState(0);
@@ -927,6 +928,15 @@ export default function OwnerConsolePage() {
               Global Library
             </span>
           </Tab>
+          <Tab active={tab === 'safety-doc-seed'} onClick={() => {
+          setTab('safety-doc-seed');
+          setSearchParams({ tab: 'safety-doc-seed' });
+        }}>
+            <span className="flex items-center gap-1.5">
+              <Database size={12} />
+              Safety Doc Seed
+            </span>
+          </Tab>
           <Tab active={tab === 'twilio'} onClick={() => {
           setTab('twilio');
           setSearchParams({ tab: 'twilio' });
@@ -1104,6 +1114,7 @@ export default function OwnerConsolePage() {
               {tab === 'accounting-smoke' && <AccountingSmokeTestTab />}
 
               {tab === 'swms-seed' && <SwmsMasterLibraryTab />}
+              {tab === 'safety-doc-seed' && <SafetyDocSeedTab />}
 
               {/* ── Bug Reports ── */}
               {tab === 'bug-reports' && <BugReportsTab onCountChange={setBugReportCount} />}

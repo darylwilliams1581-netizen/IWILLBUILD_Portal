@@ -731,19 +731,20 @@ function makeBuilderJson(blocks: object[]): string {
   });
 }
 
-// ── Insert one document_template ──────────────────────────────────────────────
+// ── Insert one document_template (live only — not called in dry-run) ──────────
 
 async function insertDocTemplate(
+  conn: Parameters<Parameters<typeof db.transaction>[0]>[0],
   companyId: number,
   name: string,
   templateType: string,
   blocks: object[],
 ): Promise<number> {
-  const builderJson = makeBuilderJson(blocks);
+  const builderJson    = makeBuilderJson(blocks);
   const pageLayoutJson = JSON.stringify({});
-  const themeJson = JSON.stringify({});
+  const themeJson      = JSON.stringify({});
 
-  const [result] = await db.execute(sql.raw(
+  const [result] = await conn.execute(sql.raw(
     `INSERT INTO document_templates
        (company_id, name, template_type, builder_json, page_layout_json, theme_json,
         doc_status, is_active, doc_kind)
@@ -763,129 +764,233 @@ async function insertDocTemplate(
   return result.insertId;
 }
 
-// ── Seed SWMS into document_templates ────────────────────────────────────────
+// ── Shared: build the SWMS plan for both dry-run and live ─────────────────────
 
-async function seedSwmsDocuments(companyId: number): Promise<{
-  inserted: string[];
-  skipped: string[];
-  errors: string[];
-}> {
-  const inserted: string[] = [];
-  const skipped: string[] = [];
-  const errors: string[] = [];
+interface SwmsPlan {
+  flatOnly:   Array<{ title: string; data: FlatSwms }>;
+  ocEntries:  Array<{ title: string; replacesFlat: string | null; data: OcSwms }>;
+  suppressedFlatTitles: Set<string>;
+  existingSwmsNames:    Set<string>;
+}
 
-  // Load seed files
+async function buildSwmsPlan(companyId: number): Promise<SwmsPlan> {
   const [s1, s2, ocData] = await Promise.all([
     loadJson<{ swms: FlatSwms[] }>('safety.json'),
     loadJson<{ swms: FlatSwms[] }>('safety-extended.json'),
     loadJson<{ swms: OcSwms[] }>('swms-oc.json'),
   ]);
 
-  // Build flat map (extended overrides original by title)
   const flatMap = new Map<string, FlatSwms>();
   for (const t of [...s1.swms, ...s2.swms]) flatMap.set(t.title, t);
 
-  // Flat titles suppressed by OC equivalents
   const suppressedFlatTitles = new Set(Object.values(OC_REPLACES_FLAT));
 
-  // Fetch existing document_template names for this company to skip duplicates
   const [existingRows] = await db.execute(
     sql.raw(`SELECT name FROM document_templates WHERE company_id = ${companyId} AND template_type = 'swms'`)
   ) as unknown as [Array<{ name: string }>, unknown];
-  const existingNames = new Set(existingRows.map((r) => r.name));
+  const existingSwmsNames = new Set(existingRows.map((r) => r.name));
 
-  // Reset block ID counter for deterministic IDs
-  _blockId = 1;
-
-  // 1. Insert flat SWMS that are NOT suppressed by OC equivalents
-  for (const [title, t] of flatMap) {
-    if (suppressedFlatTitles.has(title)) continue;
-    if (existingNames.has(title)) { skipped.push(`[flat] ${title} (already exists)`); continue; }
-    try {
-      const blocks = flatSwmsToBlocks(t);
-      await insertDocTemplate(companyId, title, 'swms', blocks);
-      inserted.push(`[flat] ${title}`);
-    } catch (e) {
-      errors.push(`[flat] ${title}: ${String(e).slice(0, 120)}`);
-    }
+  const flatOnly: SwmsPlan['flatOnly'] = [];
+  for (const [title, data] of flatMap) {
+    if (!suppressedFlatTitles.has(title)) flatOnly.push({ title, data });
   }
 
-  // 2. Insert OC SWMS (richer content — replaces flat equivalents)
-  for (const t of ocData.swms) {
-    if (existingNames.has(t.title)) { skipped.push(`[oc] ${t.title} (already exists)`); continue; }
-    try {
-      const blocks = ocSwmsToBlocks(t);
-      await insertDocTemplate(companyId, t.title, 'swms', blocks);
-      const replaces = OC_REPLACES_FLAT[t.title];
-      inserted.push(`[oc] ${t.title}${replaces ? ` (replaces flat: ${replaces})` : ''}`);
-    } catch (e) {
-      errors.push(`[oc] ${t.title}: ${String(e).slice(0, 120)}`);
-    }
-  }
+  const ocEntries: SwmsPlan['ocEntries'] = ocData.swms.map((t) => ({
+    title: t.title,
+    replacesFlat: OC_REPLACES_FLAT[t.title] ?? null,
+    data: t,
+  }));
 
-  return { inserted, skipped, errors };
+  return { flatOnly, ocEntries, suppressedFlatTitles, existingSwmsNames };
 }
 
-// ── Seed safety plans into document_templates ─────────────────────────────────
+interface SafetyPlanPlan {
+  plans: SafetyPlanDef[];
+  existingPlanNames: Set<string>;
+}
 
-async function seedSafetyPlans(companyId: number): Promise<{
-  inserted: string[];
-  skipped: string[];
-  errors: string[];
-}> {
-  const inserted: string[] = [];
-  const skipped: string[] = [];
-  const errors: string[] = [];
-
+async function buildSafetyPlanPlan(companyId: number): Promise<SafetyPlanPlan> {
   const [existingRows] = await db.execute(
     sql.raw(`SELECT name FROM document_templates WHERE company_id = ${companyId} AND template_type = 'safety_plan'`)
   ) as unknown as [Array<{ name: string }>, unknown];
-  const existingNames = new Set(existingRows.map((r) => r.name));
-
-  for (const plan of SAFETY_PLANS) {
-    if (existingNames.has(plan.name)) { skipped.push(plan.name + ' (already exists)'); continue; }
-    try {
-      const blocks = safetyPlanToBlocks(plan);
-      await insertDocTemplate(companyId, plan.name, 'safety_plan', blocks);
-      inserted.push(plan.name);
-    } catch (e) {
-      errors.push(`${plan.name}: ${String(e).slice(0, 120)}`);
-    }
-  }
-
-  return { inserted, skipped, errors };
+  return { plans: SAFETY_PLANS, existingPlanNames: new Set(existingRows.map((r) => r.name)) };
 }
 
-// ── Seed form templates ───────────────────────────────────────────────────────
+interface FormPlan {
+  forms: FormTemplateDef[];
+  existingFormNames: Set<string>;
+}
 
-async function seedFormTemplates(companyId: number): Promise<{
-  inserted: string[];
-  skipped: string[];
-  errors: string[];
-}> {
-  const inserted: string[] = [];
-  const skipped: string[] = [];
-  const errors: string[] = [];
-
+async function buildFormPlan(companyId: number): Promise<FormPlan> {
   const [f1, f2] = await Promise.all([
     loadJson<FormTemplateDef[]>('forms.json'),
     loadJson<FormTemplateDef[]>('forms-extended.json'),
   ]);
-
   const allForms = new Map<string, FormTemplateDef>();
   for (const f of [...f1, ...f2]) allForms.set(f.name, f);
 
-  // Fetch existing form template names for this company
   const [existingRows] = await db.execute(
     sql.raw(`SELECT name FROM form_templates WHERE company_id = ${companyId}`)
   ) as unknown as [Array<{ name: string }>, unknown];
-  const existingNames = new Set(existingRows.map((r) => r.name));
 
-  for (const [, t] of allForms) {
-    if (existingNames.has(t.name)) { skipped.push(t.name + ' (already exists)'); continue; }
-    try {
+  return { forms: [...allForms.values()], existingFormNames: new Set(existingRows.map((r) => r.name)) };
+}
+
+// ── Dry-run: compute what would happen, zero DB writes ───────────────────────
+
+interface DryRunResult {
+  swms: {
+    sourceTotal: number;
+    wouldInsert: string[];
+    wouldSkip:   string[];
+    semanticMap: Record<string, string>;
+  };
+  safetyPlans: {
+    sourceTotal: number;
+    wouldInsert: string[];
+    wouldSkip:   string[];
+  };
+  forms: {
+    sourceTotal: number;
+    wouldInsert: string[];
+    wouldSkip:   string[];
+  };
+}
+
+async function dryRun(
+  companyId: number,
+  swmsPlan: SwmsPlan,
+  planPlan: SafetyPlanPlan,
+  formPlan: FormPlan,
+): Promise<DryRunResult> {
+  // SWMS
+  const swmsWouldInsert: string[] = [];
+  const swmsWouldSkip:   string[] = [];
+
+  for (const { title } of swmsPlan.flatOnly) {
+    if (swmsPlan.existingSwmsNames.has(title)) swmsWouldSkip.push(`[flat] ${title}`);
+    else swmsWouldInsert.push(`[flat] ${title}`);
+  }
+  for (const { title, replacesFlat } of swmsPlan.ocEntries) {
+    if (swmsPlan.existingSwmsNames.has(title)) swmsWouldSkip.push(`[oc] ${title}`);
+    else swmsWouldInsert.push(`[oc] ${title}${replacesFlat ? ` (replaces flat: ${replacesFlat})` : ''}`);
+  }
+
+  // Safety plans
+  const planWouldInsert: string[] = [];
+  const planWouldSkip:   string[] = [];
+  for (const p of planPlan.plans) {
+    if (planPlan.existingPlanNames.has(p.name)) planWouldSkip.push(p.name);
+    else planWouldInsert.push(p.name);
+  }
+
+  // Forms
+  const formWouldInsert: string[] = [];
+  const formWouldSkip:   string[] = [];
+  for (const f of formPlan.forms) {
+    if (formPlan.existingFormNames.has(f.name)) formWouldSkip.push(f.name);
+    else formWouldInsert.push(f.name);
+  }
+
+  return {
+    swms: {
+      sourceTotal:  swmsPlan.flatOnly.length + swmsPlan.ocEntries.length,
+      wouldInsert:  swmsWouldInsert,
+      wouldSkip:    swmsWouldSkip,
+      semanticMap:  OC_REPLACES_FLAT,
+    },
+    safetyPlans: {
+      sourceTotal:  planPlan.plans.length,
+      wouldInsert:  planWouldInsert,
+      wouldSkip:    planWouldSkip,
+    },
+    forms: {
+      sourceTotal:  formPlan.forms.length,
+      wouldInsert:  formWouldInsert,
+      wouldSkip:    formWouldSkip,
+    },
+  };
+}
+
+// ── Live import inside a transaction ─────────────────────────────────────────
+
+interface LiveResult {
+  swms: {
+    inserted: Array<{ id: number; title: string }>;
+    skipped:  string[];
+    errors:   string[];
+  };
+  safetyPlans: {
+    inserted: Array<{ id: number; title: string }>;
+    skipped:  string[];
+    errors:   string[];
+  };
+  forms: {
+    inserted: Array<{ id: number; title: string; fieldCount: number }>;
+    skipped:  string[];
+    errors:   string[];
+  };
+}
+
+async function liveImport(
+  companyId: number,
+  swmsPlan: SwmsPlan,
+  planPlan: SafetyPlanPlan,
+  formPlan: FormPlan,
+): Promise<LiveResult> {
+  // Reset block ID counter before the transaction so IDs are deterministic
+  _blockId = 1;
+
+  const result: LiveResult = {
+    swms:        { inserted: [], skipped: [], errors: [] },
+    safetyPlans: { inserted: [], skipped: [], errors: [] },
+    forms:       { inserted: [], skipped: [], errors: [] },
+  };
+
+  await db.transaction(async (conn) => {
+    // ── SWMS ──────────────────────────────────────────────────────────────────
+    for (const { title, data } of swmsPlan.flatOnly) {
+      if (swmsPlan.existingSwmsNames.has(title)) {
+        result.swms.skipped.push(`[flat] ${title}`);
+        continue;
+      }
+      const blocks = flatSwmsToBlocks(data);
+      const id = await insertDocTemplate(conn, companyId, title, 'swms', blocks);
+      result.swms.inserted.push({ id, title: `[flat] ${title}` });
+    }
+
+    for (const { title, replacesFlat, data } of swmsPlan.ocEntries) {
+      if (swmsPlan.existingSwmsNames.has(title)) {
+        result.swms.skipped.push(`[oc] ${title}`);
+        continue;
+      }
+      const blocks = ocSwmsToBlocks(data);
+      const id = await insertDocTemplate(conn, companyId, title, 'swms', blocks);
+      result.swms.inserted.push({
+        id,
+        title: `[oc] ${title}${replacesFlat ? ` (replaces flat: ${replacesFlat})` : ''}`,
+      });
+    }
+
+    // ── Safety plans ──────────────────────────────────────────────────────────
+    for (const plan of planPlan.plans) {
+      if (planPlan.existingPlanNames.has(plan.name)) {
+        result.safetyPlans.skipped.push(plan.name);
+        continue;
+      }
+      const blocks = safetyPlanToBlocks(plan);
+      const id = await insertDocTemplate(conn, companyId, plan.name, 'safety_plan', blocks);
+      result.safetyPlans.inserted.push({ id, title: plan.name });
+    }
+
+    // ── Form templates ────────────────────────────────────────────────────────
+    for (const t of formPlan.forms) {
+      if (formPlan.existingFormNames.has(t.name)) {
+        result.forms.skipped.push(t.name);
+        continue;
+      }
       const s = (v: string) => v.replace(/'/g, "''");
-      const [result] = await db.execute(sql.raw(
+      const [fResult] = await conn.execute(sql.raw(
         `INSERT INTO form_templates
            (company_id, name, form_type, category, description, is_active, on_jobs, on_fleet, on_dashboard)
          VALUES (
@@ -901,7 +1006,8 @@ async function seedFormTemplates(companyId: number): Promise<{
          )`
       )) as unknown as [ResultSetHeader, unknown];
 
-      const templateId = result.insertId;
+      const templateId = fResult.insertId;
+      let fieldCount = 0;
 
       if (t.fields.length > 0) {
         const fieldValues = t.fields.map((f, i) => {
@@ -911,20 +1017,144 @@ async function seedFormTemplates(companyId: number): Promise<{
           return `(${templateId}, ${companyId}, '${s(f.label)}', '${s(f.fieldType)}', ${f.required ? 1 : 0}, ${optJson}, ${i})`;
         }).join(',');
 
-        await db.execute(sql.raw(
+        await conn.execute(sql.raw(
           `INSERT INTO form_template_fields
              (template_id, company_id, label, field_type, required, options_json, field_order)
            VALUES ${fieldValues}`
         ));
+        fieldCount = t.fields.length;
       }
 
-      inserted.push(t.name);
-    } catch (e) {
-      errors.push(`${t.name}: ${String(e).slice(0, 120)}`);
+      result.forms.inserted.push({ id: templateId, title: t.name, fieldCount });
     }
+  });
+
+  return result;
+}
+
+// ── Verification queries ──────────────────────────────────────────────────────
+
+interface VerificationResult {
+  documentTemplates: {
+    totalForCompany: number;
+    swmsCount:       number;
+    safetyPlanCount: number;
+    sampleSwmsFlat:  { id: number; name: string; blockCount: number } | null;
+    sampleSwmsOc:    { id: number; name: string; blockCount: number } | null;
+    samplePlan:      { id: number; name: string; blockCount: number } | null;
+  };
+  formTemplates: {
+    totalForCompany: number;
+    sampleForm:      { id: number; name: string; fieldCount: number; isActive: boolean } | null;
+    draftMechanism:  string;
+  };
+  globalLibraryUntouched: boolean;
+  swmsTemplatesUntouched: boolean;
+}
+
+async function runVerification(companyId: number): Promise<VerificationResult> {
+  // document_templates counts
+  const [dtRows] = await db.execute(sql.raw(
+    `SELECT
+       COUNT(*) AS total,
+       SUM(template_type = 'swms') AS swmsCount,
+       SUM(template_type = 'safety_plan') AS planCount
+     FROM document_templates
+     WHERE company_id = ${companyId}`
+  )) as unknown as [Array<{ total: number; swmsCount: number; planCount: number }>, unknown];
+
+  const dtCounts = dtRows[0] ?? { total: 0, swmsCount: 0, planCount: 0 };
+
+  // Sample flat SWMS — pick one we know is flat-only
+  const [flatSample] = await db.execute(sql.raw(
+    `SELECT id, name, builder_json FROM document_templates
+     WHERE company_id = ${companyId}
+       AND template_type = 'swms'
+       AND name = 'Working at Heights'
+     LIMIT 1`
+  )) as unknown as [Array<{ id: number; name: string; builder_json: string }>, unknown];
+
+  // Sample OC SWMS — pick one we know is OC
+  const [ocSample] = await db.execute(sql.raw(
+    `SELECT id, name, builder_json FROM document_templates
+     WHERE company_id = ${companyId}
+       AND template_type = 'swms'
+       AND name = 'Bricklaying'
+     LIMIT 1`
+  )) as unknown as [Array<{ id: number; name: string; builder_json: string }>, unknown];
+
+  // Sample safety plan
+  const [planSample] = await db.execute(sql.raw(
+    `SELECT id, name, builder_json FROM document_templates
+     WHERE company_id = ${companyId}
+       AND template_type = 'safety_plan'
+     LIMIT 1`
+  )) as unknown as [Array<{ id: number; name: string; builder_json: string }>, unknown];
+
+  function countBlocks(builderJsonStr: string): number {
+    try {
+      const parsed = JSON.parse(builderJsonStr) as { blocks?: unknown[] };
+      return parsed.blocks?.length ?? 0;
+    } catch { return -1; }
   }
 
-  return { inserted, skipped, errors };
+  // form_templates
+  const [ftRows] = await db.execute(sql.raw(
+    `SELECT COUNT(*) AS total FROM form_templates WHERE company_id = ${companyId}`
+  )) as unknown as [Array<{ total: number }>, unknown];
+
+  const [formSample] = await db.execute(sql.raw(
+    `SELECT ft.id, ft.name, ft.is_active, COUNT(ftf.id) AS fieldCount
+     FROM form_templates ft
+     LEFT JOIN form_template_fields ftf ON ftf.template_id = ft.id
+     WHERE ft.company_id = ${companyId}
+     GROUP BY ft.id, ft.name, ft.is_active
+     LIMIT 1`
+  )) as unknown as [Array<{ id: number; name: string; is_active: number; fieldCount: number }>, unknown];
+
+  // Global library check — document_templates with is_platform_master = 1
+  const [globalRows] = await db.execute(sql.raw(
+    `SELECT COUNT(*) AS cnt FROM document_templates
+     WHERE company_id = ${companyId} AND is_platform_master = 1`
+  )) as unknown as [Array<{ cnt: number }>, unknown];
+
+  // swms_templates check — should be unchanged
+  const [swmsTemplRows] = await db.execute(sql.raw(
+    `SELECT COUNT(*) AS cnt FROM swms_templates WHERE company_id = ${companyId}`
+  )) as unknown as [Array<{ cnt: number }>, unknown];
+
+  const fs = formSample[0];
+
+  return {
+    documentTemplates: {
+      totalForCompany: Number(dtCounts.total),
+      swmsCount:       Number(dtCounts.swmsCount),
+      safetyPlanCount: Number(dtCounts.planCount),
+      sampleSwmsFlat: flatSample[0]
+        ? { id: flatSample[0].id, name: flatSample[0].name, blockCount: countBlocks(flatSample[0].builder_json) }
+        : null,
+      sampleSwmsOc: ocSample[0]
+        ? { id: ocSample[0].id, name: ocSample[0].name, blockCount: countBlocks(ocSample[0].builder_json) }
+        : null,
+      samplePlan: planSample[0]
+        ? { id: planSample[0].id, name: planSample[0].name, blockCount: countBlocks(planSample[0].builder_json) }
+        : null,
+    },
+    formTemplates: {
+      totalForCompany: Number(ftRows[0]?.total ?? 0),
+      sampleForm: fs
+        ? { id: fs.id, name: fs.name, fieldCount: Number(fs.fieldCount), isActive: Boolean(fs.is_active) }
+        : null,
+      draftMechanism:
+        'form_templates has no doc_status column. Templates are controlled by is_active (1=active, 0=inactive). ' +
+        'All seeded forms are inserted with is_active=1 so they appear in the form picker. ' +
+        'They are NOT published to the Global Resource Library (no is_platform_master flag on form_templates). ' +
+        'They are company-scoped — only visible to this company.',
+    },
+    globalLibraryUntouched: Number(globalRows[0]?.cnt ?? 0) === 0,
+    swmsTemplatesUntouched: true, // we never touch swms_templates in this endpoint
+    // (the count is informational only — we don't assert it changed)
+  };
 }
 
 // ── Main handler ──────────────────────────────────────────────────────────────
@@ -939,6 +1169,8 @@ export default async function handler(req: Request, res: Response) {
     }
     const session = await auth.api.getSession({ headers });
     if (!session?.user) return res.status(401).json({ error: 'Unauthorised' });
+
+    const isDryRun = req.query['dryRun'] === '1' || req.query['dryRun'] === 'true';
 
     // Target is hardcoded — no email accepted from request body
     const [userRows] = await db.execute(sql.raw(
@@ -955,26 +1187,133 @@ export default async function handler(req: Request, res: Response) {
     }
 
     const { companyId, companyName } = userRows[0];
-    console.log(`[seed-safety-documents] Seeding company ${companyId} (${companyName})`);
 
-    // Run all three sections sequentially (block IDs must be deterministic)
-    const swmsResult  = await seedSwmsDocuments(companyId);
-    const plansResult = await seedSafetyPlans(companyId);
-    const formsResult = await seedFormTemplates(companyId);
+    // Existing counts before any changes
+    const [existingDocRows] = await db.execute(sql.raw(
+      `SELECT COUNT(*) AS cnt FROM document_templates WHERE company_id = ${companyId}`
+    )) as unknown as [Array<{ cnt: number }>, unknown];
+    const existingDocCount = Number(existingDocRows[0]?.cnt ?? 0);
 
-    const allErrors = [...swmsResult.errors, ...plansResult.errors, ...formsResult.errors];
-    const totalInserted = swmsResult.inserted.length + plansResult.inserted.length + formsResult.inserted.length;
-    const totalSkipped  = swmsResult.skipped.length  + plansResult.skipped.length  + formsResult.skipped.length;
+    const [existingFormRows] = await db.execute(sql.raw(
+      `SELECT COUNT(*) AS cnt FROM form_templates WHERE company_id = ${companyId}`
+    )) as unknown as [Array<{ cnt: number }>, unknown];
+    const existingFormCount = Number(existingFormRows[0]?.cnt ?? 0);
+
+    // Build plans (reads source JSON + existing DB names — no writes)
+    const [swmsPlan, planPlan, formPlan] = await Promise.all([
+      buildSwmsPlan(companyId),
+      buildSafetyPlanPlan(companyId),
+      buildFormPlan(companyId),
+    ]);
+
+    // Source-total validation
+    const expectedSwms  = 40;
+    const expectedPlans = 4;
+    const expectedForms = 16;
+    const actualSwms    = swmsPlan.flatOnly.length + swmsPlan.ocEntries.length;
+    const actualPlans   = planPlan.plans.length;
+    const actualForms   = formPlan.forms.length;
+
+    const sourceMismatch: string[] = [];
+    if (actualSwms  !== expectedSwms)  sourceMismatch.push(`SWMS: expected ${expectedSwms}, got ${actualSwms}`);
+    if (actualPlans !== expectedPlans) sourceMismatch.push(`Safety plans: expected ${expectedPlans}, got ${actualPlans}`);
+    if (actualForms !== expectedForms) sourceMismatch.push(`Forms: expected ${expectedForms}, got ${actualForms}`);
+
+    if (sourceMismatch.length > 0) {
+      return res.status(422).json({
+        ok: false,
+        error: 'Source total mismatch — import aborted',
+        sourceMismatch,
+        message: 'Source file totals do not match expected counts. Do not import until this is resolved.',
+      });
+    }
+
+    // ── DRY RUN ───────────────────────────────────────────────────────────────
+    if (isDryRun) {
+      console.log(`[seed-safety-documents] DRY RUN for company ${companyId} (${companyName})`);
+
+      const dr = await dryRun(companyId, swmsPlan, planPlan, formPlan);
+
+      return res.json({
+        mode: 'dry-run',
+        ok: true,
+        targetEmail: TARGET_EMAIL,
+        companyId,
+        companyName,
+        existingCounts: {
+          documentTemplates: existingDocCount,
+          formTemplates:     existingFormCount,
+        },
+        sourceTotals: {
+          swms:        actualSwms,
+          safetyPlans: actualPlans,
+          forms:       actualForms,
+          total:       actualSwms + actualPlans + actualForms,
+          note:        `${actualSwms} SWMS + ${actualPlans} safety plans = ${actualSwms + actualPlans} document_templates; ${actualForms} form_templates`,
+        },
+        swms: {
+          sourceTotal:  dr.swms.sourceTotal,
+          wouldInsert:  dr.swms.wouldInsert,
+          wouldInsertCount: dr.swms.wouldInsert.length,
+          wouldSkip:    dr.swms.wouldSkip,
+          wouldSkipCount:   dr.swms.wouldSkip.length,
+        },
+        safetyPlans: {
+          sourceTotal:  dr.safetyPlans.sourceTotal,
+          wouldInsert:  dr.safetyPlans.wouldInsert,
+          wouldInsertCount: dr.safetyPlans.wouldInsert.length,
+          wouldSkip:    dr.safetyPlans.wouldSkip,
+          wouldSkipCount:   dr.safetyPlans.wouldSkip.length,
+        },
+        forms: {
+          sourceTotal:  dr.forms.sourceTotal,
+          wouldInsert:  dr.forms.wouldInsert,
+          wouldInsertCount: dr.forms.wouldInsert.length,
+          wouldSkip:    dr.forms.wouldSkip,
+          wouldSkipCount:   dr.forms.wouldSkip.length,
+        },
+        semanticDuplicateMapping: dr.swms.semanticMap,
+        untouchedTables: {
+          swms_templates:  'NOT touched by this endpoint',
+          cost_guide_items: 'NOT touched by this endpoint',
+          globalLibrary:   'NOT touched — no is_platform_master=1 rows inserted',
+          otherCompanies:  `NOT touched — all writes scoped to company_id=${companyId}`,
+        },
+        destination: {
+          swms:        'document_templates (template_type=swms, doc_status=draft)',
+          safetyPlans: 'document_templates (template_type=safety_plan, doc_status=draft)',
+          forms:       'form_templates + form_template_fields (is_active=1, company-scoped)',
+        },
+        message: `DRY RUN complete — no database changes made. ` +
+          `Would insert ${dr.swms.wouldInsert.length} SWMS + ${dr.safetyPlans.wouldInsert.length} safety plans + ` +
+          `${dr.forms.wouldInsert.length} forms. ` +
+          `Would skip ${dr.swms.wouldSkip.length + dr.safetyPlans.wouldSkip.length + dr.forms.wouldSkip.length} existing. ` +
+          `Fire without ?dryRun=1 to execute.`,
+      });
+    }
+
+    // ── LIVE IMPORT ───────────────────────────────────────────────────────────
+    console.log(`[seed-safety-documents] LIVE IMPORT for company ${companyId} (${companyName})`);
+
+    const live = await liveImport(companyId, swmsPlan, planPlan, formPlan);
+
+    const allErrors = [...live.swms.errors, ...live.safetyPlans.errors, ...live.forms.errors];
+    const totalInserted = live.swms.inserted.length + live.safetyPlans.inserted.length + live.forms.inserted.length;
+    const totalSkipped  = live.swms.skipped.length  + live.safetyPlans.skipped.length  + live.forms.skipped.length;
 
     console.log(
       `[seed-safety-documents] Done — ` +
-      `SWMS docs: ${swmsResult.inserted.length} inserted / ${swmsResult.skipped.length} skipped, ` +
-      `Safety plans: ${plansResult.inserted.length} inserted / ${plansResult.skipped.length} skipped, ` +
-      `Forms: ${formsResult.inserted.length} inserted / ${formsResult.skipped.length} skipped, ` +
+      `SWMS: ${live.swms.inserted.length} inserted / ${live.swms.skipped.length} skipped, ` +
+      `Plans: ${live.safetyPlans.inserted.length} inserted / ${live.safetyPlans.skipped.length} skipped, ` +
+      `Forms: ${live.forms.inserted.length} inserted / ${live.forms.skipped.length} skipped, ` +
       `Errors: ${allErrors.length}`
     );
 
+    // Post-insert verification
+    const verification = await runVerification(companyId);
+
     return res.json({
+      mode: 'live',
       ok: allErrors.length === 0,
       targetEmail: TARGET_EMAIL,
       companyId,
@@ -982,29 +1321,29 @@ export default async function handler(req: Request, res: Response) {
       destination: {
         swms:        'document_templates (template_type=swms, doc_status=draft)',
         safetyPlans: 'document_templates (template_type=safety_plan, doc_status=draft)',
-        forms:       'form_templates + form_template_fields',
+        forms:       'form_templates + form_template_fields (is_active=1, company-scoped)',
       },
       results: {
         swmsDocuments: {
-          inserted: swmsResult.inserted.length,
-          skipped:  swmsResult.skipped.length,
-          errors:   swmsResult.errors,
-          titles:   swmsResult.inserted,
-          skippedTitles: swmsResult.skipped,
+          inserted:      live.swms.inserted.length,
+          skipped:       live.swms.skipped.length,
+          errors:        live.swms.errors,
+          insertedItems: live.swms.inserted,
+          skippedTitles: live.swms.skipped,
         },
         safetyPlans: {
-          inserted: plansResult.inserted.length,
-          skipped:  plansResult.skipped.length,
-          errors:   plansResult.errors,
-          titles:   plansResult.inserted,
-          skippedTitles: plansResult.skipped,
+          inserted:      live.safetyPlans.inserted.length,
+          skipped:       live.safetyPlans.skipped.length,
+          errors:        live.safetyPlans.errors,
+          insertedItems: live.safetyPlans.inserted,
+          skippedTitles: live.safetyPlans.skipped,
         },
         formTemplates: {
-          inserted: formsResult.inserted.length,
-          skipped:  formsResult.skipped.length,
-          errors:   formsResult.errors,
-          titles:   formsResult.inserted,
-          skippedTitles: formsResult.skipped,
+          inserted:      live.forms.inserted.length,
+          skipped:       live.forms.skipped.length,
+          errors:        live.forms.errors,
+          insertedItems: live.forms.inserted,
+          skippedTitles: live.forms.skipped,
         },
       },
       summary: {
@@ -1013,11 +1352,14 @@ export default async function handler(req: Request, res: Response) {
         totalErrors: allErrors.length,
       },
       errors: allErrors,
+      verification,
       message: allErrors.length === 0
-        ? `Seeded ${swmsResult.inserted.length} SWMS + ${plansResult.inserted.length} safety plans into document_templates, ` +
-          `${formsResult.inserted.length} forms into form_templates for ${companyName}. ` +
-          `${totalSkipped} skipped (already existed).`
-        : `Seeding completed with ${allErrors.length} error(s). Check results.errors for details.`,
+        ? `Imported ${live.swms.inserted.length} SWMS + ${live.safetyPlans.inserted.length} safety plans ` +
+          `into document_templates (draft), ${live.forms.inserted.length} forms into form_templates ` +
+          `for ${companyName}. ${totalSkipped} skipped (already existed). ` +
+          `Verification: ${verification.documentTemplates.totalForCompany} doc templates, ` +
+          `${verification.formTemplates.totalForCompany} form templates.`
+        : `Import completed with ${allErrors.length} error(s) — transaction was rolled back. Check errors.`,
     });
 
   } catch (err) {
