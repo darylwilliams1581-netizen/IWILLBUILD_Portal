@@ -158,6 +158,29 @@ You can help with Studio Document Builder operations:
     • "rich text", "formatted text", "editor" → type: "rich_text"
     • "heading", "title", "header" → type: "heading"
     • "divider", "line", "separator", "horizontal rule" → type: "divider"
+  IMAGE BLOCK — CRITICAL SCHEMA RULE:
+    Image blocks use top-level op properties, NOT a "content" field.
+    The correct shape is ALWAYS:
+      { "op": "addBlock", "blockType": "image", "src": "...", "alt": "...", "size": "full", "align": "center", "preserveAspectRatio": true }
+    NEVER put image data inside "content". NEVER use "content" for an image block.
+    If you put anything in "content" for an image block it will be ignored.
+  BUNDLED SAFETY ASSETS — use these exact src values, never invent paths:
+    • PPE Banner (Advanced PPE Banner, Personal Protective Equipment banner):
+        src: "/airo-assets/images/safety-badges/ppe-banner-strip"
+        alt: "PPE Required — Personal Protective Equipment"
+        size: "full", align: "center", preserveAspectRatio: true
+    • Risk Matrix:
+        src: "/airo-assets/images/safety-badges/risk-matrix"
+        alt: "Risk Assessment Matrix"
+        size: "full", align: "center", preserveAspectRatio: true
+    • Risk Assessment Banner:
+        src: "/airo-assets/images/safety-badges/risk-assessment-banner"
+        alt: "Risk Assessment"
+        size: "full", align: "center", preserveAspectRatio: true
+    • Safety Icons Sheet:
+        src: "/airo-assets/images/safety-badges/icons-sheet"
+        alt: "Safety Icons"
+        size: "full", align: "center", preserveAspectRatio: true
   Insertion position (choose one — omit for append-to-end):
     • insertPosition: "top"  → prepend before all existing blocks
     • afterBlockId: "<id>"   → insert immediately after the block with that ID

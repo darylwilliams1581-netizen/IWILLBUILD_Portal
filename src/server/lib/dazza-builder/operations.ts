@@ -118,6 +118,22 @@ export function buildBlock(op: BuilderOperation): Record<string, unknown> {
       return { ...base, fieldKey: op.fieldKey ?? '', label: op.label ?? '' };
     case 'banner':
       return { ...base, variant: op.variant ?? 'info', content: String(op.content ?? '') };
+    case 'image':
+      // Image blocks carry src/alt/size/align/preserveAspectRatio — never a
+      // stringified content field.  Read op properties directly (the correct
+      // Dazza shape).  If content is accidentally a plain string URL, accept it
+      // as src.  If content is an object (old broken path), discard it so the
+      // block is valid and never renders "[object Object]".
+      return {
+        ...base,
+        src: typeof op.src === 'string' && op.src
+          ? op.src
+          : (typeof op.content === 'string' ? op.content : ''),
+        alt: typeof op.alt === 'string' ? op.alt : '',
+        size: typeof op.size === 'string' ? op.size : 'full',
+        align: typeof op.align === 'string' ? op.align : 'center',
+        preserveAspectRatio: op.preserveAspectRatio !== false,
+      };
     default:
       return { ...base, content: String(op.content ?? '') };
   }
@@ -135,6 +151,8 @@ export function sanitiseBlockUpdate(op: BuilderOperation): Record<string, unknow
     'height', 'label', 'required', 'fieldType', 'fieldKey', 'variant',
     'headers', 'rows', 'bold', 'italic', 'fontSize', 'backgroundColor',
     'borderColor', 'padding',
+    // image block — safe properties only; no arbitrary URLs beyond src
+    'src', 'alt', 'size', 'preserveAspectRatio',
   ];
   const out: Record<string, unknown> = {};
   for (const key of ALLOWED_KEYS) {
