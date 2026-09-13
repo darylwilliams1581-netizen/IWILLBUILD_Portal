@@ -1,4 +1,4 @@
-import { RouteObject, redirect } from "react-router";
+import { RouteObject, redirect, Navigate } from "react-router";
 import { lazy, Suspense } from 'react';
 import { Helmet } from '@dr.pogodin/react-helmet';
 import { ProtectedRoute } from '@/lib/auth/auth-client';
@@ -62,7 +62,6 @@ const SafetyPage = lazy(() => import('./pages/safety'));
 const FilesPage = lazy(() => import('./pages/files'));
 const EstimatingPage = lazy(() => import('./pages/estimating'));
 const FinancePage = lazy(() => import('./pages/finance'));
-const TimesheetsPage = lazy(() => import('./pages/timesheets'));
 const BuildersCalcPage = lazy(() => import('./pages/builders-calc-page'));
 const TakeoffPadPage = lazy(() => import('./pages/takeoff-pad-page'));
 const SdsRegisterPage = lazy(() => import('./pages/sds-register'));
@@ -469,8 +468,9 @@ export const routes: RouteObject[] = [{
   element: protect(<FinancePage />),
   errorElement: routeError
 }, {
+  // Legacy /timesheets redirect — keeps bookmarks working, no 404
   path: '/timesheets',
-  element: protect(<TimesheetsPage />),
+  element: <Navigate to="/home" replace />,
   errorElement: routeError
 }, {
   path: '/estimating',

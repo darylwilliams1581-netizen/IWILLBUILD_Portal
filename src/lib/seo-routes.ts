@@ -13,12 +13,6 @@
  * sync:
  * - `priority` (0.0–1.0): Home = 1.0, main sections = 0.8, deep pages = 0.5.
  * - `changefreq` and `lastmod`.
- * - `sitemap: false` — exclude a route from sitemap.xml without removing it
- *   from SEO scoring (useful for noindex pages that still need head tags).
- *
- * POLICY: Only genuine public pages belong here. Authenticated portal routes,
- * redirect-only routes, admin/owner consoles, and test files must NOT appear
- * in this list — they are noindex,nofollow and should not be scored or sitemapped.
  */
 
 export interface SeoRoute {
@@ -33,24 +27,87 @@ export interface SeoRoute {
     | "never";
   priority?: number;
   lastmod?: string;
-  sitemap?: boolean;
 }
 
 export const seoRoutes: SeoRoute[] = [
-  // ── Public marketing & landing pages ──────────────────────────────────────
-  { path: "/",              changefreq: "weekly",  priority: 1.0, lastmod: "2026-09-03" },
-  { path: "/signup",        changefreq: "monthly", priority: 0.9, lastmod: "2026-09-03" },
-  { path: "/subscribe",     changefreq: "monthly", priority: 0.8 },
-  { path: "/download-app",  changefreq: "monthly", priority: 0.8 },
-
-  // ── Auth flows (public-facing, indexable) ─────────────────────────────────
-  { path: "/login",           changefreq: "monthly", priority: 0.5 },
-  { path: "/forgot-password", changefreq: "monthly", priority: 0.3 },
-  { path: "/login-help",      changefreq: "monthly", priority: 0.3 },
-
-  // ── Legal pages ───────────────────────────────────────────────────────────
-  { path: "/privacy",       changefreq: "yearly", priority: 0.4, lastmod: "2026-09-03" },
-  { path: "/terms",         changefreq: "yearly", priority: 0.4, lastmod: "2026-09-03" },
-  { path: "/fair-use",      changefreq: "yearly", priority: 0.4, lastmod: "2026-09-03" },
+  { path: "/", changefreq: "weekly", priority: 1.0, lastmod: "2026-09-03" },
+  { path: "/home", changefreq: "monthly", priority: 0.8 },
+  { path: "/login", changefreq: "monthly", priority: 0.5 },
+  { path: "/signup", changefreq: "monthly", priority: 0.9, lastmod: "2026-09-03" },
+  { path: "/privacy", changefreq: "yearly", priority: 0.4, lastmod: "2026-09-03" },
+  { path: "/terms", changefreq: "yearly", priority: 0.4, lastmod: "2026-09-03" },
+  { path: "/fair-use", changefreq: "yearly", priority: 0.4, lastmod: "2026-09-03" },
   { path: "/system-policy", changefreq: "yearly", priority: 0.4, lastmod: "2026-09-03" },
+  { path: "/check-email", changefreq: "monthly", priority: 0.8 },
+  { path: "/verify-email", changefreq: "monthly", priority: 0.8 },
+  { path: "/verify-required", changefreq: "monthly", priority: 0.8 },
+  { path: "/forgot-password", changefreq: "monthly", priority: 0.3 },
+  { path: "/reset-password", changefreq: "monthly", priority: 0.8 },
+  { path: "/login-help", changefreq: "monthly", priority: 0.3 },
+  { path: "/download-app", changefreq: "monthly", priority: 0.8 },
+  { path: "/subscribe", changefreq: "monthly", priority: 0.8 },
+  { path: "/prestart", changefreq: "monthly", priority: 0.8 },
+  { path: "/site-escape", changefreq: "monthly", priority: 0.8 },
+  { path: "/portal/login", changefreq: "monthly", priority: 0.5 },
+  { path: "/portal/dashboard", changefreq: "monthly", priority: 0.5 },
+  { path: "/portal/payment-success", changefreq: "monthly", priority: 0.5 },
+  { path: "/dashboard", changefreq: "monthly", priority: 0.8 },
+  { path: "/projects", changefreq: "monthly", priority: 0.8 },
+  { path: "/stakeholders", changefreq: "monthly", priority: 0.8 },
+  { path: "/subscription", changefreq: "monthly", priority: 0.8 },
+  { path: "/tools", changefreq: "monthly", priority: 0.8 },
+  { path: "/jobs", changefreq: "monthly", priority: 0.8 },
+  { path: "/incidents", changefreq: "monthly", priority: 0.8 },
+  { path: "/risk-register", changefreq: "monthly", priority: 0.8 },
+  { path: "/scheduler", changefreq: "monthly", priority: 0.8 },
+  { path: "/fleet", changefreq: "monthly", priority: 0.8 },
+  { path: "/forms", changefreq: "monthly", priority: 0.8 },
+  { path: "/files", changefreq: "monthly", priority: 0.8 },
+  { path: "/finance", changefreq: "monthly", priority: 0.8 },
+  { path: "/timesheets", changefreq: "monthly", priority: 0.8 },
+  { path: "/estimating", changefreq: "monthly", priority: 0.8 },
+  { path: "/builders-calc", changefreq: "monthly", priority: 0.8 },
+  { path: "/takeoff-pad", changefreq: "monthly", priority: 0.8 },
+  { path: "/sds-register", changefreq: "monthly", priority: 0.8 },
+  { path: "/rl-register", changefreq: "monthly", priority: 0.8 },
+  { path: "/electrical-tests", changefreq: "monthly", priority: 0.8 },
+  { path: "/work", changefreq: "monthly", priority: 0.8 },
+  { path: "/work-field", changefreq: "monthly", priority: 0.8 },
+  { path: "/safety", changefreq: "monthly", priority: 0.8 },
+  { path: "/safety/swms", changefreq: "monthly", priority: 0.5 },
+  { path: "/safety/plans", changefreq: "monthly", priority: 0.5 },
+  { path: "/library", changefreq: "monthly", priority: 0.8 },
+  { path: "/customers", changefreq: "monthly", priority: 0.8 },
+  { path: "/invoices", changefreq: "monthly", priority: 0.8 },
+  { path: "/studio", changefreq: "monthly", priority: 0.8 },
+  { path: "/studio/documents", changefreq: "monthly", priority: 0.5 },
+  { path: "/studio/forms", changefreq: "monthly", priority: 0.5 },
+  { path: "/studio/global-lists", changefreq: "monthly", priority: 0.5 },
+  { path: "/studio/library", changefreq: "monthly", priority: 0.5 },
+  { path: "/safety/posters", changefreq: "monthly", priority: 0.5 },
+  { path: "/job-docs", changefreq: "monthly", priority: 0.8 },
+  { path: "/plan-manager", changefreq: "monthly", priority: 0.8 },
+  { path: "/studio/asset-manager", changefreq: "monthly", priority: 0.5 },
+  { path: "/lens", changefreq: "monthly", priority: 0.8 },
+  { path: "/signin-history", changefreq: "monthly", priority: 0.8 },
+  { path: "/studio/jobs", changefreq: "monthly", priority: 0.5 },
+  { path: "/studio/estimates", changefreq: "monthly", priority: 0.5 },
+  { path: "/studio/fleet", changefreq: "monthly", priority: 0.5 },
+  { path: "/studio/accounts", changefreq: "monthly", priority: 0.5 },
+  { path: "/dazza-ai", changefreq: "monthly", priority: 0.8 },
+  { path: "/annette", changefreq: "monthly", priority: 0.8 },
+  { path: "/team", changefreq: "monthly", priority: 0.8 },
+  { path: "/team/schedule", changefreq: "monthly", priority: 0.5 },
+  { path: "/quick-links", changefreq: "monthly", priority: 0.8 },
+  { path: "/settings", changefreq: "monthly", priority: 0.8 },
+  { path: "/profile", changefreq: "monthly", priority: 0.8 },
+  { path: "/help", changefreq: "monthly", priority: 0.8 },
+  { path: "/owner-console", changefreq: "monthly", priority: 0.8 },
+  { path: "/developer-console", changefreq: "monthly", priority: 0.8 },
+  { path: "/roadmap", changefreq: "monthly", priority: 0.8 },
+  { path: "/billing", changefreq: "monthly", priority: 0.8 },
+  { path: "/lists", changefreq: "monthly", priority: 0.8 },
+  { path: "/user-logs", changefreq: "monthly", priority: 0.8 },
+  { path: "/job-cards", changefreq: "monthly", priority: 0.8 },
+  { path: "/job-cards/new", changefreq: "monthly", priority: 0.5 },
 ];

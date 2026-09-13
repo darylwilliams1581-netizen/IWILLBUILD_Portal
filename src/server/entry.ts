@@ -305,13 +305,6 @@ import finance_purchase_orders_poId_delete_270 from "./api/finance/purchase-orde
 import finance_purchase_orders_poId_get_271 from "./api/finance/purchase-orders/[poId]/GET";
 import finance_purchase_orders_poId_put_272 from "./api/finance/purchase-orders/[poId]/PUT";
 import finance_purchase_orders_poId_pdf_get_273 from "./api/finance/purchase-orders/[poId]/pdf/GET";
-import finance_timesheets_get_274 from "./api/finance/timesheets/GET";
-import finance_timesheets_post_275 from "./api/finance/timesheets/POST";
-import finance_timesheets_employees_get_276 from "./api/finance/timesheets/employees/GET";
-import finance_timesheets_me_get_277 from "./api/finance/timesheets/me/GET";
-import finance_timesheets_id_delete_278 from "./api/finance/timesheets/[id]/DELETE";
-import finance_timesheets_id_get_279 from "./api/finance/timesheets/[id]/GET";
-import finance_timesheets_id_put_280 from "./api/finance/timesheets/[id]/PUT";
 import fleet_get_281 from "./api/fleet/GET";
 import fleet_post_282 from "./api/fleet/POST";
 import fleet_analytics_settings_get_283 from "./api/fleet/analytics-settings/GET";
@@ -917,10 +910,6 @@ import team_shifts_get_874 from "./api/team/shifts/GET";
 import team_shifts_post_875 from "./api/team/shifts/POST";
 import team_shifts_id_delete_876 from "./api/team/shifts/[id]/DELETE";
 import team_shifts_id_put_877 from "./api/team/shifts/[id]/PUT";
-import team_time_entries_get_878 from "./api/team/time-entries/GET";
-import team_time_entries_post_879 from "./api/team/time-entries/POST";
-import team_time_entries_export_get_880 from "./api/team/time-entries/export/GET";
-import team_time_entries_id_put_881 from "./api/team/time-entries/[id]/PUT";
 import team_verify_user_post_882 from "./api/team/verify-user/POST";
 import team_id_delete_883 from "./api/team/[id]/DELETE";
 import team_id_put_884 from "./api/team/[id]/PUT";
@@ -2996,44 +2985,6 @@ async function runStartupMigrations() {
     }
   }
 
-  // ── team_time_entries ────────────────────────────────────────────────────────
-  try {
-    await db.execute(sql.raw(
-      "CREATE TABLE IF NOT EXISTS team_time_entries (" +
-      "  id            INT AUTO_INCREMENT PRIMARY KEY," +
-      "  company_id    INT NOT NULL," +
-      "  profile_id    INT NOT NULL," +
-      "  shift_id      INT NULL," +
-      "  job_id        INT NULL," +
-      "  entry_date    DATE NOT NULL," +
-      "  clock_in      DATETIME NOT NULL," +
-      "  clock_out     DATETIME NULL," +
-      "  break_minutes INT NOT NULL DEFAULT 0," +
-      "  total_minutes INT GENERATED ALWAYS AS (" +
-      "    CASE WHEN clock_out IS NOT NULL" +
-      "      THEN TIMESTAMPDIFF(MINUTE, clock_in, clock_out) - break_minutes" +
-      "      ELSE NULL END" +
-      "  ) STORED," +
-      "  hourly_rate   DECIMAL(10,2) NULL," +
-      "  notes         TEXT NULL," +
-      "  approved_by   INT NULL," +
-      "  approved_at   DATETIME NULL," +
-      "  status        ENUM('pending','approved','rejected') NOT NULL DEFAULT 'pending'," +
-      "  created_at    DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP," +
-      "  updated_at    DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP," +
-      "  INDEX idx_tte_company (company_id)," +
-      "  INDEX idx_tte_profile (profile_id)," +
-      "  INDEX idx_tte_date (entry_date)" +
-      ") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci"
-    ));
-    console.log('[startup-migration] team_time_entries table ready');
-  } catch (e: unknown) {
-    const msg = migrationErrMsg(e);
-    if (!msg.includes('already exists') && !msg.includes('ER_TABLE_EXISTS')) {
-      console.warn('[startup-migration] team_time_entries CREATE failed:', msg);
-    }
-  }
-
   // ── job_attendance ────────────────────────────────────────────────────────
   try {
     await db.execute(sql.raw(
@@ -3968,13 +3919,6 @@ app.delete("/api/finance/purchase-orders/:poId", finance_purchase_orders_poId_de
 app.get("/api/finance/purchase-orders/:poId", finance_purchase_orders_poId_get_271);
 app.put("/api/finance/purchase-orders/:poId", finance_purchase_orders_poId_put_272);
 app.get("/api/finance/purchase-orders/:poId/pdf", finance_purchase_orders_poId_pdf_get_273);
-app.get("/api/finance/timesheets", finance_timesheets_get_274);
-app.post("/api/finance/timesheets", finance_timesheets_post_275);
-app.get("/api/finance/timesheets/employees", finance_timesheets_employees_get_276);
-app.get("/api/finance/timesheets/me", finance_timesheets_me_get_277);
-app.delete("/api/finance/timesheets/:id", finance_timesheets_id_delete_278);
-app.get("/api/finance/timesheets/:id", finance_timesheets_id_get_279);
-app.put("/api/finance/timesheets/:id", finance_timesheets_id_put_280);
 app.get("/api/fleet", fleet_get_281);
 app.post("/api/fleet", fleet_post_282);
 app.get("/api/fleet/analytics-settings", fleet_analytics_settings_get_283);
@@ -4580,10 +4524,6 @@ app.get("/api/team/shifts", team_shifts_get_874);
 app.post("/api/team/shifts", team_shifts_post_875);
 app.delete("/api/team/shifts/:id", team_shifts_id_delete_876);
 app.put("/api/team/shifts/:id", team_shifts_id_put_877);
-app.get("/api/team/time-entries", team_time_entries_get_878);
-app.post("/api/team/time-entries", team_time_entries_post_879);
-app.get("/api/team/time-entries/export", team_time_entries_export_get_880);
-app.put("/api/team/time-entries/:id", team_time_entries_id_put_881);
 app.post("/api/team/verify-user", team_verify_user_post_882);
 app.delete("/api/team/:id", team_id_delete_883);
 app.put("/api/team/:id", team_id_put_884);
@@ -4660,7 +4600,6 @@ app.get("/robots.txt", (req, res) => {
 		"Disallow: /files",
 		"Disallow: /finance",
 		"Disallow: /estimating",
-		"Disallow: /timesheets",
 		"Disallow: /invoices",
 		"Disallow: /safety",
 		"Disallow: /customers",
@@ -5264,41 +5203,6 @@ if (import.meta.env.PROD && !process.env.VITEST) {
 			console.warn('[startup] team_shifts migration skipped:', (e as Error)?.message?.slice(0, 120));
 		}
 
-		// ── team_time_entries ───────────────────────────────────────────────────
-		try {
-			await db.execute(sql.raw(
-				"CREATE TABLE IF NOT EXISTS team_time_entries (" +
-				"  id            INT AUTO_INCREMENT PRIMARY KEY," +
-				"  company_id    INT NOT NULL," +
-				"  profile_id    INT NOT NULL," +
-				"  shift_id      INT NULL," +
-				"  job_id        INT NULL," +
-				"  entry_date    DATE NOT NULL," +
-				"  clock_in      DATETIME NOT NULL," +
-				"  clock_out     DATETIME NULL," +
-				"  break_minutes INT NOT NULL DEFAULT 0," +
-				"  total_minutes INT GENERATED ALWAYS AS (" +
-				"    CASE WHEN clock_out IS NOT NULL" +
-				"      THEN TIMESTAMPDIFF(MINUTE, clock_in, clock_out) - break_minutes" +
-				"      ELSE NULL END" +
-				"  ) STORED," +
-				"  hourly_rate   DECIMAL(10,2) NULL," +
-				"  notes         TEXT NULL," +
-				"  approved_by   INT NULL," +
-				"  approved_at   DATETIME NULL," +
-				"  status        ENUM('pending','approved','rejected') NOT NULL DEFAULT 'pending'," +
-				"  created_at    DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP," +
-				"  updated_at    DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP," +
-				"  INDEX idx_tte_company (company_id)," +
-				"  INDEX idx_tte_profile (profile_id)," +
-				"  INDEX idx_tte_date (entry_date)" +
-				") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci"
-			));
-			console.log('[startup] team_time_entries table ready');
-		} catch (e) {
-			console.warn('[startup] team_time_entries migration skipped:', (e as Error)?.message?.slice(0, 120));
-		}
-
 		// ── form_global_lists ─────────────────────────────────────────────────
 		try {
 			await db.execute(sql.raw(
@@ -5359,15 +5263,6 @@ if (import.meta.env.PROD && !process.env.VITEST) {
 
 		// ── All migrations done — now start accepting requests ─────────────────
 		console.log('[startup] all inline migrations complete — calling app.listen');
-
-		// ── Timesheet schema ──────────────────────────────────────────────────
-		try {
-			const { ensureTimesheetSchema } = await import('./lib/timesheet-service.js');
-			await ensureTimesheetSchema();
-			console.log('[startup] timesheet schema ready');
-		} catch (e) {
-			console.warn('[startup] timesheet schema migration skipped:', (e as Error)?.message?.slice(0, 200));
-		}
 
 		// ── Dazza engine startup log ──────────────────────────────────────────
 		// Logs which engine will be used for Dazza chat requests.
