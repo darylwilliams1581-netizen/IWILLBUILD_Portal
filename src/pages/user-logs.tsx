@@ -7,15 +7,17 @@
  */
 import { useState, useCallback, useRef } from 'react';
 import { Helmet } from '@dr.pogodin/react-helmet';
+import { useNavigate } from 'react-router';
 import {
   Search, ChevronDown, X, Calendar, RefreshCw, Download,
   UserCheck, Truck, Clock, Activity, Users, Briefcase,
-  CheckCircle2, AlertCircle, ChevronRight, LayoutDashboard,
+  CheckCircle2, AlertCircle, ChevronRight, ArrowLeft,
 } from 'lucide-react';
 import { format, formatDistanceToNow, parseISO } from 'date-fns';
 import DesktopTopBar from '@/components/DesktopTopBar';
 import DesktopDock from '@/components/DesktopDock';
 import PortalSidebar from '@/components/PortalSidebar';
+import { goBack } from '@/lib/navigation';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -679,6 +681,7 @@ function exportCsv(data: LogsResult, types: Set<LogType>) {
 
 // ── Main page ─────────────────────────────────────────────────────────────────
 export default function UserLogsPage() {
+  const navigate = useNavigate();
   // Filter state
   const [selectedUsers, setSelectedUsers] = useState<string[]>([]);
   const [selectedJob,   setSelectedJob]   = useState<number | null>(null);
@@ -755,16 +758,17 @@ export default function UserLogsPage() {
       </Helmet>
       {/* ── Page header ── */}
       {/* ── Breadcrumb ── */}
-      <div className="bg-white border-b border-gray-100 px-6 py-2 flex items-center gap-1.5 text-[12px] text-gray-400">
-        <a
-          href="/home"
-          className="flex items-center gap-1 text-gray-400 hover:text-primary transition-colors"
+      <div className="bg-white border-b border-gray-100 px-4 py-2 flex items-center gap-2">
+        <button
+          type="button"
+          onClick={() => goBack(navigate, '/home?page=3')}
+          className="flex items-center justify-center gap-1.5 h-10 px-3 rounded-xl bg-slate-900 text-white text-sm font-bold shrink-0"
+          aria-label="Manage"
         >
-          <LayoutDashboard size={12} />
-          Home
-        </a>
-        <ChevronRight size={11} className="text-gray-300" />
-        <span className="text-gray-600 font-medium">User Logs</span>
+          <ArrowLeft size={16} />
+          Back
+        </button>
+        <span className="text-gray-900 font-semibold text-sm">User Logs</span>
       </div>
 
       <div className="bg-white border-b border-gray-100 px-6 py-4">
