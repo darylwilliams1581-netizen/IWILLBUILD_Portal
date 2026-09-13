@@ -12,6 +12,7 @@ import { DocumentActionsProvider } from '@/lib/document-actions-context';
 import DocumentActionsWidget from '@/components/DocumentActionsWidget';
 import { useRef } from 'react';
 import { recordRouteChange } from '@/lib/diagnosticCapture';
+import NativeSubscriptionGate from '@/components/NativeSubscriptionGate';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 interface RootLayoutProps {
@@ -137,27 +138,29 @@ export default function RootLayout({ children }: RootLayoutProps) {
         client renders the same empty div during hydration — no mismatch.
         After the first paint, ClientOnly swaps in the real children.
       */}
-      <ClientOnly>
-        <ActivePing />
-        <PortalBanners pathname={location.pathname} />
-      </ClientOnly>
-      <DeferredMount>
-        <OfflineSyncManager />
-        <OfflineBanner />
-        <PwaInstallPrompt />
-      </DeferredMount>
-      <DocumentActionsProvider>
-        {/* overflowX:'clip' replaced with overflow:'hidden' — 'clip' is not
-            supported on iOS Safari and causes the flex child to miscalculate
-            its own width, producing the left-clip bug on the home screen. */}
-        <div suppressHydrationWarning className="flex-1 min-h-0 flex flex-col overflow-hidden w-full min-w-0">
-          {children}
-        </div>
-        {/* Global Document Actions floating widget — hidden on public/share pages */}
+      <NativeSubscriptionGate>
         <ClientOnly>
-          <DocumentActionsWidget />
+          <ActivePing />
+          <PortalBanners pathname={location.pathname} />
         </ClientOnly>
-      </DocumentActionsProvider>
+        <DeferredMount>
+          <OfflineSyncManager />
+          <OfflineBanner />
+          <PwaInstallPrompt />
+        </DeferredMount>
+        <DocumentActionsProvider>
+          {/* overflowX:'clip' replaced with overflow:'hidden' — 'clip' is not
+              supported on iOS Safari and causes the flex child to miscalculate
+              its own width, producing the left-clip bug on the home screen. */}
+          <div suppressHydrationWarning className="flex-1 min-h-0 flex flex-col overflow-hidden w-full min-w-0">
+            {children}
+          </div>
+          {/* Global Document Actions floating widget — hidden on public/share pages */}
+          <ClientOnly>
+            <DocumentActionsWidget />
+          </ClientOnly>
+        </DocumentActionsProvider>
+      </NativeSubscriptionGate>
     </div>
   );
 }

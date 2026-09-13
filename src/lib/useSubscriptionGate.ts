@@ -21,6 +21,7 @@ export type SubscriptionStatus =
   | 'active'
   | 'trial'
   | 'trial_expired'
+  | 'locked_out'
   | 'cancel_at_period_end'
   | 'cancelled'
   | 'past_due'
