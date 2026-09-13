@@ -173,6 +173,8 @@ const MANAGE_HIDDEN_KEYS = new Set([
   'builders_calc',
   'takeoff_pad',
   'quick_links',
+  'profile',
+  'signin_history',
 ]);
 
 const TOOLS_EXTRA_KEYS = new Set(['takeoff_pad', 'builders_calc', 'quick_links']);
@@ -435,8 +437,13 @@ function CollapsibleSection({
   onNavigate: (href: string) => void;
 }) {
   const [open, setOpen] = useState<boolean>(() => {
-    try { return sessionStorage.getItem(storageKey) === '1'; }
-    catch { return false; }
+    try {
+      const stored = sessionStorage.getItem(storageKey);
+      if (stored === '1') return true;
+      if (stored === '0') return false;
+      return storageKey === ADMIN_STORAGE_KEY;
+    }
+    catch { return storageKey === ADMIN_STORAGE_KEY; }
   });
 
   const toggle = () => {
