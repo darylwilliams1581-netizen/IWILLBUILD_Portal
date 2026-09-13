@@ -176,6 +176,7 @@ const MANAGE_HIDDEN_KEYS = new Set([
   'profile',
   'signin_history',
   'finance_settings',
+  'app_docs',
 ]);
 
 const TOOLS_EXTRA_KEYS = new Set(['takeoff_pad', 'builders_calc', 'quick_links']);
