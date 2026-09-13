@@ -189,14 +189,9 @@ describe('PortalSidebar — Timesheets retired', () => {
 
 // ── 6. No comingSoon entries for routes that now exist ────────────────────────
 
-describe('No stale comingSoon entries for live routes', () => {
-  it('risk-register is not in comingSoon', () => {
-    const comingSoonBlock = homeIconsSrc.match(/COMING_SOON_ICON_DEFS[\s\S]*?];/)?.[0] ?? '';
-    expect(comingSoonBlock).not.toContain('/risk-register');
-  });
-
-  it('dazza-ai is not in comingSoon', () => {
-    const comingSoonBlock = homeIconsSrc.match(/COMING_SOON_ICON_DEFS[\s\S]*?];/)?.[0] ?? '';
-    expect(comingSoonBlock).not.toContain('/dazza-ai');
+describe('No comingSoon placeholder tiles', () => {
+  it('COMING_SOON_ICON_DEFS is gone', () => {
+    expect(homeIconsSrc).not.toContain('COMING_SOON_ICON_DEFS');
+    expect(homeIconsSrc).not.toContain('comingSoon: true');
   });
 });

@@ -660,7 +660,7 @@ export default memo(function PagedHomeScreen({
   const allIcons: HomeIconDef[] = [...allowedIcons, ...(isPlatformOwner ? platformAsIconDef : [])];
   const safetyIcons = allIcons.filter(i => i.group === 'safety');
   const toolsExtraIcons = allIcons.filter(i => TOOLS_EXTRA_KEYS.has(i.key));
-  const mgmtIcons = allIcons.filter(i => i.group !== 'comingSoon' && i.group !== 'safety');
+  const mgmtIcons = allIcons.filter(i => i.group !== 'safety');
 
   // ── Swipe handlers ────────────────────────────────────────────────────────
   const handleTouchStart = useCallback((e: ReactTouchEvent) => {

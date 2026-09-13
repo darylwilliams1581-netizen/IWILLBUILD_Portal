@@ -1,7 +1,7 @@
 /**
  * HomeIconPermissions — icon toggle grid shown inside a team member's edit modal.
  * Owner/admin can toggle which home screen icons the member can see.
- * Only live icons are shown — coming-soon excluded.
+ * Only live icons are shown.
  * Certain icons are locked per role and cannot be turned off.
  */
 import { useState, useEffect, useCallback } from 'react';
@@ -55,7 +55,7 @@ export default function HomeIconPermissions({ memberId, memberRole, canEdit }: P
       .then((data: { allowedKeys?: string[] | null } | null) => {
         if (isOwnerOrAdmin) {
           // Owners/admins always have all icons — show all as on
-          const allLive = ALL_HOME_ICONS.filter(i => !i.comingSoon).map(i => i.key);
+          const allLive = ALL_HOME_ICONS.map(i => i.key);
           setAllowedKeys(new Set(allLive));
         } else if (data?.allowedKeys && data.allowedKeys.length > 0) {
           // Always include locked keys even if not in stored permissions
@@ -129,7 +129,6 @@ export default function HomeIconPermissions({ memberId, memberRole, canEdit }: P
     label: GROUP_LABELS[group],
     icons: ALL_HOME_ICONS.filter(i => {
       if (i.group !== group) return false;
-      if (i.comingSoon) return false;
       // ownerOnly icons: only show in grid for owner/platform_owner members
       if (i.ownerOnly && !isOwnerRole) return false;
       // adminOnly icons: only show in grid for admin/owner members

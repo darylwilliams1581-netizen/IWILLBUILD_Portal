@@ -73,23 +73,18 @@ function seoPathValues(): string[] {
 
 // ── 1. comingSoon entries absent from navigation ──────────────────────────────
 
-describe('comingSoon entries absent from PortalSidebar navigation', () => {
-  // Only test hrefs that are exclusively comingSoon (not shared with a live icon).
-  // Some hrefs (e.g. /invoices) appear in both a live icon and a comingSoon variant —
-  // the sidebar legitimately links to those via the live icon.
-  const live = liveHrefs();
-  const exclusivelyComingSoon = comingSoonHrefs().filter(h => !live.has(h));
-
-  it('has at least one exclusively-comingSoon href to test against', () => {
-    expect(exclusivelyComingSoon.length).toBeGreaterThan(0);
+describe('comingSoon placeholders are gone', () => {
+  it('homeIcons has no comingSoon tiles', () => {
+    expect(homeIconsSrc).not.toContain('comingSoon: true');
+    expect(homeIconsSrc).not.toContain('COMING_SOON_ICON_DEFS');
   });
 
-  for (const href of exclusivelyComingSoon) {
-    it(`sidebar does not link to ${href}`, () => {
+  it('sidebar does not advertise unfinished placeholder routes', () => {
+    for (const href of ['/report', '/site-diary', '/rainfall', '/checklist', '/messages', '/daily-log']) {
       expect(sidebarSrc).not.toContain(`'${href}'`);
       expect(sidebarSrc).not.toContain(`"${href}"`);
-    });
-  }
+    }
+  });
 });
 
 // ── 2. comingSoon entries absent from Help page ───────────────────────────────
@@ -118,10 +113,10 @@ describe('comingSoon entries absent from Help page', () => {
     });
   }
 
-  it('VISIBLE_GROUP_CONFIG in homeIcons.ts filters out comingSoon entries', () => {
+  it('VISIBLE_GROUP_CONFIG in homeIcons.ts has no comingSoon group', () => {
     expect(homeIconsSrc).toContain('VISIBLE_GROUP_CONFIG');
-    expect(homeIconsSrc).toContain('!i.comingSoon');
-    expect(homeIconsSrc).toContain('comingSoon group intentionally excluded');
+    expect(homeIconsSrc).not.toContain('comingSoon group intentionally excluded');
+    expect(homeIconsSrc).not.toContain("comingSoon:  'Coming Soon'");
   });
 });
 

@@ -15,9 +15,6 @@ export const ALL_HOME_ICON_KEYS: string[] = [
   'forms', 'safety', 'poster', 'incidents', 'risky',
   // Administration
   'stakeholders', 'team', 'billing', 'settings', 'help',
-  // Coming soon
-  'report', 'site_diary', 'rainfall', 'checklist',
-  'messages', 'invoices_field', 'daily_log', 'weather',
 ];
 
 /** Minimal default set for new invited employees */

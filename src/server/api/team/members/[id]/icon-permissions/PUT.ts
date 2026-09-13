@@ -49,7 +49,7 @@ export default async function handler(req: Request, res: Response) {
       return res.status(400).json({ error: 'allowedKeys must be an array' });
     }
 
-    // Sanitise — only accept known, non-comingSoon keys
+    // Sanitise — only accept known live keys
     const sanitised = (allowedKeys as unknown[])
       .filter((k): k is string => typeof k === 'string' && VALID_KEYS.has(k));
 

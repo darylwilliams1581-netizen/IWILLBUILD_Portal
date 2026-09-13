@@ -35,9 +35,8 @@ describe('Timesheets icon placement', () => {
     expect(mgmtBlock).not.toContain("key: 'timesheet'");
   });
 
-  it('is NOT in COMING_SOON_ICON_DEFS', () => {
-    const comingSoonBlock = managementIconsSrc.match(/COMING_SOON_ICON_DEFS[\s\S]*?];/)?.[0] ?? '';
-    expect(comingSoonBlock).not.toContain("key: 'timesheet'");
+  it('has no coming-soon placeholder list', () => {
+    expect(managementIconsSrc).not.toContain('COMING_SOON_ICON_DEFS');
   });
 
   it('is NOT in JOB_FEATURES (Work & Field / job picker)', () => {

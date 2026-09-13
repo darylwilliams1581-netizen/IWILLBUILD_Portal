@@ -12,7 +12,6 @@
  *   finance     — Finance section
  *   safety      — Safety section
  *   management  — Administration section (Team, Billing, Settings, Help)
- *   comingSoon  — placeholder slots (never rendered on home screen)
  */
 
 import type { ComponentType } from 'react';
@@ -24,14 +23,12 @@ import {
   ClipboardCheck, Image, AlertTriangle, ShieldAlert,
   UserCircle, CreditCard, Settings, BookMarked,
   DollarSign,
-  BarChart2, CloudRain, Clipboard,
-  MessageSquare, ClipboardSignature, Wallet,
   TriangleAlert, Bot, Library, Link2, TableProperties,
   ScrollText, History, HardDriveUpload, SlidersHorizontal,
   User, Calculator, Ruler, Layers,
 } from 'lucide-react';
 
-export type IconGroup = 'field' | 'files' | 'fleet' | 'finance' | 'safety' | 'management' | 'comingSoon';
+export type IconGroup = 'field' | 'files' | 'fleet' | 'finance' | 'safety' | 'management';
 
 export interface HomeIconDef {
   /** Stable DB key — never rename once deployed */
@@ -45,8 +42,6 @@ export interface HomeIconDef {
   /** Route or ?panel= query string */
   href: string;
   group: IconGroup;
-  /** If true: shown greyed in permission grid, never rendered on home screen */
-  comingSoon?: boolean;
   /** If true: only shown to admin/owner roles — hidden from regular workers */
   adminOnly?: boolean;
   /** If true: only shown to owner/platform_owner roles */
@@ -119,18 +114,6 @@ export const MANAGEMENT_ICON_DEFS: HomeIconDef[] = [
   { key: 'help',           label: 'Help',            icon: BookMarked,       href: '/help',                   bg: 'bg-gray-900',    fg: 'text-white', group: 'management' },
 ];
 
-// ── COMING SOON — reserved placeholder slots ──────────────────────────────────
-export const COMING_SOON_ICON_DEFS: HomeIconDef[] = [
-  { key: 'report',         label: 'Report',      icon: BarChart2,          href: '/report',      bg: 'bg-blue-500',   fg: 'text-white', group: 'comingSoon', comingSoon: true },
-  { key: 'site_diary',     label: 'Site Diary',  icon: ClipboardSignature, href: '/site-diary',  bg: 'bg-amber-600',  fg: 'text-white', group: 'comingSoon', comingSoon: true },
-  { key: 'rainfall',       label: 'Rainfall',    icon: CloudRain,          href: '/rainfall',    bg: 'bg-sky-600',    fg: 'text-white', group: 'comingSoon', comingSoon: true },
-  { key: 'checklist',      label: 'Checklist',   icon: Clipboard,          href: '/checklist',   bg: 'bg-lime-600',   fg: 'text-white', group: 'comingSoon', comingSoon: true },
-  { key: 'messages',       label: 'Messages',    icon: MessageSquare,      href: '/messages',    bg: 'bg-green-500',  fg: 'text-white', group: 'comingSoon', comingSoon: true },
-  { key: 'invoices_field', label: 'Invoices',    icon: Wallet,             href: '/invoices',    bg: 'bg-teal-500',   fg: 'text-white', group: 'comingSoon', comingSoon: true },
-  { key: 'daily_log',      label: 'Daily Log',   icon: ClipboardList,      href: '/daily-log',   bg: 'bg-violet-500', fg: 'text-white', group: 'comingSoon', comingSoon: true },
-  // Weather intentionally removed — feature was cancelled
-];
-
 // ── Flat list of ALL icons (used for permission grid) ─────────────────────────
 export const ALL_HOME_ICONS: HomeIconDef[] = [
   ...FIELD_ICON_DEFS,
@@ -139,7 +122,6 @@ export const ALL_HOME_ICONS: HomeIconDef[] = [
   ...FINANCE_ICON_DEFS,
   ...SAFETY_ICON_DEFS,
   ...MANAGEMENT_ICON_DEFS,
-  ...COMING_SOON_ICON_DEFS,
 ];
 
 // ── Default icon sets ─────────────────────────────────────────────────────────
@@ -150,9 +132,7 @@ export const DEFAULT_FIELD_KEYS: string[] = [
 ];
 
 /** Full set given to solo users (only person in company) */
-export const ALL_LIVE_KEYS: string[] = ALL_HOME_ICONS
-  .filter(i => !i.comingSoon)
-  .map(i => i.key);
+export const ALL_LIVE_KEYS: string[] = ALL_HOME_ICONS.map(i => i.key);
 
 /** Keys that owners/admins always have — not restrictable */
 export const OWNER_ADMIN_ALWAYS_ON: string[] = ALL_LIVE_KEYS;
@@ -171,7 +151,6 @@ export function resolveHomeIcons(
 
   // Start with all live icons, then apply role-based visibility gates
   const live = ALL_HOME_ICONS.filter(i => {
-    if (i.comingSoon) return false;
     if (i.ownerOnly && !isOwner) return false;
     if (i.adminOnly && !isAdmin) return false;
     return true;
@@ -197,13 +176,11 @@ export const GROUP_LABELS: Record<IconGroup, string> = {
   finance:     'Finance',
   safety:      'Safety',
   management:  'Administration',
-  comingSoon:  'Coming Soon',
 };
 
 // ── Visible group config ──────────────────────────────────────────────────────
 /**
  * Pre-built group config for navigation and Help.
- * Each entry contains only RELEASED (non-comingSoon) icons.
  * Consumers (Help page, nav grids) must import this — never build their own
  * hardcoded group list.
  */
@@ -214,11 +191,10 @@ export interface VisibleGroupConfig {
 }
 
 export const VISIBLE_GROUP_CONFIG: VisibleGroupConfig[] = [
-  { group: 'field',      label: GROUP_LABELS.field,      defs: FIELD_ICON_DEFS.filter(i => !i.comingSoon) },
-  { group: 'files',      label: GROUP_LABELS.files,      defs: FILES_ICON_DEFS.filter(i => !i.comingSoon) },
-  { group: 'fleet',      label: GROUP_LABELS.fleet,      defs: FLEET_ICON_DEFS.filter(i => !i.comingSoon) },
-  { group: 'finance',    label: GROUP_LABELS.finance,    defs: FINANCE_ICON_DEFS.filter(i => !i.comingSoon) },
-  { group: 'safety',     label: GROUP_LABELS.safety,     defs: SAFETY_ICON_DEFS.filter(i => !i.comingSoon) },
-  { group: 'management', label: GROUP_LABELS.management, defs: MANAGEMENT_ICON_DEFS.filter(i => !i.comingSoon) },
-  // comingSoon group intentionally excluded — never rendered in navigation or Help
+  { group: 'field',      label: GROUP_LABELS.field,      defs: FIELD_ICON_DEFS },
+  { group: 'files',      label: GROUP_LABELS.files,      defs: FILES_ICON_DEFS },
+  { group: 'fleet',      label: GROUP_LABELS.fleet,      defs: FLEET_ICON_DEFS },
+  { group: 'finance',    label: GROUP_LABELS.finance,    defs: FINANCE_ICON_DEFS },
+  { group: 'safety',     label: GROUP_LABELS.safety,     defs: SAFETY_ICON_DEFS },
+  { group: 'management', label: GROUP_LABELS.management, defs: MANAGEMENT_ICON_DEFS },
 ].filter(gc => gc.defs.length > 0);
