@@ -13,7 +13,7 @@ import { useState } from 'react';
 import {
   Play, CheckCircle2, XCircle, Loader2, AlertTriangle,
   ChevronDown, ChevronUp, Database, FileText, ClipboardList,
-  ShieldCheck, Info,
+  ShieldCheck, Info, Trash2,
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -115,10 +115,61 @@ function Stat({ label, value, colour = 'text-slate-200' }: { label: string; valu
 export default function SafetyDocSeedTab() {
   const [dryRunResult, setDryRunResult] = useState<DryRunResponse | null>(null);
   const [liveResult,   setLiveResult]   = useState<LiveResponse | null>(null);
-  const [loading,      setLoading]      = useState<'dry' | 'live' | null>(null);
+  const [loading,      setLoading]      = useState<'dry' | 'live' | 'deleteDry' | 'deleteLive' | null>(null);
   const [error,        setError]        = useState<string | null>(null);
   const [confirmed,    setConfirmed]    = useState(false);
   const [showSemanticMap, setShowSemanticMap] = useState(false);
+
+  // Delete state
+  const [deleteDryResult, setDeleteDryResult] = useState<{
+    wouldDelete: { documentTemplates: { count: number; names: string[] }; formTemplates: { count: number; names: string[] } };
+    notFound: { documentTemplates: string[]; formTemplates: string[] };
+    companyName: string; companyId: number; message: string;
+  } | null>(null);
+  const [deleteResult, setDeleteResult] = useState<{ deleted: { documentTemplates: { count: number }; formTemplates: { count: number } }; message: string } | null>(null);
+  const [deleteConfirmed, setDeleteConfirmed] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+
+  async function runDeleteDryRun() {
+    setLoading('deleteDry');
+    setDeleteError(null);
+    setDeleteDryResult(null);
+    setDeleteResult(null);
+    setDeleteConfirmed(false);
+    try {
+      const res = await fetch('/api/developer/delete-seeded-documents?dryRun=1', { method: 'POST' });
+      const data = await res.json();
+      if (!res.ok || data.error) { setDeleteError(data.error || `HTTP ${res.status}`); return; }
+      setDeleteDryResult(data);
+      toast.success('Delete dry run complete — review before confirming');
+    } catch (e) {
+      setDeleteError(String(e));
+    } finally {
+      setLoading(null);
+    }
+  }
+
+  async function runDeleteLive() {
+    if (!deleteConfirmed) return;
+    setLoading('deleteLive');
+    setDeleteError(null);
+    setDeleteResult(null);
+    try {
+      const res = await fetch('/api/developer/delete-seeded-documents', { method: 'POST' });
+      const data = await res.json();
+      if (!res.ok || data.error) { setDeleteError(data.error || `HTTP ${res.status}`); return; }
+      setDeleteResult(data);
+      // Reset seed state so user can re-run dry run fresh
+      setDryRunResult(null);
+      setLiveResult(null);
+      setConfirmed(false);
+      toast.success(`Deleted ${data.deleted.documentTemplates.count} doc templates + ${data.deleted.formTemplates.count} form templates`);
+    } catch (e) {
+      setDeleteError(String(e));
+    } finally {
+      setLoading(null);
+    }
+  }
 
   async function runDryRun() {
     setLoading('dry');
@@ -540,6 +591,101 @@ export default function SafetyDocSeedTab() {
           </ol>
         </div>
       )}
+
+      {/* ── Delete seeded docs (red zone) ─────────────────────────────── */}
+      <div className="bg-slate-900 border border-red-800 rounded-xl p-5 space-y-4">
+        <div className="flex items-start gap-3">
+          <Trash2 className="w-5 h-5 text-red-400 mt-0.5 shrink-0" />
+          <div>
+            <h3 className="text-sm font-semibold text-red-300">Delete Seeded Documents</h3>
+            <p className="text-xs text-slate-400 mt-0.5">
+              Removes only the known seeded SWMS, safety plans, and form templates from your company.
+              Does <strong className="text-white">not</strong> touch any other rows. Use this to wipe the old broken seed before re-running.
+            </p>
+          </div>
+        </div>
+
+        <button
+          onClick={runDeleteDryRun}
+          disabled={loading !== null}
+          className="flex items-center gap-2 bg-slate-700 hover:bg-slate-600 disabled:opacity-50 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors"
+        >
+          {loading === 'deleteDry' ? <Loader2 className="w-4 h-4 animate-spin" /> : <Play className="w-4 h-4" />}
+          Dry Run — show what would be deleted
+        </button>
+
+        {deleteError && (
+          <div className="flex items-start gap-2 bg-red-950 border border-red-800 rounded-lg p-3 text-sm text-red-300">
+            <XCircle className="w-4 h-4 shrink-0 mt-0.5" />{deleteError}
+          </div>
+        )}
+
+        {deleteDryResult && !deleteResult && (
+          <div className="space-y-3">
+            <div className="bg-slate-800 rounded-lg p-3 text-sm space-y-1">
+              <div className="flex gap-2">
+                <span className="text-slate-400 w-40 shrink-0">Company</span>
+                <span className="text-white">{deleteDryResult.companyName} <span className="text-slate-500">(ID: {deleteDryResult.companyId})</span></span>
+              </div>
+              <div className="flex gap-2">
+                <span className="text-slate-400 w-40 shrink-0">Doc templates found</span>
+                <span className="text-red-300 font-bold">{deleteDryResult.wouldDelete.documentTemplates.count}</span>
+              </div>
+              <div className="flex gap-2">
+                <span className="text-slate-400 w-40 shrink-0">Form templates found</span>
+                <span className="text-red-300 font-bold">{deleteDryResult.wouldDelete.formTemplates.count}</span>
+              </div>
+            </div>
+
+            <CollapsibleList label="Would delete (docs)" items={deleteDryResult.wouldDelete.documentTemplates.names} variant="skip" />
+            <CollapsibleList label="Would delete (forms)" items={deleteDryResult.wouldDelete.formTemplates.names} variant="skip" />
+            {deleteDryResult.notFound.documentTemplates.length > 0 && (
+              <CollapsibleList label="Not found in DB (docs)" items={deleteDryResult.notFound.documentTemplates} variant="neutral" />
+            )}
+            {deleteDryResult.notFound.formTemplates.length > 0 && (
+              <CollapsibleList label="Not found in DB (forms)" items={deleteDryResult.notFound.formTemplates} variant="neutral" />
+            )}
+
+            <div className="bg-red-950 border border-red-800 rounded-lg p-3 flex items-start gap-2 text-sm text-red-300">
+              <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
+              <div>
+                <p className="font-semibold">This will permanently delete {deleteDryResult.wouldDelete.documentTemplates.count + deleteDryResult.wouldDelete.formTemplates.count} rows. This cannot be undone.</p>
+                <p className="text-xs mt-0.5 text-red-400">After deleting, run the seed again from Step 1 above to get clean documents.</p>
+              </div>
+            </div>
+
+            <label className="flex items-center gap-3 cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={deleteConfirmed}
+                onChange={(e) => setDeleteConfirmed(e.target.checked)}
+                className="w-4 h-4 rounded accent-red-500"
+              />
+              <span className="text-sm text-slate-300">I confirm — delete these seeded documents permanently</span>
+            </label>
+
+            <button
+              onClick={runDeleteLive}
+              disabled={!deleteConfirmed || loading !== null}
+              className="flex items-center gap-2 bg-red-700 hover:bg-red-600 disabled:opacity-40 disabled:cursor-not-allowed text-white text-sm font-semibold px-5 py-2.5 rounded-lg transition-colors"
+            >
+              {loading === 'deleteLive' ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
+              Delete Seeded Documents
+            </button>
+          </div>
+        )}
+
+        {deleteResult && (
+          <div className="flex items-start gap-2 bg-emerald-950 border border-emerald-700 rounded-lg p-3 text-sm text-emerald-300">
+            <CheckCircle2 className="w-4 h-4 shrink-0 mt-0.5" />
+            <div>
+              <p className="font-semibold">{deleteResult.message}</p>
+              <p className="text-xs mt-1 text-emerald-400">Now run the dry run in Step 1 above &mdash; all 40 SWMS + 4 plans + 16 forms should show as &quot;would insert&quot;.</p>
+            </div>
+          </div>
+        )}
+      </div>
+
     </div>
   );
 }
