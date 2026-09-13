@@ -138,12 +138,12 @@ const ICON_DOCS: Record<string, IconDoc> = {
 
   // ── SAFETY ─────────────────────────────────────────────────────────────────
   forms: {
-    purpose: 'Design and manage custom digital forms — inspection checklists, toolbox talks, quality records, and any form your business needs.',
-    howTo: ['Tap Forms on the home screen.', 'Browse existing forms or tap + to create a new one.', 'Add fields: text, number, checkbox, signature, photo, dropdown, etc.', 'Set required fields and conditional logic.', 'Publish the form — it appears in the Forms picker for field workers.'],
+    purpose: 'Studio Forms lets you design and manage digital forms — inspection checklists, toolbox talks, quality records, and any form your business needs.',
+    howTo: ['Open Tools and tap Studio Forms.', 'Browse existing forms or tap + to create a new one.', 'Add fields: text, number, checkbox, signature, photo, dropdown, etc.', 'Set required fields and conditional logic.', 'Publish the form — it appears in the Forms picker for field workers.'],
   },
   safety: {
-    purpose: 'The SWMS (Safe Work Method Statement) and safety document library. Create, manage, and assign safety documents to jobs. Workers review and sign on before starting high-risk activities.',
-    howTo: ['Tap Safety on the home screen.', 'Browse the SWMS library or tap + to create a new document.', 'Fill in the work activity, hazards, controls, PPE, and plant/equipment.', 'Assign the document to a job.', 'Workers review and sign on via Field Docs.'],
+    purpose: 'Studio Documents lets you create, manage, and assign SWMS and other safety documents to jobs. Workers review and sign on before starting high-risk activities.',
+    howTo: ['Open Tools and tap Studio Documents.', 'Browse existing documents or tap + to create a new document.', 'Fill in the work activity, hazards, controls, PPE, and plant/equipment.', 'Assign the document to a job.', 'Workers review and sign on via Field Docs.'],
     tip: 'SWMS are required by law for high-risk construction work. Keep them current and job-specific.',
   },
   poster: {
@@ -189,11 +189,6 @@ const ICON_DOCS: Record<string, IconDoc> = {
     purpose: 'Dazza AI — an agentic AI assistant for platform owners. Analyse data, generate reports, and run platform-level queries.',
     howTo: ['Tap Dazza AI on the home screen (Owner only).', 'Type your question or instruction in the chat.', 'Dazza will analyse the request and respond with data, summaries, or actions.', 'Review the response and follow up with further questions.'],
     tip: 'Dazza AI is available to platform owners only.',
-  },
-  app_docs: {
-    purpose: 'The Studio document builder. Create and manage document templates — safety plans, SWMS, induction packs, job reports, and any custom documents.',
-    howTo: ['Tap Studio on the home screen (Admin only).', 'Browse existing templates or tap + to create a new document.', 'Use the block editor to add headings, text, images, tables, and safety blocks.', 'Save the document — it becomes available to assign to jobs.'],
-    tip: 'Documents with "Requires Acknowledgement" turned on must be signed by workers before they can proceed.',
   },
   library: {
     purpose: 'A central knowledge library for your business — store procedures, reference documents, training materials, and any content you want the team to look up.',
@@ -275,7 +270,7 @@ export default function HelpPage() {
   // VISIBLE_GROUP_CONFIG already excludes comingSoon — no further filtering needed.
   const filtered = VISIBLE_GROUP_CONFIG.map(gc => ({
     ...gc,
-    defs: gc.defs.filter(icon => {
+    defs: gc.defs.filter(icon => icon.key !== 'app_docs').filter(icon => {
       if (!q) return true;
       const doc = ICON_DOCS[icon.key];
       return (

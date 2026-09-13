@@ -174,7 +174,6 @@ const MANAGE_HIDDEN_KEYS = new Set([
   'takeoff_pad',
   'quick_links',
   'profile',
-  'signin_history',
   'finance_settings',
   'app_docs',
   'timesheet',

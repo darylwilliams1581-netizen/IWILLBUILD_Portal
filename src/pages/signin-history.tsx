@@ -7,11 +7,11 @@
  */
 import { useState, useEffect, useCallback } from 'react';
 import { Helmet } from '@dr.pogodin/react-helmet';
-import { LogIn, LogOut, AlertCircle, RefreshCw, Download, Filter, X, ChevronLeft, ChevronRight, Truck, HardHat, Clock, Users, ArrowLeft } from 'lucide-react';
-import { Link } from "react-router";
+import { LogIn, LogOut, AlertCircle, RefreshCw, Download, Filter, X, ChevronLeft, ChevronRight, Truck, HardHat, Clock, Users } from 'lucide-react';
 import DesktopTopBar from '@/components/DesktopTopBar';
 import DesktopDock from '@/components/DesktopDock';
 import PortalSidebar from '@/components/PortalSidebar';
+import ManageBackButton from '@/components/ManageBackButton';
 interface HistoryRow {
   id: string;
   record_type: 'job_attendance' | 'fleet_usage';
@@ -153,10 +153,7 @@ export default function SignInHistoryPage() {
         {/* ── Page header ─────────────────────────────────────────────────── */}
         <div className="flex items-center justify-between gap-3 flex-wrap">
           <div>
-            <Link to="/home" className="inline-flex items-center gap-1 text-sm font-semibold text-slate-500 hover:text-slate-800 mb-2">
-              <ArrowLeft size={14} />
-              Home
-            </Link>
+            <ManageBackButton />
             <h1 className="text-xl font-black text-slate-800 flex items-center gap-2">
               <Users size={20} className="text-violet-600" />
               Sign-In History
