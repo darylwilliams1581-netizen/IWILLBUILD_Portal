@@ -450,15 +450,12 @@ describe('Dashboard quick-action buttons — compact spec', () => {
 
 // ── 59–68. Collapsible sections (Finance, Safety, Administration) ─────────────
 
-describe('Finance — collapsible section', () => {
-  it('testId finance-collapsible registered in COLLAPSIBLE_GROUPS', () => {
-    expect(screenSrc).toContain("testId: 'finance-collapsible'");
+describe('Finance — always-open Accounting / Costing / PDF Style', () => {
+  it('does not bury finance behind a collapsible gate', () => {
+    expect(screenSrc).not.toContain("testId: 'finance-collapsible'");
   });
-  it('FINANCE_STORAGE_KEY constant is defined', () => {
-    expect(screenSrc).toContain('FINANCE_STORAGE_KEY');
-  });
-  it('storage key value is manage_finance_open', () => {
-    expect(screenSrc).toContain('manage_finance_open');
+  it('finance tiles use a single-column grid', () => {
+    expect(screenSrc).toContain("group === 'finance' ? 'grid-cols-1'");
   });
 });
 

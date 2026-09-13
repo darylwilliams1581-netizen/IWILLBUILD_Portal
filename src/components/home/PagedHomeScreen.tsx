@@ -175,6 +175,7 @@ const MANAGE_HIDDEN_KEYS = new Set([
   'quick_links',
   'profile',
   'signin_history',
+  'finance_settings',
 ]);
 
 const TOOLS_EXTRA_KEYS = new Set(['takeoff_pad', 'builders_calc', 'quick_links']);
@@ -492,7 +493,6 @@ function CollapsibleSection({
 
 // Which groups get a collapsible toggle and their config
 const COLLAPSIBLE_GROUPS: Record<string, { storageKey: string; testId: string }> = {
-  finance:    { storageKey: FINANCE_STORAGE_KEY, testId: 'finance-collapsible' },
   management: { storageKey: ADMIN_STORAGE_KEY,   testId: 'admin-collapsible'   },
 };
 
@@ -551,7 +551,7 @@ function ManagePage({
           return (
             <div key={group} className="mb-5">
               <p className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider mb-2 px-0.5">{label}</p>
-              <div className="grid grid-cols-2 gap-2">
+              <div className={`grid ${group === 'finance' ? 'grid-cols-1' : 'grid-cols-2'} gap-2`}>
                 {groupIcons.map(item => (
                   <IconTile key={item.key} item={item} onNavigate={onNavigate} wide={item.key === 'tools'} />
                 ))}
