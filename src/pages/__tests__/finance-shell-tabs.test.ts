@@ -47,7 +47,6 @@ function readSrc(rel: string) {
 const finance      = readSrc('pages/finance.tsx');
 const ledgerTab    = readSrc('components/finance/FinanceLedgerTab.tsx');
 const poTab        = readSrc('components/finance/FinancePurchaseOrdersTab.tsx');
-const tsTab        = readSrc('components/finance/FinanceTimesheetsTab.tsx');
 const settingsTab  = readSrc('components/finance/FinanceSettingsTab.tsx');
 const timesheetsPg = readSrc('pages/timesheets.tsx');
 const homeIcons    = readSrc('lib/homeIcons.ts');
@@ -118,14 +117,6 @@ describe('FinancePurchaseOrdersTab — no standalone page chrome', () => {
   CHROME_MARKERS.forEach(marker => {
     it(`does not contain "${marker}"`, () => {
       expect(poTab).not.toContain(marker);
-    });
-  });
-});
-
-describe('FinanceTimesheetsTab — no standalone page chrome', () => {
-  CHROME_MARKERS.forEach(marker => {
-    it(`does not contain "${marker}"`, () => {
-      expect(tsTab).not.toContain(marker);
     });
   });
 });
@@ -216,10 +207,6 @@ describe('Tab component root elements — fill Finance shell content area', () =
 
   it('FinancePurchaseOrdersTab root uses h-full overflow-hidden', () => {
     expect(poTab).toMatch(/className="flex flex-col h-full overflow-hidden/);
-  });
-
-  it('FinanceTimesheetsTab root uses h-full overflow-hidden', () => {
-    expect(tsTab).toMatch(/className="flex flex-col h-full overflow-hidden/);
   });
 });
 

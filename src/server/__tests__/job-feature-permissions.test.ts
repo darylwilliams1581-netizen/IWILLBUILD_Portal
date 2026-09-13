@@ -94,30 +94,6 @@ describe('GET /api/jobs — authentication (401)', () => {
   });
 });
 
-// ── 2. Timesheet GET — unauthenticated returns 401 ───────────────────────────
-
-describe('GET /api/finance/timesheets — authentication (401)', () => {
-  it('returns 401 when unauthenticated', async () => {
-    const { default: handler } = await import('../api/finance/timesheets/GET');
-    const req = mockReq({ query: {} });
-    const res = mockRes();
-    await handler(req as never, res as never);
-    expect(res._status).toBe(401);
-  });
-});
-
-// ── 3. Timesheet POST — unauthenticated returns 401 ──────────────────────────
-
-describe('POST /api/finance/timesheets — authentication (401)', () => {
-  it('returns 401 when unauthenticated', async () => {
-    const { default: handler } = await import('../api/finance/timesheets/POST');
-    const req = mockReq({ body: { weekEnding: '2026-08-24', entries: [] } });
-    const res = mockRes();
-    await handler(req as never, res as never);
-    expect(res._status).toBe(401);
-  });
-});
-
 // ── 4. Source-level: job detail handler enforces all security guards ──────────
 
 describe('GET /api/jobs/:id — source-level security guards', () => {
@@ -141,29 +117,6 @@ describe('GET /api/jobs/:id — source-level security guards', () => {
     expect(jobDetailSrc).not.toContain('req.query.companyId');
     expect(jobDetailSrc).not.toContain('req.body.companyId');
     expect(jobDetailSrc).toContain('profile.companyId');
-  });
-});
-
-// ── 5. Source-level: timesheet employee identity from session ─────────────────
-
-describe('POST /api/finance/timesheets — employee identity (source-level)', () => {
-  const tsPostSrc = src('src/server/api/finance/timesheets/POST.ts');
-
-  it('derives employeeProfileId from session profile.id by default', () => {
-    expect(tsPostSrc).toContain('employeeProfileId: number = profile.id');
-  });
-
-  it('only allows admin to override employeeProfileId', () => {
-    expect(tsPostSrc).toContain('profile.isAdmin');
-  });
-
-  it('verifies override employee belongs to same company', () => {
-    expect(tsPostSrc).toContain('company_id = ${profile.companyId}');
-  });
-
-  it('does not accept client-supplied companyId', () => {
-    expect(tsPostSrc).not.toContain('body.companyId');
-    expect(tsPostSrc).not.toContain('req.query.companyId');
   });
 });
 

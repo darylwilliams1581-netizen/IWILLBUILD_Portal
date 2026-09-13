@@ -303,13 +303,6 @@ import finance_purchase_orders_poId_delete_270 from "./api/finance/purchase-orde
 import finance_purchase_orders_poId_get_271 from "./api/finance/purchase-orders/[poId]/GET";
 import finance_purchase_orders_poId_put_272 from "./api/finance/purchase-orders/[poId]/PUT";
 import finance_purchase_orders_poId_pdf_get_273 from "./api/finance/purchase-orders/[poId]/pdf/GET";
-import finance_timesheets_get_274 from "./api/finance/timesheets/GET";
-import finance_timesheets_post_275 from "./api/finance/timesheets/POST";
-import finance_timesheets_employees_get_276 from "./api/finance/timesheets/employees/GET";
-import finance_timesheets_me_get_277 from "./api/finance/timesheets/me/GET";
-import finance_timesheets_id_delete_278 from "./api/finance/timesheets/[id]/DELETE";
-import finance_timesheets_id_get_279 from "./api/finance/timesheets/[id]/GET";
-import finance_timesheets_id_put_280 from "./api/finance/timesheets/[id]/PUT";
 import fleet_get_281 from "./api/fleet/GET";
 import fleet_post_282 from "./api/fleet/POST";
 import fleet_analytics_settings_get_283 from "./api/fleet/analytics-settings/GET";
@@ -3746,13 +3739,6 @@ app.delete("/api/finance/purchase-orders/:poId", finance_purchase_orders_poId_de
 app.get("/api/finance/purchase-orders/:poId", finance_purchase_orders_poId_get_271);
 app.put("/api/finance/purchase-orders/:poId", finance_purchase_orders_poId_put_272);
 app.get("/api/finance/purchase-orders/:poId/pdf", finance_purchase_orders_poId_pdf_get_273);
-app.get("/api/finance/timesheets", finance_timesheets_get_274);
-app.post("/api/finance/timesheets", finance_timesheets_post_275);
-app.get("/api/finance/timesheets/employees", finance_timesheets_employees_get_276);
-app.get("/api/finance/timesheets/me", finance_timesheets_me_get_277);
-app.delete("/api/finance/timesheets/:id", finance_timesheets_id_delete_278);
-app.get("/api/finance/timesheets/:id", finance_timesheets_id_get_279);
-app.put("/api/finance/timesheets/:id", finance_timesheets_id_put_280);
 app.get("/api/fleet", fleet_get_281);
 app.post("/api/fleet", fleet_post_282);
 app.get("/api/fleet/analytics-settings", fleet_analytics_settings_get_283);
@@ -5119,15 +5105,6 @@ if (import.meta.env.PROD && !process.env.VITEST) {
 
 		// ── All migrations done — now start accepting requests ─────────────────
 		console.log('[startup] all inline migrations complete — calling app.listen');
-
-		// ── Timesheet schema ──────────────────────────────────────────────────
-		try {
-			const { ensureTimesheetSchema } = await import('./lib/timesheet-service.js');
-			await ensureTimesheetSchema();
-			console.log('[startup] timesheet schema ready');
-		} catch (e) {
-			console.warn('[startup] timesheet schema migration skipped:', (e as Error)?.message?.slice(0, 200));
-		}
 
 		// ── Dazza engine startup log ──────────────────────────────────────────
 		// Logs which engine will be used for Dazza chat requests.

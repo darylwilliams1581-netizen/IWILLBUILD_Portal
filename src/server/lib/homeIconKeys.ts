@@ -16,7 +16,7 @@ export const ALL_HOME_ICON_KEYS: string[] = [
   // Administration
   'stakeholders', 'team', 'billing', 'settings', 'help',
   // Coming soon
-  'report', 'timesheet', 'site_diary', 'rainfall', 'checklist',
+  'report', 'site_diary', 'rainfall', 'checklist',
   'messages', 'invoices_field', 'daily_log', 'weather',
 ];
 

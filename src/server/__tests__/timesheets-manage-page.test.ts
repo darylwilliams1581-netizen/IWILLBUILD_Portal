@@ -25,8 +25,6 @@ const jobFeaturesSrc     = src('src/lib/jobFeatureRegistry.ts');
 const timesheetsPageSrc  = src('src/pages/timesheets.tsx');
 const financeSrc         = src('src/pages/finance.tsx');
 const routesSrc          = src('src/routes.tsx');
-const timesheetsGetSrc   = src('src/server/api/finance/timesheets/GET.ts');
-const timesheetsMeSrc    = src('src/server/api/finance/timesheets/me/GET.ts');
 const sidebarSrc         = src('src/components/PortalSidebar.tsx');
 
 // ── 1. Timesheets in MANAGEMENT_ICON_DEFS ─────────────────────────────────────
@@ -102,31 +100,5 @@ describe('PortalSidebar timesheets link', () => {
   it('has no Timesheets nav item', () => {
     expect(sidebarSrc).not.toContain("href: '/finance?financeTab=timesheets'");
     expect(sidebarSrc).not.toContain("href: '/timesheets'");
-  });
-});
-
-// ── 7. API — company isolation ────────────────────────────────────────────────
-
-describe('GET /api/finance/timesheets — company isolation', () => {
-  it('passes companyId to the service (company isolation enforced in service layer)', () => {
-    expect(timesheetsGetSrc).toContain('companyId: profile.companyId');
-  });
-
-  it('uses resolvePOProfile (authenticated session)', () => {
-    expect(timesheetsGetSrc).toContain('resolvePOProfile');
-  });
-});
-
-describe('GET /api/finance/timesheets/me — profile endpoint', () => {
-  it('uses resolvePOProfile', () => {
-    expect(timesheetsMeSrc).toContain('resolvePOProfile');
-  });
-
-  it('returns isAdmin flag', () => {
-    expect(timesheetsMeSrc).toContain('isAdmin');
-  });
-
-  it('returns the authenticated user profile only', () => {
-    expect(timesheetsMeSrc).toContain('profile.id');
   });
 });
