@@ -51,6 +51,8 @@ interface Props {
   jobId: number;
   /** Called once on mount with a function the parent can invoke to open Add Entry modal */
   onRegisterAddEntry?: (fn: () => void) => void;
+  /** Open the add-entry sheet immediately (Log Cost from the job menu) */
+  startWithAdd?: boolean;
 }
 
 // ── Constants ─────────────────────────────────────────────────────────────────
@@ -427,7 +429,7 @@ export function AddEntryModal({ jobId, onClose, onCreated, editEntry }: AddEntry
 
 // ── Main Component ────────────────────────────────────────────────────────────
 
-export default function JobCosts({ jobId, onRegisterAddEntry }: Props) {
+export default function JobCosts({ jobId, onRegisterAddEntry, startWithAdd = false }: Props) {
   const [entries, setEntries] = useState<LedgerEntry[]>([]);
   const [totals, setTotals] = useState<Totals | null>(null);
   const [loading, setLoading] = useState(true);
@@ -436,7 +438,7 @@ export default function JobCosts({ jobId, onRegisterAddEntry }: Props) {
   const [syncMsg, setSyncMsg] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'pending' | 'approved'>('all');
   const [typeFilter, setTypeFilter] = useState('all');
-  const [showAdd, setShowAdd] = useState(false);
+  const [showAdd, setShowAdd] = useState(startWithAdd);
   const [editEntry, setEditEntry] = useState<LedgerEntry | null>(null);
   const [exportOpen, setExportOpen] = useState(false);
   const [approving, setApproving] = useState<number | null>(null);

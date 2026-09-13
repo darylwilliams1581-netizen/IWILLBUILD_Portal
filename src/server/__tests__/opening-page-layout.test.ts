@@ -390,23 +390,19 @@ describe('Manage page grid', () => {
 // ── 49–58. Dashboard quick-action compact spec ────────────────────────────────
 
 describe('Dashboard quick-action buttons — compact spec', () => {
-  it('Photos button uses 32×32 badge (w-8 h-8)', () => {
-    // Photos gallery is the first w-8 h-8 in DashboardPage
+  it('Add Job uses 32×32 badge (w-8 h-8)', () => {
     expect(screenSrc).toContain('w-8 h-8 rounded-lg bg-white/20');
   });
 
-  it('Photos glyph is 16px', () => {
-    expect(screenSrc).toContain('<CameraIcon size={16}');
-  });
-
-  it('uses clear names for gallery, capture-adjacent, and record destinations', () => {
-    expect(screenSrc).toMatch(/>\s*Photos\s*<\/button>/);
-    expect(screenSrc).toMatch(/>\s*Attendance\s*<\/span>/);
-    expect(screenSrc).toMatch(/>\s*Sign in or out\s*<\/span>/);
+  it('uses clear names for job hub and company tools', () => {
+    expect(screenSrc).toMatch(/>\s*Add Job\s*<\/button>/);
     expect(screenSrc).toContain('Job Cards');
     expect(screenSrc).toContain('/scheduler');
     expect(screenSrc).toContain("onNavigate('/jobs')");
     expect(screenSrc).toContain('jobs-launcher-btn');
+    expect(screenSrc).toContain('Equipment Manager');
+    expect(screenSrc).not.toMatch(/>\s*Photos\s*<\/button>/);
+    expect(screenSrc).not.toMatch(/>\s*Attendance\s*<\/span>/);
   });
 
   it('Add Job glyph is 16px', () => {
@@ -414,21 +410,17 @@ describe('Dashboard quick-action buttons — compact spec', () => {
   });
 
   it('quick-action grid uses gap-2', () => {
-    // DashboardPage grid
-    expect(screenSrc).toContain('grid grid-cols-2 gap-2');
+    expect(screenSrc).toContain('grid grid-cols-1 gap-2');
   });
 
   it('quick-action buttons have minHeight 52', () => {
-    // All dashboard quick-action buttons set minHeight: 52
     const matches = (screenSrc.match(/minHeight: 52/g) ?? []).length;
-    // Photos, Add Job, Attendance, Fleet, Site Prestart, Contacts + JobFeatureCard = ≥7
     expect(matches).toBeGreaterThanOrEqual(7);
   });
 
-  it('Attendance uses the existing sign-in panel and horizontal layout', () => {
-    expect(screenSrc).toContain("panel=signin");
-    // Attendance button uses flex items-center gap-2.5
-    expect(screenSrc).toContain('flex items-center gap-2.5 px-3 py-2.5 rounded-xl bg-blue-600');
+  it('Fleet uses the existing sign-in-adjacent company tools and horizontal layout', () => {
+    expect(screenSrc).toContain("onNavigate('/fleet')");
+    expect(screenSrc).toContain('flex items-center gap-2.5 px-3 py-2.5 rounded-xl bg-sky-500');
   });
 
   it('Fleet uses horizontal layout', () => {
@@ -441,10 +433,6 @@ describe('Dashboard quick-action buttons — compact spec', () => {
 
   it('Contacts uses horizontal layout', () => {
     expect(screenSrc).toContain('flex items-center gap-2.5 px-3 py-2.5 rounded-xl bg-teal-600');
-  });
-
-  it('Attendance glyph is 16px', () => {
-    expect(screenSrc).toContain('<LogIn size={16}');
   });
 
   it('Fleet glyph is 16px', () => {

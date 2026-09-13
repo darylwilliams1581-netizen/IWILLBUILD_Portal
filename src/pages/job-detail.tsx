@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams, useNavigate, useSearchParams, useLocation } from "react-router";
 import { motion } from 'motion/react';
 import { Helmet } from '@dr.pogodin/react-helmet';
-import { HardHat, ChevronLeft, Edit2, ChevronDown, Calculator, FolderOpen, StickyNote, TrendingUp, ClipboardList, ShieldAlert, Receipt, Clock, UserCheck, DollarSign, Users, CalendarCheck, CalendarClock, Layers, Image, FileText, Check, X, Loader2, AlertCircle, CheckSquare, Download, Mail, BookOpen, ChevronUp } from 'lucide-react';
+import { HardHat, ChevronLeft, Edit2, ChevronDown, Calculator, FolderOpen, StickyNote, TrendingUp, ClipboardList, ShieldAlert, Receipt, Clock, UserCheck, DollarSign, Users, CalendarCheck, CalendarClock, Layers, Image, FileText, Check, X, Loader2, AlertCircle, CheckSquare, Download, Mail, BookOpen, ChevronUp, Plus } from 'lucide-react';
 import SendDocumentEmailModal from '@/components/SendDocumentEmailModal';
 import type { JobEmailContext, SendSuccessPayload } from '@/components/SendDocumentEmailModal';
 import { EmailToastContainer } from '@/components/EmailSentToast';
@@ -31,7 +31,7 @@ import DesktopTopBar from '@/components/DesktopTopBar';
 import DesktopDock from '@/components/DesktopDock';
 import PortalSidebar from '@/components/PortalSidebar';
 import { goBack } from '@/lib/navigation';
-type Tab = 'details' | 'estimates' | 'costs' | 'invoices' | 'purchase-orders' | 'progress' | 'delays' | 'photos' | 'files' | 'forms' | 'notes' | 'safety' | 'drawings' | 'attendance' | 'tasks';
+type Tab = 'details' | 'estimates' | 'costs' | 'log-cost' | 'invoices' | 'purchase-orders' | 'progress' | 'delays' | 'photos' | 'files' | 'forms' | 'notes' | 'safety' | 'drawings' | 'attendance' | 'tasks';
 
 // ── Wrapper components to adapt actual selectors to JobDetailsDashboard interface ──
 
@@ -123,6 +123,10 @@ const NAV_GROUPS: Array<{
     key: 'costs' as const,
     label: 'Job Ledger',
     icon: BookOpen
+  }, {
+    key: 'log-cost' as const,
+    label: 'Log Cost',
+    icon: Plus
   }]
 }, {
   label: 'Safety',
@@ -253,7 +257,7 @@ export default function JobDetailPage() {
   const resolveTab = useCallback((): Tab => {
     if (formInstanceId) return 'forms';
     const t = new URLSearchParams(location.search).get('tab');
-    if (t === 'photos' || t === 'estimates' || t === 'costs' || t === 'invoices' || t === 'purchase-orders' || t === 'files' || t === 'notes' || t === 'delays' || t === 'progress' || t === 'forms' || t === 'safety' || t === 'drawings' || t === 'attendance' || t === 'tasks') return t as Tab;
+    if (t === 'photos' || t === 'estimates' || t === 'costs' || t === 'log-cost' || t === 'invoices' || t === 'purchase-orders' || t === 'files' || t === 'notes' || t === 'delays' || t === 'progress' || t === 'forms' || t === 'safety' || t === 'drawings' || t === 'attendance' || t === 'tasks') return t as Tab;
     return 'details';
   }, [location.search, formInstanceId]);
   const activeTab = resolveTab();
@@ -921,6 +925,7 @@ export default function JobDetailPage() {
 
                   {/* ── Costs ── */}
                   {activeTab === 'costs' && <JobCosts jobId={job.id} />}
+                  {activeTab === 'log-cost' && <JobCosts jobId={job.id} startWithAdd />}
 
                   {/* ── Invoices ── */}
                   {activeTab === 'invoices' && <JobInvoices jobId={job.id} job={job} />}

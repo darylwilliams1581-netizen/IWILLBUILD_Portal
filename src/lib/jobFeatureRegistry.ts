@@ -157,8 +157,8 @@ export const JOB_FEATURES: JobFeature[] = [
     pickerRoute: '/home?picker=attendance',
     launcherRoute: '/work-field/attendance',
     inDropdown: true,
-    inOpeningPage: false,
-    inLauncher: false,
+    inOpeningPage: true,
+    inLauncher: true,
     group: 'Work',
   },
 
@@ -175,8 +175,8 @@ export const JOB_FEATURES: JobFeature[] = [
     pickerRoute: '/home?picker=photos',
     launcherRoute: '/work-field/photos',
     inDropdown: true,
-    inOpeningPage: false,
-    inLauncher: false,
+    inOpeningPage: true,
+    inLauncher: true,
     group: 'Field & Files',
   },
   {
@@ -291,8 +291,8 @@ export const JOB_FEATURES: JobFeature[] = [
     pickerRoute: '/home?picker=forms',
     launcherRoute: '/work-field/forms',
     inDropdown: true,
-    inOpeningPage: false,
-    inLauncher: false,
+    inOpeningPage: true,
+    inLauncher: true,
     group: 'Safety',
   },
   {
@@ -307,8 +307,8 @@ export const JOB_FEATURES: JobFeature[] = [
     pickerRoute: '/home?picker=safety',
     launcherRoute: '/work-field/safety',
     inDropdown: true,
-    inOpeningPage: false,
-    inLauncher: false,
+    inOpeningPage: true,
+    inLauncher: true,
     group: 'Safety',
   },
 ];

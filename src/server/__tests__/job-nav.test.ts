@@ -82,7 +82,7 @@ describe('Job nav — tab-to-route mapping', () => {
   const tabKeys: string[] = [
     'details', 'tasks', 'notes', 'delays', 'progress', 'attendance',
     'photos', 'drawings', 'files',
-    'estimates', 'purchase-orders', 'invoices', 'costs',
+    'estimates', 'purchase-orders', 'invoices', 'costs', 'log-cost',
     'forms', 'safety',
   ];
 
@@ -92,7 +92,7 @@ describe('Job nav — tab-to-route mapping', () => {
     });
   });
 
-  it('tab init guard accepts all 15 tab keys', () => {
+  it('tab init guard accepts all tab keys', () => {
     const guard = jobDetailSrc.match(/if \(t === 'photos'[\s\S]*?return t as Tab/)?.[0] ?? '';
     tabKeys.filter(k => k !== 'details').forEach(key => {
       expect(guard).toContain(`'${key}'`);
@@ -201,16 +201,18 @@ describe('Job nav — FIELD & FILES group', () => {
 // ── 9. FINANCE group contents and order ─────────────────────────────────────
 
 describe('Job nav — FINANCE group order', () => {
-  it('Finance group contains Estimates, Purchase Orders, Invoices, Job Ledger in order', () => {
+  it('Finance group contains Estimates, Purchase Orders, Invoices, Job Ledger, Log Cost in order', () => {
     const block = jobDetailSrc.match(/label: 'Finance'[\s\S]*?label: 'Safety'/)?.[0] ?? '';
     const estPos = block.indexOf("key: 'estimates'");
     const poPos  = block.indexOf("key: 'purchase-orders'");
     const invPos = block.indexOf("key: 'invoices'");
     const ledPos = block.indexOf("key: 'costs'");
+    const logPos = block.indexOf("key: 'log-cost'");
     expect(estPos).toBeGreaterThan(-1);
     expect(poPos).toBeGreaterThan(estPos);
     expect(invPos).toBeGreaterThan(poPos);
     expect(ledPos).toBeGreaterThan(invPos);
+    expect(logPos).toBeGreaterThan(ledPos);
   });
 });
 
