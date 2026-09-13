@@ -84,7 +84,7 @@ export const FINANCE_ICON_DEFS: HomeIconDef[] = [
   { key: 'estimating',  label: 'Estimating',  icon: Calculator,   href: '/estimating',                  bg: 'bg-cyan-700',    fg: 'text-white', group: 'finance', adminOnly: true },
   { key: 'builders_calc', label: 'Builders Calc', icon: Ruler,    href: '/builders-calc',               bg: 'bg-cyan-600',    fg: 'text-white', group: 'finance' },
   { key: 'takeoff_pad', label: 'Takeoff Pad', icon: Layers,       href: '/takeoff-pad',                 bg: 'bg-cyan-500',    fg: 'text-white', group: 'finance' },
-  { key: 'accounting',  label: 'Accounting',  icon: SlidersHorizontal, href: '/finance?financeTab=settings&settingsTab=accounting', bg: 'bg-slate-600', fg: 'text-white', group: 'finance', adminOnly: true },
+  { key: 'accounting',  label: 'Accounting Integration',  icon: SlidersHorizontal, href: '/finance?financeTab=settings&settingsTab=accounting', bg: 'bg-slate-600', fg: 'text-white', group: 'finance', adminOnly: true },
   { key: 'costing',     label: 'Costing',     icon: Calculator,   href: '/finance?financeTab=settings&settingsTab=costing', bg: 'bg-slate-500', fg: 'text-white', group: 'finance', adminOnly: true },
   { key: 'pdf_style',   label: 'PDF Style',   icon: FileText,     href: '/finance?financeTab=settings&settingsTab=pdf-style', bg: 'bg-slate-400', fg: 'text-white', group: 'finance', adminOnly: true },
   { key: 'finance_settings', label: 'Finance Settings', icon: SlidersHorizontal, href: '/finance?financeTab=settings', bg: 'bg-slate-500', fg: 'text-white', group: 'finance', adminOnly: true },

@@ -14,7 +14,7 @@ import { usePermissions } from '@/lib/usePermissions';
 type SettingsSection = 'accounting' | 'costing' | 'pdf-style';
 
 const SECTIONS: { key: SettingsSection; label: string; icon: React.ElementType; description: string }[] = [
-  { key: 'accounting', label: 'Accounting',      icon: Settings,    description: 'Integrations, invoice locking, audit rules' },
+  { key: 'accounting', label: 'Accounting Integration', icon: Settings,    description: 'Xero, QuickBooks, invoice locking, audit rules' },
   { key: 'costing',    label: 'Costing',          icon: Calculator,  description: 'Cost guide, recipes, markup defaults' },
   { key: 'pdf-style',  label: 'PDF / Print Style', icon: FileText,   description: 'Document layout, branding, print settings' },
 ];

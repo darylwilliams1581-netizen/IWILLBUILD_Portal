@@ -47,7 +47,7 @@ export default function FinancePage() {
   const settingsTitle =
     settingsTab === 'costing' ? 'Costing'
     : settingsTab === 'pdf-style' ? 'PDF Style'
-    : 'Accounting';
+    : 'Accounting Integration';
   const pageTitle =
     activeTab === 'settings' ? settingsTitle
     : activeTab === 'purchase-orders' ? 'Purchase Orders'
