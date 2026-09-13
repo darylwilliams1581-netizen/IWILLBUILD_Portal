@@ -21,12 +21,25 @@
  */
 
 import type { Request, Response } from 'express';
-import { db } from '../../../db/client.js';
-import { sql } from 'drizzle-orm';
+import mysql from 'mysql2/promise';
+import { getDatabaseCredentials } from '../../../db/config.js';
 import { readFile } from 'fs/promises';
 import { existsSync } from 'fs';
 import { resolve, dirname } from 'path';
 import { fileURLToPath } from 'url';
+
+// Raw mysql2 pool — bypasses Drizzle's sql.raw() wrapper which mis-handles
+// queries that contain no ? placeholders (driver treats them as parameterised
+// and returns "Failed query … params:" with an empty params list).
+function getRawPool() {
+  const cfg = getDatabaseCredentials();
+  return mysql.createPool({
+    host: cfg.host, port: cfg.port, user: cfg.user,
+    password: cfg.password, database: cfg.database,
+    ssl: { rejectUnauthorized: false },
+    waitForConnections: true, connectionLimit: 3,
+  });
+}
 
 // ── Seed directory (same dual-path logic as seed endpoint) ────────────────────
 
@@ -376,21 +389,24 @@ interface DbRow {
 
 export default async function handler(req: Request, res: Response) {
   const dryRun = req.query['dryRun'] === '1';
+  const pool = getRawPool();
 
   try {
-    // Resolve target company
-    const [profileRows] = await db.execute(
-      sql.raw(`SELECT p.company_id, c.name AS company_name
-               FROM profiles p
-               JOIN companies c ON c.id = p.company_id
-               WHERE p.user_id = (SELECT id FROM users WHERE email = '${TARGET_EMAIL}' LIMIT 1)
-               LIMIT 1`)
-    ) as unknown as [Array<{ company_id: number; company_name: string }>, unknown];
+    // Resolve target company using raw mysql2 (parameterised — safe)
+    const [profileRows] = await pool.execute<mysql.RowDataPacket[]>(
+      `SELECT p.company_id, c.name AS company_name
+       FROM profiles p
+       JOIN companies c ON c.id = p.company_id
+       WHERE p.user_id = (SELECT id FROM users WHERE email = ? LIMIT 1)
+       LIMIT 1`,
+      [TARGET_EMAIL],
+    );
 
     if (!profileRows.length) {
       return res.status(404).json({ error: 'Target user not found', detail: TARGET_EMAIL });
     }
-    const { company_id: companyId, company_name: companyName } = profileRows[0];
+    const companyId   = (profileRows[0] as { company_id: number; company_name: string }).company_id;
+    const companyName = (profileRows[0] as { company_id: number; company_name: string }).company_name;
 
     // Load OC seed data
     const ocData = await loadJson<{ swms: OcSwms[] }>('swms-oc.json');
@@ -398,17 +414,16 @@ export default async function handler(req: Request, res: Response) {
 
     // Fetch all seeded OC SWMS rows for this company
     const ocTitles = [...ocByTitle.keys()];
-    const titleList = ocTitles.map((t) => `'${t.replace(/'/g, "''")}'`).join(', ');
-
-    const [dbRows] = await db.execute(
-      sql.raw(
-        `SELECT id, name, template_type, builder_json
-         FROM document_templates
-         WHERE company_id = ${companyId}
-           AND template_type = 'swms'
-           AND name IN (${titleList})`
-      )
-    ) as unknown as [DbRow[], unknown];
+    // mysql2 IN (?) with an array expands correctly
+    const [dbRows] = await pool.execute<mysql.RowDataPacket[]>(
+      `SELECT id, name, template_type, builder_json
+       FROM document_templates
+       WHERE company_id = ?
+         AND template_type = 'swms'
+         AND name IN (?)`,
+      [companyId, ocTitles],
+    );
+    const typedDbRows = dbRows as DbRow[];
 
     // Classify each row
     interface RowReport {
@@ -421,7 +436,7 @@ export default async function handler(req: Request, res: Response) {
 
     const reports: RowReport[] = [];
 
-    for (const row of dbRows) {
+    for (const row of typedDbRows) {
       const seedEntry = ocByTitle.get(row.name);
       if (!seedEntry) continue;
 
@@ -433,7 +448,6 @@ export default async function handler(req: Request, res: Response) {
 
       const damaged = isDamaged(row.builder_json);
 
-      // Compute repaired block count (reset bid so IDs are consistent)
       resetBid();
       const repairedBlocks = ocSwmsToBlocks(seedEntry);
 
@@ -446,9 +460,9 @@ export default async function handler(req: Request, res: Response) {
       });
     }
 
-    const damagedRows   = reports.filter((r) => r.damaged);
-    const cleanRows     = reports.filter((r) => !r.damaged);
-    const notFoundTitles = ocTitles.filter((t) => !dbRows.find((r) => r.name === t));
+    const damagedRows    = reports.filter((r) => r.damaged);
+    const cleanRows      = reports.filter((r) => !r.damaged);
+    const notFoundTitles = ocTitles.filter((t) => !typedDbRows.find((r) => r.name === t));
 
     // ── Dry-run response ──────────────────────────────────────────────────────
 
@@ -460,11 +474,11 @@ export default async function handler(req: Request, res: Response) {
         companyId,
         companyName,
         summary: {
-          ocSwmsInSeed:    ocTitles.length,
-          foundInDb:       dbRows.length,
-          damaged:         damagedRows.length,
-          clean:           cleanRows.length,
-          notFoundInDb:    notFoundTitles.length,
+          ocSwmsInSeed:  ocTitles.length,
+          foundInDb:     typedDbRows.length,
+          damaged:       damagedRows.length,
+          clean:         cleanRows.length,
+          notFoundInDb:  notFoundTitles.length,
         },
         damagedRows: damagedRows.map((r) => ({
           id: r.id,
@@ -525,24 +539,26 @@ export default async function handler(req: Request, res: Response) {
     // Execute all UPDATEs inside a single transaction
     const repaired: Array<{ id: number; name: string; blockCount: number }> = [];
     const errors: string[] = [];
+    const conn = await pool.getConnection();
 
-    await db.transaction(async (conn) => {
+    try {
+      await conn.beginTransaction();
       for (const item of repairItems) {
-        try {
-          await conn.execute(sql.raw(
-            `UPDATE document_templates
-             SET builder_json = ${JSON.stringify(item.builderJson)},
-                 updated_at   = NOW()
-             WHERE id = ${item.id}
-               AND company_id = ${companyId}`
-          ));
-          repaired.push({ id: item.id, name: item.name, blockCount: item.blockCount });
-        } catch (err) {
-          errors.push(`ID ${item.id} "${item.name}": ${String(err)}`);
-          throw err; // roll back entire transaction on any failure
-        }
+        await conn.execute(
+          `UPDATE document_templates
+           SET builder_json = ?, updated_at = NOW()
+           WHERE id = ? AND company_id = ?`,
+          [item.builderJson, item.id, companyId],
+        );
+        repaired.push({ id: item.id, name: item.name, blockCount: item.blockCount });
       }
-    });
+      await conn.commit();
+    } catch (err) {
+      await conn.rollback();
+      errors.push(String(err));
+    } finally {
+      conn.release();
+    }
 
     return res.json({
       mode: 'live',
@@ -566,5 +582,7 @@ export default async function handler(req: Request, res: Response) {
   } catch (err) {
     console.error('[repair-seeded-documents]', err);
     return res.status(500).json({ error: 'Internal server error', detail: String(err) });
+  } finally {
+    await pool.end();
   }
 }
