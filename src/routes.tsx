@@ -28,7 +28,7 @@ import ExternalFormPage from './pages/external-form';
 import LoginHelpPage from './pages/login-help';
 const DownloadAppPage = lazy(() => import('./pages/download-app'));
 const SubscribePage = lazy(() => import('./pages/subscribe'));
-import { Navigate, useSearchParams } from "react-router";
+import { useSearchParams } from "react-router";
 // ── Lazily loaded: all portal pages (split into separate chunks) ──────────────
 const DashboardPage = lazy(() => import('./pages/dashboard'));
 const JobsPage = lazy(() => import('./pages/jobs'));
