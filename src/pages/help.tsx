@@ -181,11 +181,6 @@ const ICON_DOCS: Record<string, IconDoc> = {
   },
 
   // ── MANAGEMENT ─────────────────────────────────────────────────────────────
-  timesheet: {
-    purpose: 'Submit and manage timesheets. Record hours worked against jobs, including ordinary time, overtime, and allowances.',
-    howTo: ['Tap Timesheets on the home screen.', 'Select the week you are submitting for.', 'Add entries — select the job, date, hours, and type (ordinary, overtime, etc.).', 'Review the total hours and submit.', 'Admins can approve or reject submitted timesheets.'],
-    tip: 'Timesheets are calculated in line with FairWork requirements. Submit by the end of each pay period.',
-  },
   profile: {
     purpose: 'View and update your personal profile — name, contact details, profile photo, and notification preferences.',
     howTo: ['Tap My Profile on the home screen.', 'Update your name, phone number, or profile photo.', 'Change your notification preferences.', 'Update your password under the Security section.', 'Tap Save to apply changes.'],

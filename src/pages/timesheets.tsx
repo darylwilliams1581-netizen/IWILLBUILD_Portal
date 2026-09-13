@@ -1,12 +1,11 @@
 /**
- * /timesheets — Redirect to the Finance workspace Timesheets tab.
+ * /timesheets — Legacy redirect.
  *
- * Timesheets now live inside the Finance shell at
- * /finance?financeTab=timesheets so the shared Finance header, tab row,
- * and portal layout are used consistently.
+ * Timesheets has been removed from the user-facing product.
+ * Any bookmarks or deep links to /timesheets are redirected to /home
+ * so users land somewhere useful without a 404 or broken page.
  *
- * This page exists solely to honour deep links and bookmarks that point
- * to /timesheets directly.
+ * Backend data and APIs are preserved — this is a UI-only removal.
  */
 // @seo-exempt
 import { useEffect } from 'react';
@@ -17,7 +16,7 @@ export default function TimesheetsPage() {
   const navigate = useNavigate();
 
   useEffect(() => {
-    navigate('/finance?financeTab=timesheets', { replace: true });
+    navigate('/home', { replace: true });
   }, [navigate]);
 
   return (

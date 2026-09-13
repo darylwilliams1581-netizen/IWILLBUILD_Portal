@@ -1,7 +1,7 @@
 import { home } from 'virtual:content';
 import { Helmet } from '@dr.pogodin/react-helmet';
 import { Link } from "react-router";
-import { Briefcase, FileText, Camera, Truck, LayoutDashboard, ShieldCheck, Users, CheckCircle, ArrowRight, Star, ChevronRight, Calendar, FolderOpen, Receipt, Map, Link2, ClipboardList, HardHat, Zap, BarChart3, Bell, Smartphone, AlertTriangle, Calculator, Layers, Ruler, FileSpreadsheet, ScrollText, TableProperties, ShieldAlert, TriangleAlert } from 'lucide-react';
+import { Briefcase, FileText, Camera, Truck, LayoutDashboard, ShieldCheck, Users, CheckCircle, ArrowRight, Star, ChevronRight, Calendar, FolderOpen, Receipt, Map, Link2, ClipboardList, HardHat, Zap, BarChart3, Bell, Smartphone, AlertTriangle, Calculator, Layers, Ruler, ScrollText, TableProperties, ShieldAlert, TriangleAlert } from 'lucide-react';
 import Header from '@/layouts/parts/Header';
 import Footer from '@/layouts/parts/Footer';
 
@@ -61,11 +61,6 @@ const featureGroups: FeatureGroup[] = [
   title: 'Scheduler',
   desc: 'Gantt and table views for job timelines, crew scheduling and progress tracking across your whole business.',
   bullets: ['Gantt & table views', 'Crew & resource scheduling', 'Job timeline tracking', 'Progress milestones']
-}, {
-  category: 'Jobs & operations', icon: FileSpreadsheet, color: '#059669', bg: '#ecfdf5',
-  title: 'Timesheets',
-  desc: 'FairWork-compliant digital timesheets with allowances, overtime and Sunday week-ending — ready for payroll.',
-  bullets: ['FairWork V2 compliant', 'LAFH & meal allowances', 'Overtime & Sunday rules', 'CSV export for payroll']
 },
 // Finance
 {
