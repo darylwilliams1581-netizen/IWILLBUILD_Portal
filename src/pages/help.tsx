@@ -16,13 +16,13 @@
 import { Helmet } from '@dr.pogodin/react-helmet';
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Link } from 'react-router';
 import {
-  ChevronDown, ChevronRight, Search, BookMarked, ArrowLeft, Download, FileDown,
+  ChevronDown, ChevronRight, Search, BookMarked, Download, FileDown,
 } from 'lucide-react';
 import PortalSidebar from '@/components/PortalSidebar';
 import DesktopTopBar from '@/components/DesktopTopBar';
 import DesktopDock from '@/components/DesktopDock';
+import ManageBackButton from '@/components/ManageBackButton';
 import { VISIBLE_GROUP_CONFIG } from '@/lib/homeIcons';
 
 // ── Per-icon documentation ────────────────────────────────────────────────────
@@ -316,6 +316,7 @@ export default function HelpPage() {
         <div className="max-w-3xl mx-auto px-4 py-4">
           <div className="flex items-center justify-between gap-3 mb-3">
             <div className="flex items-center gap-3">
+              <ManageBackButton />
               <div className="w-9 h-9 rounded-xl bg-violet-500 flex items-center justify-center shrink-0">
                 <BookMarked size={18} className="text-white" />
               </div>
@@ -324,13 +325,6 @@ export default function HelpPage() {
                 <p className="text-xs text-slate-500">Every feature explained — what it does and how to use it</p>
               </div>
             </div>
-            <Link
-              to="/dashboard"
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-900 text-white text-xs font-bold hover:bg-slate-700 transition-colors shrink-0"
-            >
-              <ArrowLeft size={13} />
-              Dashboard
-            </Link>
           </div>
           {/* Search */}
           <div className="relative">

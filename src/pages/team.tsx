@@ -2,10 +2,9 @@ import { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Helmet } from '@dr.pogodin/react-helmet';
 import { Users, Plus, Search, Crown, Shield, HardHat, Truck, Eye, UserCheck, Mail, Phone, MoreHorizontal, CheckCircle2, Clock, XCircle, X, ChevronDown, Loader2, AlertCircle, Trash2, Edit2, Lock, ShieldCheck, RefreshCw, ShieldAlert } from 'lucide-react';
-import { ArrowLeft } from 'lucide-react';
 import { useNavigate } from "react-router";
 import { usePermissions } from '@/lib/usePermissions';
-import { goBack } from '@/lib/navigation';
+import ManageBackButton from '@/components/ManageBackButton';
 import { useViewOnly } from '@/components/ViewOnlyGuard';
 import HomeIconPermissions from '@/components/team/HomeIconPermissions';
 import DesktopTopBar from '@/components/DesktopTopBar';
@@ -739,15 +738,7 @@ export default function TeamPage() {
         {/* Top bar */}
         <header className="bg-white border-b border-slate-200 flex flex-col shrink-0 sticky top-0 z-30">
           <div className="h-14 flex items-center gap-3 px-4 md:px-6">
-            <button
-              type="button"
-              onClick={() => goBack(navigate, '/home?page=3')}
-              className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors shrink-0"
-              aria-label="Home"
-            >
-              <ArrowLeft size={18} />
-              <span className="font-semibold">Back</span>
-            </button>
+            <ManageBackButton />
             <Users size={18} className="text-primary shrink-0" />
             <h1 className="font-heading font-bold text-base md:text-lg">Team</h1>
             {!loading && <span className="text-xs bg-slate-100 text-slate-500 font-semibold px-2 py-0.5 rounded-full">

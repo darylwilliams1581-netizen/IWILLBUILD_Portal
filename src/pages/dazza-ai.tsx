@@ -7,10 +7,10 @@ import {
   CheckSquare, DollarSign, ChevronDown, ChevronUp,
   Loader2, Download, ClipboardList, TrendingUp, Info, ShieldAlert,
   Brain, Bug, Copy, Check, X, GitBranch, Paperclip, Wrench,
-  Square, RotateCcw, Zap, CheckCircle2, XCircle, ArrowLeft,
+  Square, RotateCcw, Zap, CheckCircle2, XCircle,
 } from 'lucide-react';
 import { useNavigate } from 'react-router';
-import { goBack } from '@/lib/navigation';
+import ManageBackButton from '@/components/ManageBackButton';
 import DesktopTopBar from '@/components/DesktopTopBar';
 import DesktopDock from '@/components/DesktopDock';
 import PortalSidebar from '@/components/PortalSidebar';
@@ -1119,15 +1119,7 @@ Rules: Do not pretend you changed any code. Do not expose secrets. Prefer small 
         {/* ── Sub-header: Dazza status + chat controls ── */}
         <header className="bg-white border-b border-slate-200 shrink-0">
           <div className="flex items-center gap-2 px-3 py-2 min-h-12">
-            <button
-              type="button"
-              onClick={() => goBack(navigate, '/home?page=3')}
-              className="flex items-center justify-center gap-1.5 h-10 px-3 rounded-xl bg-slate-900 text-white text-sm font-bold shrink-0"
-              aria-label="Home"
-            >
-              <ArrowLeft size={16} />
-              Home
-            </button>
+            <ManageBackButton />
             <div className="w-6 h-6 bg-slate-900 rounded-md flex items-center justify-center shrink-0">
               <Bot size={13} className="text-white" />
             </div>

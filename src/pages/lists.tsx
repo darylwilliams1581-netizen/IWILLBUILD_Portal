@@ -12,7 +12,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from "react-router";
 import { Helmet } from '@dr.pogodin/react-helmet';
 import { Search, Download, ChevronUp, ChevronDown, ChevronsUpDown, Loader2, AlertCircle, ChevronLeft, ChevronRight, HardHat, CheckSquare, StickyNote, ShieldAlert, LogIn, DollarSign, Truck, X, ListFilter, FileText, Users, Clock, Wrench, ClipboardList, FolderOpen, CalendarDays, Receipt, Calculator, ShoppingCart, Car, Gauge, Milestone, MapPin, UserCheck, Package, Play, Filter } from 'lucide-react';
-import { goBack } from '@/lib/navigation';
+import ManageBackButton from '@/components/ManageBackButton';
 import DesktopTopBar from '@/components/DesktopTopBar';
 import DesktopDock from '@/components/DesktopDock';
 
@@ -1852,15 +1852,7 @@ export default function ListsPage() {
 
           {/* ── Breadcrumb ── */}
           <div className="shrink-0 px-4 py-2 bg-white flex items-center gap-2 border-b border-gray-100">
-            <button
-              type="button"
-              onClick={() => goBack(navigate, '/home?page=3')}
-              className="flex items-center justify-center gap-1.5 h-10 px-3 rounded-xl bg-slate-900 text-white text-sm font-bold shrink-0"
-              aria-label="Manage"
-            >
-              <ChevronLeft size={16} />
-              Back
-            </button>
+            <ManageBackButton />
             <span className="text-sm font-semibold text-gray-900 truncate">
               Lists{activeLabel ? ` · ${activeLabel}` : ''}
             </span>

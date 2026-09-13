@@ -5,7 +5,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from "react-router";
 import { Helmet } from '@dr.pogodin/react-helmet';
-import { ArrowLeft, Save, Loader2, CheckCircle2, AlertCircle, FileText, Phone, User, Paperclip, Trash2, Download, ShieldAlert, Upload, Lock, Eye, EyeOff, KeyRound, Smartphone, X } from 'lucide-react';
+import { Save, Loader2, CheckCircle2, AlertCircle, FileText, Phone, User, Paperclip, Trash2, Download, ShieldAlert, Upload, Lock, Eye, EyeOff, KeyRound, Smartphone, X } from 'lucide-react';
 import { useMe } from '@/lib/usePermissions';
 import { useUploadQueue } from '@/hooks/useUploadQueue';
 import SecurityTab from '@/components/settings/SecurityTab';
@@ -13,6 +13,7 @@ import InstallAppTab from '@/components/settings/InstallAppTab';
 import DesktopTopBar from '@/components/DesktopTopBar';
 import DesktopDock from '@/components/DesktopDock';
 import PortalSidebar from '@/components/PortalSidebar';
+import ManageBackButton from '@/components/ManageBackButton';
 const inputClass = 'w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-colors bg-white';
 const labelClass = 'block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5';
 function formatBytes(bytes: number): string {
@@ -297,10 +298,7 @@ export default function ProfilePage() {
 
       {/* Sticky top bar */}
       <div className="sticky top-0 z-30 bg-white border-b border-gray-200 px-4 py-3 flex items-center gap-3 safe-top">
-        <button onClick={() => navigate('/home')} className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors">
-          <ArrowLeft size={16} />
-          <span>Home</span>
-        </button>
+        <ManageBackButton />
         <span className="text-gray-300">|</span>
         <span className="text-sm font-semibold text-gray-800">My Profile</span>
 

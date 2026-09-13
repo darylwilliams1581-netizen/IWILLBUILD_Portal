@@ -11,13 +11,13 @@ import { useNavigate } from 'react-router';
 import {
   Search, ChevronDown, X, Calendar, RefreshCw, Download,
   UserCheck, Truck, Clock, Activity, Users, Briefcase,
-  CheckCircle2, AlertCircle, ChevronRight, ArrowLeft,
+  CheckCircle2, AlertCircle, ChevronRight,
 } from 'lucide-react';
 import { format, formatDistanceToNow, parseISO } from 'date-fns';
 import DesktopTopBar from '@/components/DesktopTopBar';
 import DesktopDock from '@/components/DesktopDock';
 import PortalSidebar from '@/components/PortalSidebar';
-import { goBack } from '@/lib/navigation';
+import ManageBackButton from '@/components/ManageBackButton';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -759,15 +759,7 @@ export default function UserLogsPage() {
       {/* ── Page header ── */}
       {/* ── Breadcrumb ── */}
       <div className="bg-white border-b border-gray-100 px-4 py-2 flex items-center gap-2">
-        <button
-          type="button"
-          onClick={() => goBack(navigate, '/home?page=3')}
-          className="flex items-center justify-center gap-1.5 h-10 px-3 rounded-xl bg-slate-900 text-white text-sm font-bold shrink-0"
-          aria-label="Manage"
-        >
-          <ArrowLeft size={16} />
-          Back
-        </button>
+        <ManageBackButton />
         <span className="text-gray-900 font-semibold text-sm">User Logs</span>
       </div>
 

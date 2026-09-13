@@ -6,11 +6,11 @@
 import { useState, useEffect } from 'react';
 import { useSearchParams } from "react-router";
 import { Helmet } from '@dr.pogodin/react-helmet';
-import { CreditCard, CheckCircle2, AlertTriangle, Clock, Zap, Users, User, Crown, ArrowRight, Loader2, RefreshCw, ShieldCheck, XCircle, ExternalLink, Ban, RotateCcw, CalendarClock, Receipt, ArrowLeft } from 'lucide-react';
+import { CreditCard, CheckCircle2, AlertTriangle, Clock, Zap, Users, User, Crown, ArrowRight, Loader2, RefreshCw, ShieldCheck, XCircle, ExternalLink, Ban, RotateCcw, CalendarClock, Receipt } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useNavigate } from "react-router";
 import { usePermissions } from '@/lib/usePermissions';
-import { goBack } from '@/lib/navigation';
+import ManageBackButton from '@/components/ManageBackButton';
 import DesktopTopBar from '@/components/DesktopTopBar';
 import DesktopDock from '@/components/DesktopDock';
 import PortalSidebar from '@/components/PortalSidebar';
@@ -566,9 +566,7 @@ export default function BillingPage() {
       {/* Sticky top bar */}
       <header className="h-16 bg-white border-b border-border flex items-center px-4 md:px-6 shrink-0 sticky top-0 z-30 safe-top">
         <div className="flex items-center gap-3">
-          <button onClick={() => goBack(navigate, '/home')} className="p-2 -ml-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors" aria-label="Back to Home">
-            <ArrowLeft size={20} />
-          </button>
+          <ManageBackButton />
           <CreditCard size={18} className="text-primary shrink-0" />
           <h1 className="font-heading font-bold text-base md:text-lg">Subscription</h1>
         </div>

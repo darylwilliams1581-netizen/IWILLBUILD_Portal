@@ -1,8 +1,8 @@
 import { useState, Suspense } from 'react';
 import { useSearchParams, useNavigate } from "react-router";
 import { Helmet } from '@dr.pogodin/react-helmet';
-import { Building2, Bell, Calculator, Database, ChevronRight, Layers, Megaphone, FileText, Plug, Receipt, User, Truck, ArrowLeft, ShieldCheck } from 'lucide-react';
-import { goBack } from '@/lib/navigation';
+import { Building2, Bell, Calculator, Database, ChevronRight, Layers, Megaphone, FileText, Plug, Receipt, User, Truck, ShieldCheck } from 'lucide-react';
+import ManageBackButton from '@/components/ManageBackButton';
 import { usePermissions } from '@/lib/usePermissions';
 import CompanyStructureTab from '@/components/settings/CompanyStructureTab';
 import DashboardBannerTab from '@/components/settings/DashboardBannerTab';
@@ -120,15 +120,7 @@ export default function SettingsPage() {
       <header className="bg-white border-b border-gray-100 px-4 py-3 flex items-center gap-3 shrink-0" style={{
       boxShadow: '0 1px 0 rgba(0,0,0,0.05)'
     }}>
-        <button
-          type="button"
-          onClick={() => goBack(navigate, '/home?page=3')}
-          className="flex items-center justify-center gap-1.5 h-10 px-3 rounded-xl bg-slate-900 text-white text-sm font-bold shrink-0"
-          aria-label="Manage"
-        >
-          <ArrowLeft size={16} />
-          Back
-        </button>
+        <ManageBackButton />
         <div className="flex-1 flex flex-col items-center justify-center min-w-0">
           <h1 className="text-gray-900 font-bold text-sm leading-tight">Settings</h1>
         </div>
