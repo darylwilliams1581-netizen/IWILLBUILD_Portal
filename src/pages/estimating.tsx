@@ -554,32 +554,43 @@ export function CostGuideTab() {
               <Calculator size={32} className="mx-auto mb-3 opacity-30" />
               <p className="text-sm font-semibold">{search ? 'No items match your search' : 'No cost items yet'}</p>
               {!search && <p className="text-xs mt-1">Add your labour and material rates to build up your cost guide.</p>}
-            </div> : <table className="w-full text-sm">
-              <thead>
-                <tr className="bg-slate-50 text-xs font-semibold text-slate-500 border-b border-slate-200">
-                  <th className="text-left px-4 py-3">Description</th>
-                  <th className="text-left px-3 py-3 w-24">Unit</th>
-                  <th className="text-right px-3 py-3 w-28">Rate</th>
-                  <th className="px-3 py-3 w-20"></th>
-                </tr>
-              </thead>
-              <tbody>
-                {filtered.map(item => <tr key={item.id} className="border-t border-slate-100 hover:bg-slate-50/60 transition-colors">
-                    <td className="px-4 py-3 font-medium text-slate-800">{item.description}</td>
-                    <td className="px-3 py-3 text-slate-500">{item.unit || '—'}</td>
-                    <td className="px-3 py-3 text-right font-mono text-slate-700">${parseFloat(item.rate).toFixed(2)}</td>
-                    <td className="px-3 py-3">
-                      <div className="flex items-center gap-1 justify-end">
-                        <button onClick={() => {
+            </div> : <div className="flex flex-col divide-y divide-slate-100">
+              {filtered.map(item => <div
+                key={item.id}
+                role="button"
+                tabIndex={0}
+                onClick={() => {
                   setEditing(item);
                   setShowModal(true);
-                }} className="p-1.5 rounded text-slate-400 hover:text-primary hover:bg-violet-50 transition-colors"><Pencil size={13} /></button>
-                        <button onClick={() => handleDelete(item.id)} className="p-1.5 rounded text-slate-400 hover:text-red-600 hover:bg-red-50 transition-colors"><Trash2 size={13} /></button>
-                      </div>
-                    </td>
-                  </tr>)}
-              </tbody>
-            </table>}
+                }}
+                onKeyDown={e => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    setEditing(item);
+                    setShowModal(true);
+                  }
+                }}
+                className="w-full text-left px-4 py-3 hover:bg-slate-50/80 active:bg-slate-100 transition-colors cursor-pointer"
+              >
+                <div className="flex items-start gap-2">
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-slate-800 break-words whitespace-normal leading-snug">{item.description}</p>
+                    <p className="text-xs text-slate-500 mt-1">{item.unit || '—'} · ${parseFloat(item.rate).toFixed(2)}</p>
+                  </div>
+                  <button
+                    type="button"
+                    aria-label={`Delete ${item.description}`}
+                    onClick={e => {
+                      e.stopPropagation();
+                      handleDelete(item.id);
+                    }}
+                    className="p-2 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 transition-colors shrink-0"
+                  >
+                    <Trash2 size={15} />
+                  </button>
+                </div>
+              </div>)}
+            </div>}
         </div>}
 
       {showModal && <CostItemModal initial={editing} onSave={handleSave} onClose={() => {
