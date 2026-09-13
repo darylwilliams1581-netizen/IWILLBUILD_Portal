@@ -31,6 +31,7 @@ import { fileURLToPath } from 'url';
 // Raw mysql2 pool — bypasses Drizzle's sql.raw() wrapper which mis-handles
 // queries that contain no ? placeholders (driver treats them as parameterised
 // and returns "Failed query … params:" with an empty params list).
+// v2: force-republish to pick up this fix on the live bundle.
 function getRawPool() {
   const cfg = getDatabaseCredentials();
   return mysql.createPool({
