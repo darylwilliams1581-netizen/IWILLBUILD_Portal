@@ -1117,16 +1117,16 @@ Rules: Do not pretend you changed any code. Do not expose secrets. Prefer small 
 
       <div className="flex-1 flex flex-col overflow-hidden">
         {/* ── Sub-header: Dazza status + chat controls ── */}
-        <header className="h-12 bg-white border-b border-slate-200 flex items-center justify-between px-3 md:px-6 shrink-0">
-          <div className="flex items-center gap-2 min-w-0">
+        <header className="bg-white border-b border-slate-200 shrink-0">
+          <div className="flex items-center gap-2 px-3 py-2 min-h-12">
             <button
               type="button"
               onClick={() => goBack(navigate, '/home?page=3')}
-              className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors shrink-0"
+              className="flex items-center justify-center gap-1.5 h-10 px-3 rounded-xl bg-slate-900 text-white text-sm font-bold shrink-0"
               aria-label="Home"
             >
-              <ArrowLeft size={18} />
-              <span className="font-semibold">Back</span>
+              <ArrowLeft size={16} />
+              Home
             </button>
             <div className="w-6 h-6 bg-slate-900 rounded-md flex items-center justify-center shrink-0">
               <Bot size={13} className="text-white" />
@@ -1134,93 +1134,64 @@ Rules: Do not pretend you changed any code. Do not expose secrets. Prefer small 
             <span className="font-heading font-bold text-sm leading-none text-slate-800 truncate">
               {activeEngine === 'v3' ? 'Dazza V3' : activeEngine === 'v2-rollback' ? 'Dazza V2' : 'Dazza AI'}
             </span>
-            <span className="text-[10px] text-slate-400">
+            <span className="text-[10px] text-slate-400 truncate hidden sm:inline">
               {ctxLoading ? 'Loading…' : `${dazzaCtx?.companyName ?? 'IWIllBUIlD'} · ${dazzaCtx?.user?.role ?? ''}`}
             </span>
             {activeEngine === 'v3' && (
-              <span className="flex items-center gap-1 text-[10px] bg-violet-50 text-violet-700 font-bold px-2 py-0.5 rounded-full border border-violet-200">
+              <span className="hidden md:flex items-center gap-1 text-[10px] bg-violet-50 text-violet-700 font-bold px-2 py-0.5 rounded-full border border-violet-200">
                 <span className="w-1.5 h-1.5 bg-violet-500 rounded-full animate-pulse inline-block" />
                 V3 · {getDazzaModelLabel()}
               </span>
             )}
-            {activeEngine === 'v2-rollback' && (
-              <span className="flex items-center gap-1 text-[10px] bg-amber-50 text-amber-700 font-bold px-2 py-0.5 rounded-full border border-amber-200">
-                V2 rollback
-              </span>
-            )}
-            {activeEngine === 'v2-rollback' && engineDiag && (
-              <span
-                className="hidden md:flex items-center gap-1 text-[10px] bg-red-50 text-red-700 px-2 py-0.5 rounded-full border border-red-200 font-mono cursor-help"
-                title={`DAZZA_V3_ENABLED secret: present=${engineDiag.secretPresent} — must be 'true' to activate V3`}
+            <div className="ml-auto flex items-center gap-1 shrink-0">
+              <button onClick={exportChat} className="flex items-center justify-center h-10 w-10 rounded-lg text-slate-500 hover:text-slate-800 hover:bg-slate-50 transition-colors" title="Export chat" aria-label="Export chat">
+                <Download size={16} />
+              </button>
+              <button onClick={clearChat} className="flex items-center justify-center h-10 w-10 rounded-lg text-slate-500 hover:text-slate-800 hover:bg-slate-50 transition-colors" title="New chat" aria-label="New chat">
+                <RefreshCw size={16} />
+              </button>
+            </div>
+          </div>
+          {isAdmin && (
+            <div className="flex items-center gap-1 px-3 pb-2 overflow-x-auto" style={{ WebkitOverflowScrolling: 'touch' }}>
+              <button
+                onClick={() => setActiveTab('chat')}
+                className={`flex items-center gap-1.5 text-xs font-semibold px-3 py-2 rounded-lg shrink-0 transition-all ${
+                  activeTab === 'chat' ? 'bg-slate-900 text-white' : 'bg-slate-100 text-slate-600'
+                }`}
               >
-                secret {engineDiag.secretPresent ? 'present' : 'missing'}
-              </span>
-            )}
-            {!activeEngine && !engineCheckTimedOut && (
-              <span className="flex items-center gap-1 text-[10px] bg-slate-100 text-slate-500 font-bold px-2 py-0.5 rounded-full border border-slate-200">
-                <span className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-pulse inline-block" />
-                Checking…
-              </span>
-            )}
-            {!activeEngine && engineCheckTimedOut && (
-              <span className="flex items-center gap-1 text-[10px] bg-red-50 text-red-600 font-bold px-2 py-0.5 rounded-full border border-red-200">
-                Status unknown
-              </span>
-            )}
-            {conversationId && (
-              <span className="hidden md:flex items-center gap-1 text-[10px] text-slate-400 font-mono" title={`Conversation: ${conversationId}`}>
-                #{conversationId.slice(0, 8)}
-              </span>
-            )}
-          </div>
-          <div className="flex items-center gap-1">
-            {isAdmin && (
-              <div className="flex items-center bg-slate-100 rounded-lg p-0.5 gap-0.5">
+                <Bot size={12} /> Chat
+              </button>
+              <button
+                onClick={() => setActiveTab('brain')}
+                className={`flex items-center gap-1.5 text-xs font-semibold px-3 py-2 rounded-lg shrink-0 transition-all ${
+                  activeTab === 'brain' ? 'bg-slate-900 text-white' : 'bg-slate-100 text-slate-600'
+                }`}
+              >
+                <Brain size={12} /> Brain
+              </button>
+              {isPlatformOwner && (
                 <button
-                  onClick={() => setActiveTab('chat')}
-                  className={`flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-md transition-all ${
-                    activeTab === 'chat' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-700'
+                  onClick={() => setActiveTab('anatomy')}
+                  className={`flex items-center gap-1.5 text-xs font-semibold px-3 py-2 rounded-lg shrink-0 transition-all ${
+                    activeTab === 'anatomy' ? 'bg-slate-900 text-white' : 'bg-slate-100 text-slate-600'
                   }`}
                 >
-                  <Bot size={11} /> Chat
+                  <GitBranch size={12} /> Anatomy
                 </button>
+              )}
+              {isPlatformOwner && (
                 <button
-                  onClick={() => setActiveTab('brain')}
-                  className={`flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-md transition-all ${
-                    activeTab === 'brain' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-700'
+                  onClick={() => setActiveTab('build_repair')}
+                  className={`flex items-center gap-1.5 text-xs font-semibold px-3 py-2 rounded-lg shrink-0 transition-all ${
+                    activeTab === 'build_repair' ? 'bg-amber-500 text-white' : 'bg-slate-100 text-slate-600'
                   }`}
                 >
-                  <Brain size={11} /> Brain
+                  <Wrench size={12} /> Build & Repair
                 </button>
-                {isPlatformOwner && (
-                  <button
-                    onClick={() => setActiveTab('anatomy')}
-                    className={`flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-md transition-all ${
-                      activeTab === 'anatomy' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-700'
-                    }`}
-                  >
-                    <GitBranch size={11} /> Anatomy
-                  </button>
-                )}
-                {isPlatformOwner && (
-                  <button
-                    onClick={() => setActiveTab('build_repair')}
-                    className={`flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-md transition-all ${
-                      activeTab === 'build_repair' ? 'bg-amber-500 text-white shadow-sm' : 'text-slate-500 hover:text-amber-600'
-                    }`}
-                  >
-                    <Wrench size={11} /> Build & Repair
-                  </button>
-                )}
-              </div>
-            )}
-            <button onClick={exportChat} className="flex items-center gap-1.5 text-xs text-slate-500 hover:text-slate-800 font-semibold px-2 py-1.5 rounded-lg hover:bg-slate-50 transition-colors" title="Export chat">
-              <Download size={12} /><span className="hidden sm:inline">Export</span>
-            </button>
-            <button onClick={clearChat} className="flex items-center gap-1.5 text-xs text-slate-500 hover:text-slate-800 font-semibold px-2 py-1.5 rounded-lg hover:bg-slate-50 transition-colors">
-              <RefreshCw size={12} /><span className="hidden sm:inline">New chat</span>
-            </button>
-          </div>
+              )}
+            </div>
+          )}
         </header>
 
         {/* ── No API key banner ── */}
