@@ -90,8 +90,8 @@ export const SAFETY_ICON_DEFS: HomeIconDef[] = [
   { key: 'risky',       label: 'Risk & Permits', icon: ShieldAlert, href: '?panel=risky-picker',        bg: 'bg-rose-600',    fg: 'text-white', group: 'safety' },
   { key: 'incidents',   label: 'Incidents',   icon: AlertTriangle, href: '/incidents',                  bg: 'bg-red-700',     fg: 'text-white', group: 'safety' },
   { key: 'risk_register', label: 'Risk Register', icon: TriangleAlert, href: '/risk-register',          bg: 'bg-orange-600',  fg: 'text-white', group: 'safety' },
-  { key: 'safety',      label: 'Safety Docs', icon: ClipboardCheck, href: '/safety?safetyTab=documents', bg: 'bg-rose-600',   fg: 'text-white', group: 'safety' },
-  { key: 'forms',       label: 'Forms',       icon: ClipboardCheck, href: '/studio/forms',              bg: 'bg-fuchsia-600', fg: 'text-white', group: 'safety' },
+  { key: 'safety',      label: 'Studio Documents', icon: FileText,         href: '/studio/documents',           bg: 'bg-rose-600',   fg: 'text-white', group: 'safety' },
+  { key: 'forms',       label: 'Studio Forms',     icon: ClipboardCheck,   href: '/studio/forms',               bg: 'bg-fuchsia-600', fg: 'text-white', group: 'safety' },
   { key: 'poster',      label: 'Safety Posters', icon: Image,      href: '/safety/posters',             bg: 'bg-pink-500',    fg: 'text-white', group: 'safety' },
   { key: 'sds_register',       label: 'SDS Register',       icon: ShieldAlert,   href: '/sds-register',             bg: 'bg-rose-700',    fg: 'text-white', group: 'safety' },
 ];
@@ -102,7 +102,7 @@ export const SAFETY_ICON_DEFS: HomeIconDef[] = [
 export const MANAGEMENT_ICON_DEFS: HomeIconDef[] = [
   { key: 'profile',        label: 'My Profile',      icon: User,             href: '/profile',                bg: 'bg-slate-500',   fg: 'text-white', group: 'management' },
   { key: 'dazza_ai',       label: 'Dazza AI',        icon: Bot,              href: '/dazza-ai',               bg: 'bg-violet-700',  fg: 'text-white', group: 'management', ownerOnly: true },
-  { key: 'app_docs',       label: 'Studio Builder',  icon: FileText,         href: '/studio/documents',       bg: 'bg-slate-700',   fg: 'text-white', group: 'management', adminOnly: true },
+  { key: 'app_docs',       label: 'Studio Documents', icon: FileText,         href: '/studio/documents',       bg: 'bg-slate-700',   fg: 'text-white', group: 'management', adminOnly: true },
   { key: 'library',        label: 'Library',         icon: Library,          href: '/studio/library',         bg: 'bg-amber-700',   fg: 'text-white', group: 'management', adminOnly: true },
   { key: 'quick_links',    label: 'Quick Links',     icon: Link2,            href: '/quick-links',            bg: 'bg-lime-700',    fg: 'text-white', group: 'management', adminOnly: true },
   { key: 'lists',          label: 'Lists',           icon: TableProperties,  href: '/lists',                  bg: 'bg-teal-600',    fg: 'text-white', group: 'management', adminOnly: true },
