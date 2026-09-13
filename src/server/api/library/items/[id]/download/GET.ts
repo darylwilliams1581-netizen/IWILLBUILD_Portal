@@ -15,9 +15,15 @@ import path from 'node:path';
 import { db } from '../../../../../db/client.js';
 import { sql } from 'drizzle-orm';
 import { getSessionAndProfile } from '../../../../../lib/auth-middleware.js';
+import { getSubscriptionInfo } from '../../../../../lib/subscription-gate.js';
 
 // The upload dir used by the owner-console POST handler
 const UPLOAD_DIR = '/shared-storage/public/assets/uploads/library-files';
+
+/** Subscription statuses that are allowed to download library files */
+const DOWNLOAD_ALLOWED_STATUSES = new Set([
+  'active', 'trial', 'cancel_at_period_end', 'past_due',
+]);
 
 export default async function handler(req: Request, res: Response) {
   const auth = await getSessionAndProfile(req, res);
@@ -27,6 +33,22 @@ export default async function handler(req: Request, res: Response) {
   if (!id) return res.status(400).json({ error: 'Invalid item ID' });
 
   try {
+    // ── Subscription gate ─────────────────────────────────────────────────────
+    // Platform developers bypass; everyone else must be on an active/trial plan.
+    const isPlatformDev = auth.profile.role === 'platform_owner';
+    if (!isPlatformDev) {
+      const sub = await getSubscriptionInfo(req);
+      const status = sub?.status ?? 'no_company';
+      const isViewOnly = sub?.isViewOnly ?? true;
+      // past_due within grace period: isViewOnly=false → allow; past grace: isViewOnly=true → block
+      if (isViewOnly || !DOWNLOAD_ALLOWED_STATUSES.has(status)) {
+        return res.status(402).json({
+          error: 'Library downloads require an active IWILLBUILD plan.',
+          code: 'library_locked',
+        });
+      }
+    }
+
     // Fetch item — platform owners can download any status; regular users only active+public
     const [rows] = await db.execute(sql.raw(
       `SELECT id, title, status, visibility, file_path, file_mime, source_file_name
@@ -44,13 +66,8 @@ export default async function handler(req: Request, res: Response) {
     const item = rows?.[0];
     if (!item) return res.status(404).json({ error: 'Item not found' });
 
-    // Check visibility for non-owners
-    const [ownerCheck] = await db.execute(sql.raw(
-      `SELECT role FROM profiles WHERE user_id = '${auth.session.user.id}' LIMIT 1`
-    )) as unknown as [Array<{ role: string }>, unknown];
-    const isOwner = ownerCheck?.[0]?.role === 'platform_owner';
-
-    if (!isOwner && (item.status !== 'active' || item.visibility !== 'public')) {
+    // Check visibility — platform owners can access any status; regular users only active+public
+    if (!isPlatformDev && (item.status !== 'active' || item.visibility !== 'public')) {
       return res.status(404).json({ error: 'Item not available' });
     }
 

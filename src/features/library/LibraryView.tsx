@@ -25,10 +25,11 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import {
   BookOpen, Search, Download, CheckCircle2, Loader2, Filter,
   ChevronDown, Star, RefreshCw, FileText, Shield,
-  ClipboardList, Wrench, Calculator, Package, AlertCircle, Trash2, ArrowRight,
+  ClipboardList, Wrench, Calculator, Package, AlertCircle, Trash2, ArrowRight, Lock,
 } from 'lucide-react';
 import { usePermissions } from '@/lib/usePermissions';
 import { resolveDownloadUrl } from '@/lib/native-api';
+import { useSubscriptionGate } from '@/lib/useSubscriptionGate';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -136,6 +137,14 @@ export interface LibraryViewProps {
 
 export function LibraryView({ initialTypeFilter, allowedTypes, allTypesLabel }: LibraryViewProps = {}) {
   const { isPlatformOwner } = usePermissions();
+  const { isViewOnly, status, isLoading: subLoading } = useSubscriptionGate();
+
+  // Library downloads are locked when the company has no active/trial plan.
+  // Platform owners bypass the gate.
+  const DOWNLOAD_ALLOWED = new Set(['active', 'trial', 'cancel_at_period_end', 'past_due']);
+  const isLibraryLocked = !isPlatformOwner && !subLoading && (
+    isViewOnly || !DOWNLOAD_ALLOWED.has(status ?? '')
+  );
 
   // ── Derived type options (scoped when allowedTypes is set) ────────────────
   const visibleTypes = allowedTypes && allowedTypes.length > 0
@@ -303,6 +312,23 @@ export function LibraryView({ initialTypeFilter, allowedTypes, allTypesLabel }: 
             </div>
           </div>
 
+          {/* ── Subscription lock banner ────────────────────────────── */}
+          {isLibraryLocked && (
+            <div className="flex items-start gap-3 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 text-sm text-amber-800">
+              <Lock size={15} className="mt-0.5 shrink-0 text-amber-500" />
+              <span>
+                <strong>Available on a paid plan.</strong>{' '}
+                You can browse the catalogue, but downloading requires an active IWILLBUILD subscription.{' '}
+                <a
+                  href="https://iwillbuild.com/billing"
+                  className="font-semibold underline hover:text-amber-900"
+                >
+                  Manage billing on iwillbuild.com
+                </a>
+              </span>
+            </div>
+          )}
+
           {/* ── Filters ────────────────────────────────────────────────── */}
           <div className="flex flex-wrap gap-3">
             {/* Search */}
@@ -411,27 +437,49 @@ export function LibraryView({ initialTypeFilter, allowedTypes, allTypesLabel }: 
 
                         {/* Download original file if available */}
                         {!!item.has_file && (
-                          <a
-                            href={resolveDownloadUrl(`/api/library/items/${item.id}/download`)}
-                            download={item.source_file_name ?? undefined}
-                            title={`Download ${item.source_file_name ?? 'original file'}`}
-                            className="flex items-center gap-1 px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-600 text-xs font-semibold rounded-lg transition-colors"
-                            onClick={e => e.stopPropagation()}
-                          >
-                            <Download size={11} />
-                            <span className="hidden sm:inline">File</span>
-                          </a>
+                          isLibraryLocked ? (
+                            <span
+                              title="Available on a paid plan — manage billing on iwillbuild.com"
+                              className="flex items-center gap-1 px-2.5 py-1.5 bg-slate-100 text-slate-400 text-xs font-semibold rounded-lg cursor-not-allowed select-none"
+                            >
+                              <Lock size={11} />
+                              <span className="hidden sm:inline">File</span>
+                            </span>
+                          ) : (
+                            <a
+                              href={resolveDownloadUrl(`/api/library/items/${item.id}/download`)}
+                              download={item.source_file_name ?? undefined}
+                              title={`Download ${item.source_file_name ?? 'original file'}`}
+                              className="flex items-center gap-1 px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-600 text-xs font-semibold rounded-lg transition-colors"
+                              onClick={e => e.stopPropagation()}
+                            >
+                              <Download size={11} />
+                              <span className="hidden sm:inline">File</span>
+                            </a>
+                          )
                         )}
 
                         {/* Download into templates */}
-                        <button
-                          onClick={() => void handleDownload(item)}
-                          disabled={isDownloading}
-                          className="flex items-center gap-1.5 px-3 py-1.5 bg-violet-500 hover:bg-violet-700 disabled:opacity-50 text-white text-xs font-bold rounded-lg transition-colors"
-                        >
-                          {isDownloading ? <Loader2 size={12} className="animate-spin" /> : <Download size={12} />}
-                          {isDownloading ? 'Downloading…' : 'Download to My Templates'}
-                        </button>
+                        {isLibraryLocked ? (
+                          <div className="flex flex-col items-end gap-0.5">
+                            <span
+                              title="Available on a paid plan — manage billing on iwillbuild.com"
+                              className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 text-slate-400 text-xs font-bold rounded-lg cursor-not-allowed select-none"
+                            >
+                              <Lock size={12} />
+                              Add to My Templates
+                            </span>
+                          </div>
+                        ) : (
+                          <button
+                            onClick={() => void handleDownload(item)}
+                            disabled={isDownloading}
+                            className="flex items-center gap-1.5 px-3 py-1.5 bg-violet-500 hover:bg-violet-700 disabled:opacity-50 text-white text-xs font-bold rounded-lg transition-colors"
+                          >
+                            {isDownloading ? <Loader2 size={12} className="animate-spin" /> : <Download size={12} />}
+                            {isDownloading ? 'Downloading…' : 'Add to My Templates'}
+                          </button>
+                        )}
 
                         {/* Platform-owner delete */}
                         {isPlatformOwner && (

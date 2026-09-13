@@ -28,9 +28,15 @@ import type { Request, Response } from 'express';
 import { db } from '../../../../../db/client.js';
 import { sql } from 'drizzle-orm';
 import { getSessionAndProfile } from '../../../../../lib/auth-middleware.js';
+import { getSubscriptionInfo } from '../../../../../lib/subscription-gate.js';
 import type { ResultSetHeader } from 'mysql2';
 
 const ALLOWED_ROLES = new Set(['owner', 'admin', 'estimator', 'member']);
+
+/** Subscription statuses that are allowed to install library items */
+const INSTALL_ALLOWED_STATUSES = new Set([
+  'active', 'trial', 'cancel_at_period_end', 'past_due',
+]);
 
 // Types that map to form_templates
 const FORM_TYPES = new Set([
@@ -46,6 +52,21 @@ export default async function handler(req: Request, res: Response) {
 
   if (!ALLOWED_ROLES.has(auth.profile.role)) {
     return res.status(403).json({ error: 'Only owners, admins, and estimators can download library items.' });
+  }
+
+  // ── Subscription gate ───────────────────────────────────────────────────────
+  // Platform developers bypass; everyone else must be on an active/trial plan.
+  const isPlatformDev = auth.profile.role === 'platform_owner';
+  if (!isPlatformDev) {
+    const sub = await getSubscriptionInfo(req);
+    const status = sub?.status ?? 'no_company';
+    const isViewOnly = sub?.isViewOnly ?? true;
+    if (isViewOnly || !INSTALL_ALLOWED_STATUSES.has(status)) {
+      return res.status(402).json({
+        error: 'Library downloads require an active IWILLBUILD plan.',
+        code: 'library_locked',
+      });
+    }
   }
 
   const sourceId = parseInt(req.params.id);
