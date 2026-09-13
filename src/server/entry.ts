@@ -205,6 +205,9 @@ import developer_email_settings_put_172 from "./api/developer/email-settings/PUT
 import developer_email_settings_test_post_173 from "./api/developer/email-settings/test/POST";
 import developer_media_backfill_report_get_174 from "./api/developer/media-backfill-report/GET";
 import developer_provision_apple_review_account_post_175 from "./api/developer/provision-apple-review-account/POST";
+import developer_seed_review_job_post from "./api/developer/seed-review-job/POST";
+import developer_reviewer_account_status_get from "./api/developer/reviewer-account-status/GET";
+import developer_reviewer_account_repair_post from "./api/developer/reviewer-account-repair/POST";
 import developer_run_seed_now_post_176 from "./api/developer/run-seed-now/POST";
 import developer_seed_developer_account_post_177 from "./api/developer/seed-developer-account/POST";
 import developer_seed_safety_documents_post from "./api/developer/seed-safety-documents/POST";
@@ -584,6 +587,7 @@ import me_2fa_status_get_555 from "./api/me/2fa/status/GET";
 import me_2fa_verify_post_556 from "./api/me/2fa/verify/POST";
 import me_active_status_get_557 from "./api/me/active-status/GET";
 import me_change_password_post_558 from "./api/me/change-password/POST";
+import me_delete_account_post from "./api/me/delete-account/POST";
 import me_email_status_get_559 from "./api/me/email-status/GET";
 import me_phone_get_560 from "./api/me/phone/GET";
 import me_phone_put_561 from "./api/me/phone/PUT";
@@ -950,7 +954,7 @@ import adminFixAllPhotoFieldsPost from "./api/admin/fix-all-photo-fields/POST.js
 import { seoRoutes } from "../lib/seo-routes";
 import { requireOwner, requireAdmin, isPublicRoute } from "./lib/auth-middleware.js";
 import { getAuth } from "../lib/auth/auth.js";
-import { applyWriteGate } from "./lib/write-gate-apply.js";
+import { applyWriteGate, applyLockoutGate } from "./lib/write-gate-apply.js";
 import {
 	loadAdSenseRuntimeConfig,
 	resolveAdSenseTextFile,
@@ -1370,6 +1374,12 @@ app.use('/api', async (req: Request, res: Response, next: NextFunction) => {
 // cancelled, or suspended state.  Reads, downloads, billing, and auth are exempt.
 // Must be registered AFTER the auth guard and BEFORE route handlers.
 applyWriteGate(app);
+
+// ── Lockout gate ──────────────────────────────────────────────────────────────
+// Blocks ALL API access for accounts locked_out (90 days after cancellation).
+// Exempts billing, auth, and subscription routes so the user can still log in
+// and reactivate. Platform owner bypasses via getSubscriptionInfo.
+applyLockoutGate(app);
 
 // ── Startup self-healing migrations ──────────────────────────────────────────
 // NOTE: Drizzle sql.raw rejects DEFAULT '{}' because {} looks like an
@@ -3819,7 +3829,11 @@ app.get("/api/developer/email-settings", developer_email_settings_get_171);
 app.put("/api/developer/email-settings", developer_email_settings_put_172);
 app.post("/api/developer/email-settings/test", developer_email_settings_test_post_173);
 app.get("/api/developer/media-backfill-report", developer_media_backfill_report_get_174);
-app.post("/api/developer/provision-apple-review-account", developer_provision_apple_review_account_post_175);
+app.post("/api/developer/provision-apple-review-account", requirePlatformOwner, developer_provision_apple_review_account_post_175);
+app.post("/api/developer/seed-review-job", requirePlatformOwner, developer_seed_review_job_post);
+app.get("/api/developer/reviewer-account-status", requirePlatformOwner, developer_reviewer_account_status_get);
+app.post("/api/developer/reviewer-account-repair", requirePlatformOwner, developer_reviewer_account_repair_post);
+// Emergency owner recovery endpoint removed after successful recovery
 app.post("/api/developer/run-seed-now", developer_run_seed_now_post_176);
 app.post("/api/developer/seed-developer-account", requirePlatformOwner, developer_seed_developer_account_post_177);
 app.post("/api/developer/seed-safety-documents", requirePlatformOwner, developer_seed_safety_documents_post);
@@ -4199,6 +4213,39 @@ app.get("/api/me/2fa/status", me_2fa_status_get_555);
 app.post("/api/me/2fa/verify", me_2fa_verify_post_556);
 app.get("/api/me/active-status", me_active_status_get_557);
 app.post("/api/me/change-password", me_change_password_post_558);
+
+// ── Account deletion — self-service, authenticated ────────────────────────────
+// This is the ONLY self-service deletion path. BetterAuth's own deleteUser
+// endpoint is blocked below for non-platform-developer accounts.
+app.post("/api/me/delete-account", me_delete_account_post);
+
+// ── Block BetterAuth's lower-level delete-user endpoint ───────────────────────
+// BetterAuth exposes DELETE /api/auth/delete-user (and POST variants).
+// We block it here so all self-service deletions go through /api/me/delete-account
+// which enforces password verification, platform-dev protection, ownership checks,
+// and Stripe cancellation. Platform developers are exempt.
+app.delete("/api/auth/delete-user", async (req, res, next) => {
+  try {
+    const { getPlatformOwnerInfo } = await import('./lib/platform-owner-guard.js');
+    const info = await getPlatformOwnerInfo(req);
+    if (info?.isPlatformOwner) return next();
+  } catch { /* fail closed */ }
+  return res.status(403).json({
+    error: 'use_delete_account_endpoint',
+    message: 'Please use /api/me/delete-account to delete your account.',
+  });
+});
+app.post("/api/auth/delete-user", async (req, res, next) => {
+  try {
+    const { getPlatformOwnerInfo } = await import('./lib/platform-owner-guard.js');
+    const info = await getPlatformOwnerInfo(req);
+    if (info?.isPlatformOwner) return next();
+  } catch { /* fail closed */ }
+  return res.status(403).json({
+    error: 'use_delete_account_endpoint',
+    message: 'Please use /api/me/delete-account to delete your account.',
+  });
+});
 app.get("/api/me/email-status", me_email_status_get_559);
 app.get("/api/me/phone", me_phone_get_560);
 app.put("/api/me/phone", me_phone_put_561);
