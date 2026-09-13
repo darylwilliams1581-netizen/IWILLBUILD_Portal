@@ -64,8 +64,8 @@ describe('Finance shell — TABS array completeness', () => {
     expect(finance).toContain("key: 'purchase-orders'");
   });
 
-  it('includes timesheets tab', () => {
-    expect(finance).toContain("key: 'timesheets'");
+  it('does not include timesheets tab', () => {
+    expect(finance).not.toContain("key: 'timesheets'");
   });
 
   it('includes settings tab', () => {
@@ -84,9 +84,8 @@ describe('Finance shell — tab component rendering', () => {
     expect(finance).toContain("activeTab === 'purchase-orders'");
   });
 
-  it('renders FinanceTimesheetsTab for timesheets tab', () => {
-    expect(finance).toContain('FinanceTimesheetsTab');
-    expect(finance).toContain("activeTab === 'timesheets'");
+  it('does not render FinanceTimesheetsTab', () => {
+    expect(finance).not.toContain('FinanceTimesheetsTab');
   });
 
   it('renders FinanceSettingsTab for settings tab', () => {
@@ -97,10 +96,9 @@ describe('Finance shell — tab component rendering', () => {
 
 // ── 6. No redirect away from timesheets ──────────────────────────────────────
 
-describe('Finance shell — no redirect away from timesheets', () => {
-  it('does NOT navigate to /timesheets (timesheets stays in shell)', () => {
-    expect(finance).not.toContain("navigate('/timesheets'");
-    expect(finance).not.toContain('navigate("/timesheets"');
+describe('Finance shell — timesheets retired from the shell', () => {
+  it('does not keep a timesheets tab', () => {
+    expect(finance).not.toContain("key: 'timesheets'");
   });
 });
 
@@ -180,10 +178,9 @@ describe('Finance shell — deep-link URL params', () => {
     expect(finance).not.toMatch(/activeTab === 'purchase-orders'[\s\S]*?navigate\(/);
   });
 
-  it('financeTab=timesheets is a recognised tab key', () => {
-    expect(finance).toContain("key: 'timesheets'");
-    // Must NOT redirect timesheets away
-    expect(finance).not.toContain("navigate('/timesheets'");
+  it('financeTab=timesheets is retired and sent home', () => {
+    expect(finance).not.toContain("key: 'timesheets'");
+    expect(finance).toContain("navigate('/home'");
   });
 
   it('financeTab=settings is a recognised tab key', () => {
@@ -193,20 +190,18 @@ describe('Finance shell — deep-link URL params', () => {
 
 // ── 18–20. Entry points all point to Finance shell ───────────────────────────
 
-describe('Entry points — all route to Finance shell', () => {
-  it('/timesheets standalone page redirects to /finance?financeTab=timesheets', () => {
-    expect(timesheetsPg).toContain('/finance?financeTab=timesheets');
+describe('Entry points — timesheets retired', () => {
+  it('/timesheets standalone page redirects to /home', () => {
+    expect(timesheetsPg).toContain("navigate('/home'");
     expect(timesheetsPg).toContain('replace: true');
   });
 
-  it('homeIcons timesheets href is /finance?financeTab=timesheets', () => {
-    const entry = homeIcons.match(/key: 'timesheet'[^\n]*/)?.[0] ?? '';
-    expect(entry).toContain("href: '/finance?financeTab=timesheets'");
-    expect(entry).not.toContain("href: '/timesheets'");
+  it('homeIcons has no timesheet launcher', () => {
+    expect(homeIcons).not.toMatch(/key: 'timesheet'/);
   });
 
-  it('PortalSidebar timesheets href is /finance?financeTab=timesheets', () => {
-    expect(sidebar).toContain("href: '/finance?financeTab=timesheets'");
+  it('PortalSidebar has no timesheets link', () => {
+    expect(sidebar).not.toContain("href: '/finance?financeTab=timesheets'");
     expect(sidebar).not.toContain("href: '/timesheets'");
   });
 });

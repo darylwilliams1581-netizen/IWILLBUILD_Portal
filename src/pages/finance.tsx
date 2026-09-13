@@ -12,23 +12,21 @@ import { useEffect } from 'react';
 import { useSearchParams, useNavigate } from 'react-router';
 import { goBack } from '@/lib/navigation';
 import { Helmet } from '@dr.pogodin/react-helmet';
-import { DollarSign, FileText, BookOpen, Settings, Receipt, ShoppingCart, Clock, ArrowLeft } from 'lucide-react';
+import { DollarSign, FileText, BookOpen, Settings, Receipt, ShoppingCart, ArrowLeft } from 'lucide-react';
 import PortalSidebar from '@/components/PortalSidebar';
 import DesktopDock from '@/components/DesktopDock';
 import FinanceEstimatesTab from '@/components/finance/FinanceEstimatesTab';
 import FinancePurchaseOrdersTab from '@/components/finance/FinancePurchaseOrdersTab';
 import FinanceLedgerTab from '@/components/finance/FinanceLedgerTab';
 import FinanceSettingsTab from '@/components/finance/FinanceSettingsTab';
-import FinanceTimesheetsTab from '@/components/finance/FinanceTimesheetsTab';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
-type FinanceTab = 'estimates' | 'purchase-orders' | 'timesheets' | 'invoices' | 'ledger' | 'settings';
+type FinanceTab = 'estimates' | 'purchase-orders' | 'invoices' | 'ledger' | 'settings';
 
 const TABS: { key: FinanceTab; label: string; icon: React.ElementType }[] = [
   { key: 'estimates',       label: 'Estimates',       icon: FileText     },
   { key: 'purchase-orders', label: 'Purchase Orders', icon: ShoppingCart },
-  { key: 'timesheets',      label: 'Timesheets',      icon: Clock        },
   { key: 'invoices',        label: 'Invoices',        icon: Receipt      },
   { key: 'ledger',          label: 'Ledger',          icon: BookOpen     },
   { key: 'settings',        label: 'Settings',        icon: Settings     },
@@ -51,24 +49,27 @@ export default function FinancePage() {
   const pageTitle =
     activeTab === 'settings' ? settingsTitle
     : activeTab === 'purchase-orders' ? 'Purchase Orders'
-    : activeTab === 'timesheets' ? 'Timesheets'
     : activeTab === 'ledger' ? 'Ledger'
     : activeTab === 'invoices' ? 'Invoices'
     : 'Estimates';
-  const backHref = activeTab === 'settings' || activeTab === 'timesheets'
+  const backHref = activeTab === 'settings'
     ? '/home?page=3'
     : '/home?page=1';
 
+  // Retired Timesheets feature — bookmarks go home, data stays in the API.
+  useEffect(() => {
+    if (searchParams.get('financeTab') === 'timesheets') {
+      navigate('/home', { replace: true });
+    }
+  }, [searchParams, navigate]);
+
   // Normalise URL — if no valid financeTab, redirect to estimates
   useEffect(() => {
+    if (searchParams.get('financeTab') === 'timesheets') return;
     if (!rawTab || !TABS.some(t => t.key === rawTab)) {
       setSearchParams({ financeTab: 'estimates' }, { replace: true });
     }
-  }, [rawTab, setSearchParams]);
-
-  // Legacy redirect: /finance?financeTab=timesheets used to go to /timesheets.
-  // Timesheets now lives inside the Finance shell — no redirect needed.
-  // (The /timesheets route redirects here instead.)
+  }, [rawTab, searchParams, setSearchParams]);
 
   // Invoices tab navigates to the existing /invoices route
   useEffect(() => {
@@ -147,7 +148,6 @@ export default function FinancePage() {
         <div className="flex-1 overflow-hidden">
           {activeTab === 'estimates'       && <FinanceEstimatesTab />}
           {activeTab === 'purchase-orders' && <FinancePurchaseOrdersTab />}
-          {activeTab === 'timesheets'      && <FinanceTimesheetsTab />}
           {activeTab === 'ledger'          && <FinanceLedgerTab />}
           {activeTab === 'settings'        && (
             <FinanceSettingsTab

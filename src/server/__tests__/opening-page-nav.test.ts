@@ -257,11 +257,10 @@ describe('Timesheets — no Job picker', () => {
     expect(financeSrc).not.toContain('picker=timesheets');
   });
 
-  it('timesheets icon in homeIcons points to /finance?financeTab=timesheets (Finance shell)', () => {
+  it('timesheets is not in homeIcons', () => {
     const iconsSrc = src('src/lib/homeIcons.ts');
-    expect(iconsSrc).toContain("href: '/finance?financeTab=timesheets'");
-    // Must NOT link to the bare /timesheets standalone page
-    expect(iconsSrc).not.toContain("href: '/timesheets'");
+    expect(iconsSrc).not.toContain("href: '/finance?financeTab=timesheets'");
+    expect(iconsSrc).not.toMatch(/key: 'timesheet'/);
   });
 });
 

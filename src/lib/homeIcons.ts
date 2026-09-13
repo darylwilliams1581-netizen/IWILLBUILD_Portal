@@ -24,7 +24,7 @@ import {
   ClipboardCheck, Image, AlertTriangle, ShieldAlert,
   UserCircle, CreditCard, Settings, BookMarked,
   DollarSign,
-  BarChart2, FileSpreadsheet, CloudRain, Clipboard,
+  BarChart2, CloudRain, Clipboard,
   MessageSquare, ClipboardSignature, Wallet,
   TriangleAlert, Bot, Library, Link2, TableProperties,
   ScrollText, History, HardDriveUpload, SlidersHorizontal,
@@ -105,7 +105,6 @@ export const SAFETY_ICON_DEFS: HomeIconDef[] = [
 // Note: Contacts is surfaced directly on the Dashboard as a quick-dial panel
 // (ContactsPanel) — it is intentionally excluded from the Manage icon grid here.
 export const MANAGEMENT_ICON_DEFS: HomeIconDef[] = [
-  { key: 'timesheet',      label: 'Timesheets',      icon: FileSpreadsheet,  href: '/finance?financeTab=timesheets',  bg: 'bg-indigo-600',  fg: 'text-white', group: 'management' },
   { key: 'profile',        label: 'My Profile',      icon: User,             href: '/profile',                bg: 'bg-slate-500',   fg: 'text-white', group: 'management' },
   { key: 'dazza_ai',       label: 'Dazza AI',        icon: Bot,              href: '/dazza-ai',               bg: 'bg-violet-700',  fg: 'text-white', group: 'management', ownerOnly: true },
   { key: 'app_docs',       label: 'Studio',        icon: FileText,         href: '/studio/documents',       bg: 'bg-slate-700',   fg: 'text-white', group: 'management', adminOnly: true },
