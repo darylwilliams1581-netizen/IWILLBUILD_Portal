@@ -496,13 +496,32 @@ function ManagePage({
   icons: HomeIconDef[];
   onNavigate: (href: string) => void;
 }) {
+  const timesheet = icons.find(i => i.key === 'timesheet');
+  const TimesheetIcon = timesheet?.icon;
   return (
     <div className="h-full overflow-y-auto flex flex-col px-4 pt-2 gap-5" style={{
       paddingBottom: 'max(env(safe-area-inset-bottom), 16px)'
     }}>
       <div className="mx-auto w-full" style={{ maxWidth: 480 }}>
+        {timesheet && TimesheetIcon && (
+          <button
+            type="button"
+            onClick={() => onNavigate(timesheet.href)}
+            data-testid="timesheet-launcher-btn"
+            className={`w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl ${timesheet.bg} ${timesheet.fg} shadow-sm active:scale-95 transition-transform mb-5`}
+            style={{ minHeight: 52 }}
+          >
+            <div className="w-8 h-8 rounded-lg bg-white/20 flex items-center justify-center shrink-0">
+              <TimesheetIcon size={16} strokeWidth={2} />
+            </div>
+            <div className="flex flex-col items-start">
+              <span className="text-[13px] font-bold leading-tight">{timesheet.label}</span>
+              <span className="text-[10px] text-white/60 leading-tight">Hours and pay</span>
+            </div>
+          </button>
+        )}
         {MANAGE_GROUP_ORDER.map(({ group, label }) => {
-          const groupIcons = icons.filter(i => i.group === group && !MANAGE_HIDDEN_KEYS.has(i.key));
+          const groupIcons = icons.filter(i => i.group === group && !MANAGE_HIDDEN_KEYS.has(i.key) && i.key !== 'timesheet');
           if (groupIcons.length === 0) return null;
 
           const collapsibleCfg = COLLAPSIBLE_GROUPS[group];
