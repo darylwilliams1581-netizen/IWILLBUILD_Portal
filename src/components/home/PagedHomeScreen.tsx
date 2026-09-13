@@ -297,16 +297,8 @@ const DashboardPage = memo(function DashboardPage({
         </div>
       </button>
 
-      {/* Add Job */}
-      <button onClick={onNewJob} className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl bg-primary text-primary-foreground text-sm font-bold shadow-sm active:scale-95 transition-transform" style={{ minHeight: 52 }}>
-        <div className="w-8 h-8 rounded-lg bg-white/20 flex items-center justify-center shrink-0">
-          <Plus size={16} strokeWidth={2} />
-        </div>
-        Add Job
-      </button>
-
       {/* ── Quick-action grid ─────────────────────────────────────────────────── */}
-      <div className="grid grid-cols-1 gap-2">
+      <div className="grid grid-cols-2 gap-2">
         <button onClick={() => onNavigate('/fleet')} className="flex items-center gap-2.5 px-3 py-2.5 rounded-xl bg-sky-500 text-white shadow-sm active:scale-95 transition-transform" style={{ minHeight: 52 }}>
           <div className="w-8 h-8 rounded-lg bg-white/20 flex items-center justify-center shrink-0">
             <Car size={16} strokeWidth={2} />
@@ -314,6 +306,20 @@ const DashboardPage = memo(function DashboardPage({
           <div className="flex flex-col items-start min-w-0">
             <span className="text-[13px] font-bold leading-tight">Fleet</span>
             <span className="text-[10px] text-white/60 leading-tight">Vehicles &amp; equipment</span>
+          </div>
+        </button>
+        <button
+          onClick={() => onNavigate('/studio/asset-manager')}
+          className="flex items-center gap-2.5 px-3 py-2.5 rounded-xl bg-sky-700 text-white shadow-sm active:scale-95 transition-transform"
+          data-testid="equipment-launcher-btn"
+          style={{ minHeight: 52 }}
+        >
+          <div className="w-8 h-8 rounded-lg bg-white/20 flex items-center justify-center shrink-0">
+            <Wrench size={16} strokeWidth={2} />
+          </div>
+          <div className="flex flex-col items-start min-w-0">
+            <span className="text-[13px] font-bold leading-tight">Equipment</span>
+            <span className="text-[10px] text-white/60 leading-tight">Plant and tools</span>
           </div>
         </button>
         {/* Site Prestart — col-span-2 */}
@@ -375,21 +381,14 @@ const DashboardPage = memo(function DashboardPage({
             <span className="text-[10px] text-white/60 leading-tight">Crew and plant roster</span>
           </div>
         </button>
-        <button
-          onClick={() => onNavigate('/studio/asset-manager')}
-          className="flex items-center gap-2.5 px-3 py-2.5 rounded-xl bg-sky-700 text-white shadow-sm active:scale-95 transition-transform"
-          data-testid="equipment-launcher-btn"
-          style={{ minHeight: 52 }}
-        >
-          <div className="w-8 h-8 rounded-lg bg-white/20 flex items-center justify-center shrink-0">
-            <Wrench size={16} strokeWidth={2} />
-          </div>
-          <div className="flex flex-col items-start">
-            <span className="text-[13px] font-bold leading-tight">Equipment Manager</span>
-            <span className="text-[10px] text-white/60 leading-tight">Plant, tools and gear</span>
-          </div>
-        </button>
       </div>
+
+      <button onClick={onNewJob} className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl bg-primary text-primary-foreground text-sm font-bold shadow-sm active:scale-95 transition-transform" style={{ minHeight: 52 }}>
+        <div className="w-8 h-8 rounded-lg bg-white/20 flex items-center justify-center shrink-0">
+          <Plus size={16} strokeWidth={2} />
+        </div>
+        Add Job
+      </button>
 
       <NotificationList />
       <MyTasksPanel userRole={role} collapsible />

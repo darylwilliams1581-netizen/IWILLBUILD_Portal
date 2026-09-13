@@ -400,7 +400,7 @@ describe('Dashboard quick-action buttons — compact spec', () => {
     expect(screenSrc).toContain('/scheduler');
     expect(screenSrc).toContain("onNavigate('/jobs')");
     expect(screenSrc).toContain('jobs-launcher-btn');
-    expect(screenSrc).toContain('Equipment Manager');
+    expect(screenSrc).toContain('equipment-launcher-btn');
     expect(screenSrc).not.toMatch(/>\s*Photos\s*<\/button>/);
     expect(screenSrc).not.toMatch(/>\s*Attendance\s*<\/span>/);
   });
@@ -410,7 +410,7 @@ describe('Dashboard quick-action buttons — compact spec', () => {
   });
 
   it('quick-action grid uses gap-2', () => {
-    expect(screenSrc).toContain('grid grid-cols-1 gap-2');
+    expect(screenSrc).toContain('grid grid-cols-2 gap-2');
   });
 
   it('quick-action buttons have minHeight 52', () => {
