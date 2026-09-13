@@ -3,7 +3,7 @@
  *
  * Page 0 (centre)  — Dashboard: greeting, KPI widgets, tasks, notifications
  * Page 1 (left)    — Job features: all 14 job-scoped features from registry
- * Page 2           — Safety: incidents, risk register, risk & permits
+ * Page 2           — Tools: safety register plus takeoff / calc / quick links
  * Page 3 (right)   — Manage: work/files/fleet/finance + administration
  *
  * Navigation:
@@ -45,8 +45,8 @@ const PLATFORM_ICONS: Omit<HomeIconDef, 'key' | 'group'>[] = [{
 
 // ── Page definitions ──────────────────────────────────────────────────────────
 
-const PAGE_LABELS = ['Dashboard', 'Work', 'Safety', 'Manage'] as const;
-const PAGE_ICONS = [LayoutDashboard, Briefcase, ShieldCheck, Settings2] as const;
+const PAGE_LABELS = ['Dashboard', 'Work', 'Tools', 'Manage'] as const;
+const PAGE_ICONS = [LayoutDashboard, Briefcase, Wrench, Settings2] as const;
 const PAGE_COUNT = PAGE_LABELS.length;
 
 // ── Props ─────────────────────────────────────────────────────────────────────
@@ -168,7 +168,14 @@ const MANAGE_HIDDEN_KEYS = new Set([
   'jobs',
   'plan_mgr',
   'asset_mgr',
+  'tools',
+  'estimating',
+  'builders_calc',
+  'takeoff_pad',
+  'quick_links',
 ]);
+
+const TOOLS_EXTRA_KEYS = new Set(['takeoff_pad', 'builders_calc', 'quick_links']);
 
 function DirectWorkCard({
   tile,
@@ -534,25 +541,39 @@ const ManagePageMemo = memo(ManagePage);
 
 function SafetyPage({
   icons,
+  extraIcons,
   onNavigate
 }: {
   icons: HomeIconDef[];
+  extraIcons: HomeIconDef[];
   onNavigate: (href: string) => void;
 }) {
   return (
     <div className="h-full overflow-y-auto flex flex-col px-4 pt-2 gap-5" style={{
       paddingBottom: 'max(env(safe-area-inset-bottom), 16px)'
     }}>
-      <div className="mx-auto w-full" style={{ maxWidth: 480 }}>
-        <p className="text-[11px] font-bold text-rose-700 uppercase tracking-wider mb-2 px-0.5">Safety</p>
-        {icons.length === 0 ? (
-          <p className="text-sm text-muted-foreground px-0.5">No safety tools on this account.</p>
-        ) : (
-          <div className="grid grid-cols-1 gap-2">
-            {icons.map(item => (
-              <IconTile key={item.key} item={item} onNavigate={onNavigate} />
-            ))}
-          </div>
+      <div className="mx-auto w-full flex flex-col gap-5" style={{ maxWidth: 480 }}>
+        <section>
+          <p className="text-[11px] font-bold text-rose-700 uppercase tracking-wider mb-2 px-0.5">Safety</p>
+          {icons.length === 0 ? (
+            <p className="text-sm text-muted-foreground px-0.5">No safety tools on this account.</p>
+          ) : (
+            <div className="grid grid-cols-1 gap-2">
+              {icons.map(item => (
+                <IconTile key={item.key} item={item} onNavigate={onNavigate} />
+              ))}
+            </div>
+          )}
+        </section>
+        {extraIcons.length > 0 && (
+          <section>
+            <p className="text-[11px] font-bold text-cyan-700 uppercase tracking-wider mb-2 px-0.5">Estimating</p>
+            <div className="grid grid-cols-1 gap-2">
+              {extraIcons.map(item => (
+                <IconTile key={item.key} item={item} onNavigate={onNavigate} />
+              ))}
+            </div>
+          </section>
         )}
       </div>
     </div>
@@ -576,7 +597,7 @@ export default memo(function PagedHomeScreen({
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   // Support ?page=N deep-link so back buttons from feature pages can land on
-  // the correct home screen page (0 = Dashboard, 1 = Work, 2 = Safety, 3 = Manage)
+  // the correct home screen page (0 = Dashboard, 1 = Work, 2 = Tools, 3 = Manage)
   const initialPage = Math.min(PAGE_COUNT - 1, Math.max(0, Number(searchParams.get('page') ?? 0) || 0));
   const [page, setPage] = useState(initialPage);
   const [dragDelta, setDragDelta] = useState(0);
@@ -629,6 +650,7 @@ export default memo(function PagedHomeScreen({
   }));
   const allIcons: HomeIconDef[] = [...allowedIcons, ...(isPlatformOwner ? platformAsIconDef : [])];
   const safetyIcons = allIcons.filter(i => i.group === 'safety');
+  const toolsExtraIcons = allIcons.filter(i => TOOLS_EXTRA_KEYS.has(i.key));
   const mgmtIcons = allIcons.filter(i => i.group !== 'comingSoon' && i.group !== 'safety');
 
   // ── Swipe handlers ────────────────────────────────────────────────────────
@@ -782,9 +804,9 @@ export default memo(function PagedHomeScreen({
             <JobFeaturePage onFeatureClick={handleFeatureClick} onNavigate={onNavigate} />
           </div>
 
-          {/* Page 2 — Safety */}
+          {/* Page 2 — Tools (safety + estimating extras) */}
           <div className="min-h-0" style={{ width: '25%', height: '100%' }}>
-            <SafetyPageMemo icons={safetyIcons} onNavigate={onNavigate} />
+            <SafetyPageMemo icons={safetyIcons} extraIcons={toolsExtraIcons} onNavigate={onNavigate} />
           </div>
 
           {/* Page 3 — Manage */}
