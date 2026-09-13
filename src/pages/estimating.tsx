@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { Helmet } from '@dr.pogodin/react-helmet';
 import { useLocation, useNavigate } from "react-router";
-import { Calculator, Plus, Pencil, Trash2, Copy, Loader2, AlertCircle, BookOpen, ArrowUp, ArrowDown, ChevronDown, ChevronRight, Save, Search, X, Upload, Download, FileText, ArrowLeft } from 'lucide-react';
+import { Calculator, Plus, Trash2, Copy, Loader2, AlertCircle, BookOpen, ArrowUp, ArrowDown, ChevronDown, ChevronRight, Save, Search, X, Upload, Download, FileText, ArrowLeft } from 'lucide-react';
 import PortalSidebar from '@/components/PortalSidebar';
 import BuildersCalc from '@/components/estimating/BuildersCalc';
 import TakeoffPad from '@/components/estimating/TakeoffPad';
