@@ -11,7 +11,7 @@ export default function CostingTab() {
   const [tab, setTab] = useState<Tab>('cost-guide');
 
   return (
-    <div className="flex flex-col gap-0 -mx-1">
+    <div className="flex flex-col gap-0 min-w-0 max-w-full overflow-x-clip">
       {/* Sub-tab bar */}
       <div className="flex gap-1 border-b border-slate-200 mb-4">
         {([

@@ -103,7 +103,7 @@ export default function FinancePage() {
       <PortalSidebar />
       <DesktopDock />
 
-      <div className="portal-content flex flex-col overflow-hidden" style={{ height: '100%' }}>
+      <div className="portal-content flex flex-col overflow-hidden min-h-0 min-w-0">
         {/* ── Page header ─────────────────────────────────────────────────── */}
         <div className="flex items-center gap-3 px-4 pt-4 pb-3 border-b border-border shrink-0">
           <button

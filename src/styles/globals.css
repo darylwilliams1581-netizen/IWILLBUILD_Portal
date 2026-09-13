@@ -396,6 +396,7 @@ input, select, textarea {
    We do NOT use maximum-scale=1 in the viewport meta — that disables
    intentional user pinch-zoom, which is an accessibility violation.
 */
+input:not([type]),
 input[type="text"],
 input[type="email"],
 input[type="password"],

@@ -51,6 +51,10 @@ function blankRLine(): LocalRecipeLine {
     lineOrder: 0
   };
 }
+function growField(el: HTMLTextAreaElement) {
+  el.style.height = 'auto';
+  el.style.height = `${Math.min(el.scrollHeight, 160)}px`;
+}
 function lineCalc(l: {
   quantity: string;
   rate: string;
@@ -97,8 +101,8 @@ function CostItemModal({
       setSaving(false);
     }
   }
-  return <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40">
-      <div className="bg-white rounded-2xl shadow-2xl p-6 w-full max-w-md flex flex-col gap-4 max-h-[90vh] overflow-y-auto">
+  return <div role="dialog" aria-modal="true" className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-3 bg-black/40 overflow-hidden">
+      <div className="bg-white rounded-2xl shadow-2xl p-5 w-full max-w-md flex flex-col gap-4 max-h-[min(90dvh,calc(100dvh-24px))] overflow-y-auto">
         <h3 className="font-heading font-bold text-base">{initial ? 'Edit Cost Item' : 'New Cost Item'}</h3>
         <form onSubmit={handleSubmit} className="flex flex-col gap-3">
           <div>
@@ -107,9 +111,7 @@ function CostItemModal({
               value={description}
               onChange={e => {
                 setDescription(e.target.value);
-                const el = e.currentTarget;
-                el.style.height = 'auto';
-                el.style.height = `${Math.min(el.scrollHeight, 160)}px`;
+                growField(e.currentTarget);
               }}
               rows={2}
               className={`${inputCls} resize-none overflow-hidden min-h-[48px]`}
@@ -302,27 +304,36 @@ function RecipeModal({
       setSaving(false);
     }
   }
-  return <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl flex flex-col max-h-[90vh]">
-        <div className="px-6 pt-6 pb-4 border-b border-slate-100 shrink-0">
+  return <div role="dialog" aria-modal="true" className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-3 bg-black/40 overflow-hidden">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg flex flex-col max-h-[min(90dvh,calc(100dvh-24px))]">
+        <div className="px-4 pt-5 pb-3 border-b border-slate-100 shrink-0">
           <h3 className="font-heading font-bold text-base">{initial ? 'Edit Recipe' : 'New Recipe'}</h3>
         </div>
-        <form onSubmit={handleSubmit} className="flex flex-col flex-1 overflow-hidden">
-          <div className="flex-1 overflow-y-auto px-6 py-4 flex flex-col gap-4">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <form onSubmit={handleSubmit} className="flex flex-col flex-1 min-h-0 overflow-hidden">
+          <div className="flex-1 overflow-y-auto px-4 py-4 flex flex-col gap-4 min-w-0">
+            <div className="flex flex-col gap-3">
               <div>
                 <label className={labelCls}>Title <span className="text-red-500">*</span></label>
-                <input value={title} onChange={e => setTitle(e.target.value)} className={inputCls} placeholder="e.g. Concrete Slab 100mm" autoFocus />
+                <input type="text" value={title} onChange={e => setTitle(e.target.value)} className={inputCls} placeholder="e.g. Concrete Slab 100mm" autoFocus />
               </div>
               <div>
                 <label className={labelCls}>Notes</label>
-                <input value={notes} onChange={e => setNotes(e.target.value)} className={inputCls} placeholder="Optional notes" />
+                <textarea
+                  value={notes}
+                  onChange={e => {
+                    setNotes(e.target.value);
+                    growField(e.currentTarget);
+                  }}
+                  rows={2}
+                  className={`${inputCls} resize-none overflow-hidden min-h-[48px]`}
+                  placeholder="Optional notes"
+                />
               </div>
             </div>
 
             {/* Lines */}
             <div>
-              <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center justify-between mb-2 gap-2 flex-wrap">
                 <div className="flex items-center gap-2">
                   <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Lines</span>
                   <span className={`text-xs font-semibold px-2 py-0.5 rounded-full border ${lines.length >= LIMITS.RECIPE_LINES ? 'bg-red-50 text-red-600 border-red-200' : lines.length >= LIMITS.RECIPE_LINES * 0.9 ? 'bg-amber-50 text-amber-700 border-amber-200' : 'bg-slate-100 text-slate-400 border-slate-200'}`}>{lines.length} / {LIMITS.RECIPE_LINES}</span>
@@ -340,46 +351,42 @@ function RecipeModal({
                   <AlertCircle size={12} className="shrink-0" />
                   Recipe line limit reached ({LIMITS.RECIPE_LINES} lines). Delete lines to add more.
                 </div>}
-              <div className="border border-slate-200 rounded-xl overflow-hidden">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="bg-slate-50 text-xs font-semibold text-slate-500">
-                      <th className="text-left px-3 py-2 w-[40%]">Description</th>
-                      <th className="text-right px-2 py-2 w-[10%]">Qty</th>
-                      <th className="text-left px-2 py-2 w-[10%]">Unit</th>
-                      <th className="text-right px-2 py-2 w-[12%]">Rate</th>
-                      <th className="text-right px-2 py-2 w-[12%]">Calc</th>
-                      <th className="px-2 py-2 w-[16%]"></th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {lines.map((line, idx) => <tr key={line._key} className="border-t border-slate-100">
-                        <td className="px-2 py-1.5">
-                          <input value={line.description} onChange={e => updateLine(line._key, 'description', e.target.value)} placeholder="Description" className="w-full px-2 py-1 border border-transparent rounded text-sm focus:outline-none focus:border-primary/40 focus:bg-violet-50/30 transition-colors" />
-                        </td>
-                        <td className="px-2 py-1.5">
-                          <input type="number" min="0" step="any" value={line.quantity} onChange={e => updateLine(line._key, 'quantity', e.target.value)} className="w-full px-2 py-1 border border-transparent rounded text-right text-sm focus:outline-none focus:border-primary/40 focus:bg-violet-50/30 transition-colors" />
-                        </td>
-                        <td className="px-2 py-1.5">
-                          <input value={line.unit ?? ''} onChange={e => updateLine(line._key, 'unit', e.target.value)} placeholder="ea" className="w-full px-2 py-1 border border-transparent rounded text-sm focus:outline-none focus:border-primary/40 focus:bg-violet-50/30 transition-colors" />
-                        </td>
-                        <td className="px-2 py-1.5">
-                          <input type="number" min="0" step="any" value={line.rate} onChange={e => updateLine(line._key, 'rate', e.target.value)} className="w-full px-2 py-1 border border-transparent rounded text-right text-sm focus:outline-none focus:border-primary/40 focus:bg-violet-50/30 transition-colors" />
-                        </td>
-                        <td className="px-2 py-1.5 text-right font-mono text-xs text-slate-600">
-                          ${lineCalc(line).toFixed(2)}
-                        </td>
-                        <td className="px-2 py-1.5">
-                          <div className="flex items-center gap-0.5 justify-end">
-                            <button type="button" onClick={() => moveLine(line._key, 'up')} disabled={idx === 0} className="p-1 rounded text-slate-600 hover:text-slate-900 hover:bg-slate-100 disabled:opacity-30 transition-colors"><ArrowUp size={11} /></button>
-                            <button type="button" onClick={() => moveLine(line._key, 'down')} disabled={idx === lines.length - 1} className="p-1 rounded text-slate-600 hover:text-slate-900 hover:bg-slate-100 disabled:opacity-30 transition-colors"><ArrowDown size={11} /></button>
-                            <button type="button" onClick={() => copyLine(line._key)} className="p-1 rounded text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition-colors"><Copy size={11} /></button>
-                            <button type="button" onClick={() => deleteLine(line._key)} className="p-1 rounded text-slate-400 hover:text-red-600 hover:bg-red-50 transition-colors"><Trash2 size={11} /></button>
-                          </div>
-                        </td>
-                      </tr>)}
-                  </tbody>
-                </table>
+              <div className="flex flex-col gap-2">
+                {lines.map((line, idx) => <div key={line._key} className="border border-slate-200 rounded-xl p-3 flex flex-col gap-2 bg-white">
+                    <textarea
+                      value={line.description}
+                      onChange={e => {
+                        updateLine(line._key, 'description', e.target.value);
+                        growField(e.currentTarget);
+                      }}
+                      rows={2}
+                      placeholder="Description"
+                      className={`${inputCls} resize-none overflow-hidden min-h-[48px]`}
+                    />
+                    <div className="grid grid-cols-3 gap-2">
+                      <div>
+                        <label className={labelCls}>Qty</label>
+                        <input type="number" min="0" step="any" value={line.quantity} onChange={e => updateLine(line._key, 'quantity', e.target.value)} className={inputCls} />
+                      </div>
+                      <div>
+                        <label className={labelCls}>Unit</label>
+                        <input type="text" value={line.unit ?? ''} onChange={e => updateLine(line._key, 'unit', e.target.value)} placeholder="ea" className={inputCls} />
+                      </div>
+                      <div>
+                        <label className={labelCls}>Rate</label>
+                        <input type="number" min="0" step="any" value={line.rate} onChange={e => updateLine(line._key, 'rate', e.target.value)} className={inputCls} />
+                      </div>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-mono text-slate-600">${lineCalc(line).toFixed(2)}</span>
+                      <div className="flex items-center gap-0.5">
+                        <button type="button" onClick={() => moveLine(line._key, 'up')} disabled={idx === 0} className="p-2 rounded-lg text-slate-600 hover:text-slate-900 hover:bg-slate-100 disabled:opacity-30 transition-colors"><ArrowUp size={14} /></button>
+                        <button type="button" onClick={() => moveLine(line._key, 'down')} disabled={idx === lines.length - 1} className="p-2 rounded-lg text-slate-600 hover:text-slate-900 hover:bg-slate-100 disabled:opacity-30 transition-colors"><ArrowDown size={14} /></button>
+                        <button type="button" onClick={() => copyLine(line._key)} className="p-2 rounded-lg text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition-colors"><Copy size={14} /></button>
+                        <button type="button" onClick={() => deleteLine(line._key)} className="p-2 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 transition-colors"><Trash2 size={14} /></button>
+                      </div>
+                    </div>
+                  </div>)}
               </div>
             </div>
 
@@ -388,7 +395,7 @@ function RecipeModal({
               </div>}
           </div>
 
-          <div className="px-6 py-4 border-t border-slate-100 flex gap-2 justify-end shrink-0">
+          <div className="px-4 py-3 border-t border-slate-100 flex gap-2 justify-end shrink-0">
             <button type="button" onClick={onClose} className="text-sm text-slate-500 hover:text-slate-700 px-4 py-2 rounded-lg hover:bg-slate-100 transition-colors">Cancel</button>
             <button type="submit" disabled={saving} className="flex items-center gap-1.5 text-sm font-bold bg-primary hover:bg-violet-700 text-white px-4 py-2 rounded-lg transition-colors disabled:opacity-50">
               {saving ? <Loader2 size={13} className="animate-spin" /> : <Save size={13} />}
@@ -515,7 +522,7 @@ export function CostGuideTab() {
   return <div className="flex flex-col gap-4">
       <div className="flex items-center justify-between gap-3 flex-wrap">
         <div className="flex items-center gap-3 flex-wrap">
-          <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search cost items…" className="px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 w-64 bg-white" />
+          <input type="search" value={search} onChange={e => setSearch(e.target.value)} placeholder="Search cost items…" className="px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 w-full max-w-full bg-white" />
           {/* Count / limit badge */}
           <span className={`text-xs font-semibold px-2.5 py-1 rounded-full border ${items.length >= 200 ? 'bg-red-50 text-red-600 border-red-200' : items.length >= 180 ? 'bg-amber-50 text-amber-700 border-amber-200' : 'bg-slate-100 text-slate-500 border-slate-200'}`}>
             {items.length} / 200 items
