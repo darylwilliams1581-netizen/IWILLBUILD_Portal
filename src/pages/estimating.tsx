@@ -98,12 +98,24 @@ function CostItemModal({
     }
   }
   return <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40">
-      <div className="bg-white rounded-2xl shadow-2xl p-6 w-full max-w-md flex flex-col gap-4">
+      <div className="bg-white rounded-2xl shadow-2xl p-6 w-full max-w-md flex flex-col gap-4 max-h-[90vh] overflow-y-auto">
         <h3 className="font-heading font-bold text-base">{initial ? 'Edit Cost Item' : 'New Cost Item'}</h3>
         <form onSubmit={handleSubmit} className="flex flex-col gap-3">
           <div>
             <label className={labelCls}>Description <span className="text-red-500">*</span></label>
-            <input value={description} onChange={e => setDescription(e.target.value)} className={inputCls} placeholder="e.g. Labour – General" autoFocus />
+            <textarea
+              value={description}
+              onChange={e => {
+                setDescription(e.target.value);
+                const el = e.currentTarget;
+                el.style.height = 'auto';
+                el.style.height = `${Math.min(el.scrollHeight, 160)}px`;
+              }}
+              rows={2}
+              className={`${inputCls} resize-none overflow-hidden min-h-[48px]`}
+              placeholder="e.g. Labour – General"
+              autoFocus
+            />
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
