@@ -44,6 +44,21 @@ export default function FinancePage() {
   const activeTab: FinanceTab = TABS.some(t => t.key === rawTab) ? rawTab! : 'estimates';
   const settingsTab = searchParams.get('settingsTab') ?? 'accounting';
 
+  const settingsTitle =
+    settingsTab === 'costing' ? 'Costing'
+    : settingsTab === 'pdf-style' ? 'PDF Style'
+    : 'Accounting';
+  const pageTitle =
+    activeTab === 'settings' ? settingsTitle
+    : activeTab === 'purchase-orders' ? 'Purchase Orders'
+    : activeTab === 'timesheets' ? 'Timesheets'
+    : activeTab === 'ledger' ? 'Ledger'
+    : activeTab === 'invoices' ? 'Invoices'
+    : 'Estimates';
+  const backHref = activeTab === 'settings' || activeTab === 'timesheets'
+    ? '/home?page=3'
+    : '/home?page=1';
+
   // Normalise URL — if no valid financeTab, redirect to estimates
   useEffect(() => {
     if (!rawTab || !TABS.some(t => t.key === rawTab)) {
@@ -92,7 +107,7 @@ export default function FinancePage() {
         {/* ── Page header ─────────────────────────────────────────────────── */}
         <div className="flex items-center gap-3 px-4 pt-4 pb-3 border-b border-border shrink-0">
           <button
-            onClick={() => goBack(navigate, '/estimating')}
+            onClick={() => goBack(navigate, backHref)}
             className="lg:hidden flex items-center justify-center w-8 h-8 rounded-lg hover:bg-muted transition-colors shrink-0"
             aria-label="Back"
           >
@@ -102,14 +117,14 @@ export default function FinancePage() {
             <DollarSign size={18} className="text-primary" />
           </div>
           <div>
-            <h1 className="text-lg font-bold text-foreground leading-tight">Finance</h1>
-            <p className="text-xs text-muted-foreground">Company-wide estimates, invoices and costs</p>
+            <h1 className="text-lg font-bold text-foreground leading-tight">{pageTitle}</h1>
+            <p className="text-xs text-muted-foreground">Company finance</p>
           </div>
         </div>
 
         {/* ── Tab strip — horizontally scrollable on tablet ───────────────── */}
         <div
-          className="flex border-b border-border shrink-0 overflow-x-auto"
+          className="hidden lg:flex border-b border-border shrink-0 overflow-x-auto"
           style={{ WebkitOverflowScrolling: 'touch', scrollbarWidth: 'none' }}
         >
           {TABS.map(tab => (
