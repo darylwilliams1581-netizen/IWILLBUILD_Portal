@@ -11,7 +11,8 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from "react-router";
 import { Helmet } from '@dr.pogodin/react-helmet';
-import { Search, Download, ChevronUp, ChevronDown, ChevronsUpDown, Loader2, AlertCircle, ChevronLeft, ChevronRight, HardHat, CheckSquare, StickyNote, ShieldAlert, LogIn, DollarSign, Truck, LayoutDashboard, ChevronRight as Crumb, X, ListFilter, FileText, Users, Clock, Wrench, ClipboardList, FolderOpen, CalendarDays, Receipt, Calculator, ShoppingCart, Car, Gauge, Milestone, MapPin, UserCheck, Package, Play, Filter } from 'lucide-react';
+import { Search, Download, ChevronUp, ChevronDown, ChevronsUpDown, Loader2, AlertCircle, ChevronLeft, ChevronRight, HardHat, CheckSquare, StickyNote, ShieldAlert, LogIn, DollarSign, Truck, X, ListFilter, FileText, Users, Clock, Wrench, ClipboardList, FolderOpen, CalendarDays, Receipt, Calculator, ShoppingCart, Car, Gauge, Milestone, MapPin, UserCheck, Package, Play, Filter } from 'lucide-react';
+import { goBack } from '@/lib/navigation';
 import DesktopTopBar from '@/components/DesktopTopBar';
 import DesktopDock from '@/components/DesktopDock';
 
@@ -1850,17 +1851,19 @@ export default function ListsPage() {
         <main className="portal-main flex flex-col min-h-0 overflow-hidden">
 
           {/* ── Breadcrumb ── */}
-          <div className="shrink-0 px-5 pt-3 pb-2 bg-white flex items-center gap-1.5 border-b border-gray-100">
-            <button onClick={() => navigate('/home')} className="flex items-center gap-1.5 text-[11px] text-gray-400 hover:text-violet-600 transition-colors group">
-              <LayoutDashboard size={12} className="group-hover:text-violet-600 transition-colors" />
-              <span>Home</span>
+          <div className="shrink-0 px-4 py-2 bg-white flex items-center gap-2 border-b border-gray-100">
+            <button
+              type="button"
+              onClick={() => goBack(navigate, '/home?page=3')}
+              className="flex items-center justify-center gap-1.5 h-10 px-3 rounded-xl bg-slate-900 text-white text-sm font-bold shrink-0"
+              aria-label="Manage"
+            >
+              <ChevronLeft size={16} />
+              Back
             </button>
-            <Crumb size={11} className="text-gray-300" />
-            <span className="text-[11px] font-medium text-gray-600">Lists</span>
-            {activeLabel && <>
-                <Crumb size={11} className="text-gray-300" />
-                <span className="text-[11px] font-medium text-primary">{activeLabel}</span>
-              </>}
+            <span className="text-sm font-semibold text-gray-900 truncate">
+              Lists{activeLabel ? ` · ${activeLabel}` : ''}
+            </span>
           </div>
 
           {/* ── Toolbar ── */}
