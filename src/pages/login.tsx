@@ -8,6 +8,8 @@ import { InputOTP, InputOTPGroup, InputOTPSlot } from '@/components/ui/input-otp
 import ForcedPasswordChangeModal from '@/components/auth/ForcedPasswordChangeModal';
 import { goBack } from '@/lib/navigation';
 import { invalidateMeCache } from '@/lib/usePermissions';
+import { invalidateSubscriptionCache } from '@/lib/useSubscriptionGate';
+import { finishLoginNavigation } from '@/lib/auth/login-navigation';
 
 import { isNativeApp, WEB_PORTAL_URL, openExternalUrl } from '@/lib/native-routing';
 
@@ -20,35 +22,6 @@ function authLog(event: string, data?: Record<string, unknown>) {
       ts: Date.now()
     }));
   } catch {/* best-effort */}
-}
-
-/**
- * Finish an authenticated login without carrying an iOS keyboard zoom into
- * the portal. A React Router transition keeps WKWebView's visual viewport
- * from the focused login input; the first-run terms and permission cards then
- * render enlarged and clipped until the document is reloaded.
- *
- * Native: reload the Capacitor app ROOT (`/`), never `/home`.
- * Capacitor only serves index.html at `/`. Reloading `/home` 404s the
- * WKWebView and shows a plain white screen. NativeStartupGate then
- * client-routes an authenticated session to `/home`.
- */
-function finishLoginNavigation(
-  destination: string,
-  navigate: ReturnType<typeof useNavigate>,
-): void {
-  // Never carry another account's cached /api/me platform permissions across
-  // an authenticated account switch.
-  invalidateMeCache();
-
-  if (isNativeApp) {
-    const activeElement = document.activeElement;
-    if (activeElement instanceof HTMLElement) activeElement.blur();
-    window.location.replace('/');
-    return;
-  }
-
-  navigate(destination, { replace: true });
 }
 
 // ── Device fingerprint (stable per browser) ──────────────────────────────────
@@ -154,12 +127,32 @@ export default function LoginPage() {
       authLog('already_authenticated', {
         redirectTo: from
       });
-      finishLoginNavigation(from, navigate);
+      finishLoginNavigation({
+        destination: from,
+        isNative: isNativeApp,
+        navigate,
+        invalidateMe: invalidateMeCache,
+        invalidateSubscription: invalidateSubscriptionCache,
+        blurActiveElement: () => {
+          const activeElement = document.activeElement;
+          if (activeElement instanceof HTMLElement) activeElement.blur();
+        },
+      });
     }
   }, [isAuthenticated, navigate, location.state, location.search, mustChangePassword]);
 
   function completeLogin(destination: string) {
-    finishLoginNavigation(destination, navigate);
+    finishLoginNavigation({
+      destination,
+      isNative: isNativeApp,
+      navigate,
+      invalidateMe: invalidateMeCache,
+      invalidateSubscription: invalidateSubscriptionCache,
+      blurActiveElement: () => {
+        const activeElement = document.activeElement;
+        if (activeElement instanceof HTMLElement) activeElement.blur();
+      },
+    });
   }
 
   // Check if this device has a trusted PIN for the entered email
