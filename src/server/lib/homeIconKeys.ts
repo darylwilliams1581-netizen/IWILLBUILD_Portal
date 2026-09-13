@@ -4,20 +4,17 @@
  */
 export const ALL_HOME_ICON_KEYS: string[] = [
   // Work (field)
-  'jobs', 'work', 'job_card', 'scheduler', 'progress', 'delays', 'notes', 'log_cost',
+  'tools', 'jobs', 'job_card', 'log_cost', 'scheduler',
   // Field & Files
-  'lens', 'plan_mgr', 'files',
+  'lens', 'plan_mgr', 'files', 'asset_mgr',
   // Fleet
   'fleet',
   // Finance
-  'quotes', 'invoices_mgmt', 'ledger', 'purchase_orders',
+  'quotes', 'invoices_mgmt', 'ledger', 'purchase_orders', 'estimating', 'builders_calc', 'takeoff_pad', 'finance_settings',
   // Safety
-  'forms', 'safety', 'poster', 'incidents', 'risky',
+  'forms', 'safety', 'poster', 'incidents', 'risk_register', 'sds_register', 'rl_register', 'electrical_tests', 'risky',
   // Administration
-  'stakeholders', 'team', 'billing', 'settings', 'help',
-  // Coming soon
-  'report', 'timesheet', 'site_diary', 'rainfall', 'checklist',
-  'messages', 'invoices_field', 'daily_log', 'weather',
+  'profile', 'dazza_ai', 'library', 'quick_links', 'lists', 'user_logs', 'signin_history', 'team', 'billing', 'settings', 'help',
 ];
 
 /** Minimal default set for new invited employees */

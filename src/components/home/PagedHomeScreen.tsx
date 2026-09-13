@@ -526,7 +526,7 @@ export default memo(function PagedHomeScreen({
     group: 'management' as const
   }));
   const allIcons: HomeIconDef[] = [...allowedIcons, ...(isPlatformOwner ? platformAsIconDef : [])];
-  const mgmtIcons = allIcons.filter(i => i.group !== 'comingSoon');
+  const mgmtIcons = allIcons;
 
   // ── Swipe handlers ────────────────────────────────────────────────────────
   const handleTouchStart = useCallback((e: ReactTouchEvent) => {
