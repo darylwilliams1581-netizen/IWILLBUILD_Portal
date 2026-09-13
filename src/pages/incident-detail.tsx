@@ -1089,7 +1089,7 @@ export default function IncidentDetailPage() {
 
       {/* Close modal */}
       {showCloseModal && <div className="fixed inset-0 bg-black/50 flex items-end justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl p-5 w-full max-w-sm space-y-4 max-h-[90dvh] overflow-y-auto" style={{
+          <div className="bg-white rounded-2xl p-5 w-full max-w-sm space-y-4 mobile-sheet max-h-[90dvh] overflow-y-auto" style={{
         paddingBottom: 'max(1.25rem, env(safe-area-inset-bottom))'
       }}>
             <h3 className="font-bold text-slate-800">Close Incident</h3>

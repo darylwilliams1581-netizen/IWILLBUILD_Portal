@@ -140,7 +140,7 @@ export default function ElecTestRecordModal({ jobId, jobName, record, equipment,
 
   const modal = (
     <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center bg-black/60 p-0 md:p-4">
-      <div className="bg-white w-full md:max-w-2xl md:rounded-xl shadow-2xl flex flex-col max-h-[95dvh] overflow-hidden">
+      <div className="bg-white w-full md:max-w-2xl md:rounded-xl shadow-2xl flex flex-col mobile-sheet max-h-[95dvh] overflow-hidden">
         {/* Header */}
         <div className="flex items-center justify-between px-4 py-3 border-b bg-gray-50 md:rounded-t-xl">
           <div>

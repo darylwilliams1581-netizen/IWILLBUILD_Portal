@@ -102,7 +102,7 @@ function CostItemModal({
     }
   }
   return <div role="dialog" aria-modal="true" className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-3 bg-black/40 overflow-hidden">
-      <div className="bg-white rounded-2xl shadow-2xl p-5 w-full max-w-md flex flex-col gap-4 max-h-[min(90dvh,calc(100dvh-24px))] overflow-y-auto">
+      <div className="bg-white rounded-2xl shadow-2xl p-5 w-full max-w-md flex flex-col gap-4 mobile-sheet max-h-[min(90dvh,calc(100dvh-24px))] overflow-y-auto">
         <h3 className="font-heading font-bold text-base">{initial ? 'Edit Cost Item' : 'New Cost Item'}</h3>
         <form onSubmit={handleSubmit} className="flex flex-col gap-3">
           <div>
@@ -305,7 +305,7 @@ function RecipeModal({
     }
   }
   return <div role="dialog" aria-modal="true" className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-3 bg-black/40 overflow-hidden">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg flex flex-col max-h-[min(90dvh,calc(100dvh-24px))]">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg flex flex-col mobile-sheet max-h-[min(90dvh,calc(100dvh-24px))]">
         <div className="px-4 pt-5 pb-3 border-b border-slate-100 shrink-0">
           <h3 className="font-heading font-bold text-base">{initial ? 'Edit Recipe' : 'New Recipe'}</h3>
         </div>

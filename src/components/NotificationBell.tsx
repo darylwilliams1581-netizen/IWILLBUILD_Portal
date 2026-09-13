@@ -10,6 +10,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useNavigate } from "react-router";
 import { Bell, CheckCheck, AlertTriangle, Clock, Truck, FileText, DollarSign, HardHat, X, Loader2 } from 'lucide-react';
+import { PHONE_SHEET_MAX_HEIGHT, PHONE_SHEET_SAFE_BOTTOM, PHONE_SHEET_WIDTH } from '@/lib/phoneSheet';
 interface Alert {
   id: string;
   type: string;
@@ -166,9 +167,11 @@ export default function NotificationBell({
 
       {/* Dropdown panel — fixed on phone so it cannot hang off-screen left of the bell */}
       <AnimatePresence>
-        {open && <motion.div initial={{
+        {open && <div className="fixed inset-0 z-[200] flex items-end justify-center overflow-hidden p-3 md:absolute md:inset-auto md:right-0 md:top-10 md:block md:p-0">
+          <button type="button" className="absolute inset-0 bg-black/40 md:hidden" aria-label="Close notifications" onClick={() => setOpen(false)} />
+          <motion.div initial={{
         opacity: 0,
-        y: -6,
+        y: 24,
         scale: 0.97
       }} animate={{
         opacity: 1,
@@ -176,12 +179,12 @@ export default function NotificationBell({
         scale: 1
       }} exit={{
         opacity: 0,
-        y: -6,
+        y: 24,
         scale: 0.97
       }} transition={{
         duration: 0.15,
         ease: 'easeOut'
-      }} className="fixed z-[200] overflow-hidden bg-white rounded-xl shadow-2xl border border-slate-200 left-3 right-3 top-[calc(env(safe-area-inset-top,0px)+52px)] max-h-[min(70dvh,480px)] md:absolute md:left-auto md:right-0 md:top-10 md:w-80 md:inset-x-auto">
+      }} className="relative flex flex-col overflow-hidden bg-white rounded-2xl shadow-2xl border border-slate-200 md:w-80" style={{ width: PHONE_SHEET_WIDTH, maxHeight: PHONE_SHEET_MAX_HEIGHT, WebkitTextSizeAdjust: '100%' }}>
             {/* Header */}
             <div className="flex items-center justify-between px-3 py-3 border-b border-slate-100 gap-2 min-w-0">
               <div className="flex items-center gap-2 min-w-0">
@@ -203,9 +206,7 @@ export default function NotificationBell({
             </div>
 
             {/* Alert list */}
-            <div className="overflow-y-auto overscroll-contain" style={{
-          maxHeight: 'min(calc(70dvh - 56px), 400px)'
-        }}>
+            <div data-sheet-scroll className="min-h-0 flex-1 overflow-y-auto overscroll-contain" style={{ paddingBottom: PHONE_SHEET_SAFE_BOTTOM }}>
               {alerts.length === 0 ? <div className="flex flex-col items-center justify-center py-10 text-slate-400">
                   <HardHat size={28} className="mb-2 opacity-30" />
                   <p className="text-xs font-semibold">All clear — no alerts</p>
@@ -232,7 +233,8 @@ export default function NotificationBell({
                     </div>;
           })}
             </div>
-          </motion.div>}
+          </motion.div>
+        </div>}
       </AnimatePresence>
     </div>;
 }

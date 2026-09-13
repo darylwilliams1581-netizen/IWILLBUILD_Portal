@@ -6,6 +6,7 @@ import { useState } from 'react';
 import { Shield } from 'lucide-react';
 import { authClient } from '@/lib/auth/auth-client';
 import LegalDocument, { LEGAL_VERSION, LEGAL_JURISDICTION } from '@/content/legal/LegalDocument';
+import { PHONE_SHEET_MAX_HEIGHT, PHONE_SHEET_SAFE_BOTTOM, PHONE_SHEET_WIDTH } from '@/lib/phoneSheet';
 
 const TERMS_KEY = 'iwb_terms_accepted_v3';
 const DEV_TEST_EMAIL = 'support@iwillbuild.com';
@@ -50,12 +51,10 @@ export default function TermsAcceptanceGate({ onAccepted, userEmail }: Props) {
   }
 
   return (
-    <div
-      className="flex min-h-0 w-full max-w-full flex-1 flex-col overflow-hidden bg-[#edf0f5] p-3"
-      style={{ minWidth: 0, maxWidth: '100%' }}
-    >
+    <div className="fixed inset-0 z-[9999] flex items-end justify-center overflow-hidden bg-gray-950/75 p-3 sm:items-center">
       <div
-        className="flex min-h-0 min-w-0 w-full max-w-full flex-1 flex-col overflow-hidden rounded-2xl bg-white shadow-lg"
+        className="flex min-h-0 min-w-0 flex-col overflow-hidden rounded-2xl bg-white shadow-lg"
+        style={{ width: PHONE_SHEET_WIDTH, maxHeight: PHONE_SHEET_MAX_HEIGHT, WebkitTextSizeAdjust: '100%' }}
         role="dialog"
         aria-modal="true"
         aria-labelledby="terms-title"
@@ -80,13 +79,13 @@ export default function TermsAcceptanceGate({ onAccepted, userEmail }: Props) {
           </p>
         )}
 
-        <div className="min-h-0 min-w-0 flex-1 overflow-x-hidden overflow-y-auto overscroll-contain px-3 py-3">
+        <div data-sheet-scroll className="min-h-0 min-w-0 flex-1 overflow-x-hidden overflow-y-auto overscroll-contain px-3 py-3">
           <div className="min-w-0 max-w-full break-words [overflow-wrap:anywhere]">
             <LegalDocument />
           </div>
         </div>
 
-        <div className="min-w-0 shrink-0 space-y-2 border-t border-gray-100 bg-white px-3 py-3">
+        <div className="min-w-0 shrink-0 space-y-2 border-t border-gray-100 bg-white px-3 pt-3" style={{ paddingBottom: PHONE_SHEET_SAFE_BOTTOM }}>
           <label className="flex min-w-0 cursor-pointer items-start gap-2 text-xs leading-snug text-gray-700">
             <input
               type="checkbox"

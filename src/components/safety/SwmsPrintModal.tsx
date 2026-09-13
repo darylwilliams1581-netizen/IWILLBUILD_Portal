@@ -513,7 +513,7 @@ export default function SwmsPrintModal({ swms, onClose }: Props) {
         animate={{ opacity: 1, scale: 1 }}
         exit={{ opacity: 0, scale: 0.97 }}
         transition={{ duration: 0.15 }}
-        className="relative bg-white rounded-2xl shadow-2xl w-full max-w-4xl max-h-[92vh] flex flex-col"
+        className="relative bg-white rounded-2xl shadow-2xl w-full max-w-4xl mobile-sheet max-h-[92vh] flex flex-col"
       >
         {/* ── Modal toolbar ── */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200 shrink-0">

@@ -64,7 +64,7 @@ export default function ElecSignOffModal({ recordId, currentStatus, currentResul
 
   const modal = (
     <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center bg-black/60 p-0 md:p-4">
-      <div className="bg-white w-full md:max-w-md md:rounded-xl shadow-2xl flex flex-col max-h-[90dvh] overflow-hidden">
+      <div className="bg-white w-full md:max-w-md md:rounded-xl shadow-2xl flex flex-col mobile-sheet max-h-[90dvh] overflow-hidden">
         <div className="flex items-center justify-between px-4 py-3 border-b bg-gray-50 md:rounded-t-xl">
           <h2 className="font-semibold text-gray-900">Sign-off</h2>
           <button onClick={onClose} className="p-2 rounded-lg hover:bg-gray-200 transition-colors"><X size={18} /></button>

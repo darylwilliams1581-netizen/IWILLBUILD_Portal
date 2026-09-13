@@ -497,7 +497,7 @@ function EditMemberModal({
     }} transition={{
       duration: 0.18,
       ease: 'easeOut'
-    }} className="relative bg-white rounded-2xl shadow-2xl w-full max-w-lg p-6 z-10 max-h-[90vh] overflow-y-auto">
+    }} className="relative bg-white rounded-2xl shadow-2xl w-full max-w-lg p-6 z-10 mobile-sheet max-h-[90vh] overflow-y-auto">
         <div className="flex items-center justify-between mb-5">
           <div className="flex items-center gap-3">
             <Avatar name={member.name} role={member.role} />

@@ -15,6 +15,7 @@ import { Users, Phone, Mail, MessageSquare, Search, Loader2, AlertCircle, Chevro
 import { Link } from 'react-router';
 import { fetchCustomers, type Customer } from '@/lib/customers-api';
 import { useFieldSheetScrollLock } from '@/lib/useFieldSheetScrollLock';
+import { PHONE_SHEET_MAX_HEIGHT, PHONE_SHEET_SAFE_BOTTOM, PHONE_SHEET_WIDTH } from '@/lib/phoneSheet';
 
 // ── SMS compose modal ─────────────────────────────────────────────────────────
 
@@ -58,8 +59,8 @@ function SmsModal({ to, name, onClose }: { to: string; name: string; onClose: ()
         transition={{ duration: 0.2, ease: 'easeOut' as const }}
         className="relative bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden flex flex-col"
         style={{
-          width: 'min(calc(100vw - 24px), 24rem)',
-          maxHeight: 'min(560px, calc(100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom) - 24px))',
+          width: PHONE_SHEET_WIDTH,
+          maxHeight: PHONE_SHEET_MAX_HEIGHT,
           WebkitTextSizeAdjust: '100%',
           textSizeAdjust: '100%',
         }}
@@ -78,7 +79,7 @@ function SmsModal({ to, name, onClose }: { to: string; name: string; onClose: ()
             <X size={15} />
           </button>
         </div>
-        <form onSubmit={handleSend} className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-5 flex flex-col gap-4">
+        <form data-sheet-scroll onSubmit={handleSend} className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 pt-5 flex flex-col gap-4" style={{ paddingBottom: PHONE_SHEET_SAFE_BOTTOM }}>
           {sent ? (
             <div className="flex items-center justify-center gap-2 py-6 text-emerald-600 font-semibold text-sm">
               <Check size={18} /> Message sent!

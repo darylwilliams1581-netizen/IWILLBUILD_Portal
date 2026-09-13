@@ -14,6 +14,7 @@ import {
 import JobPickerSheet from '@/components/JobPickerSheet';
 import JobTodos from '@/components/job/JobTodos';
 import { useFieldSheetScrollLock } from '@/lib/useFieldSheetScrollLock';
+import { PHONE_SHEET_MAX_HEIGHT, PHONE_SHEET_SAFE_BOTTOM } from '@/lib/phoneSheet';
 
 interface Task {
   id: number;
@@ -306,7 +307,7 @@ export default function WorkTasksTab({ initialJobId, initialJobName }: Props) {
             className="bg-background w-full max-w-[28rem] rounded-2xl overflow-hidden flex flex-col"
             style={{
               width: 'min(calc(100vw - 24px), 28rem)',
-              maxHeight: 'min(560px, calc(100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom) - 24px))',
+              maxHeight: PHONE_SHEET_MAX_HEIGHT,
               WebkitTextSizeAdjust: '100%',
               textSizeAdjust: '100%',
             }}
@@ -324,7 +325,7 @@ export default function WorkTasksTab({ initialJobId, initialJobName }: Props) {
                 ×
               </button>
             </div>
-            <div className="min-h-0 overflow-y-auto overscroll-contain flex-1 p-4">
+            <div data-sheet-scroll className="min-h-0 overflow-y-auto overscroll-contain flex-1 px-4 pt-4" style={{ paddingBottom: PHONE_SHEET_SAFE_BOTTOM }}>
               <JobTodos jobId={showTodosFor} />
             </div>
           </div>

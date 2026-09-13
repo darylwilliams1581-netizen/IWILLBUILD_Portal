@@ -668,17 +668,26 @@ input[type="time"]::-webkit-calendar-picker-indicator {
   display: none;
 }
 
-/* ── Full-screen mobile sheet ────────────────────────────────────────────────
-   Applied to modals/drawers that should be full-screen on mobile.
+/* ── Contained mobile sheet ─────────────────────────────────────────────────
+   One safe-area-aware cap for legacy field sheets. Scrolling stays on the
+   sheet or its body; html/body overflow is never changed.
 */
-@media (max-width: 640px) {
+@media (max-width: 1024px) {
   .mobile-sheet {
-    position: fixed !important;
-    inset: 0 !important;
-    max-width: 100% !important;
-    max-height: 100% !important;
-    border-radius: 0 !important;
-    margin: 0 !important;
+    width: min(calc(100vw - 24px), 28rem) !important;
+    max-width: min(calc(100vw - 24px), 28rem) !important;
+    max-height: min(560px, calc(100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom) - 24px)) !important;
+    border-radius: 1rem !important;
+    padding-bottom: max(env(safe-area-inset-bottom), 12px);
+    overscroll-behavior: contain;
+    align-self: flex-end;
+    margin-bottom: 12px;
+  }
+
+  .mobile-sheet.plan-upload-phone-sheet {
+    top: auto !important;
+    bottom: 0 !important;
+    translate: -50% 0 !important;
   }
 }
 

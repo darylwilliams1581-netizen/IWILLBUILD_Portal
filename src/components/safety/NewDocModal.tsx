@@ -62,7 +62,7 @@ export default function NewDocModal({ onClose, onCreated }: NewDocModalProps) {
           animate={{ scale: 1, opacity: 1, y: 0 }}
           exit={{ scale: 0.95, opacity: 0, y: 8 }}
           transition={{ duration: 0.18, ease: 'easeOut' as const }}
-          className="bg-white rounded-2xl shadow-2xl w-full max-w-md flex flex-col overflow-hidden max-h-[90vh]"
+          className="bg-white rounded-2xl shadow-2xl w-full max-w-md flex flex-col overflow-hidden mobile-sheet max-h-[90vh]"
         >
           {/* Header */}
           <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100 shrink-0">

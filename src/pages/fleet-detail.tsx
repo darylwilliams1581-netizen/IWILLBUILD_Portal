@@ -78,7 +78,7 @@ function PrestartModal({
       scale: 0.96
     }} transition={{
       duration: 0.15
-    }} className="relative bg-white rounded-2xl shadow-2xl w-full max-w-md max-h-[90vh] overflow-y-auto">
+    }} className="relative bg-white rounded-2xl shadow-2xl w-full max-w-md mobile-sheet max-h-[90vh] overflow-y-auto">
         {/* Header */}
         <div className="px-6 py-4 border-b border-border">
           <div className="flex items-center justify-between mb-1">
@@ -243,7 +243,7 @@ function EditAssetModal({
       scale: 0.96
     }} transition={{
       duration: 0.15
-    }} className="relative bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
+    }} className="relative bg-white rounded-2xl shadow-2xl w-full max-w-lg mobile-sheet max-h-[90vh] overflow-y-auto">
         <div className="flex items-center justify-between px-6 py-4 border-b border-border">
           <h2 className="font-heading font-bold text-base">Edit Asset</h2>
           <button onClick={onClose} className="p-1 text-muted-foreground hover:text-foreground transition-colors">
@@ -434,7 +434,7 @@ function ServiceLogModal({
   const inp = 'w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-violet-400 bg-white';
   const lbl = 'block text-xs font-bold text-slate-600 uppercase tracking-wide mb-1';
   return <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4" onClick={onClose}>
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg mobile-sheet max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
         <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100">
           <h2 className="text-base font-bold text-slate-800">{log ? 'Edit Service Log' : 'Add Service Log'}</h2>
           <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400 transition-colors"><X size={16} /></button>

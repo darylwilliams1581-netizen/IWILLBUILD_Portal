@@ -245,7 +245,7 @@ export function SignonModal({
     }} transition={{
       duration: 0.2,
       ease: 'easeOut' as const
-    }} className="relative bg-white rounded-t-2xl sm:rounded-2xl shadow-2xl w-full sm:max-w-lg max-h-[95vh] flex flex-col">
+    }} className="relative bg-white rounded-t-2xl sm:rounded-2xl shadow-2xl w-full sm:max-w-lg mobile-sheet max-h-[95vh] flex flex-col">
         <div className="flex items-center justify-between px-5 py-4 border-b border-slate-200 shrink-0">
           <div className="flex items-center gap-2.5">
             <div className="p-1.5 bg-emerald-50 rounded-md"><UserCheck size={15} className="text-emerald-600" /></div>
@@ -362,7 +362,7 @@ export function AddSwmsModal({
     }} transition={{
       duration: 0.2,
       ease: 'easeOut' as const
-    }} className="relative bg-white rounded-t-2xl sm:rounded-2xl shadow-2xl w-full sm:max-w-lg max-h-[90vh] flex flex-col">
+    }} className="relative bg-white rounded-t-2xl sm:rounded-2xl shadow-2xl w-full sm:max-w-lg mobile-sheet max-h-[90vh] flex flex-col">
         <div className="flex items-center justify-between px-5 py-4 border-b border-slate-200 shrink-0">
           <div className="flex items-center gap-2.5">
             <div className="p-1.5 bg-violet-50 rounded-md"><ShieldAlert size={15} className="text-primary" /></div>
@@ -481,7 +481,7 @@ export function SwmsEditModal({
     }} transition={{
       duration: 0.2,
       ease: 'easeOut' as const
-    }} className="relative bg-white rounded-t-2xl sm:rounded-2xl shadow-2xl w-full sm:max-w-3xl max-h-[95vh] sm:max-h-[92vh] flex flex-col">
+    }} className="relative bg-white rounded-t-2xl sm:rounded-2xl shadow-2xl w-full sm:max-w-3xl mobile-sheet max-h-[95vh] sm:max-h-[92vh] flex flex-col">
         <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200 shrink-0">
           <div className="flex items-center gap-2.5">
             <div className="p-1.5 bg-violet-50 rounded-md"><Wand2 size={15} className="text-primary" /></div>
@@ -635,7 +635,7 @@ export function SwmsPrintModal({
       scale: 0.97
     }} transition={{
       duration: 0.15
-    }} className="relative bg-white rounded-2xl shadow-2xl w-full max-w-4xl max-h-[92vh] flex flex-col">
+    }} className="relative bg-white rounded-2xl shadow-2xl w-full max-w-4xl mobile-sheet max-h-[92vh] flex flex-col">
         <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200 shrink-0">
           <div className="flex items-center gap-2.5">
             <div className="p-1.5 bg-slate-100 rounded-md"><Printer size={15} className="text-slate-600" /></div>
@@ -792,7 +792,7 @@ export function AddSafetyPlanModal({
     }} transition={{
       duration: 0.2,
       ease: 'easeOut' as const
-    }} className="relative bg-white rounded-t-2xl sm:rounded-2xl shadow-2xl w-full sm:max-w-md max-h-[90vh] flex flex-col">
+    }} className="relative bg-white rounded-t-2xl sm:rounded-2xl shadow-2xl w-full sm:max-w-md mobile-sheet max-h-[90vh] flex flex-col">
         <div className="flex items-center justify-between px-5 py-4 border-b border-slate-200 shrink-0">
           <div className="flex items-center gap-2.5">
             <div className="p-1.5 bg-blue-50 rounded-md"><ClipboardList size={15} className="text-blue-600" /></div>

@@ -248,7 +248,7 @@ export function AddEntryModal({ jobId, onClose, onCreated, editEntry }: AddEntry
         animate={{ opacity: 1, y: 0 }}
         exit={{ opacity: 0, y: 40 }}
         transition={{ duration: 0.22, ease: 'easeOut' as const }}
-        className="relative w-full md:max-w-md bg-white md:rounded-2xl rounded-t-2xl shadow-2xl flex flex-col overflow-hidden"
+        className="mobile-sheet relative w-full md:max-w-md bg-white md:rounded-2xl rounded-t-2xl shadow-2xl flex flex-col overflow-hidden"
         style={{ maxHeight: 'min(92dvh, 720px)' }}
         onClick={(e) => e.stopPropagation()}
       >

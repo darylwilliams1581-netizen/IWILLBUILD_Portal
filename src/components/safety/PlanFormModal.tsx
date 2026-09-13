@@ -68,7 +68,7 @@ export default function PlanFormModal({ initial, jobs, onClose, onSaved }: Props
         animate={{ opacity: 1, scale: 1 }}
         exit={{ opacity: 0, scale: 0.96 }}
         transition={{ duration: 0.15 }}
-        className="relative bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto mobile-sheet"
+        className="relative bg-white rounded-2xl shadow-2xl w-full max-w-2xl mobile-sheet max-h-[90vh] overflow-y-auto"
       >
         <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200 sticky top-0 bg-white z-10">
           <div className="flex items-center gap-2">

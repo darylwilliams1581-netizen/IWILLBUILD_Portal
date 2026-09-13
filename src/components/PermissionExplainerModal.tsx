@@ -29,6 +29,7 @@
 
 import React from 'react';
 import { createPortal } from 'react-dom';
+import { PHONE_SHEET_MAX_HEIGHT, PHONE_SHEET_SAFE_BOTTOM, PHONE_SHEET_WIDTH } from '@/lib/phoneSheet';
 import {
   Camera, Image, MapPin, Mic, Bell,
   X, ExternalLink, Settings, ShieldCheck,
@@ -153,11 +154,9 @@ export default function PermissionExplainerModal({
   return createPortal(
     /* Backdrop */
     <div
-      className="fixed inset-0 z-[9999] flex items-center justify-center overflow-hidden p-4"
+      className="fixed inset-0 z-[9999] flex items-end justify-center overflow-hidden p-3 sm:items-center"
       style={{
         backgroundColor: 'rgba(0,0,0,0.65)',
-        paddingTop: 'max(env(safe-area-inset-top), 16px)',
-        paddingBottom: 'max(env(safe-area-inset-bottom), 16px)',
         WebkitTextSizeAdjust: '100%',
         textSizeAdjust: '100%',
       }}
@@ -167,9 +166,8 @@ export default function PermissionExplainerModal({
       <div
         className="relative mx-auto flex w-full max-w-sm flex-col overflow-hidden rounded-2xl bg-white shadow-2xl animate-in fade-in duration-200"
         style={{
-          width: 'calc(100% - 8px)',
-          maxWidth: '24rem',
-          maxHeight: 'calc(100% - 24px)',
+          width: PHONE_SHEET_WIDTH,
+          maxHeight: PHONE_SHEET_MAX_HEIGHT,
           overflow: 'hidden',
         }}
         role="dialog"
@@ -192,7 +190,7 @@ export default function PermissionExplainerModal({
         </div>
 
         {/* Content */}
-        <div className="min-h-0 overflow-y-auto px-4 pb-2 pt-3">
+        <div data-sheet-scroll className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 pb-2 pt-3">
           {/* Icon */}
           <div className={`mb-3 flex h-12 w-12 items-center justify-center rounded-xl ${c.iconBg} ${c.iconColor}`}>
             {c.icon}
@@ -220,7 +218,7 @@ export default function PermissionExplainerModal({
         <div className="mx-4 mt-2 h-px shrink-0 bg-gray-100" />
 
         {/* Buttons */}
-        <div className="flex shrink-0 flex-col gap-1.5 px-4 py-3">
+        <div className="flex shrink-0 flex-col gap-1.5 px-4 pt-3" style={{ paddingBottom: PHONE_SHEET_SAFE_BOTTOM }}>
           {denied ? (
             /* Denied state — Settings button + Close */
             <>

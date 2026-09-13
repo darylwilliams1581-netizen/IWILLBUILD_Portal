@@ -315,7 +315,7 @@ export function DelayModal({ open, editing, jobId, onClose, onSaved }: ModalProp
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.96, y: 8 }}
             transition={{ duration: 0.2, ease: 'easeOut' as const }}
-            className="relative w-full max-w-md bg-white rounded-2xl shadow-2xl flex flex-col overflow-hidden"
+            className="mobile-sheet relative w-full max-w-md bg-white rounded-2xl shadow-2xl flex flex-col overflow-hidden"
             style={{ maxHeight: 'min(88dvh, 680px)' }}
             onClick={(e) => e.stopPropagation()}
           >

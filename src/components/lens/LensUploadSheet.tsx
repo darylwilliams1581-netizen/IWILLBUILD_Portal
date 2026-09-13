@@ -28,6 +28,7 @@ import { usePhotoUploadQueue } from '@/hooks/usePhotoUploadQueue';
 import { useIosMediaPicker } from '@/hooks/useIosMediaPicker';
 import { IosMediaInputs, IosPermissionBanner } from '@/components/IosMediaInputs';
 import PermissionExplainerModal from '@/components/PermissionExplainerModal';
+import { PHONE_SHEET_MAX_HEIGHT, PHONE_SHEET_SAFE_BOTTOM, PHONE_SHEET_WIDTH } from '@/lib/phoneSheet';
 import PendingPhotoCard from '@/components/PendingPhotoCard';
 import JobPickerSheet from '@/components/JobPickerSheet';
 import { type LensJobOption, jobLabel } from './LensJobPickerSheet';
@@ -157,7 +158,7 @@ function UploadPanel({
       )}
 
       {/* Queue */}
-      <div className="min-h-0 overflow-y-auto px-4 py-3 flex flex-col gap-2">
+      <div data-sheet-scroll className="min-h-0 overflow-y-auto overscroll-contain px-4 py-3 flex flex-col gap-2">
         {!hasItems && (
           <div className="flex flex-col items-center justify-center py-4 gap-2 text-muted-foreground">
             <ImagePlus size={28} className="opacity-30" />
@@ -195,7 +196,7 @@ function UploadPanel({
       {/* Photo-only backup choices. No watermark; both use the existing queue. */}
       <div
         className="px-4 pt-3 pb-4 shrink-0 border-t border-border"
-        style={{ paddingBottom: 'max(env(safe-area-inset-bottom), 16px)' }}
+        style={{ paddingBottom: PHONE_SHEET_SAFE_BOTTOM }}
       >
         {failedCount > 0 && <div className="mb-2 flex justify-end">
           <button
@@ -315,17 +316,19 @@ export default function LensUploadSheet({ open, onClose, onPhotoSynced, initialJ
             />
 
             {/* Same mobile/desktop shell used by the sign-in job picker. */}
-            <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center sm:p-4 pointer-events-none">
+            <div className="fixed inset-0 z-50 flex items-end justify-center overflow-hidden p-3 pointer-events-none sm:items-center">
               <motion.div
                 key="upload-sheet"
                 initial={{ opacity: 0, y: 40 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: 40 }}
                 transition={{ type: 'spring', damping: 30, stiffness: 340 }}
-                className="pointer-events-auto w-full sm:max-w-sm bg-white rounded-t-3xl sm:rounded-3xl flex flex-col overflow-hidden"
+                className="pointer-events-auto bg-white rounded-2xl flex flex-col overflow-hidden"
                 style={{
                   boxShadow: '0 8px 48px rgba(0,0,0,0.18)',
-                  maxHeight: 'min(560px, calc(100dvh - 60px))',
+                  width: PHONE_SHEET_WIDTH,
+                  maxHeight: PHONE_SHEET_MAX_HEIGHT,
+                  WebkitTextSizeAdjust: '100%',
                 }}
                 onClick={e => e.stopPropagation()}
               >

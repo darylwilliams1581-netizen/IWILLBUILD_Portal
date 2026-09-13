@@ -11,6 +11,9 @@
 
 import { motion } from 'motion/react';
 import type { HomeIconDef } from '@/lib/homeIcons';
+import { isNativeApp, openExternalUrl } from '@/lib/native-routing';
+
+const BILLING_URL = 'https://iwillbuild.com/billing';
 
 export function IconTile({
   item,
@@ -22,6 +25,13 @@ export function IconTile({
   wide?: boolean;
 }) {
   const Icon = item.icon;
+  const handleClick = () => {
+    if (item.key === 'billing' && isNativeApp) {
+      openExternalUrl(BILLING_URL);
+      return;
+    }
+    onNavigate(item.href);
+  };
 
   if (wide) {
     // Full-width horizontal banner tile — compact badge left, label right
@@ -30,7 +40,7 @@ export function IconTile({
         whileTap={{ scale: 0.97 }}
         whileHover={{ scale: 1.01, y: -1 }}
         transition={{ type: 'spring', stiffness: 440, damping: 22 }}
-        onClick={() => onNavigate(item.href)}
+        onClick={handleClick}
         data-testid={`icon-tile-wide-${item.key}`}
         aria-label={item.label}
         className={`
@@ -72,7 +82,7 @@ export function IconTile({
       whileTap={{ scale: 0.94 }}
       whileHover={{ scale: 1.02, y: -1 }}
       transition={{ type: 'spring', stiffness: 440, damping: 22 }}
-      onClick={() => onNavigate(item.href)}
+      onClick={handleClick}
       data-testid={`icon-tile-${item.key}`}
       aria-label={item.label}
       className={`

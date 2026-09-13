@@ -7,6 +7,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { X, AlertCircle, Loader2, ShieldCheck, ShieldOff, KeyRound, Delete } from 'lucide-react';
 import { useBodyScrollLock } from '@/lib/useBodyScrollLock';
+import { PHONE_SHEET_MAX_HEIGHT, PHONE_SHEET_SAFE_BOTTOM } from '@/lib/phoneSheet';
 import {
   getDeviceFingerprint,
   savePinRecord,
@@ -31,8 +32,6 @@ const PIN_LENGTH = 4;
 
 function restoreViewport() {
   (document.activeElement as HTMLElement | null)?.blur();
-  document.body.style.removeProperty('overflow');
-  document.documentElement.style.removeProperty('overflow');
   window.scrollTo(0, 0);
 }
 
@@ -219,7 +218,7 @@ export default function PinSetupModal({ mode, userEmail, onClose, onSuccess }: P
       className="fixed inset-0 z-[9999] flex items-end justify-center overflow-hidden p-3 sm:items-center"
       style={{
         WebkitTextSizeAdjust: '100%',
-        paddingBottom: 'max(env(safe-area-inset-bottom), 12px)',
+        paddingBottom: PHONE_SHEET_SAFE_BOTTOM,
       }}
     >
       <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="absolute inset-0 bg-black/60" onClick={handleClose} />
@@ -229,7 +228,7 @@ export default function PinSetupModal({ mode, userEmail, onClose, onSuccess }: P
         className="relative flex min-w-0 flex-col overflow-hidden rounded-2xl bg-white shadow-2xl"
         style={{
           width: 'min(calc(100dvw - 24px), 22rem)',
-          maxHeight: 'min(88dvh, calc(100dvh - 32px))',
+          maxHeight: PHONE_SHEET_MAX_HEIGHT,
         }}
       >
         <div className="flex shrink-0 items-center justify-between px-4 pt-4 pb-2">
@@ -246,7 +245,7 @@ export default function PinSetupModal({ mode, userEmail, onClose, onSuccess }: P
           </button>
         </div>
 
-        <div className="flex min-h-0 flex-1 flex-col items-center gap-4 overflow-y-auto px-4 pb-5">
+        <div data-sheet-scroll className="flex min-h-0 flex-1 flex-col items-center gap-4 overflow-y-auto overscroll-contain px-4 pb-5">
           {isDone ? (
             <div className="flex flex-col items-center gap-3 py-8">
               <div className="flex h-14 w-14 items-center justify-center rounded-full bg-violet-50">

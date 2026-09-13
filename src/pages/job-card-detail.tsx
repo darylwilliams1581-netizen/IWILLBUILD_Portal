@@ -631,7 +631,7 @@ function InvoiceModal({
     backdropFilter: 'blur(2px)',
     background: 'rgba(0,0,0,0.5)'
   }}>
-      <div className="bg-white rounded-xl shadow-2xl w-full max-w-md flex flex-col" style={{
+      <div className="mobile-sheet bg-white rounded-xl shadow-2xl w-full max-w-md flex flex-col" style={{
       maxHeight: 'min(90vh, 640px)'
     }}>
         <div className="flex items-center gap-3 px-5 py-4 border-b border-gray-100 shrink-0">

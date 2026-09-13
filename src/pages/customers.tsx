@@ -5,6 +5,7 @@ import { Users, Plus, Search, Loader2, X, Check, AlertCircle, Phone, Mail, MapPi
 import { Link, useNavigate } from "react-router";
 import { goBack } from '@/lib/navigation';
 import { useFieldSheetScrollLock } from '@/lib/useFieldSheetScrollLock';
+import { PHONE_SHEET_MAX_HEIGHT, PHONE_SHEET_SAFE_BOTTOM } from '@/lib/phoneSheet';
 // ── SMS compose modal (desktop) ───────────────────────────────────────────────
 function SmsModal({
   to,
@@ -139,32 +140,7 @@ function CustomerFormModal({
   } : EMPTY_FORM);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
-  const [visualViewport, setVisualViewport] = useState<{
-    height: number;
-    offsetTop: number;
-  } | null>(null);
-
   useFieldSheetScrollLock(true);
-
-  useEffect(() => {
-    const viewport = window.visualViewport;
-    if (!viewport) return;
-
-    const updateViewport = () => {
-      setVisualViewport({
-        height: viewport.height,
-        offsetTop: viewport.offsetTop,
-      });
-    };
-
-    updateViewport();
-    viewport.addEventListener('resize', updateViewport);
-    viewport.addEventListener('scroll', updateViewport);
-    return () => {
-      viewport.removeEventListener('resize', updateViewport);
-      viewport.removeEventListener('scroll', updateViewport);
-    };
-  }, []);
 
   const set = (k: keyof typeof EMPTY_FORM, v: string) => setForm(f => ({
     ...f,
@@ -204,14 +180,8 @@ function CustomerFormModal({
   }
   const lbl = 'block text-xs font-bold text-slate-600 uppercase tracking-wide mb-1.5';
   const inp = 'w-full px-3 py-2.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-colors bg-white';
-  const availableHeight = visualViewport ? Math.max(1, visualViewport.height - 60) : null;
   return <div
-      className="fixed inset-0 z-50 flex items-end justify-center sm:items-center sm:p-4"
-      style={visualViewport ? {
-        top: `${visualViewport.offsetTop}px`,
-        bottom: 'auto',
-        height: `${visualViewport.height}px`,
-      } : undefined}
+      className="fixed inset-0 z-50 flex items-end justify-center overflow-hidden p-3 sm:items-center"
     >
       <div className="absolute inset-0 bg-black/60" onClick={onClose} />
       <motion.div initial={{
@@ -226,11 +196,11 @@ function CustomerFormModal({
     }} transition={{
       duration: 0.2,
       ease: 'easeOut' as const
-    }} className="relative flex min-h-0 w-full flex-col overflow-hidden rounded-t-3xl bg-white shadow-2xl sm:max-w-xl sm:rounded-3xl"
+    }} className="relative flex min-h-0 flex-col overflow-hidden rounded-2xl bg-white shadow-2xl"
       style={{
-        maxHeight: availableHeight
-          ? `min(560px, ${availableHeight}px)`
-          : 'min(560px, calc(100dvh - 60px))',
+        width: 'min(calc(100vw - 24px), 28rem)',
+        maxHeight: PHONE_SHEET_MAX_HEIGHT,
+        WebkitTextSizeAdjust: '100%',
       }}
     >
         <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200 shrink-0">
@@ -242,7 +212,7 @@ function CustomerFormModal({
         </div>
 
         <form onSubmit={handleSubmit} className="flex min-h-0 flex-1 flex-col">
-          <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto p-6">
+          <div data-sheet-scroll className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto overscroll-contain p-6">
           {/* Contact type */}
           <div>
             <label className={lbl}>Contact Type <span className="text-red-500">*</span></label>
@@ -318,7 +288,7 @@ function CustomerFormModal({
 
           <div
             className="flex shrink-0 gap-3 border-t border-slate-100 bg-white px-6 pt-4"
-            style={{ paddingBottom: 'max(16px, env(safe-area-inset-bottom, 0px))' }}
+            style={{ paddingBottom: PHONE_SHEET_SAFE_BOTTOM }}
           >
             <button type="button" onClick={onClose} disabled={saving} className="flex-1 px-4 py-2.5 border border-slate-200 rounded-lg text-sm font-semibold text-slate-700 hover:bg-slate-50 transition-colors disabled:opacity-50">Cancel</button>
             <button type="submit" disabled={saving} className="flex-1 px-4 py-2.5 bg-primary hover:bg-violet-700 text-white rounded-lg text-sm font-bold transition-colors disabled:opacity-60 flex items-center justify-center gap-2">

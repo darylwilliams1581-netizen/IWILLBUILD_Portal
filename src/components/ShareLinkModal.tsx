@@ -406,7 +406,7 @@ export default function ShareLinkModal({
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: 8 }}
             transition={{ duration: 0.2, ease: 'easeOut' as const }}
-            className="relative bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden flex flex-col"
+            className="mobile-sheet relative bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden flex flex-col"
             style={{ maxHeight: 'min(90dvh, 640px)' }}
           >
             {/* Header */}

@@ -1,6 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
 import { AlertCircle, Calendar, X } from 'lucide-react';
-import { isNative } from '@/lib/capacitor-plugins';
 
 interface DateFieldProps {
   label: string;
@@ -37,13 +35,6 @@ function endOfNextWeek(): string {
   return localDateString(date);
 }
 
-function formatDateForField(value: string): string {
-  const [year, month, day] = value.slice(0, 10).split('-').map(Number);
-  if (!year || !month || !day) return value;
-  const monthName = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'][month - 1];
-  return monthName ? `${day} ${monthName} ${year}` : value;
-}
-
 function yearWarning(value: string): string | null {
   if (!value) return null;
   const year = Number(value.slice(0, 4));
@@ -55,13 +46,6 @@ function yearWarning(value: string): string | null {
   return null;
 }
 
-function formatNumericInput(value: string): string {
-  const digits = value.replace(/\D/g, '').slice(0, 8);
-  if (digits.length <= 4) return digits;
-  if (digits.length <= 6) return `${digits.slice(0, 4)}-${digits.slice(4)}`;
-  return `${digits.slice(0, 4)}-${digits.slice(4, 6)}-${digits.slice(6)}`;
-}
-
 export default function DateField({
   label,
   value,
@@ -69,14 +53,7 @@ export default function DateField({
   optional = false,
   quickActions = false,
 }: DateFieldProps) {
-  const native = isNative();
-  const [editing, setEditing] = useState(false);
-  const inputRef = useRef<HTMLInputElement>(null);
   const warning = yearWarning(value);
-
-  useEffect(() => {
-    if (editing) inputRef.current?.focus();
-  }, [editing]);
 
   const quickDates = [
     { label: 'Today', value: dateAfter(0) },
@@ -120,42 +97,16 @@ export default function DateField({
         </div>
       )}
 
-      {native ? (
-        <div className="flex h-11 min-w-0 max-w-full items-center gap-2 overflow-hidden rounded-lg border border-border bg-white px-3">
-          <Calendar size={15} className="shrink-0 text-slate-400" />
-          {editing ? (
-            <input
-              ref={inputRef}
-              type="text"
-              inputMode="numeric"
-              autoComplete="off"
-              maxLength={10}
-              value={value}
-              onChange={(event) => onChange(formatNumericInput(event.target.value))}
-              onBlur={() => setEditing(false)}
-              placeholder="yyyy-mm-dd"
-              aria-label={`${label}, yyyy-mm-dd`}
-              className="h-full min-w-0 flex-1 overflow-hidden bg-transparent text-sm text-slate-700 outline-none placeholder:text-slate-400"
-            />
-          ) : (
-            <button
-              type="button"
-              onClick={() => setEditing(true)}
-              aria-label={`${label}: ${value ? formatDateForField(value) : 'No date selected'}`}
-              className={`h-full min-w-0 flex-1 truncate text-left text-sm ${value ? 'text-slate-700' : 'text-slate-400'}`}
-            >
-              {value ? formatDateForField(value) : 'No date selected'}
-            </button>
-          )}
-        </div>
-      ) : (
+      <div className="relative min-w-0 max-w-full">
+        <Calendar size={15} className="pointer-events-none absolute left-3 top-1/2 z-10 -translate-y-1/2 text-slate-400" />
         <input
           type="date"
           value={value}
           onChange={(event) => onChange(event.target.value)}
-          className="h-11 w-full min-w-0 max-w-full overflow-hidden rounded-lg border border-border bg-white px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/30"
+          aria-label={label}
+          className="h-11 w-full min-w-0 max-w-full overflow-hidden rounded-lg border border-border bg-white py-2 pl-9 pr-3 text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/30"
         />
-      )}
+      </div>
 
       {warning && (
         <p className="mt-0.5 flex items-center gap-1 text-[11px] text-amber-600">

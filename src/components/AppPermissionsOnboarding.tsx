@@ -12,6 +12,7 @@
 
 import { useState, useCallback } from 'react';
 import { createPortal } from 'react-dom';
+import { PHONE_SHEET_MAX_HEIGHT, PHONE_SHEET_SAFE_BOTTOM, PHONE_SHEET_WIDTH } from '@/lib/phoneSheet';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   MapPin, Camera, Bell, ChevronRight, X, CheckCircle2, Shield,
@@ -241,15 +242,14 @@ export default function AppPermissionsOnboarding({ onDone }: Props) {
 
   return createPortal(
     <div
-      className="fixed inset-0 z-[9999] flex items-center justify-center overflow-hidden bg-gray-950/75 p-4"
+      className="fixed inset-0 z-[9999] flex items-end justify-center overflow-hidden bg-gray-950/75 p-3 sm:items-center"
       style={{ WebkitTextSizeAdjust: '100%', textSizeAdjust: '100%' }}
     >
       <div
         className="flex w-full max-w-sm flex-col overflow-hidden rounded-2xl bg-gray-950 shadow-2xl ring-1 ring-white/10"
         style={{
-          width: 'calc(100% - 8px)',
-          maxWidth: '24rem',
-          maxHeight: 'calc(100% - 24px)',
+          width: PHONE_SHEET_WIDTH,
+          maxHeight: PHONE_SHEET_MAX_HEIGHT,
           overflow: 'hidden',
         }}
         role="dialog"
@@ -287,7 +287,7 @@ export default function AppPermissionsOnboarding({ onDone }: Props) {
       </div>
 
       {/* Step card */}
-      <div className="flex min-h-0 flex-1 flex-col overflow-y-auto px-4 py-2">
+      <div data-sheet-scroll className="flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-contain px-4 py-2">
         <AnimatePresence mode="wait">
           <motion.div
             key={currentStep.id}
@@ -336,7 +336,7 @@ export default function AppPermissionsOnboarding({ onDone }: Props) {
       {/* Actions */}
       <div
         className="shrink-0 space-y-1.5 px-4 pt-2"
-        style={{ paddingBottom: '12px' }}
+        style={{ paddingBottom: PHONE_SHEET_SAFE_BOTTOM }}
       >
         <button
           onClick={handleEnable}

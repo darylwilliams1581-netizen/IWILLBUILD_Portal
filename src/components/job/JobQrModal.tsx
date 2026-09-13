@@ -151,7 +151,7 @@ export default function JobQrModal({ jobId, jobName, action, onClose }: Props) {
         animate={{ opacity: 1, scale: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.96, y: 8 }}
         transition={{ duration: 0.2, ease: 'easeOut' as const }}
-        className="relative w-full max-w-sm bg-white rounded-2xl shadow-2xl overflow-hidden flex flex-col"
+        className="mobile-sheet relative w-full max-w-sm bg-white rounded-2xl shadow-2xl overflow-hidden flex flex-col"
         style={{ maxHeight: 'min(88dvh, 640px)' }}
         onClick={(e) => e.stopPropagation()}
       >

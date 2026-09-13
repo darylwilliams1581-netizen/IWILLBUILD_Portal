@@ -29,6 +29,7 @@ import React, {
   useCallback,
   useLayoutEffect,
 } from 'react';
+import { useBodyScrollLock } from '@/lib/useBodyScrollLock';
 
 import {
   X,
@@ -642,13 +643,7 @@ export default function PhotoEditor({ photo: photoProp, onClose, onSaved, readOn
     setTimeout(() => labelInputRef.current?.focus(), 60);
   }, [labelValue]);
 
-  // Lock body scroll while label modal is open (prevents background page scroll on iOS)
-  useEffect(() => {
-    if (!labelModalOpen) return;
-    const prev = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
-    return () => { document.body.style.overflow = prev; };
-  }, [labelModalOpen]);
+  useBodyScrollLock(labelModalOpen);
 
   const saveLabel = useCallback(async () => {
     const trimmed = labelDraft.trim();
@@ -752,13 +747,7 @@ export default function PhotoEditor({ photo: photoProp, onClose, onSaved, readOn
 
   const [sheetOpen, setSheetOpen] = useState(false);
 
-  // Lock body scroll while sheet is open
-  useEffect(() => {
-    if (!sheetOpen) return;
-    const prev = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
-    return () => { document.body.style.overflow = prev; };
-  }, [sheetOpen]);
+  useBodyScrollLock(sheetOpen);
 
   // ── Render ─────────────────────────────────────────────────────────────────
 

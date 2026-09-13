@@ -601,7 +601,7 @@ function DocPreviewModal({
     }} transition={{
       duration: 0.22,
       ease: 'easeOut' as const
-    }} className="relative bg-white rounded-t-2xl sm:rounded-2xl shadow-2xl w-full sm:max-w-2xl max-h-[90vh] flex flex-col">
+    }} className="relative bg-white rounded-t-2xl sm:rounded-2xl shadow-2xl w-full sm:max-w-2xl mobile-sheet max-h-[90vh] flex flex-col">
         {/* Header */}
         <div className="flex items-start justify-between px-5 py-4 border-b border-slate-200 shrink-0">
           <div className="flex items-start gap-3 min-w-0">
