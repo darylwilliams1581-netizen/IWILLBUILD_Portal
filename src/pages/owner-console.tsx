@@ -3,7 +3,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { owner_console } from 'virtual:content';
 import { useNavigate, useSearchParams } from "react-router";
 import { Helmet } from '@dr.pogodin/react-helmet';
-import { RefreshCw, Shield, ChevronRight, Activity, Loader2, ShieldCheck, FileText, ClipboardList, CheckCircle2, XCircle, ChevronDown, ExternalLink, ShieldAlert, X, Bot, Mail, BarChart2, StickyNote, Receipt, Send, Ban, RotateCcw, Server, AlertCircle, Play, Info, Clock, Copy, Check, Plus, Database, Settings, Users, Building2, LogOut, ArrowLeft, Bug, AlertTriangle, Phone, Code2, FileCode, BookOpen } from 'lucide-react';
+import { RefreshCw, Shield, ChevronRight, Activity, Loader2, ShieldCheck, FileText, ClipboardList, CheckCircle2, XCircle, ChevronDown, ExternalLink, ShieldAlert, X, Bot, Mail, BarChart2, StickyNote, Receipt, Send, Ban, RotateCcw, Server, AlertCircle, Play, Info, Clock, Copy, Check, Plus, Database, Settings, Users, Building2, LogOut, ArrowLeft, Bug, AlertTriangle, Phone, Code2, FileCode, BookOpen, Wrench } from 'lucide-react';
 import { usePermissions } from '@/lib/usePermissions';
 import { goBack } from '@/lib/navigation';
 import DesktopTopBar from '@/components/DesktopTopBar';
@@ -29,6 +29,7 @@ import SupportNotesTab from '@/components/owner-console/SupportNotesTab';
 import AccountingSmokeTestTab from '@/components/owner-console/AccountingSmokeTestTab';
 import SwmsMasterLibraryTab from '@/components/owner-console/SwmsMasterLibraryTab';
 import SafetyDocSeedTab from '@/components/owner-console/SafetyDocSeedTab';
+import RepairSeededDocumentsTab from '@/components/owner-console/RepairSeededDocumentsTab';
 import LibraryManagerTab from '@/components/owner-console/LibraryManagerTab';
 import GlobalLibraryTab from '@/components/owner-console/GlobalLibraryTab';
 import BugReportsTab from '@/components/owner-console/BugReportsTab';
@@ -354,8 +355,8 @@ export default function OwnerConsolePage() {
   const [activity, setActivity] = useState<ActivityEvent[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  type ConsoleTab = 'overview' | 'companies' | 'users' | 'activity' | 'support-setup' | 'usage' | 'storage' | 'cancellation-feedback' | 'system-ai' | 'audit-log' | 'activity-log' | 'email-log' | 'platform-email' | 'company-health' | 'support-notes' | 'accounting-smoke' | 'health-check' | 'swms-seed' | 'safety-doc-seed' | 'bug-reports' | 'incidents' | 'client-rescue' | 'anatomy' | 'global-library' | 'twilio' | 'image-safeguard';
-  const VALID_TABS: ReadonlySet<string> = new Set<ConsoleTab>(['overview','companies','users','activity','support-setup','usage','storage','cancellation-feedback','system-ai','audit-log','activity-log','email-log','platform-email','company-health','support-notes','accounting-smoke','health-check','swms-seed','safety-doc-seed','bug-reports','incidents','client-rescue','anatomy','global-library','twilio','image-safeguard']);
+  type ConsoleTab = 'overview' | 'companies' | 'users' | 'activity' | 'support-setup' | 'usage' | 'storage' | 'cancellation-feedback' | 'system-ai' | 'audit-log' | 'activity-log' | 'email-log' | 'platform-email' | 'company-health' | 'support-notes' | 'accounting-smoke' | 'health-check' | 'swms-seed' | 'safety-doc-seed' | 'repair-seeded-docs' | 'bug-reports' | 'incidents' | 'client-rescue' | 'anatomy' | 'global-library' | 'twilio' | 'image-safeguard';
+  const VALID_TABS: ReadonlySet<string> = new Set<ConsoleTab>(['overview','companies','users','activity','support-setup','usage','storage','cancellation-feedback','system-ai','audit-log','activity-log','email-log','platform-email','company-health','support-notes','accounting-smoke','health-check','swms-seed','safety-doc-seed','repair-seeded-docs','bug-reports','incidents','client-rescue','anatomy','global-library','twilio','image-safeguard']);
   const rawTab = searchParams.get('tab') ?? 'overview';
   const [tab, setTab] = useState<ConsoleTab>(VALID_TABS.has(rawTab) ? (rawTab as ConsoleTab) : 'overview');
   const [bugReportCount, setBugReportCount] = useState(0);
@@ -937,6 +938,15 @@ export default function OwnerConsolePage() {
               Safety Doc Seed
             </span>
           </Tab>
+          <Tab active={tab === 'repair-seeded-docs'} onClick={() => {
+          setTab('repair-seeded-docs');
+          setSearchParams({ tab: 'repair-seeded-docs' });
+        }}>
+            <span className="flex items-center gap-1.5">
+              <Wrench size={12} />
+              Repair Seeded Docs
+            </span>
+          </Tab>
           <Tab active={tab === 'twilio'} onClick={() => {
           setTab('twilio');
           setSearchParams({ tab: 'twilio' });
@@ -1115,6 +1125,7 @@ export default function OwnerConsolePage() {
 
               {tab === 'swms-seed' && <SwmsMasterLibraryTab />}
               {tab === 'safety-doc-seed' && <SafetyDocSeedTab />}
+              {tab === 'repair-seeded-docs' && <RepairSeededDocumentsTab />}
 
               {/* ── Bug Reports ── */}
               {tab === 'bug-reports' && <BugReportsTab onCountChange={setBugReportCount} />}
