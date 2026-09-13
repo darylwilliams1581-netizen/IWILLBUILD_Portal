@@ -7,8 +7,10 @@ import {
   CheckSquare, DollarSign, ChevronDown, ChevronUp,
   Loader2, Download, ClipboardList, TrendingUp, Info, ShieldAlert,
   Brain, Bug, Copy, Check, X, GitBranch, Paperclip, Wrench,
-  Square, RotateCcw, Zap, CheckCircle2, XCircle,
+  Square, RotateCcw, Zap, CheckCircle2, XCircle, ArrowLeft,
 } from 'lucide-react';
+import { useNavigate } from 'react-router';
+import { goBack } from '@/lib/navigation';
 import DesktopTopBar from '@/components/DesktopTopBar';
 import DesktopDock from '@/components/DesktopDock';
 import PortalSidebar from '@/components/PortalSidebar';
@@ -474,6 +476,7 @@ const TOOL_LABELS: Record<string, string> = {
 };
 
 export default function DazzaAIPage() {
+  const navigate = useNavigate();
   const { me, isAdmin, platformRole, isPlatformOwner } = usePermissions();
   const isDeveloper = platformRole === 'developer';
   const [messages, setMessages] = useState<Message[]>([
@@ -1114,12 +1117,21 @@ Rules: Do not pretend you changed any code. Do not expose secrets. Prefer small 
 
       <div className="flex-1 flex flex-col overflow-hidden">
         {/* ── Sub-header: Dazza status + chat controls ── */}
-        <header className="h-11 bg-white border-b border-slate-200 flex items-center justify-between px-4 md:px-6 shrink-0">
-          <div className="flex items-center gap-3">
+        <header className="h-12 bg-white border-b border-slate-200 flex items-center justify-between px-3 md:px-6 shrink-0">
+          <div className="flex items-center gap-2 min-w-0">
+            <button
+              type="button"
+              onClick={() => goBack(navigate, '/home?page=3')}
+              className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors shrink-0"
+              aria-label="Home"
+            >
+              <ArrowLeft size={18} />
+              <span className="font-semibold">Back</span>
+            </button>
             <div className="w-6 h-6 bg-slate-900 rounded-md flex items-center justify-center shrink-0">
               <Bot size={13} className="text-white" />
             </div>
-            <span className="font-heading font-bold text-sm leading-none text-slate-800">
+            <span className="font-heading font-bold text-sm leading-none text-slate-800 truncate">
               {activeEngine === 'v3' ? 'Dazza V3' : activeEngine === 'v2-rollback' ? 'Dazza V2' : 'Dazza AI'}
             </span>
             <span className="text-[10px] text-slate-400">

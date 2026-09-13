@@ -737,10 +737,16 @@ export default function TeamPage() {
 
       <div className="flex-1 flex flex-col overflow-hidden">
         {/* Top bar */}
-        <header className="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-4 md:px-6 shrink-0 sticky top-0 z-30 safe-top">
-          <div className="flex items-center gap-3">
-            <button onClick={() => goBack(navigate, '/home')} className="p-2 -ml-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors" aria-label="Back to Home">
-              <ArrowLeft size={20} />
+        <header className="bg-white border-b border-slate-200 flex flex-col shrink-0 sticky top-0 z-30">
+          <div className="h-14 flex items-center gap-3 px-4 md:px-6">
+            <button
+              type="button"
+              onClick={() => goBack(navigate, '/home?page=3')}
+              className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors shrink-0"
+              aria-label="Home"
+            >
+              <ArrowLeft size={18} />
+              <span className="font-semibold">Back</span>
             </button>
             <Users size={18} className="text-primary shrink-0" />
             <h1 className="font-heading font-bold text-base md:text-lg">Team</h1>
@@ -748,9 +754,16 @@ export default function TeamPage() {
                 {members.filter(m => m.status !== 'inactive').length} member{members.filter(m => m.status !== 'inactive').length !== 1 ? 's' : ''}
               </span>}
           </div>
-          <div className="flex items-center gap-2">
-            <button onClick={() => !isViewOnly && setShowInvite(true)} disabled={isViewOnly} title={isViewOnly ? 'Subscribe to continue' : undefined} className="flex items-center gap-2 bg-primary hover:bg-violet-700 text-white text-sm font-bold px-4 py-2 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
-              <Plus size={15} />
+          <div className="px-4 md:px-6 pb-3">
+            <button
+              type="button"
+              onClick={() => !isViewOnly && setShowInvite(true)}
+              disabled={isViewOnly}
+              title={isViewOnly ? 'Subscribe to continue' : undefined}
+              className="w-full flex items-center justify-center gap-2 bg-primary hover:bg-violet-700 text-white text-sm font-bold px-4 py-3 rounded-xl transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              style={{ minHeight: 48 }}
+            >
+              <Plus size={16} />
               Invite Member
             </button>
           </div>
