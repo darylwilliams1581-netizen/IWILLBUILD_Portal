@@ -193,9 +193,8 @@ function protectDev(element: React.ReactElement) {
 /**
  * protectDesktop — auth + desktop-only guard.
  *
- * Wraps a page in ProtectedRoute (auth) + DesktopOnly (blocks mobile/native).
- * Use for studio builder, admin console, and any other page that requires a
- * wide viewport and is not touch-optimised.
+ * Use only for the fat Studio document editor. Operations pages
+ * (library, documents list, forms, global lists) run in the phone app.
  *
  * @param element  The page element to guard.
  * @param pageName Human-readable page name shown in the "desktop only" message.
@@ -558,7 +557,7 @@ export const routes: RouteObject[] = [{
   errorElement: routeError
 }, {
   path: '/studio/documents',
-  element: protectDesktop(<Suspense fallback={<PageLoader />}><StudioDocumentsPage /></Suspense>, 'Studio Documents'),
+  element: protect(<Suspense fallback={<PageLoader />}><StudioDocumentsPage /></Suspense>),
   errorElement: routeError
 }, {
   path: '/studio/forms',
@@ -566,11 +565,11 @@ export const routes: RouteObject[] = [{
   errorElement: routeError
 }, {
   path: '/studio/global-lists',
-  element: protectDesktop(<Suspense fallback={<PageLoader />}><StudioGlobalListsPage /></Suspense>, 'Studio Global Lists'),
+  element: protect(<Suspense fallback={<PageLoader />}><StudioGlobalListsPage /></Suspense>),
   errorElement: routeError
 }, {
   path: '/studio/library',
-  element: protectDesktop(<Suspense fallback={<PageLoader />}><StudioLibraryPage /></Suspense>, 'Studio Library'),
+  element: protect(<Suspense fallback={<PageLoader />}><StudioLibraryPage /></Suspense>),
   errorElement: routeError
 }, {
   path: '/safety/posters',
