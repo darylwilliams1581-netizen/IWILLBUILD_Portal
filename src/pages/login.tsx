@@ -7,6 +7,7 @@ import { useSession, authClient, signIn, consumeTwoFactorRedirect } from '@/lib/
 import { InputOTP, InputOTPGroup, InputOTPSlot } from '@/components/ui/input-otp';
 import ForcedPasswordChangeModal from '@/components/auth/ForcedPasswordChangeModal';
 import { goBack } from '@/lib/navigation';
+import { invalidateMeCache } from '@/lib/usePermissions';
 
 import { isNativeApp, WEB_PORTAL_URL, openExternalUrl } from '@/lib/native-routing';
 
@@ -36,6 +37,10 @@ function finishLoginNavigation(
   destination: string,
   navigate: ReturnType<typeof useNavigate>,
 ): void {
+  // Never carry another account's cached /api/me platform permissions across
+  // an authenticated account switch.
+  invalidateMeCache();
+
   if (isNativeApp) {
     const activeElement = document.activeElement;
     if (activeElement instanceof HTMLElement) activeElement.blur();

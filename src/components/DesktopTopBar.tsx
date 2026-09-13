@@ -14,7 +14,7 @@ import { Link, useNavigate } from "react-router";
 import { LogOut, Terminal, Bot, UserCircle } from 'lucide-react';
 import NotificationBell from '@/components/NotificationBell';
 
-import { usePermissions } from '@/lib/usePermissions';
+import { invalidateMeCache, usePermissions } from '@/lib/usePermissions';
 import { signOut } from '@/lib/auth/auth-client.tsx';
 import { useDriverSessionSafe } from '@/lib/useDriverSession';
 import DrivingSessionBadge from '@/components/fleet/DrivingSessionBadge';
@@ -27,7 +27,6 @@ export const DESKTOP_TOPBAR_HEIGHT = 56;
  * On desktop env() resolves to 0 so this equals DESKTOP_TOPBAR_HEIGHT.
  */
 export const TOPBAR_HEIGHT_CSS = `calc(${DESKTOP_TOPBAR_HEIGHT}px + env(safe-area-inset-top, 0px))`;
-const OWNER_EMAIL = 'darylwilliams1581@gmail.com';
 const DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 function getGreeting(name: string): {
@@ -58,7 +57,6 @@ export default function DesktopTopBar() {
   const refresh = driverCtx?.refresh ?? (() => Promise.resolve());
   const firstName = me?.user?.name?.trim().split(' ')[0] || me?.user?.email?.split('@')[0] || '';
   const displayName = me?.user?.name?.trim() || me?.user?.email?.split('@')[0] || '';
-  const isOwnerEmail = me?.user?.email?.toLowerCase() === OWNER_EMAIL;
   const {
     eyebrow,
     headline
@@ -67,6 +65,7 @@ export default function DesktopTopBar() {
     try {
       await signOut();
     } catch {/* best-effort */}
+    invalidateMeCache();
     navigate('/login');
   }
 
@@ -173,8 +172,8 @@ export default function DesktopTopBar() {
       gap: 6
     }}>
 
-        {/* Owner-only tools */}
-        {isOwnerEmail && <>
+        {/* Platform-owner tools */}
+        {isPlatformOwner && <>
             <Link to="/dazza-ai" title="Dazza AI" style={pillLink} onMouseEnter={e => {
           (e.currentTarget as HTMLElement).style.background = 'rgba(124,58,237,0.35)';
           (e.currentTarget as HTMLElement).style.color = '#c4b5fd';

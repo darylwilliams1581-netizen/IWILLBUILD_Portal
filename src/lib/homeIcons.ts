@@ -46,6 +46,8 @@ export interface HomeIconDef {
   adminOnly?: boolean;
   /** If true: only shown to owner/platform_owner roles */
   ownerOnly?: boolean;
+  /** If true: only shown to the IWILLBUILD platform owner */
+  platformOnly?: boolean;
 }
 
 // ── FIELD (mirrors desktop sidebar "Work" heading) ────────────────────────────
@@ -101,7 +103,7 @@ export const SAFETY_ICON_DEFS: HomeIconDef[] = [
 // (ContactsPanel) — it is intentionally excluded from the Manage icon grid here.
 export const MANAGEMENT_ICON_DEFS: HomeIconDef[] = [
   { key: 'profile',        label: 'My Profile',      icon: User,             href: '/profile',                bg: 'bg-slate-500',   fg: 'text-white', group: 'management' },
-  { key: 'dazza_ai',       label: 'Dazza AI',        icon: Bot,              href: '/dazza-ai',               bg: 'bg-violet-700',  fg: 'text-white', group: 'management', ownerOnly: true },
+  { key: 'dazza_ai',       label: 'Dazza AI',        icon: Bot,              href: '/dazza-ai',               bg: 'bg-violet-700',  fg: 'text-white', group: 'management', platformOnly: true },
   { key: 'app_docs',       label: 'Studio Documents', icon: FileText,         href: '/studio/documents',       bg: 'bg-slate-700',   fg: 'text-white', group: 'management', adminOnly: true },
   { key: 'library',        label: 'Library',         icon: Library,          href: '/studio/library',         bg: 'bg-amber-700',   fg: 'text-white', group: 'management', adminOnly: true },
   { key: 'quick_links',    label: 'Quick Links',     icon: Link2,            href: '/quick-links',            bg: 'bg-lime-700',    fg: 'text-white', group: 'management', adminOnly: true },
@@ -145,12 +147,14 @@ export function resolveHomeIcons(
   allowedKeys: string[] | null,
   role: string,
   isSolo: boolean,
+  isPlatformOwner = false,
 ): HomeIconDef[] {
   const isAdmin = isSolo || ADMIN_ROLES.has(role);
   const isOwner = isSolo || OWNER_ROLES.has(role);
 
   // Start with all live icons, then apply role-based visibility gates
   const live = ALL_HOME_ICONS.filter(i => {
+    if (i.platformOnly && !isPlatformOwner) return false;
     if (i.ownerOnly && !isOwner) return false;
     if (i.adminOnly && !isAdmin) return false;
     return true;

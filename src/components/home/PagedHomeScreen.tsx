@@ -24,6 +24,7 @@ import { resolveHomeIcons, type HomeIconDef } from '@/lib/homeIcons';
 import { IconTile } from './IconTile';
 import NewJobModal from '@/components/NewJobModal';
 import { signOut } from '@/lib/auth/auth-client';
+import { invalidateMeCache } from '@/lib/usePermissions';
 import SharedJobPickerSheet from '@/components/JobPickerSheet';
 import {
   OPENING_PAGE_FEATURES,
@@ -650,7 +651,9 @@ export default memo(function PagedHomeScreen({
   // ── Resolve icons (client-side only) ──────────────────────────────────────
   const [mounted, setMounted] = useState(false);
   useEffect(() => { setMounted(true); }, []);
-  const allowedIcons = mounted ? resolveHomeIcons(iconPermissions, role, isSolo) : resolveHomeIcons(null, '', false);
+  const allowedIcons = mounted
+    ? resolveHomeIcons(iconPermissions, role, isSolo, isPlatformOwner)
+    : resolveHomeIcons(null, '', false, false);
   const platformAsIconDef: HomeIconDef[] = PLATFORM_ICONS.map(p => ({
     ...p,
     key: p.label.toLowerCase().replace(/\s+/g, '_'),
@@ -736,7 +739,11 @@ export default memo(function PagedHomeScreen({
               <span className="hidden min-[360px]:inline truncate">Profile</span>
             </button>
             <button
-              onClick={async () => { await signOut(); navigate('/login'); }}
+              onClick={async () => {
+                await signOut();
+                invalidateMeCache();
+                navigate('/login');
+              }}
               className="flex items-center justify-center gap-1.5 h-8 rounded-xl bg-slate-700 border border-slate-600 text-slate-200 text-[11px] font-semibold hover:bg-red-600 hover:border-red-500 active:scale-95 transition-all px-2 shrink-0"
               aria-label="Log out"
               title="Log out"

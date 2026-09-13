@@ -3580,6 +3580,7 @@ app.put("/api/customers/:id", customers_id_put_110);
 app.get("/api/dashboard/kpi", dashboard_kpi_get_111);
 app.get("/api/dashboard/setup-check", dashboard_setup_check_get_112);
 app.get("/api/dashboard/todos", dashboard_todos_get_113);
+app.use("/api/dazza", requirePlatformOwner);
 app.post("/api/dazza/anatomy/github/check-changes", dazza_anatomy_github_check_changes_post_114);
 app.post("/api/dazza/anatomy/github/fetch", dazza_anatomy_github_fetch_post_115);
 app.post("/api/dazza/anatomy/github/test-connection", dazza_anatomy_github_test_connection_post_116);

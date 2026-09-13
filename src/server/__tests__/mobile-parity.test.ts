@@ -16,6 +16,11 @@ const src = (rel: string) => fs.readFileSync(path.resolve(process.cwd(), rel), '
 const homeIconsSrc   = src('src/lib/homeIcons.ts');
 const sidebarSrc     = src('src/components/PortalSidebar.tsx');
 const permGridSrc    = src('src/components/team/HomeIconPermissions.tsx');
+const pagedHomeSrc   = src('src/components/home/PagedHomeScreen.tsx');
+const topBarSrc      = src('src/components/DesktopTopBar.tsx');
+const loginSrc       = src('src/pages/login.tsx');
+const helpSrc        = src('src/pages/help.tsx');
+const serverEntrySrc = src('src/server/entry.ts');
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -50,7 +55,7 @@ describe('Mobile home screen — core routes present', () => {
     '/estimating', '/builders-calc', '/takeoff-pad',
     '/finance?financeTab=settings',
     // Safety
-    '/studio/forms', '/safety?safetyTab=documents', '/safety/posters',
+    '/studio/forms', '/studio/documents', '/safety/posters',
     '/incidents', '/risk-register',
     // Management
     '/profile', '/dazza-ai',
@@ -69,9 +74,10 @@ describe('Mobile home screen — core routes present', () => {
 // ── 2. adminOnly / ownerOnly flags ────────────────────────────────────────────
 
 describe('Role-gating flags on homeIcons', () => {
-  it('dazza_ai is ownerOnly', () => {
+  it('dazza_ai is platformOnly', () => {
     const line = homeIconsSrc.match(/key: 'dazza_ai'[^\n]*/)?.[0] ?? '';
-    expect(line).toContain('ownerOnly: true');
+    expect(line).toContain('platformOnly: true');
+    expect(line).not.toContain('ownerOnly: true');
   });
 
   it('asset_mgr is Equipment Manager on Work, not admin-only', () => {
@@ -145,6 +151,9 @@ describe('Role-gating flags on homeIcons', () => {
 // ── 3. resolveHomeIcons respects adminOnly / ownerOnly ────────────────────────
 
 describe('resolveHomeIcons — role gating logic', () => {
+  it('filters platformOnly icons unless isPlatformOwner is true', () => {
+    expect(homeIconsSrc).toContain('i.platformOnly && !isPlatformOwner');
+  });
   it('uses ADMIN_ROLES set for adminOnly filtering', () => {
     expect(homeIconsSrc).toContain("ADMIN_ROLES = new Set(['owner', 'admin', 'platform_owner'])");
   });
@@ -159,6 +168,33 @@ describe('resolveHomeIcons — role gating logic', () => {
 
   it('filters adminOnly icons for non-admins', () => {
     expect(homeIconsSrc).toContain('i.adminOnly && !isAdmin');
+  });
+});
+
+describe('Platform tools stay exclusive to the IWILLBUILD platform owner', () => {
+  it('passes the platform-owner flag into phone icon resolution', () => {
+    expect(pagedHomeSrc).toContain('resolveHomeIcons(iconPermissions, role, isSolo, isPlatformOwner)');
+    expect(pagedHomeSrc).toContain('...(isPlatformOwner ? platformAsIconDef : [])');
+  });
+
+  it('uses isPlatformOwner for the desktop Dazza and Console controls', () => {
+    expect(topBarSrc).toContain('{isPlatformOwner && <>');
+    expect(topBarSrc).not.toContain('OWNER_EMAIL');
+    expect(topBarSrc).not.toContain('isOwnerEmail');
+  });
+
+  it('does not advertise platform-only tools in Help to normal users', () => {
+    expect(helpSrc).toContain('!icon.platformOnly || isPlatformOwner');
+  });
+
+  it('invalidates cached /api/me permissions during login and logout', () => {
+    expect(loginSrc).toContain('invalidateMeCache();');
+    expect(pagedHomeSrc).toContain('invalidateMeCache();');
+    expect(topBarSrc).toContain('invalidateMeCache();');
+  });
+
+  it('protects every Dazza API route with the platform-owner middleware', () => {
+    expect(serverEntrySrc).toContain('app.use("/api/dazza", requirePlatformOwner);');
   });
 });
 

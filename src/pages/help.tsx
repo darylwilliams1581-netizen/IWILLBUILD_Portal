@@ -25,6 +25,7 @@ import DesktopTopBar from '@/components/DesktopTopBar';
 import DesktopDock from '@/components/DesktopDock';
 import ManageBackButton from '@/components/ManageBackButton';
 import { VISIBLE_GROUP_CONFIG } from '@/lib/homeIcons';
+import { usePermissions } from '@/lib/usePermissions';
 
 // ── Per-icon documentation ────────────────────────────────────────────────────
 // Key matches HomeIconDef.key. Add an entry here for every released icon.
@@ -291,6 +292,7 @@ const GROUP_DESCRIPTION: Record<string, string> = {
 
 // ── Component ─────────────────────────────────────────────────────────────────
 export default function HelpPage() {
+  const { isPlatformOwner } = usePermissions();
   const [search, setSearch] = useState('');
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({
     field: true,
@@ -308,16 +310,19 @@ export default function HelpPage() {
   // VISIBLE_GROUP_CONFIG already excludes comingSoon — no further filtering needed.
   const filtered = VISIBLE_GROUP_CONFIG.map(gc => ({
     ...gc,
-    defs: gc.defs.filter(icon => icon.key !== 'app_docs').filter(icon => {
-      if (!q) return true;
-      const doc = ICON_DOCS[icon.key];
-      const displayLabel = HELP_LABELS[icon.key] ?? icon.label;
-      return (
-        displayLabel.toLowerCase().includes(q) ||
-        (doc?.purpose.toLowerCase().includes(q) ?? false) ||
-        (doc?.howTo.some(s => s.toLowerCase().includes(q)) ?? false)
-      );
-    }),
+    defs: gc.defs
+      .filter(icon => icon.key !== 'app_docs')
+      .filter(icon => !icon.platformOnly || isPlatformOwner)
+      .filter(icon => {
+        if (!q) return true;
+        const doc = ICON_DOCS[icon.key];
+        const displayLabel = HELP_LABELS[icon.key] ?? icon.label;
+        return (
+          displayLabel.toLowerCase().includes(q) ||
+          (doc?.purpose.toLowerCase().includes(q) ?? false) ||
+          (doc?.howTo.some(s => s.toLowerCase().includes(q)) ?? false)
+        );
+      }),
   })).filter(gc => gc.defs.length > 0);
 
   function toggleGroup(group: string) {
@@ -458,6 +463,9 @@ export default function HelpPage() {
                                   )}
                                   {icon.ownerOnly && (
                                     <span className="text-[10px] font-semibold bg-violet-100 text-violet-700 px-1.5 py-0.5 rounded-full">Owner</span>
+                                  )}
+                                  {icon.platformOnly && (
+                                    <span className="text-[10px] font-semibold bg-violet-100 text-violet-700 px-1.5 py-0.5 rounded-full">Platform</span>
                                   )}
                                 </div>
                                 <p className="text-xs text-slate-500 leading-snug mt-0.5 line-clamp-2">{purpose}</p>
