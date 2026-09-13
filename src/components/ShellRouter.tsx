@@ -9,11 +9,10 @@
  * Detection priority:
  *   1. Capacitor native app → always App shell
  *   2. localStorage override → honour it
- *   3. Viewport < 768px → App shell
- *   4. Viewport ≥ 768px → Office shell
+ *   3. Browser (any viewport) → Office shell
  */
 
-import { lazy, Suspense, useEffect } from 'react';
+import { lazy, Suspense } from 'react';
 import { useShell } from '@/lib/useShell';
 import OfficeShell from '@/layouts/OfficeShell';
 import AppLockGate from '@/components/appLock/AppLockGate';
@@ -52,20 +51,9 @@ function PageLoader() {
 }
 
 export default function ShellRouter() {
-  const { hasOverride, setShellOverride, viewportShell } = useShell();
+  const { isAppShell } = useShell();
 
-  // If there's a stale localStorage override that contradicts the natural
-  // viewport shell, clear it so the viewport-based default takes over.
-  useEffect(() => {
-    if (hasOverride) {
-      setShellOverride(null);
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // run once on mount only
-
-  const effectiveIsAppShell = viewportShell === 'app';
-
-  if (effectiveIsAppShell) {
+  if (isAppShell) {
     return (
       <DriverSessionProvider>
         <AppLockGate>

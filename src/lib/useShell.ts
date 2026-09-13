@@ -8,10 +8,9 @@
  * Rules (in priority order):
  *   1. Capacitor native app → always 'app'
  *   2. User has manually overridden via localStorage → honour override
- *   3. Viewport width < 768px → 'app'
- *   4. Viewport width ≥ 768px → 'office'
+ *   3. Browser (any viewport) → 'office'
  *
- * The override persists across sessions so a desktop user who prefers the
+ * The override persists across sessions so a website user who prefers the
  * app view keeps it on refresh. The toggle button in the UI calls
  * setShellOverride() to flip it.
  *
@@ -25,7 +24,6 @@ import { isNativeApp } from './native-routing';
 export type Shell = 'app' | 'office';
 
 const OVERRIDE_KEY = '__iwb_shell_override__';
-const MOBILE_BREAKPOINT = 768; // px — matches Tailwind's md:
 
 function readOverride(): Shell | null {
   if (typeof window === 'undefined') return null;
@@ -47,55 +45,33 @@ function writeOverride(shell: Shell | null): void {
   } catch { /* best-effort */ }
 }
 
-function getViewportShell(): Shell {
-  if (typeof window === 'undefined') return 'office';
-  return window.innerWidth < MOBILE_BREAKPOINT ? 'app' : 'office';
-}
-
-function resolveShell(override: Shell | null, viewportShell: Shell): Shell {
+function resolveShell(override: Shell | null): Shell {
   // Native app always uses app shell — no override possible
   if (isNativeApp) return 'app';
-  // User override takes precedence over viewport
+  // User override takes precedence
   if (override !== null) return override;
-  return viewportShell;
+  // Browser default: always office (never auto-switch to app on narrow viewport)
+  return 'office';
 }
 
 export function useShell() {
-  // IMPORTANT: initialise both to their server-side defaults (null / 'office')
-  // so hydrateRoot sees the same tree the server rendered. Reading localStorage
-  // or window.innerWidth in the useState initialiser causes React #418 on mobile
-  // because the server always returns null / 'office' while the client may return
-  // a stored override or 'app' (narrow viewport). The real values are read in the
-  // first useEffect (post-hydration) and applied without a hydration mismatch.
+  // IMPORTANT: initialise to null / 'office' (server-side defaults) so
+  // hydrateRoot sees the same tree the server rendered. Real values are
+  // read post-hydration in the first useEffect to avoid React #418.
   const [override, setOverrideState] = useState<Shell | null>(null);
-  const [viewportShell, setViewportShell] = useState<Shell>('office');
 
-  // Read real values post-hydration (avoids #418 — see comment above)
+  // Read real override post-hydration (avoids #418 — see comment above)
   useEffect(() => {
     setOverrideState(readOverride());
-    setViewportShell(getViewportShell());
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Track viewport width changes (resize + orientation change)
-  useEffect(() => {
-    function handleResize() {
-      setViewportShell(getViewportShell());
-    }
-    window.addEventListener('resize', handleResize, { passive: true });
-    window.addEventListener('orientationchange', handleResize, { passive: true });
-    return () => {
-      window.removeEventListener('resize', handleResize);
-      window.removeEventListener('orientationchange', handleResize);
-    };
-  }, []);
-
-  const shell = resolveShell(override, viewportShell);
+  const shell = resolveShell(override);
 
   /**
    * Toggle between app and office shell.
    * On native, this is a no-op (always app).
-   * On desktop, this sets/clears the localStorage override.
+   * On browser, this sets/clears the localStorage override.
    */
   const toggleShell = useCallback(() => {
     if (isNativeApp) return;
@@ -106,7 +82,7 @@ export function useShell() {
 
   /**
    * Explicitly set the shell override.
-   * Pass null to clear the override and revert to viewport-based detection.
+   * Pass null to clear the override and revert to the default (office on browser).
    */
   const setShellOverride = useCallback((s: Shell | null) => {
     if (isNativeApp) return;
@@ -127,9 +103,9 @@ export function useShell() {
     hasOverride: override !== null,
     /** Toggle between app and office shell */
     toggleShell,
-    /** Set an explicit shell override (null = clear override) */
+    /** Set an explicit shell override (null = clear override, reverts to office on browser) */
     setShellOverride,
-    /** Raw viewport-based shell (ignores override) */
-    viewportShell,
+    /** Kept for compatibility — always 'office' on browser, 'app' on native */
+    viewportShell: isNativeApp ? 'app' as Shell : 'office' as Shell,
   };
 }
