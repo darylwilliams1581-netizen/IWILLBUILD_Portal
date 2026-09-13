@@ -398,7 +398,7 @@ export default async function handler(req: Request, res: Response) {
       `SELECT p.company_id, c.name AS company_name
        FROM profiles p
        JOIN companies c ON c.id = p.company_id
-       WHERE p.user_id = (SELECT id FROM users WHERE email = ? LIMIT 1)
+       WHERE p.user_id = (SELECT id FROM user WHERE email = ? LIMIT 1)
        LIMIT 1`,
       [TARGET_EMAIL],
     );
