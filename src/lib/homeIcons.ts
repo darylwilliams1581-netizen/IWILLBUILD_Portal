@@ -102,7 +102,7 @@ export const SAFETY_ICON_DEFS: HomeIconDef[] = [
 export const MANAGEMENT_ICON_DEFS: HomeIconDef[] = [
   { key: 'profile',        label: 'My Profile',      icon: User,             href: '/profile',                bg: 'bg-slate-500',   fg: 'text-white', group: 'management' },
   { key: 'dazza_ai',       label: 'Dazza AI',        icon: Bot,              href: '/dazza-ai',               bg: 'bg-violet-700',  fg: 'text-white', group: 'management', ownerOnly: true },
-  { key: 'app_docs',       label: 'Studio',        icon: FileText,         href: '/studio/documents',       bg: 'bg-slate-700',   fg: 'text-white', group: 'management', adminOnly: true },
+  { key: 'app_docs',       label: 'Studio Builder',  icon: FileText,         href: '/studio/documents',       bg: 'bg-slate-700',   fg: 'text-white', group: 'management', adminOnly: true },
   { key: 'library',        label: 'Library',         icon: Library,          href: '/studio/library',         bg: 'bg-amber-700',   fg: 'text-white', group: 'management', adminOnly: true },
   { key: 'quick_links',    label: 'Quick Links',     icon: Link2,            href: '/quick-links',            bg: 'bg-lime-700',    fg: 'text-white', group: 'management', adminOnly: true },
   { key: 'lists',          label: 'Lists',           icon: TableProperties,  href: '/lists',                  bg: 'bg-teal-600',    fg: 'text-white', group: 'management', adminOnly: true },
@@ -124,7 +124,7 @@ export const ALL_HOME_ICONS: HomeIconDef[] = [
   ...MANAGEMENT_ICON_DEFS,
 ];
 
-// ── Default icon sets ─────────────────────────────────────────────────────────
+// ── Default icon sets ─────────────────────────────────────────
 
 /** Minimal set given to new invited employees */
 export const DEFAULT_FIELD_KEYS: string[] = [
@@ -137,7 +137,7 @@ export const ALL_LIVE_KEYS: string[] = ALL_HOME_ICONS.map(i => i.key);
 /** Keys that owners/admins always have — not restrictable */
 export const OWNER_ADMIN_ALWAYS_ON: string[] = ALL_LIVE_KEYS;
 
-// ── Helper: resolve allowed icons for a user ──────────────────────────────────
+// ── Helper: resolve allowed icons for a user ────────────────────────────
 const ADMIN_ROLES = new Set(['owner', 'admin', 'platform_owner']);
 const OWNER_ROLES = new Set(['owner', 'platform_owner']);
 
@@ -168,7 +168,7 @@ export function resolveHomeIcons(
   return live.filter(i => allowedKeys.includes(i.key));
 }
 
-// ── Group labels for the permission grid UI ───────────────────────────────────
+// ── Group labels for the permission grid UI ───────────────────────────
 export const GROUP_LABELS: Record<IconGroup, string> = {
   field:       'Work',
   files:       'Field & Files',
@@ -178,7 +178,7 @@ export const GROUP_LABELS: Record<IconGroup, string> = {
   management:  'Administration',
 };
 
-// ── Visible group config ──────────────────────────────────────────────────────
+// ── Visible group config ─────────────────────────────────────────
 /**
  * Pre-built group config for navigation and Help.
  * Consumers (Help page, nav grids) must import this — never build their own
