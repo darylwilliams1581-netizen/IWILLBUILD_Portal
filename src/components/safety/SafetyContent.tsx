@@ -27,8 +27,9 @@ import { useEffect, useRef, useState, useCallback } from 'react';
 import { useSearchParams, useNavigate } from 'react-router';
 import { motion } from 'motion/react';
 import {
-  FileText, ShieldCheck, Plus, FileUp, Layers,
+  FileText, ShieldCheck, Plus, FileUp, Layers, Trash2,
 } from 'lucide-react';
+import { toast } from 'sonner';
 
 // Tab components from safety.tsx (preserved, not rendered in SafetyContent)
 // PoliciesTab remains exported from src/pages/safety.tsx for use elsewhere.
@@ -96,6 +97,9 @@ export default function SafetyContent() {
 
   // Doc templates — loaded for the company-documents tab
   const [templates, setTemplates] = useState<DocTemplate[]>([]);
+  const [deletingId, setDeletingId] = useState<number | null>(null);
+  const [confirmDeleteId, setConfirmDeleteId] = useState<number | null>(null);
+
   const loadTemplates = useCallback(async () => {
     try {
       const r = await fetch('/api/document-templates', { credentials: 'include' });
@@ -111,8 +115,29 @@ export default function SafetyContent() {
     }
   }, [activeTab, loadTemplates]);
 
-  function setTab(id: TabId) {
-    setSearchParams(
+  async function deleteTemplate(id: number) {
+    setDeletingId(id);
+    try {
+      const r = await fetch(`/api/document-templates/${id}`, {
+        method: 'DELETE',
+        credentials: 'include',
+      });
+      if (!r.ok) {
+        const d = await r.json().catch(() => ({})) as { error?: string };
+        toast.error(d.error ?? 'Failed to delete document');
+        return;
+      }
+      setTemplates((prev) => prev.filter((t) => t.id !== id));
+      toast.success('Document deleted');
+    } catch {
+      toast.error('Failed to delete document');
+    } finally {
+      setDeletingId(null);
+      setConfirmDeleteId(null);
+    }
+  }
+
+  function setTab(id: TabId) {    setSearchParams(
       (prev) => {
         const next = new URLSearchParams(prev);
         next.set('safetyTab', id);
@@ -204,13 +229,18 @@ export default function SafetyContent() {
                   {templates.map((t) => (
                     <div
                       key={t.id}
-                      onClick={() => navigate(`/studio/builder/${t.id}`)}
-                      className="flex items-center gap-3 px-4 py-3 bg-white border border-slate-200 rounded-xl hover:border-primary/40 hover:bg-violet-50/30 cursor-pointer transition-colors"
+                      className="flex items-center gap-3 px-4 py-3 bg-white border border-slate-200 rounded-xl hover:border-primary/40 hover:bg-violet-50/30 transition-colors group"
                     >
-                      <div className="w-8 h-8 rounded-lg bg-violet-50 border border-violet-100 flex items-center justify-center shrink-0">
+                      <div
+                        onClick={() => navigate(`/studio/builder/${t.id}`)}
+                        className="w-8 h-8 rounded-lg bg-violet-50 border border-violet-100 flex items-center justify-center shrink-0 cursor-pointer"
+                      >
                         <FileText size={14} className="text-primary" />
                       </div>
-                      <div className="flex-1 min-w-0">
+                      <div
+                        onClick={() => navigate(`/studio/builder/${t.id}`)}
+                        className="flex-1 min-w-0 cursor-pointer"
+                      >
                         <p className="text-sm font-semibold text-slate-800 truncate">{t.name}</p>
                         {t.template_type && (
                           <p className="text-xs text-slate-400 capitalize">{t.template_type.replace(/_/g, ' ')}</p>
@@ -219,6 +249,35 @@ export default function SafetyContent() {
                       <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full shrink-0 ${t.is_active ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-500'}`}>
                         {t.is_active ? 'Active' : 'Inactive'}
                       </span>
+
+                      {/* Delete — confirm inline */}
+                      {confirmDeleteId === t.id ? (
+                        <div className="flex items-center gap-1.5 shrink-0" onClick={(e) => e.stopPropagation()}>
+                          <span className="text-xs text-slate-500">Delete?</span>
+                          <button
+                            onClick={() => void deleteTemplate(t.id)}
+                            disabled={deletingId === t.id}
+                            className="px-2 py-1 rounded-md bg-red-600 hover:bg-red-500 text-white text-xs font-semibold disabled:opacity-50 transition-colors"
+                          >
+                            {deletingId === t.id ? '…' : 'Yes'}
+                          </button>
+                          <button
+                            onClick={() => setConfirmDeleteId(null)}
+                            className="px-2 py-1 rounded-md bg-slate-100 hover:bg-slate-200 text-slate-600 text-xs font-semibold transition-colors"
+                          >
+                            No
+                          </button>
+                        </div>
+                      ) : (
+                        <button
+                          onClick={(e) => { e.stopPropagation(); setConfirmDeleteId(t.id); }}
+                          className="shrink-0 p-1.5 rounded-lg text-slate-300 hover:text-red-500 hover:bg-red-50 opacity-0 group-hover:opacity-100 transition-all"
+                          aria-label={`Delete ${t.name}`}
+                          title="Delete"
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      )}
                     </div>
                   ))}
                 </div>
