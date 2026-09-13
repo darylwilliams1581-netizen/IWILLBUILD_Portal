@@ -12,13 +12,31 @@
  * - Only trusts origins matching the server's hostname
  */
 
-import { betterAuth } from 'better-auth';
+import { APIError, betterAuth } from 'better-auth';
 import { drizzleAdapter } from 'better-auth/adapters/drizzle';
 import { twoFactor } from 'better-auth/plugins';
 
 import { db } from '@/server/db/client';
-import { user, session, account, verification, twoFactor as twoFactorTable } from '@/server/db/schema';
+import { user, session, account, verification, twoFactor as twoFactorTable, profiles, companyFiles, companies } from '@/server/db/schema';
 import { getSecret } from '#airo/secrets';
+import { getStripe } from '@/server/lib/stripe-client';
+import { and, eq, ne, sql } from 'drizzle-orm';
+import { createHmac, timingSafeEqual } from 'node:crypto';
+
+const ACCOUNT_DELETE_HEADER = 'x-iwb-account-delete-authorization';
+
+export function createAccountDeletionAuthorization(userId: string): string {
+  const secretValue = getSecret('BETTER_AUTH_SECRET');
+  const secret = typeof secretValue === 'string' ? secretValue : '';
+  return createHmac('sha256', secret).update(`owner-delete:${userId}`).digest('hex');
+}
+
+function validAccountDeletionAuthorization(userId: string, request?: Request): boolean {
+  const received = request?.headers.get(ACCOUNT_DELETE_HEADER) ?? '';
+  const expected = createAccountDeletionAuthorization(userId);
+  if (!received || received.length !== expected.length) return false;
+  return timingSafeEqual(Buffer.from(received), Buffer.from(expected));
+}
 
 // Lazy singleton — betterAuth() must NOT run at module init time.
 //
@@ -58,6 +76,114 @@ export function getAuth() {
 
     // Protect admin status field from user input
     user: {
+      deleteUser: {
+        enabled: true,
+        beforeDelete: async (currentUser, request) => {
+          // The platform developer account is operational infrastructure and
+          // must never be removable through the customer self-service flow.
+          const configuredOwnerValue = getSecret('PLATFORM_OWNER_EMAIL');
+          const configuredOwners = (typeof configuredOwnerValue === 'string' ? configuredOwnerValue : '')
+            .split(',')
+            .map((email: string) => email.trim().toLowerCase())
+            .filter(Boolean);
+          if (configuredOwners.includes(currentUser.email.toLowerCase())) {
+            throw new APIError('FORBIDDEN', {
+              message: 'The platform developer account cannot be deleted here.',
+            });
+          }
+
+          try {
+            const [platformRows] = await db.execute(sql`
+              SELECT platform_role FROM profiles WHERE user_id = ${currentUser.id} LIMIT 1
+            `) as unknown as [Array<{ platform_role: string | null }>, unknown];
+            if (platformRows?.[0]?.platform_role === 'developer') {
+              throw new APIError('FORBIDDEN', {
+                message: 'The platform developer account cannot be deleted here.',
+              });
+            }
+          } catch (error) {
+            if (error instanceof APIError) throw error;
+            // Older databases may not have platform_role. The configured email
+            // fallback above remains active in that case.
+          }
+
+          const profile = await db.query.profiles.findFirst({
+            where: eq(profiles.userId, currentUser.id),
+          });
+
+          // All self-service deletions must pass through the Settings endpoint,
+          // which validates the typed confirmation and mints this server-only
+          // HMAC. This prevents bypassing the confirmation via BetterAuth's
+          // lower-level /api/auth/delete-user endpoint.
+          if (!validAccountDeletionAuthorization(currentUser.id, request)) {
+            throw new APIError('FORBIDDEN', {
+              message: 'Delete this account from Settings.',
+            });
+          }
+
+          if (profile?.role === 'owner') {
+            if (!profile.companyId) {
+              throw new APIError('BAD_REQUEST', { message: 'No company is linked to this owner account.' });
+            }
+
+            const remainingMembers = await db.query.profiles.findMany({
+              where: and(
+                eq(profiles.companyId, profile.companyId),
+                ne(profiles.userId, currentUser.id),
+                ne(profiles.status, 'inactive'),
+              ),
+              columns: { id: true },
+            });
+            if (remainingMembers.length > 0) {
+              throw new APIError('CONFLICT', {
+                message: 'Transfer company ownership to another active team member before deleting your account.',
+              });
+            }
+
+            const company = await db.query.companies.findFirst({
+              where: eq(companies.id, profile.companyId),
+            });
+            if (company?.stripeSubscriptionId) {
+              try {
+                const stripe = await getStripe();
+                await stripe.subscriptions.cancel(company.stripeSubscriptionId);
+              } catch (error) {
+                console.error('account.delete.stripe_failed', error);
+                throw new APIError('BAD_GATEWAY', {
+                  message: 'We could not cancel the linked subscription. No account data was deleted. Please try again.',
+                });
+              }
+            }
+
+            // Company FKs cascade the sole owner's company data. BetterAuth then
+            // removes the auth user, sessions, credentials and two-factor data.
+            await db.delete(companies).where(eq(companies.id, profile.companyId));
+            return;
+          }
+
+          // Keep company-owned files when a team member deletes their login.
+          // Reassign uploader ownership to the active company owner before the
+          // user FK is removed; personal sessions, 2FA and AI threads cascade.
+          if (profile?.companyId) {
+            const companyOwner = await db.query.profiles.findFirst({
+              where: and(
+                eq(profiles.companyId, profile.companyId),
+                eq(profiles.role, 'owner'),
+                eq(profiles.status, 'active'),
+              ),
+            });
+            if (!companyOwner || companyOwner.userId === currentUser.id) {
+              throw new APIError('CONFLICT', {
+                message: 'The company needs an active owner before this account can be deleted.',
+              });
+            }
+            await db
+              .update(companyFiles)
+              .set({ uploadedByUserId: companyOwner.userId })
+              .where(eq(companyFiles.uploadedByUserId, currentUser.id));
+          }
+        },
+      },
       additionalFields: {
         isAdmin: {
           type: 'boolean',
