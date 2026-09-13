@@ -1,5 +1,5 @@
 /**
- * /help — IWIllBUIlD Portal User Manual
+ * /help — IWILLBUILD Help & User Guide
  *
  * SOURCE OF TRUTH: homeIcons.ts → VISIBLE_GROUP_CONFIG
  *
@@ -18,6 +18,7 @@ import { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   ChevronDown, ChevronRight, Search, BookMarked, Download, FileDown,
+  LayoutDashboard, Briefcase, Wrench, Settings2,
 } from 'lucide-react';
 import PortalSidebar from '@/components/PortalSidebar';
 import DesktopTopBar from '@/components/DesktopTopBar';
@@ -34,26 +35,60 @@ interface IconDoc {
   tip?: string;
 }
 
+const PHONE_PAGES = [
+  {
+    title: 'Dashboard',
+    icon: LayoutDashboard,
+    colour: 'bg-violet-600',
+    description: 'Your daily overview: notifications, tasks, contacts, quick photo upload and recent jobs.',
+  },
+  {
+    title: 'Work',
+    icon: Briefcase,
+    colour: 'bg-blue-600',
+    description: 'Choose a job, then open its tasks, notes, progress, attendance, photos, files, finance, forms or safety records.',
+  },
+  {
+    title: 'Tools',
+    icon: Wrench,
+    colour: 'bg-rose-600',
+    description: 'Safety registers, permits, incidents, posters, Studio Forms, Studio Documents and estimating utilities.',
+  },
+  {
+    title: 'Manage',
+    icon: Settings2,
+    colour: 'bg-slate-700',
+    description: 'Resource Library, Sign-in History, team, billing, settings, app permissions, account deletion and Help.',
+  },
+] as const;
+
+const HELP_LABELS: Record<string, string> = {
+  job_card: 'Service Jobs',
+  risk_register: 'Hazard Register',
+  library: 'Resource Library',
+};
+
 const ICON_DOCS: Record<string, IconDoc> = {
   // ── FIELD ──────────────────────────────────────────────────────────────────
   tools: {
-    purpose: 'Access the Tools workspace — a company-wide register of tasks, notes, and work items not tied to a specific job.',
-    howTo: ['Tap Tools on the home screen.', 'Browse tasks and notes across the company.', 'Use filters to narrow by type, status, or assignee.', 'Tap + to add a new task or note.'],
+    purpose: 'Open the operational tools available for your account and role.',
+    howTo: ['Tap Work.', 'Open Tools.', 'Choose the tool you need.', 'Use the back arrow to return to Work.'],
   },
   jobs: {
-    purpose: 'The central hub for all jobs. Create, manage, and monitor every project. The job workspace is organised into five nav groups — JOB, WORK, FIELD & FILES, FINANCE, and SAFETY.',
+    purpose: 'Create, manage and monitor projects. Most field actions start by choosing a job on the Work page.',
     howTo: [
-      'Tap Jobs on the home screen.',
+      'Tap Work, then choose the job feature you need.',
+      'Select a job when the job picker opens.',
       'Browse active jobs or use search to find one.',
       'Tap a job to open its detail view.',
-      'Use the five nav groups at the top to switch areas: JOB (details, milestones), WORK (job cards, progress/Program of Works), FIELD & FILES (photos, files, forms, notes, drawings), FINANCE (Job Ledger, Purchase Orders), SAFETY (SWMS, risk assessments, prestarts, incidents).',
-      'Tap + to create a new job.',
+      'Use the job sections to open work, field files, finance and safety records.',
+      'Use + New Job from the Dashboard when you need to create a project.',
     ],
     tip: 'The Finance nav group is only visible to users with the Finance permission.',
   },
   job_card: {
-    purpose: 'A fast-action view of jobs displayed as cards. Quickly scan job status, assigned workers, and key details without opening the full job detail.',
-    howTo: ['Tap Job Cards on the home screen.', 'Browse jobs displayed as visual cards.', 'Use filters to narrow by status, date, or assigned worker.', 'Tap a card to open the full job detail.'],
+    purpose: 'Manage smaller call-outs, service work and do-and-charge jobs separately from larger projects.',
+    howTo: ['Open Service Jobs.', 'Browse existing service jobs or create a new one.', 'Record the work, labour, materials and site notes.', 'Open the service job when you need to update or print its record.'],
   },
   log_cost: {
     purpose: 'Quickly record a cost or expense against a job while you are on site — materials, subcontractors, hire equipment, etc.',
@@ -157,8 +192,8 @@ const ICON_DOCS: Record<string, IconDoc> = {
   },
   risk_register: {
     purpose: 'Identify, assess, and control workplace hazards and risks across the company. Each entry captures the hazard, likelihood × consequence risk matrix, existing controls, additional controls required, responsible person, and due date.',
-    howTo: ['Tap Risk Register on the home screen.', 'Tap New risk to add a new entry.', 'Enter the hazard title, category, and description.', 'Set likelihood and consequence — the risk level is calculated automatically.', 'Document existing controls and any additional controls required.', 'Assign a responsible person and due date.', 'Update the status as controls are implemented.'],
-    tip: 'Extreme and high risks are highlighted at the top of the register. Review and update risk entries regularly.',
+    howTo: ['Open Tools and tap Hazard Register.', 'Tap New hazard to add an entry.', 'Enter the hazard title, category and description.', 'Set likelihood and consequence — the risk level is calculated automatically.', 'Document existing controls and any additional controls required.', 'Assign a responsible person and due date.', 'Update the status as controls are implemented.'],
+    tip: 'Extreme and high hazards are highlighted at the top of the register. Review entries regularly.',
   },
   sds_register: {
     purpose: 'Manage Safety Data Sheets (SDS) for all hazardous substances used on site. Store, search, and access SDS documents for compliance.',
@@ -191,8 +226,9 @@ const ICON_DOCS: Record<string, IconDoc> = {
     tip: 'Dazza AI is available to platform owners only.',
   },
   library: {
-    purpose: 'A central knowledge library for your business — store procedures, reference documents, training materials, and any content you want the team to look up.',
-    howTo: ['Tap Library on the home screen (Admin only).', 'Browse categories or search for a document.', 'Tap any item to read it.', 'Admins can add, edit, or archive library items.'],
+    purpose: 'Browse the IWILLBUILD catalogue of form and document templates. Catalogue previews remain available to every account.',
+    howTo: ['Open Manage and tap Resource Library.', 'Browse or search the catalogue.', 'Open an item to preview it.', 'On an active plan, download it into your company templates.'],
+    tip: 'Library downloads require an active plan or trial. Templates already owned by your company remain available.',
   },
   quick_links: {
     purpose: 'A customisable set of shortcut links for your team — external websites, supplier portals, council links, or any URL your team needs quick access to.',
@@ -218,16 +254,18 @@ const ICON_DOCS: Record<string, IconDoc> = {
     tip: 'Owners and Admins always have full access. Field workers only see the features you assign to them.',
   },
   billing: {
-    purpose: 'Manage your IWIllBUIlD subscription — view your current plan, update payment details, and see billing history.',
-    howTo: ['Tap My Billing on the home screen.', 'View your current plan and next billing date.', 'Tap Manage Subscription to upgrade, downgrade, or cancel.', 'Update your payment method if needed.', 'Download past invoices from the billing history.'],
+    purpose: 'View and manage your IWILLBUILD subscription securely on the website.',
+    howTo: ['Open Manage and tap My Billing.', 'The billing page opens in Safari.', 'View your plan, renewal or access-until date.', 'Use the website controls to manage the subscription or payment method.', 'Return to IWILLBUILD when finished.'],
+    tip: 'Subscription purchases and billing changes take place on iwillbuild.com, outside the app.',
   },
   settings: {
-    purpose: 'Configure your company profile, notification preferences, integrations, and app settings.',
-    howTo: ['Tap Settings on the home screen.', 'Update your company name, logo, and contact details.', 'Configure notification preferences.', 'Manage integrations (Xero, QuickBooks, etc.).', 'Set default values for jobs, costs, and forms.'],
+    purpose: 'Manage your account, company settings, notifications, app permissions and data controls.',
+    howTo: ['Open Manage and tap Settings.', 'Use My Account for your personal details and password.', 'Use App Permissions to review camera, photos, location, microphone and notification access.', 'Owners can update company settings and integrations.', 'Use Delete Account in My Account if you need to permanently remove your account.'],
+    tip: 'Device permissions are requested only when you use the feature that needs them.',
   },
   help: {
-    purpose: 'This page — the IWIllBUIlD User Manual. Every feature explained with step-by-step instructions.',
-    howTo: ['Tap Help on the home screen.', 'Browse by group or use the search bar to find a feature.', 'Tap any feature to expand its instructions.'],
+    purpose: 'This current app guide, with a phone navigation overview and searchable feature instructions.',
+    howTo: ['Open Manage and tap Help.', 'Start with the four-page phone guide.', 'Use search to find a feature.', 'Tap a feature to expand its instructions.'],
   },
 };
 
@@ -273,8 +311,9 @@ export default function HelpPage() {
     defs: gc.defs.filter(icon => icon.key !== 'app_docs').filter(icon => {
       if (!q) return true;
       const doc = ICON_DOCS[icon.key];
+      const displayLabel = HELP_LABELS[icon.key] ?? icon.label;
       return (
-        icon.label.toLowerCase().includes(q) ||
+        displayLabel.toLowerCase().includes(q) ||
         (doc?.purpose.toLowerCase().includes(q) ?? false) ||
         (doc?.howTo.some(s => s.toLowerCase().includes(q)) ?? false)
       );
@@ -290,8 +329,8 @@ export default function HelpPage() {
 
   return <>
     <Helmet>
-      <title>User Manual — IWIllBUIlD Portal</title>
-      <meta name="description" content="How to use every feature in the IWIllBUIlD Portal." />
+      <title>Help & User Guide — IWILLBUILD</title>
+      <meta name="description" content="Current phone navigation and feature help for IWILLBUILD." />
       <meta name="robots" content="noindex" />
       <link rel="canonical" href="https://iwillbuild.com/help" />
     </Helmet>
@@ -311,8 +350,8 @@ export default function HelpPage() {
                 <BookMarked size={18} className="text-white" />
               </div>
               <div>
-                <h1 className="text-lg font-bold text-slate-900 leading-tight">User Manual</h1>
-                <p className="text-xs text-slate-500">Every feature explained — what it does and how to use it</p>
+                <h1 className="text-lg font-bold text-slate-900 leading-tight">Help & User Guide</h1>
+                <p className="text-xs text-slate-500">Current phone navigation and feature instructions</p>
               </div>
             </div>
           </div>
@@ -331,6 +370,31 @@ export default function HelpPage() {
       </div>
 
       <div className="max-w-3xl mx-auto px-4 pt-4 space-y-3">
+        {!q && (
+          <section className="bg-white rounded-2xl border border-slate-200 shadow-sm p-4" aria-labelledby="phone-pages-heading">
+            <div className="mb-3">
+              <h2 id="phone-pages-heading" className="text-base font-bold text-slate-900">Using the phone app</h2>
+              <p className="text-xs text-slate-500 mt-0.5">Tap the page names at the top or swipe left and right.</p>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+              {PHONE_PAGES.map(page => {
+                const PageIcon = page.icon;
+                return (
+                  <div key={page.title} className="flex gap-3 rounded-xl border border-slate-100 bg-slate-50 p-3">
+                    <div className={`w-9 h-9 rounded-xl ${page.colour} flex items-center justify-center shrink-0`}>
+                      <PageIcon size={18} className="text-white" />
+                    </div>
+                    <div>
+                      <h3 className="text-sm font-bold text-slate-800">{page.title}</h3>
+                      <p className="text-xs text-slate-600 leading-snug mt-0.5">{page.description}</p>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </section>
+        )}
+
         {filtered.length === 0 && (
           <div className="text-center py-16 text-slate-400 text-sm">
             No results for "<span className="font-medium text-slate-600">{search}</span>"
@@ -372,7 +436,7 @@ export default function HelpPage() {
                         const IconComp = icon.icon;
                         const doc = ICON_DOCS[icon.key];
                         const isIconOpen = !!openIcons[icon.key];
-                        const purpose = doc?.purpose ?? 'Feature documentation coming soon.';
+                        const purpose = doc?.purpose ?? 'Open this feature to view the tools available for your account.';
                         const howTo = doc?.howTo ?? [];
                         const tip = doc?.tip;
 
@@ -388,7 +452,7 @@ export default function HelpPage() {
                               </div>
                               <div className="flex-1 min-w-0">
                                 <div className="flex items-center gap-2 flex-wrap">
-                                  <span className="text-sm font-semibold text-slate-800">{icon.label}</span>
+                                  <span className="text-sm font-semibold text-slate-800">{HELP_LABELS[icon.key] ?? icon.label}</span>
                                   {icon.adminOnly && (
                                     <span className="text-[10px] font-semibold bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded-full">Admin</span>
                                   )}
@@ -449,38 +513,46 @@ export default function HelpPage() {
           );
         })}
 
-        {/* ── Download User Manual ──────────────────────────────────────────── */}
+        {/* ── Step guide and support ───────────────────────────────────────── */}
         {!q && (
-          <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-            <div className="px-5 py-5 flex flex-col sm:flex-row items-start sm:items-center gap-4">
-              <div className="w-14 h-14 rounded-2xl bg-violet-600 flex items-center justify-center shrink-0 shadow-md">
-                <FileDown size={28} className="text-white" />
+          <>
+            <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+              <div className="px-5 py-5 flex flex-col sm:flex-row items-start sm:items-center gap-4">
+                <div className="w-14 h-14 rounded-2xl bg-violet-600 flex items-center justify-center shrink-0 shadow-md">
+                  <FileDown size={28} className="text-white" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <h2 className="text-base font-bold text-slate-900 leading-tight">IWILLBUILD Step Guide</h2>
+                  <p className="text-sm text-slate-500 mt-0.5 leading-snug">
+                    Download the step-by-step PDF guide for use on site or offline.
+                  </p>
+                  <p className="text-xs text-slate-400 mt-1">PDF · 0.75 MB</p>
+                </div>
+                <a
+                  href="/data/Iwillbuild Product Guild.pdf"
+                  download="IWILLBUILD-Step-Guide.pdf"
+                  className="w-full sm:w-auto min-h-[44px] flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-violet-600 hover:bg-violet-700 active:bg-violet-800 text-white text-sm font-bold transition-colors shrink-0 shadow-sm"
+                >
+                  <Download size={16} />
+                  Download Step Guide
+                </a>
               </div>
-              <div className="flex-1 min-w-0">
-                <h2 className="text-base font-bold text-slate-900 leading-tight">IWIllBUIlD Product Guide</h2>
-                <p className="text-sm text-slate-500 mt-0.5 leading-snug">
-                  The complete product and platform guide — features, workflows, and best practices.
-                </p>
-                <p className="text-xs text-slate-400 mt-1">PDF · 0.75 MB</p>
-              </div>
-              <a
-                href="/data/Iwillbuild Product Guild.pdf"
-                download="IWIllBUIlD-Product-Guide.pdf"
-                className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-violet-600 hover:bg-violet-700 active:bg-violet-800 text-white text-sm font-bold transition-colors shrink-0 shadow-sm"
-              >
-                <Download size={16} />
-                Download PDF
-              </a>
             </div>
-            <div className="border-t border-slate-100 bg-slate-50 px-5 py-3">
-              <span className="text-[11px] text-slate-400">
-                Can't find what you're looking for? Search the feature list above or contact support at{' '}
-                <a href="mailto:support@iwillbuild.com" className="text-violet-600 hover:underline font-medium">
+
+            <div className="bg-white rounded-2xl border border-slate-200 shadow-sm px-5 py-4">
+              <h2 className="text-sm font-bold text-slate-900">Need more help?</h2>
+              <p className="text-xs text-slate-500 mt-1">
+                Email{' '}
+                <a href="mailto:support@iwillbuild.com" className="text-violet-600 hover:underline font-semibold">
                   support@iwillbuild.com
                 </a>
-              </span>
+                {' '}or visit{' '}
+                <a href="https://iwillbuild.com/login-help" target="_blank" rel="noreferrer" className="text-violet-600 hover:underline font-semibold">
+                  iwillbuild.com/login-help
+                </a>.
+              </p>
             </div>
-          </div>
+          </>
         )}
       </div>
     </main>
