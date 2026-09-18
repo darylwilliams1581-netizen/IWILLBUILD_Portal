@@ -333,6 +333,15 @@ export default function MyAccountTab() {
   const [deletingAccount, setDeletingAccount] = useState(false);
   const [deleteError, setDeleteError] = useState('');
 
+  function closeDeleteAccount() {
+    if (deletingAccount) return;
+    setDeleteOpen(false);
+    setDeletePassword('');
+    setDeleteConfirmation('');
+    setDeleteCompanyData(false);
+    setDeleteError('');
+  }
+
   const newPwError     = newPw     ? validateNewPassword(newPw)                       : null;
   const confirmPwError = confirmPw && newPw !== confirmPw ? 'Passwords do not match.' : null;
 
@@ -391,6 +400,19 @@ export default function MyAccountTab() {
 
   return (
     <div className="flex flex-col gap-6">
+      {!me?.isPlatformOwner && (
+        <div className="rounded-xl border border-red-200 bg-white p-4 sm:p-5">
+          <h2 className="flex items-center gap-2 text-base font-bold text-red-700"><ShieldAlert size={16} />Delete account</h2>
+          <p className="mt-1 text-sm text-slate-600">Permanently remove your IWILLBUILD account and access.</p>
+          <button
+            type="button"
+            onClick={() => setDeleteOpen(true)}
+            className="mt-3 inline-flex min-h-[44px] w-full items-center justify-center gap-2 rounded-lg border border-red-300 px-4 py-2.5 text-sm font-bold text-red-700 hover:bg-red-50 sm:w-auto"
+          >
+            <Trash2 size={16} />Delete account
+          </button>
+        </div>
+      )}
       <div>
         <h2 className="font-bold text-base text-slate-800 mb-4">Profile</h2>
         <div className="bg-white border border-slate-200 rounded-xl p-6">
@@ -656,29 +678,20 @@ export default function MyAccountTab() {
       </div>
 
       {/* ── Delete account ──────────────────────────────────────────────── */}
-      {!me?.isPlatformOwner && (
-        <div>
-          <h2 className="font-bold text-base text-red-700 mb-4 flex items-center gap-2"><ShieldAlert size={16} />Delete Account</h2>
-          <div className="bg-white border border-red-200 rounded-xl p-4 sm:p-6">
-            {!deleteOpen ? (
-              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-                <div>
-                  <p className="text-sm font-semibold text-slate-800">Permanently delete your IWILLBUILD account</p>
-                  <p className="text-xs text-slate-500 mt-1 leading-relaxed">
-                    {isOwner
-                      ? 'If you are the only active member, this also deletes the company and its jobs, documents and files. Transfer ownership first if other team members remain.'
-                      : 'Your login and personal profile will be deleted. Company-owned job records and files stay with the company.'}
-                  </p>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setDeleteOpen(true)}
-                  className="w-full sm:w-auto min-h-[44px] shrink-0 inline-flex items-center justify-center gap-2 rounded-lg border border-red-300 px-4 py-2.5 text-sm font-bold text-red-700 hover:bg-red-50"
-                >
-                  <Trash2 size={16} />Delete Account
-                </button>
+      {!me?.isPlatformOwner && deleteOpen && (
+        <div className="fixed inset-0 z-[100] flex items-end justify-center bg-slate-900/60 sm:items-center sm:p-4" role="dialog" aria-modal="true" aria-labelledby="delete-account-title">
+          <div className="w-full max-w-lg overflow-y-auto rounded-t-2xl border border-red-200 bg-white p-4 shadow-2xl sm:rounded-2xl sm:p-6" style={{ maxHeight: 'min(560px, calc(100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom) - 24px))', paddingBottom: 'calc(1rem + env(safe-area-inset-bottom))' }}>
+            <div className="mb-4 flex items-start justify-between gap-3">
+              <div>
+                <h2 id="delete-account-title" className="flex items-center gap-2 text-base font-bold text-red-700"><ShieldAlert size={16} />Delete account</h2>
+                <p className="mt-1 text-xs leading-relaxed text-slate-600">
+                  {isOwner
+                    ? 'If you are the only active member, this also deletes the company and its jobs, documents and files. Transfer ownership first if other team members remain.'
+                    : 'Your login and personal profile will be deleted. Company-owned job records and files stay with the company.'}
+                </p>
               </div>
-            ) : (
+              <button type="button" aria-label="Close" disabled={deletingAccount} onClick={closeDeleteAccount} className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-lg text-slate-600 hover:bg-slate-100"><X size={18} /></button>
+            </div>
               <form onSubmit={handleDeleteAccount} className="flex flex-col gap-4">
                 <div className="rounded-lg bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-800 leading-relaxed">
                   This cannot be undone. {isOwner ? 'Your company data will be permanently removed and any linked subscription will be cancelled first.' : 'You will immediately lose access to this account.'}
@@ -725,13 +738,7 @@ export default function MyAccountTab() {
                   <button
                     type="button"
                     disabled={deletingAccount}
-                    onClick={() => {
-                      setDeleteOpen(false);
-                      setDeletePassword('');
-                      setDeleteConfirmation('');
-                      setDeleteCompanyData(false);
-                      setDeleteError('');
-                    }}
+                    onClick={closeDeleteAccount}
                     className="w-full sm:w-auto min-h-[44px] rounded-lg border border-slate-200 px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-50"
                   >
                     Cancel
@@ -746,7 +753,6 @@ export default function MyAccountTab() {
                   </button>
                 </div>
               </form>
-            )}
           </div>
         </div>
       )}

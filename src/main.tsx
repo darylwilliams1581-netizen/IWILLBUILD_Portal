@@ -8,6 +8,7 @@ import './lib/i18n';
 import { patchFetchForNative } from '@/lib/native-api';
 import { installSessionFetchInterceptor } from '@/lib/auth/session-fetch-interceptor';
 import { initDiagnosticCapture } from '@/lib/diagnosticCapture';
+import { isNative } from '@/lib/capacitor-plugins';
 
 // ── Native API Gate (Layer 2+3) ───────────────────────────────────────────────
 // Patch window.fetch and XMLHttpRequest.prototype.open BEFORE any other code
@@ -105,14 +106,16 @@ import('@/components/ImpersonationBanner').then(({ default: ImpersonationBanner 
   createRoot(host).render(<ImpersonationBanner />);
 });
 
-import('@/components/CookieBanner').then(({ default: CookieBanner }) => {
-  const host = document.createElement('div');
-  host.id = 'cookie-banner-root';
-  document.body.appendChild(host);
-  createRoot(host).render(<CookieBanner />);
-}).catch(() => {
-  // CookieBanner is optional — silently skip if it fails to load
-});
+if (!isNative()) {
+  import('@/components/CookieBanner').then(({ default: CookieBanner }) => {
+    const host = document.createElement('div');
+    host.id = 'cookie-banner-root';
+    document.body.appendChild(host);
+    createRoot(host).render(<CookieBanner />);
+  }).catch(() => {
+    // CookieBanner is optional — silently skip if it fails to load
+  });
+}
 
 // ── Toaster (Sonner) — mounted outside the SSR tree ──────────────────────────
 // Sonner's <Toaster> appends a portal container to document.body via useEffect.

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 
 import { Button } from '@/components/ui/button';
+import { isNative } from '@/lib/capacitor-plugins';
 
 const COOKIE_CONSENT_KEY = 'c2_analytics_consent';
 const COOKIE_CONSENT_EXPIRES_DAYS = 365;
@@ -27,7 +28,7 @@ declare global {
 // whether the script loads. `ap` is pushed onto `_trfd` once so it appears on
 // all events for this page without repeating it per event.
 function initTracking(): void {
-  if (typeof window === 'undefined' || window.__SCC_INIT__) return;
+  if (typeof window === 'undefined' || isNative() || window.__SCC_INIT__) return;
   window.__SCC_INIT__ = true;
   window._signalsDataLayer = window._signalsDataLayer || [];
 
@@ -98,6 +99,11 @@ function initTracking(): void {
  * The SCC script is always loaded; consent only controls what gets collected.
  */
 export default function CookieBanner() {
+  if (isNative()) return null;
+  return <WebCookieBanner />;
+}
+
+function WebCookieBanner() {
   const [showBanner, setShowBanner] = useState(false);
   const [isLoaded, setIsLoaded] = useState(false);
   const isEmbedded: boolean = typeof window !== 'undefined' && window.parent !== window;
