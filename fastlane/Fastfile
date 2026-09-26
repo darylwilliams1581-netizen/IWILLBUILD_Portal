@@ -35,8 +35,7 @@ platform :ios do
 
     match(
       type: "appstore",
-      readonly: false,
-      force: true,
+      readonly: true,
       api_key: api_key,
       app_identifier: "com.iwillbuild.portal",
       team_id: "L287H9J7L3",
