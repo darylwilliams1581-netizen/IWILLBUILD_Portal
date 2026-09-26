@@ -517,7 +517,7 @@ function ManagePage({
           className="mb-4 flex min-h-[52px] w-full items-center gap-3 rounded-xl bg-red-600 px-4 text-left text-sm font-bold text-white"
         >
           <Trash2 size={18} />
-          Delete Account
+          Manage / Delete Account
         </button>
         {MANAGE_GROUP_ORDER.map(({ group, label }) => {
           const groupIcons = icons.filter(i => i.group === group && !MANAGE_HIDDEN_KEYS.has(i.key) && i.key !== 'timesheet');
