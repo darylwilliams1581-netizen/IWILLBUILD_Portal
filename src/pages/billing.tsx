@@ -556,7 +556,7 @@ export default function BillingPage() {
           <div className="rounded-2xl border border-slate-200 bg-white p-5">
             <h1 className="text-lg font-bold text-slate-900">No purchases in the app</h1>
             <p className="mt-2 text-sm leading-6 text-slate-600">
-              IWILLBUILD on iPhone is free. A construction company is billed on iwillbuild.com. The owner assigns seats. This screen does not start a subscription.
+              The iPhone app is free. This screen does not start a subscription. An existing company plan can be cancelled here. It opens in Safari, not in the App Store.
             </p>
             {subInfo && (
               <p className="mt-3 text-sm font-semibold text-slate-800">
@@ -565,18 +565,17 @@ export default function BillingPage() {
             )}
             {error && <p className="mt-3 text-sm text-red-700">{error}</p>}
           </div>
-          {isOwner ? (
+          {isOwner && subInfo?.stripeCustomerId ? (
             <button
               type="button"
               disabled={portalLoading}
-              onClick={() => {
-                if (subInfo?.stripeCustomerId) void handleManageBilling();
-                else openExternalUrl('https://iwillbuild.com');
-              }}
-              className="min-h-[48px] rounded-xl bg-violet-600 px-4 text-sm font-bold text-white disabled:opacity-60"
+              onClick={() => void handleManageBilling()}
+              className="min-h-[48px] rounded-xl bg-slate-900 px-4 text-sm font-bold text-white disabled:opacity-60"
             >
-              {portalLoading ? 'Opening…' : subInfo?.stripeCustomerId ? 'Open billing website' : 'Open iwillbuild.com'}
+              {portalLoading ? 'Opening…' : 'Cancel or change seats'}
             </button>
+          ) : isOwner ? (
+            <p className="text-sm text-slate-600">This company has no paid plan to cancel in the app.</p>
           ) : (
             <p className="text-sm text-slate-600">Ask your company owner to change or cancel the company plan.</p>
           )}

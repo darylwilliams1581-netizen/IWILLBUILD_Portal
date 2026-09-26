@@ -1,7 +1,7 @@
 /**
  * @vitest-environment jsdom
  */
-import { fireEvent, render, screen } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const controls = vi.hoisted(() => ({
@@ -86,13 +86,14 @@ describe('NativeSubscriptionGate', () => {
     expect(screen.queryByTestId('native-tab-bar')).not.toBeInTheDocument();
   });
 
-  it('opens billing in the system browser', () => {
+  it('does not link a paused account to the website checkout', () => {
     controls.subscription.status = 'trial_expired';
     controls.subscription.isViewOnly = true;
     render(<NativeSubscriptionGate><div>Native shell</div></NativeSubscriptionGate>);
 
-    fireEvent.click(screen.getByRole('button', { name: /open company website/i }));
-    expect(controls.openExternalUrl).toHaveBeenCalledWith('https://iwillbuild.com/billing');
+    expect(screen.queryByRole('button', { name: /open company website|subscribe|billing/i })).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /log out/i })).toBeVisible();
+    expect(controls.openExternalUrl).not.toHaveBeenCalled();
   });
 
   it('clears cached status, signs out and redirects to login', async () => {

@@ -3,6 +3,7 @@ import { AlertTriangle, CalendarClock, CreditCard, X, RotateCcw, Info } from 'lu
 import { useEffect, useRef, useState } from 'react';
 import { useSubscriptionGate } from '@/lib/useSubscriptionGate';
 import { usePermissions } from '@/lib/usePermissions';
+import { isNativeApp } from '@/lib/native-routing';
 
 type ViewOnlyBannerProps = {
   variant?: 'desktop' | 'mobile';
@@ -30,6 +31,7 @@ export default function ViewOnlyBanner({ variant = 'mobile' }: ViewOnlyBannerPro
   const [dismissed, setDismissed] = useState(false);
   const bannerRef = useRef<HTMLDivElement>(null);
   const canManageBilling = role === 'owner' || role === 'admin';
+  const native = isNativeApp;
   const visible = !isLoading && !dismissed && !!status && status !== 'active' && status !== 'trial' && status !== 'no_company';
 
   useEffect(() => {
@@ -74,13 +76,21 @@ export default function ViewOnlyBanner({ variant = 'mobile' }: ViewOnlyBannerPro
         <CalendarClock className="h-5 w-5 mt-0.5 shrink-0" />
         <div className="flex-1 min-w-0">
           <p className="font-semibold text-sm leading-snug">
-            Your subscription is scheduled to cancel on {fmtDate(currentPeriodEnd)}.
+            {native
+              ? `This company plan ends on ${fmtDate(currentPeriodEnd)}.`
+              : `Your subscription is scheduled to cancel on ${fmtDate(currentPeriodEnd)}.`}
           </p>
           <p className="text-xs mt-0.5 opacity-90 leading-snug">
-            You have full access until then. Reactivate any time to keep your subscription.
+            {native
+              ? 'You still have access until then. The company owner manages this outside the app.'
+              : 'You have full access until then. Reactivate any time to keep your subscription.'}
           </p>
         </div>
-        {billingAction('Reactivate', RotateCcw, 'text-amber-700 hover:bg-amber-50')}
+        {native
+          ? (canManageBilling
+            ? billingAction('Account status', Info, 'text-amber-700 hover:bg-amber-50')
+            : <span className="shrink-0 text-xs font-semibold opacity-95">Ask your company owner</span>)
+          : billingAction('Reactivate', RotateCcw, 'text-amber-700 hover:bg-amber-50')}
         <button onClick={() => setDismissed(true)} className="shrink-0 p-1 rounded hover:bg-amber-400 transition-colors opacity-80 hover:opacity-100" aria-label="Dismiss">
           <X className="h-4 w-4" />
         </button>
@@ -96,13 +106,19 @@ export default function ViewOnlyBanner({ variant = 'mobile' }: ViewOnlyBannerPro
         <AlertTriangle className="h-5 w-5 mt-0.5 shrink-0" />
         <div className="flex-1 min-w-0">
           <p className="font-semibold text-sm leading-snug">
-            Your last payment failed. Update your payment method within {daysText}.
+            {native ? 'The company payment needs attention.' : `Your last payment failed. Update your payment method within ${daysText}.`}
           </p>
           <p className="text-xs mt-0.5 opacity-90 leading-snug">
-            Your account remains fully active during this grace period. After that, it becomes view-only.
+            {native
+              ? 'Access stays on during the grace period. The owner handles payment outside the app.'
+              : 'Your account remains fully active during this grace period. After that, it becomes view-only.'}
           </p>
         </div>
-        {billingAction('Update Payment', CreditCard, 'text-amber-700 hover:bg-amber-50')}
+        {native
+          ? (canManageBilling
+            ? billingAction('Account status', Info, 'text-amber-700 hover:bg-amber-50')
+            : <span className="shrink-0 text-xs font-semibold opacity-95">Ask your company owner</span>)
+          : billingAction('Update Payment', CreditCard, 'text-amber-700 hover:bg-amber-50')}
         <button onClick={() => setDismissed(true)} className="shrink-0 p-1 rounded hover:bg-amber-500 transition-colors opacity-80 hover:opacity-100" aria-label="Dismiss">
           <X className="h-4 w-4" />
         </button>
@@ -116,7 +132,32 @@ export default function ViewOnlyBanner({ variant = 'mobile' }: ViewOnlyBannerPro
     body: string;
     cta: string;
     icon: typeof CreditCard;
-  }> = {
+  }> = native ? {
+    trial_expired: {
+      title: 'This company account is view-only.',
+      body: 'The app cannot start or renew a plan. The company owner handles billing outside the app.',
+      cta: 'Account status',
+      icon: Info
+    },
+    cancelled: {
+      title: 'This company plan has ended. The account is view-only.',
+      body: 'Records are still here. The owner manages the plan outside the app.',
+      cta: 'Account status',
+      icon: Info
+    },
+    past_due: {
+      title: 'The company payment is overdue.',
+      body: 'The account is view-only. The owner handles payment outside the app.',
+      cta: 'Account status',
+      icon: Info
+    },
+    suspended: {
+      title: 'This company account is suspended.',
+      body: 'The account is view-only. Ask the company owner.',
+      cta: 'Account status',
+      icon: Info
+    }
+  } : {
     trial_expired: {
       title: 'Your free trial has ended.',
       body: 'Your account is now view-only. You can browse your data and download files, but cannot create or edit anything.',
@@ -142,12 +183,17 @@ export default function ViewOnlyBanner({ variant = 'mobile' }: ViewOnlyBannerPro
       icon: Info
     }
   };
-  const msg = viewOnlyMessages[status ?? ''] ?? {
+  const msg = viewOnlyMessages[status ?? ''] ?? (native ? {
+    title: 'This company account is view-only.',
+    body: 'The app cannot sell a plan. Ask the company owner.',
+    cta: 'Account status',
+    icon: Info
+  } : {
     title: 'Your subscription is inactive.',
     body: 'Your account is now view-only. Subscribe to continue creating and editing work.',
     cta: 'Subscribe',
     icon: CreditCard
-  };
+  });
   const CtaIcon = msg.icon;
   return <div ref={bannerRef} role="alert" className={`w-full bg-red-600 text-white px-4 py-3 items-start gap-3 z-50 shadow-md ${layoutClass}`} style={{
     borderBottom: '2px solid rgba(0,0,0,0.2)'

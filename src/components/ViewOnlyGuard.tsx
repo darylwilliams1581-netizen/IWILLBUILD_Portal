@@ -37,8 +37,9 @@
 
 import { type ReactNode, cloneElement, isValidElement } from 'react';
 import { useSubscriptionGate } from '@/lib/useSubscriptionGate';
+import { isNativeApp } from '@/lib/native-routing';
 
-const DEFAULT_TOOLTIP = 'Subscribe to continue';
+const DEFAULT_TOOLTIP = isNativeApp ? 'Ask your company owner' : 'Subscribe to continue';
 
 // ── Hook ──────────────────────────────────────────────────────────────────────
 

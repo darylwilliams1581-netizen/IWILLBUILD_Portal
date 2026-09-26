@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Helmet } from '@dr.pogodin/react-helmet';
 import { Link, useNavigate, useLocation } from "react-router";
-import { Eye, EyeOff, ArrowRight, Lock, Mail, AlertCircle, Smartphone, KeyRound, MailWarning, RefreshCw, Users, CheckCircle2, ShieldCheck, ExternalLink, MessageSquare } from 'lucide-react';
+import { Eye, EyeOff, ArrowRight, Lock, Mail, AlertCircle, Smartphone, KeyRound, MailWarning, RefreshCw, Users, CheckCircle2, ShieldCheck, MessageSquare } from 'lucide-react';
 import { useSession, authClient, signIn, consumeTwoFactorRedirect } from '@/lib/auth/auth-client';
 import { InputOTP, InputOTPGroup, InputOTPSlot } from '@/components/ui/input-otp';
 import ForcedPasswordChangeModal from '@/components/auth/ForcedPasswordChangeModal';
@@ -11,7 +11,7 @@ import { invalidateMeCache } from '@/lib/usePermissions';
 import { invalidateSubscriptionCache } from '@/lib/useSubscriptionGate';
 import { finishLoginNavigation } from '@/lib/auth/login-navigation';
 
-import { isNativeApp, WEB_PORTAL_URL, openExternalUrl } from '@/lib/native-routing';
+import { isNativeApp } from '@/lib/native-routing';
 
 // ── Safe auth logger ──────────────────────────────────────────────────────────
 function authLog(event: string, data?: Record<string, unknown>) {
@@ -972,13 +972,11 @@ export default function LoginPage() {
         </div>
 
         <div className="mt-4 flex flex-col items-center gap-3">
-          {/* Native app: subscribe / create account link */}
-          {isNativeApp ? <>
-              <button type="button" onClick={() => openExternalUrl(WEB_PORTAL_URL)} className="flex items-center gap-1.5 text-xs text-white/40 hover:text-primary transition-colors font-medium">
-                <ExternalLink size={12} />
-                Company accounts are created on iwillbuild.com
-              </button>
-            </> : <button onClick={() => goBack(navigate, '/')} className="text-xs text-white/30 hover:text-primary transition-colors">
+          {isNativeApp ? (
+            <p className="text-xs text-white/40 text-center leading-relaxed">
+              Sign in with the account your company owner created. This app does not sell subscriptions.
+            </p>
+          ) : <button onClick={() => goBack(navigate, '/')} className="text-xs text-white/30 hover:text-primary transition-colors">
               &larr; Back to home
             </button>}
         </div>
