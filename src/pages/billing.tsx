@@ -12,6 +12,7 @@ import { useNavigate } from "react-router";
 import { usePermissions } from '@/lib/usePermissions';
 import { isNativeApp, openExternalUrl } from '@/lib/native-routing';
 import ManageBackButton from '@/components/ManageBackButton';
+import AppleSubscribeCard from '@/components/billing/AppleSubscribeCard';
 import DesktopTopBar from '@/components/DesktopTopBar';
 import DesktopDock from '@/components/DesktopDock';
 import PortalSidebar from '@/components/PortalSidebar';
@@ -554,9 +555,9 @@ export default function BillingPage() {
         </div>
         <div className="px-4 py-6 max-w-lg mx-auto w-full flex flex-col gap-4" style={{ paddingBottom: 'max(env(safe-area-inset-bottom), 24px)' }}>
           <div className="rounded-2xl border border-slate-200 bg-white p-5">
-            <h1 className="text-lg font-bold text-slate-900">No purchases in the app</h1>
+            <h1 className="text-lg font-bold text-slate-900">Subscribe with Apple</h1>
             <p className="mt-2 text-sm leading-6 text-slate-600">
-              The iPhone app is free. This screen does not start a subscription. An existing company plan can be cancelled here. It opens in Safari, not in the App Store.
+              The company plan is purchased and cancelled through Apple. This screen does not open a card payment.
             </p>
             {subInfo && (
               <p className="mt-3 text-sm font-semibold text-slate-800">
@@ -565,20 +566,7 @@ export default function BillingPage() {
             )}
             {error && <p className="mt-3 text-sm text-red-700">{error}</p>}
           </div>
-          {isOwner && subInfo?.stripeCustomerId ? (
-            <button
-              type="button"
-              disabled={portalLoading}
-              onClick={() => void handleManageBilling()}
-              className="min-h-[48px] rounded-xl bg-slate-900 px-4 text-sm font-bold text-white disabled:opacity-60"
-            >
-              {portalLoading ? 'Opening…' : 'Cancel or change seats'}
-            </button>
-          ) : isOwner ? (
-            <p className="text-sm text-slate-600">This company has no paid plan to cancel in the app.</p>
-          ) : (
-            <p className="text-sm text-slate-600">Ask your company owner to change or cancel the company plan.</p>
-          )}
+          <AppleSubscribeCard />
         </div>
       </div>
     );

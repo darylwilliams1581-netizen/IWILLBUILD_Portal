@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react';
 import { useState } from 'react';
 import { LogOut, PauseCircle } from 'lucide-react';
+import AppleSubscribeCard from '@/components/billing/AppleSubscribeCard';
 
 import { signOut, useSession } from '@/lib/auth/auth-client';
 import { resetDiagnosticBuffer } from '@/lib/diagnosticBuffer';
@@ -65,8 +66,11 @@ function PausedScreen() {
         </div>
         <h1 className="text-2xl font-bold tracking-tight">IWILLBUILD is paused</h1>
         <p className="mt-3 text-sm leading-6 text-slate-300">
-          This company account is paused. The owner manages billing outside the app. There is nothing to buy here.
+          This company account is paused. Subscribe with Apple to continue. There is no card payment in the app.
         </p>
+        <div className="mt-6 text-left">
+          <AppleSubscribeCard />
+        </div>
 
         <div className="mt-7 grid gap-3">
           <button

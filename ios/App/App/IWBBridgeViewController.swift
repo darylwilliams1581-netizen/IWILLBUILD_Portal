@@ -10,5 +10,6 @@ class IWBBridgeViewController: CAPBridgeViewController {
     override func capacitorDidLoad() {
         super.capacitorDidLoad()
         bridge?.registerPluginInstance(IWBNativeLensPlugin())
+        bridge?.registerPluginInstance(IWBStorePlugin())
     }
 }

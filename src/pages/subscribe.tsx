@@ -3,6 +3,7 @@ import { Helmet } from '@dr.pogodin/react-helmet';
 import { CheckCircle2, ChevronRight, Users, User, Zap, Crown, ArrowLeft } from 'lucide-react';
 import { isNative } from '@/lib/capacitor-plugins';
 import { goBack } from '@/lib/navigation';
+import AppleSubscribeCard from '@/components/billing/AppleSubscribeCard';
 
 // ── Plan data ─────────────────────────────────────────────────────────────────
 
@@ -61,10 +62,13 @@ export default function SubscribePage() {
           <title>Company accounts — IWIllBUIlD</title>
           <meta name="robots" content="noindex,nofollow" />
         </Helmet>
-        <h1 className="text-2xl font-black">Nothing to buy in this app</h1>
+        <h1 className="text-2xl font-black">Subscribe with Apple</h1>
         <p className="mt-3 max-w-sm text-sm leading-6 text-white/60">
-          IWILLBUILD on iPhone is free. This screen does not start a trial or take payment. Sign in with the account your company owner created.
+          The company plan is an App Store subscription. This screen does not take a card payment.
         </p>
+        <div className="mt-6 w-full max-w-sm text-left">
+          <AppleSubscribeCard />
+        </div>
         <Link to="/login" className="mt-6 inline-flex min-h-[48px] items-center justify-center rounded-xl bg-violet-600 px-5 text-sm font-bold">Sign in</Link>
       </div>
     );
