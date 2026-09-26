@@ -7,6 +7,7 @@ import { signIn } from '@/lib/auth/auth-client';
 import { INDUSTRY_LIST, type IndustryId } from '@/lib/industry-config';
 import { goBack } from '@/lib/navigation';
 import { markTermsAccepted } from '@/components/TermsAcceptanceGate';
+import { isNative } from '@/lib/capacitor-plugins';
 
 // ── Password policy ───────────────────────────────────────────────────────────
 function getPasswordStrength(pw: string) {
@@ -109,6 +110,17 @@ function StepDots({
 
 // ── Main component ────────────────────────────────────────────────────────────
 export default function SignupPage() {
+  if (isNative()) {
+    return (
+      <div className="min-h-screen bg-[#0F1117] text-white flex flex-col items-center justify-center px-6 text-center" style={{ paddingTop: 'max(env(safe-area-inset-top), 24px)', paddingBottom: 'max(env(safe-area-inset-bottom), 24px)' }}>
+        <h1 className="text-2xl font-black">Accounts are created for a company</h1>
+        <p className="mt-3 max-w-sm text-sm leading-6 text-white/60">
+          This app does not sell a plan and does not open a personal subscription. Sign in with the account your company owner created.
+        </p>
+        <Link to="/login" className="mt-6 inline-flex min-h-[48px] items-center justify-center rounded-xl bg-violet-600 px-5 text-sm font-bold">Sign in</Link>
+      </div>
+    );
+  }
   const navigate = useNavigate();
 
   // Step 1 — company

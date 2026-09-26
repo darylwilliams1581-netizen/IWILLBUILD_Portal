@@ -893,12 +893,12 @@ export default function LoginPage() {
                     </Link>
                   </p>
 
-                  <p className="text-center text-xs text-white/35 mt-1">
+                  {!isNativeApp && <p className="text-center text-xs text-white/35 mt-1">
                     Don&apos;t have an account?{' '}
                     <Link to="/signup" className="text-primary hover:text-violet-400 font-medium transition-colors">
                       Create one
                     </Link>
-                  </p>
+                  </p>}
                   <p className="text-center text-xs text-white/25 mt-1">
                     <Link to="/login-help" className="hover:text-white/50 transition-colors">
                       Having trouble logging in?
