@@ -511,6 +511,14 @@ function ManagePage({
       paddingBottom: 'max(env(safe-area-inset-bottom), 16px)'
     }}>
       <div className="mx-auto w-full" style={{ maxWidth: 480 }}>
+        <button
+          type="button"
+          onClick={() => onNavigate('/settings?tab=account')}
+          className="mb-4 flex min-h-[52px] w-full items-center gap-3 rounded-xl bg-red-600 px-4 text-left text-sm font-bold text-white"
+        >
+          <Trash2 size={18} />
+          Delete Account
+        </button>
         {MANAGE_GROUP_ORDER.map(({ group, label }) => {
           const groupIcons = icons.filter(i => i.group === group && !MANAGE_HIDDEN_KEYS.has(i.key) && i.key !== 'timesheet');
           if (groupIcons.length === 0) return null;
