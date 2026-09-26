@@ -91,7 +91,7 @@ describe('NativeSubscriptionGate', () => {
     controls.subscription.isViewOnly = true;
     render(<NativeSubscriptionGate><div>Native shell</div></NativeSubscriptionGate>);
 
-    fireEvent.click(screen.getByRole('button', { name: /manage billing/i }));
+    fireEvent.click(screen.getByRole('button', { name: /open company website/i }));
     expect(controls.openExternalUrl).toHaveBeenCalledWith('https://iwillbuild.com/billing');
   });
 

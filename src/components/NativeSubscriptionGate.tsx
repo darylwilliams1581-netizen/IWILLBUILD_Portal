@@ -66,7 +66,7 @@ function PausedScreen() {
         </div>
         <h1 className="text-2xl font-bold tracking-tight">IWILLBUILD is paused</h1>
         <p className="mt-3 text-sm leading-6 text-slate-300">
-          Your subscription has ended. You can view records on iwillbuild.com for a limited time.
+          This company account is paused. Billing is handled on the website, not in the app.
         </p>
 
         <div className="mt-7 grid gap-3">
@@ -76,7 +76,7 @@ function PausedScreen() {
             className="flex min-h-[48px] w-full items-center justify-center gap-2 rounded-xl bg-violet-600 px-4 py-3 text-sm font-bold text-white transition-colors hover:bg-violet-500 active:bg-violet-700"
           >
             <ExternalLink size={18} aria-hidden="true" />
-            Manage billing on iwillbuild.com
+            Open company website
           </button>
           <button
             type="button"

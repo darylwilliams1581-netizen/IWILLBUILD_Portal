@@ -1,7 +1,8 @@
 import { Link, useNavigate } from "react-router";
 import { Helmet } from '@dr.pogodin/react-helmet';
-import { CheckCircle2, ChevronRight, Users, User, Zap, Crown, ArrowLeft } from 'lucide-react';
+import { CheckCircle2, ChevronRight, Users, User, Zap, Crown, ArrowLeft, ExternalLink } from 'lucide-react';
 import { isNative } from '@/lib/capacitor-plugins';
+import { openExternalUrl, WEB_PORTAL_URL } from '@/lib/native-routing';
 import { goBack } from '@/lib/navigation';
 
 // ── Plan data ─────────────────────────────────────────────────────────────────
@@ -54,6 +55,28 @@ const PLANS = [{
 export default function SubscribePage() {
   const navigate = useNavigate();
   const native = isNative();
+  if (native) {
+    return (
+      <div className="min-h-screen bg-gray-950 text-white flex flex-col items-center justify-center px-6 text-center" style={{ paddingTop: 'max(env(safe-area-inset-top), 24px)', paddingBottom: 'max(env(safe-area-inset-bottom), 24px)' }}>
+        <Helmet>
+          <title>Company accounts — IWIllBUIlD</title>
+          <meta name="robots" content="noindex,nofollow" />
+        </Helmet>
+        <h1 className="text-2xl font-black">Company accounts only</h1>
+        <p className="mt-3 max-w-sm text-sm leading-6 text-white/60">
+          The iPhone app is free. A construction business subscribes on the website, then the owner assigns seats to the crew. There is no purchase inside the app.
+        </p>
+        <button
+          type="button"
+          onClick={() => openExternalUrl(WEB_PORTAL_URL)}
+          className="mt-6 inline-flex min-h-[48px] items-center justify-center gap-2 rounded-xl bg-violet-600 px-5 text-sm font-bold"
+        >
+          <ExternalLink size={16} /> Open iwillbuild.com
+        </button>
+        <Link to="/login" className="mt-4 text-sm font-semibold text-violet-300">Sign in</Link>
+      </div>
+    );
+  }
   return <>
       <Helmet>
         <title>Subscribe — IWIllBUIlD</title>

@@ -14,6 +14,7 @@ import DesktopTopBar from '@/components/DesktopTopBar';
 import DesktopDock from '@/components/DesktopDock';
 import PortalSidebar from '@/components/PortalSidebar';
 import ManageBackButton from '@/components/ManageBackButton';
+import { DeleteAccountEntry } from '@/components/settings/DeleteAccountSheet';
 const inputClass = 'w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-colors bg-white';
 const labelClass = 'block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5';
 function formatBytes(bytes: number): string {
@@ -315,6 +316,7 @@ export default function ProfilePage() {
       </div>
 
       <div className="flex-1 px-4 py-6 max-w-2xl mx-auto w-full flex flex-col gap-6">
+        <DeleteAccountEntry />
 
         {/* ── Profile card ─────────────────────────────────────────────── */}
         <section>

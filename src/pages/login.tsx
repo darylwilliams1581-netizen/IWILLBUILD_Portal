@@ -974,13 +974,9 @@ export default function LoginPage() {
         <div className="mt-4 flex flex-col items-center gap-3">
           {/* Native app: subscribe / create account link */}
           {isNativeApp ? <>
-              <Link to="/subscribe" className="flex items-center gap-1.5 text-xs text-white/40 hover:text-primary transition-colors font-medium">
-                <Users size={12} />
-                New to IWILLBUILD? Start a free trial
-              </Link>
-              <button type="button" onClick={() => openExternalUrl(WEB_PORTAL_URL)} className="flex items-center gap-1.5 text-xs text-white/25 hover:text-primary transition-colors">
+              <button type="button" onClick={() => openExternalUrl(WEB_PORTAL_URL)} className="flex items-center gap-1.5 text-xs text-white/40 hover:text-primary transition-colors font-medium">
                 <ExternalLink size={12} />
-                Open web portal
+                Company accounts are created on iwillbuild.com
               </button>
             </> : <button onClick={() => goBack(navigate, '/')} className="text-xs text-white/30 hover:text-primary transition-colors">
               &larr; Back to home

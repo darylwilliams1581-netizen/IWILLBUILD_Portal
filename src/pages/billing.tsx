@@ -10,6 +10,7 @@ import { CreditCard, CheckCircle2, AlertTriangle, Clock, Zap, Users, User, Crown
 import { motion, AnimatePresence } from 'motion/react';
 import { useNavigate } from "react-router";
 import { usePermissions } from '@/lib/usePermissions';
+import { isNativeApp, openExternalUrl } from '@/lib/native-routing';
 import ManageBackButton from '@/components/ManageBackButton';
 import DesktopTopBar from '@/components/DesktopTopBar';
 import DesktopDock from '@/components/DesktopDock';
@@ -420,7 +421,8 @@ export default function BillingPage() {
         setError(data.error ?? 'Could not open billing portal. Please try again.');
         return;
       }
-      window.location.href = data.url;
+      if (isNativeApp) openExternalUrl(data.url);
+      else window.location.href = data.url;
     } catch {
       setError('Something went wrong opening the billing portal.');
     } finally {
@@ -543,6 +545,45 @@ export default function BillingPage() {
   const isViewOnly = subInfo?.isViewOnly ?? false;
   const hasPaidSub = isActive || isCancelPending;
   const canManage = isAdmin || isOwner;
+  if (isNativeApp) {
+    return (
+      <div className="flex-1 bg-slate-50 flex flex-col">
+        <div className="sticky top-0 z-30 bg-white border-b border-gray-200 px-4 py-3 flex items-center gap-3" style={{ paddingTop: 'max(env(safe-area-inset-top), 12px)' }}>
+          <ManageBackButton />
+          <span className="text-sm font-semibold text-gray-800">Company billing</span>
+        </div>
+        <div className="px-4 py-6 max-w-lg mx-auto w-full flex flex-col gap-4" style={{ paddingBottom: 'max(env(safe-area-inset-bottom), 24px)' }}>
+          <div className="rounded-2xl border border-slate-200 bg-white p-5">
+            <h1 className="text-lg font-bold text-slate-900">No purchases in the app</h1>
+            <p className="mt-2 text-sm leading-6 text-slate-600">
+              IWILLBUILD on iPhone is free. A construction company is billed on iwillbuild.com. The owner assigns seats. This screen does not start a subscription.
+            </p>
+            {subInfo && (
+              <p className="mt-3 text-sm font-semibold text-slate-800">
+                Company status: {planLabel(subInfo.plan)} · {subInfo.status.replaceAll('_', ' ')}
+              </p>
+            )}
+            {error && <p className="mt-3 text-sm text-red-700">{error}</p>}
+          </div>
+          {isOwner ? (
+            <button
+              type="button"
+              disabled={portalLoading}
+              onClick={() => {
+                if (subInfo?.stripeCustomerId) void handleManageBilling();
+                else openExternalUrl('https://iwillbuild.com');
+              }}
+              className="min-h-[48px] rounded-xl bg-violet-600 px-4 text-sm font-bold text-white disabled:opacity-60"
+            >
+              {portalLoading ? 'Opening…' : subInfo?.stripeCustomerId ? 'Open billing website' : 'Open iwillbuild.com'}
+            </button>
+          ) : (
+            <p className="text-sm text-slate-600">Ask your company owner to change or cancel the company plan.</p>
+          )}
+        </div>
+      </div>
+    );
+  }
   return <div className="flex-1 bg-slate-50 flex flex-col lg-portal">
       <PortalSidebar />
       <DesktopTopBar />

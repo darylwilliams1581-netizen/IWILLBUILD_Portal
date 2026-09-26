@@ -14,7 +14,7 @@
 
 import { useState, useRef, useCallback, useEffect, memo, type TouchEvent as ReactTouchEvent } from 'react';
 import { useNavigate, useSearchParams } from "react-router";
-import { LayoutDashboard, Briefcase, Settings2, ShieldCheck, Plus, Car, HardHat, User, LogOut, Users, ChevronDown, Zap, CalendarDays, Map, DollarSign, Wrench } from 'lucide-react';
+import { LayoutDashboard, Briefcase, Settings2, ShieldCheck, Plus, Car, HardHat, User, LogOut, Users, ChevronDown, Zap, CalendarDays, Map, DollarSign, Wrench, Settings, Trash2 } from 'lucide-react';
 import * as Collapsible from '@radix-ui/react-collapsible';
 import DashboardBanner from '@/components/dashboard/DashboardBanner';
 import NotificationList from '@/components/NotificationList';
@@ -25,6 +25,7 @@ import { IconTile } from './IconTile';
 import NewJobModal from '@/components/NewJobModal';
 import { signOut } from '@/lib/auth/auth-client';
 import { invalidateMeCache } from '@/lib/usePermissions';
+import { DeleteAccountDialog } from '@/components/settings/DeleteAccountSheet';
 import SharedJobPickerSheet from '@/components/JobPickerSheet';
 import {
   OPENING_PAGE_FEATURES,
@@ -612,6 +613,8 @@ export default memo(function PagedHomeScreen({
   const [dragDelta, setDragDelta] = useState(0);
   const [isDragging, setIsDragging] = useState(false);
   const [newJobOpen, setNewJobOpen] = useState(false);
+  const [accountMenuOpen, setAccountMenuOpen] = useState(false);
+  const [deleteOpen, setDeleteOpen] = useState(false);
   const touchStartX = useRef<number | null>(null);
   const touchStartY = useRef<number | null>(null);
   const isHorizontalSwipe = useRef<boolean | null>(null);
@@ -730,14 +733,52 @@ export default memo(function PagedHomeScreen({
             <div className="shrink-0">
               <NotificationBell />
             </div>
-            <button
-              onClick={() => navigate('/profile')}
-              className="flex items-center justify-center gap-1.5 h-8 rounded-xl bg-violet-600 border border-violet-500 text-white text-[11px] font-semibold hover:bg-violet-500 active:scale-95 transition-all px-2 shrink-0"
-              aria-label="Profile"
-            >
-              <User size={14} className="text-white shrink-0" />
-              <span className="hidden min-[360px]:inline truncate">Profile</span>
-            </button>
+            <div className="relative shrink-0">
+              <button
+                type="button"
+                onClick={() => setAccountMenuOpen((open) => !open)}
+                className="flex items-center justify-center gap-1.5 h-8 rounded-xl bg-violet-600 border border-violet-500 text-white text-[11px] font-semibold hover:bg-violet-500 active:scale-95 transition-all px-2"
+                aria-label="Account"
+                aria-expanded={accountMenuOpen}
+                aria-haspopup="menu"
+              >
+                <User size={14} className="text-white shrink-0" />
+                <span className="hidden min-[360px]:inline truncate">Account</span>
+              </button>
+              {accountMenuOpen && (
+                <div
+                  role="menu"
+                  className="absolute right-0 top-[calc(100%+6px)] z-40 w-52 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xl"
+                >
+                  <button
+                    type="button"
+                    role="menuitem"
+                    onClick={() => { setAccountMenuOpen(false); navigate('/profile'); }}
+                    className="flex min-h-[44px] w-full items-center gap-2 px-3 text-left text-sm font-semibold text-slate-800 hover:bg-slate-50"
+                  >
+                    <User size={14} /> Profile
+                  </button>
+                  <button
+                    type="button"
+                    role="menuitem"
+                    onClick={() => { setAccountMenuOpen(false); navigate('/settings'); }}
+                    className="flex min-h-[44px] w-full items-center gap-2 px-3 text-left text-sm font-semibold text-slate-800 hover:bg-slate-50"
+                  >
+                    <Settings size={14} /> Settings
+                  </button>
+                  {!isPlatformOwner && (
+                    <button
+                      type="button"
+                      role="menuitem"
+                      onClick={() => { setAccountMenuOpen(false); setDeleteOpen(true); }}
+                      className="flex min-h-[44px] w-full items-center gap-2 px-3 text-left text-sm font-bold text-red-700 hover:bg-red-50"
+                    >
+                      <Trash2 size={14} /> Delete account
+                    </button>
+                  )}
+                </div>
+              )}
+            </div>
             <button
               onClick={async () => {
                 await signOut();
@@ -865,5 +906,6 @@ export default memo(function PagedHomeScreen({
         onSelect={handleJobSelect}
       />
     )}
+    <DeleteAccountDialog open={deleteOpen} onClose={() => setDeleteOpen(false)} />
   </>;
 });
