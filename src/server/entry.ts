@@ -101,6 +101,7 @@ import auth_trusted_devices_deviceId_clear_pin_patch_68 from "./api/auth/trusted
 import auth_validate_reset_token_get_69 from "./api/auth/validate-reset-token/GET";
 import auth_verify_email_post_70 from "./api/auth/verify-email/POST";
 import auth_verify_sms_code_post_71 from "./api/auth/verify-sms-code/POST";
+import auth_apple_post_71b from "./api/auth/apple/POST";
 import auth_action_get_72 from "./api/auth/[action]/GET";
 import auth_action_post_73 from "./api/auth/[action]/POST";
 import auth_action_detail_get_74 from "./api/auth/[action]/[detail]/GET";
@@ -3539,6 +3540,7 @@ app.patch("/api/auth/trusted-devices/:deviceId/clear-pin", auth_trusted_devices_
 app.get("/api/auth/validate-reset-token", auth_validate_reset_token_get_69);
 app.post("/api/auth/verify-email", auth_verify_email_post_70);
 app.post("/api/auth/verify-sms-code", auth_verify_sms_code_post_71);
+app.post("/api/auth/apple", auth_apple_post_71b);
 app.get("/api/auth/:action", auth_action_get_72);
 app.post("/api/auth/:action", auth_action_post_73);
 app.get("/api/auth/:action/:detail", auth_action_detail_get_74);

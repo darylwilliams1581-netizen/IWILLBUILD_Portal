@@ -9,5 +9,10 @@
 	<!-- Background location — required for fleet tracking / drive sessions -->
 	<key>com.apple.developer.location.push</key>
 	<true/>
+
+	<key>com.apple.developer.applesignin</key>
+	<array>
+		<string>Default</string>
+	</array>
 </dict>
 </plist>

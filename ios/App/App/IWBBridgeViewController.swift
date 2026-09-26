@@ -11,5 +11,6 @@ class IWBBridgeViewController: CAPBridgeViewController {
         super.capacitorDidLoad()
         bridge?.registerPluginInstance(IWBNativeLensPlugin())
         bridge?.registerPluginInstance(IWBStorePlugin())
+        bridge?.registerPluginInstance(IWBAppleAuthPlugin())
     }
 }

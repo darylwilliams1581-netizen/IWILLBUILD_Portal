@@ -190,6 +190,33 @@ export default function LoginPage() {
     const lower = msg.toLowerCase();
     return lower.includes('verif') || lower.includes('not verified') || lower.includes('confirm your email') || lower.includes('email not confirmed');
   }
+  async function handleAppleSignIn() {
+    setError('');
+    setLoading(true);
+    try {
+      const { registerPlugin } = await import('@capacitor/core');
+      const appleAuth = registerPlugin<{ signIn: () => Promise<{ status?: string; identityToken?: string; nonce?: string }> }>('IWBAppleAuth');
+      const result = await appleAuth.signIn();
+      if (result.status === 'cancelled') return;
+      const response = await fetch('/api/auth/apple', {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ identityToken: result.identityToken, nonce: result.nonce }),
+      });
+      const body = await response.json().catch(() => ({})) as { error?: string };
+      if (!response.ok) {
+        setError(body.error || 'Apple sign-in failed.');
+        return;
+      }
+      window.location.assign('/home');
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Apple sign-in failed.');
+    } finally {
+      setLoading(false);
+    }
+  }
+
   async function handleResendVerification() {
     if (!email.trim()) return;
     setResendState('sending');
@@ -962,6 +989,22 @@ export default function LoginPage() {
                 </div>
               </motion.form>}
           </AnimatePresence>} {/* end !needs2FA */}
+
+          {isNativeApp && !needs2FA && (
+            <div className="px-8 pb-4">
+              <button
+                type="button"
+                disabled={loading}
+                onClick={() => void handleAppleSignIn()}
+                className="flex min-h-[48px] w-full items-center justify-center rounded-md bg-white text-sm font-semibold text-black disabled:opacity-60"
+              >
+                Sign in with Apple
+              </button>
+              <p className="mt-2 text-center text-[11px] leading-4 text-white/40">
+                Uses your Apple ID instead of a password and text code. The Apple email must match the company account.
+              </p>
+            </div>
+          )}
 
           {/* Footer */}
           <div className="px-8 py-4 bg-black/20 border-t border-white/5 text-center">
