@@ -110,17 +110,7 @@ function StepDots({
 
 // ── Main component ────────────────────────────────────────────────────────────
 export default function SignupPage() {
-  if (isNative()) {
-    return (
-      <div className="min-h-screen bg-[#0F1117] text-white flex flex-col items-center justify-center px-6 text-center" style={{ paddingTop: 'max(env(safe-area-inset-top), 24px)', paddingBottom: 'max(env(safe-area-inset-bottom), 24px)' }}>
-        <h1 className="text-2xl font-black">Accounts are created for a company</h1>
-        <p className="mt-3 max-w-sm text-sm leading-6 text-white/60">
-          This app does not sell a plan and does not open a personal subscription. Sign in with the account your company owner created.
-        </p>
-        <Link to="/login" className="mt-6 inline-flex min-h-[48px] items-center justify-center rounded-xl bg-violet-600 px-5 text-sm font-bold">Sign in</Link>
-      </div>
-    );
-  }
+  const native = isNative();
   const navigate = useNavigate();
 
   // Step 1 — company
@@ -159,6 +149,12 @@ export default function SignupPage() {
       return;
     }
     setError('');
+    if (native) {
+      setSelectedPlan('team');
+      setTrialOnly(true);
+      setStep(3);
+      return;
+    }
     setStep(2);
   }
   function goStep3() {
@@ -621,7 +617,7 @@ export default function SignupPage() {
                         <button type="button" onClick={() => {
                       setError('');
                       setTrialOnly(false);
-                      setStep(2);
+                      setStep(native ? 1 : 2);
                     }} className="flex-1 py-2.5 rounded-md border border-white/10 text-sm font-semibold text-white/50 hover:text-white hover:border-white/20 transition-colors duration-150">
                           Back
                         </button>
@@ -629,7 +625,7 @@ export default function SignupPage() {
                           {loading ? <span className="flex items-center gap-2">
                               <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                               Creating…
-                            </span> : <>Start Free Trial <ChevronRight size={15} /></>}
+                            </span> : <>{native ? 'Create account' : 'Start Free Trial'} <ChevronRight size={15} /></>}
                         </button>
                       </div>
 

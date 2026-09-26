@@ -893,12 +893,12 @@ export default function LoginPage() {
                     </Link>
                   </p>
 
-                  {!isNativeApp && <p className="text-center text-xs text-white/35 mt-1">
+                  <p className="text-center text-xs text-white/35 mt-1">
                     Don&apos;t have an account?{' '}
                     <Link to="/signup" className="text-primary hover:text-violet-400 font-medium transition-colors">
                       Create one
                     </Link>
-                  </p>}
+                  </p>
                   <p className="text-center text-xs text-white/25 mt-1">
                     <Link to="/login-help" className="hover:text-white/50 transition-colors">
                       Having trouble logging in?
@@ -974,7 +974,7 @@ export default function LoginPage() {
         <div className="mt-4 flex flex-col items-center gap-3">
           {isNativeApp ? (
             <p className="text-xs text-white/40 text-center leading-relaxed">
-              Sign in with the account your company owner created. This app does not sell subscriptions.
+              Create your company account here. This app does not sell a subscription.
             </p>
           ) : <button onClick={() => goBack(navigate, '/')} className="text-xs text-white/30 hover:text-primary transition-colors">
               &larr; Back to home
