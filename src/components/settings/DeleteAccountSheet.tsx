@@ -73,7 +73,7 @@ export function DeleteAccountDialog({
     }
   }
 
-  if (!open || me?.isPlatformOwner) return null;
+  if (!open) return null;
 
   return (
     <div className="fixed inset-0 z-[100] flex items-end justify-center bg-slate-900/60 sm:items-center sm:p-4" role="dialog" aria-modal="true" aria-labelledby="delete-account-title">
@@ -159,9 +159,7 @@ export function DeleteAccountDialog({
 }
 
 export function DeleteAccountEntry() {
-  const { me } = useMe();
   const [open, setOpen] = useState(false);
-  if (me?.isPlatformOwner) return null;
   return (
     <>
       <div className="rounded-xl border border-red-200 bg-white p-4 sm:p-5">

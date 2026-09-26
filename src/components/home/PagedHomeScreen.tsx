@@ -766,16 +766,14 @@ export default memo(function PagedHomeScreen({
                   >
                     <Settings size={14} /> Settings
                   </button>
-                  {!isPlatformOwner && (
-                    <button
-                      type="button"
-                      role="menuitem"
-                      onClick={() => { setAccountMenuOpen(false); setDeleteOpen(true); }}
-                      className="flex min-h-[44px] w-full items-center gap-2 px-3 text-left text-sm font-bold text-red-700 hover:bg-red-50"
-                    >
-                      <Trash2 size={14} /> Delete account
-                    </button>
-                  )}
+                  <button
+                    type="button"
+                    role="menuitem"
+                    onClick={() => { setAccountMenuOpen(false); setDeleteOpen(true); }}
+                    className="flex min-h-[44px] w-full items-center gap-2 px-3 text-left text-sm font-bold text-red-700 hover:bg-red-50"
+                  >
+                    <Trash2 size={14} /> Delete account
+                  </button>
                 </div>
               )}
             </div>

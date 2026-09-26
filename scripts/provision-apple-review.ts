@@ -129,14 +129,14 @@ async function run() {
     // Omit it on INSERT — it defaults to 0 in the DB.
     await db.execute(sql`
       INSERT INTO profiles (user_id, company_id, role, created_at, updated_at)
-      VALUES (${userId}, ${companyId}, 'admin', NOW(), NOW())
+      VALUES (${userId}, ${companyId}, 'owner', NOW(), NOW())
     `);
   } else {
     profAction = 'updated';
     // Use raw SQL to set must_change_password=0 safely
     await db.execute(sql`
       UPDATE profiles
-      SET company_id=${companyId}, role='admin', updated_at=NOW()
+      SET company_id=${companyId}, role='owner', updated_at=NOW()
       WHERE user_id=${userId}
     `);
     // Clear must_change_password via raw SQL (column exists in DB but not Drizzle schema)
@@ -144,6 +144,9 @@ async function run() {
       UPDATE profiles SET must_change_password=0 WHERE user_id=${userId}
     `).catch(() => { /* column may not exist in all schema versions — non-fatal */ });
   }
+  await db.execute(sql`
+    UPDATE profiles SET platform_role=NULL WHERE user_id=${userId}
+  `).catch(() => { /* review account must never be a platform developer */ });
 
   // ── 4. Seed starter pack (new company only) ───────────────────────────────
   let seedResult = 'skipped (existing company — data preserved)';
