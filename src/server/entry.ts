@@ -110,6 +110,7 @@ import billing_cancellation_feedback_post_77 from "./api/billing/cancellation-fe
 import billing_customer_portal_post_78 from "./api/billing/customer-portal/POST";
 import billing_reactivate_subscription_post_79 from "./api/billing/reactivate-subscription/POST";
 import billing_upgrade_subscription_post_80 from "./api/billing/upgrade-subscription/POST";
+import billing_apple_confirm_post_80b from "./api/billing/apple/confirm/POST";
 import bug_reports_get_81 from "./api/bug-reports/GET";
 import bug_reports_post_82 from "./api/bug-reports/POST";
 import bug_reports_my_reports_get_83 from "./api/bug-reports/my-reports/GET";
@@ -3547,6 +3548,7 @@ app.post("/api/billing/cancellation-feedback", billing_cancellation_feedback_pos
 app.post("/api/billing/customer-portal", billing_customer_portal_post_78);
 app.post("/api/billing/reactivate-subscription", billing_reactivate_subscription_post_79);
 app.post("/api/billing/upgrade-subscription", billing_upgrade_subscription_post_80);
+app.post("/api/billing/apple/confirm", billing_apple_confirm_post_80b);
 app.get("/api/bug-reports", bug_reports_get_81);
 app.post("/api/bug-reports", bug_reports_post_82);
 app.get("/api/bug-reports/my-reports", bug_reports_my_reports_get_83);

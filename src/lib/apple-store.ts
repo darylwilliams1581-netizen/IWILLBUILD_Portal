@@ -67,7 +67,6 @@ async function confirmAppleTransaction(jws: string): Promise<void> {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ jws, productId: APPLE_COMPANY_MONTHLY_ID }),
   });
-  if (response.status === 404 || response.status === 501) return;
   if (!response.ok) {
     const body = await response.json().catch(() => ({})) as { error?: string };
     throw new Error(body.error || 'The App Store payment succeeded, but the company record was not updated.');

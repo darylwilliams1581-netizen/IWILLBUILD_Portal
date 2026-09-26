@@ -161,6 +161,10 @@ function resolveCompanyStatus(company: CompanyRow): SubscriptionInfo {
 
   // ── Active paid subscription ──────────────────────────────────────────────
   if (rawStatus === 'active') {
+    const appleBacked = (company.stripeSubscriptionId ?? '').startsWith('apple:');
+    if (appleBacked && currentPeriodEnd && now >= currentPeriodEnd) {
+      return { ...base, status: 'cancelled', isViewOnly: true, daysLeft: null };
+    }
     // If cancelAtPeriodEnd is set, treat as cancel_at_period_end
     if (cancelAtPeriodEnd && currentPeriodEnd) {
       if (now < currentPeriodEnd) {
