@@ -8,7 +8,6 @@ import { useMe } from '@/lib/usePermissions';
 import SecurityTab from '@/components/settings/SecurityTab';
 import AppLockSettings from '@/components/settings/AppLockSettings';
 import { DeleteAccountEntry } from '@/components/settings/DeleteAccountSheet';
-import { openExternalUrl } from '@/lib/native-routing';
 import PhoneInput from '@/components/ui/PhoneInput';
 import { resolveDownloadUrl } from '@/lib/native-api';
 
@@ -16,44 +15,21 @@ const inputClass = 'w-full border border-slate-200 rounded-lg px-3 py-2.5 text-s
 const labelClass = 'block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5';
 
 function CompanyPlanCard({ isOwner, companyName }: { isOwner: boolean; companyName: string | null }) {
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState('');
-
-  async function openPortal() {
-    setBusy(true);
-    setError('');
-    try {
-      const res = await fetch('/api/billing/customer-portal', { method: 'POST', credentials: 'include' });
-      const data = await res.json() as { url?: string; error?: string };
-      if (!res.ok || !data.url) {
-        setError(data.error ?? 'No company subscription to cancel yet. The owner sets this up on iwillbuild.com.');
-        return;
-      }
-      openExternalUrl(data.url);
-    } catch {
-      setError('Could not open the billing website.');
-    } finally {
-      setBusy(false);
-    }
-  }
-
   return (
     <div className="bg-white border border-slate-200 rounded-xl p-5">
       <h2 className="font-bold text-base text-slate-800">Company plan</h2>
       {isOwner ? (
         <>
           <p className="mt-2 text-sm leading-6 text-slate-600">
-            {companyName ? `${companyName} is billed on the website, not in the App Store.` : 'This company is billed on the website, not in the App Store.'} Cancel or change seats opens Safari. iPhone Settings will not list this plan. This login cannot also start a second subscription.
+            {companyName ? `${companyName} is purchased through Apple on this iPhone.` : 'The company plan is purchased through Apple on this iPhone.'} This does not open the website.
           </p>
           <button
             type="button"
-            disabled={busy}
-            onClick={() => void openPortal()}
-            className="mt-4 min-h-[48px] w-full rounded-xl bg-slate-900 px-4 text-sm font-bold text-white disabled:opacity-60"
+            onClick={() => { window.location.assign('/billing'); }}
+            className="mt-4 min-h-[48px] w-full rounded-xl bg-slate-900 px-4 text-sm font-bold text-white"
           >
-            {busy ? 'Opening…' : 'Cancel or change seats'}
+            Subscribe or manage
           </button>
-          {error && <p className="mt-2 text-sm text-red-700">{error}</p>}
         </>
       ) : (
         <p className="mt-2 text-sm leading-6 text-slate-600">

@@ -68,7 +68,7 @@ platform :ios do
     upload_to_testflight(
       api_key: api_key,
       skip_waiting_for_build_processing: true,
-      changelog: "Sign in with Apple, and the company plan is purchased through Apple."
+      changelog: "My Billing stays in the app and uses the Apple subscription."
     )
   end
 end

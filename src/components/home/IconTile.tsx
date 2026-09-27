@@ -11,9 +11,6 @@
 
 import { motion } from 'motion/react';
 import type { HomeIconDef } from '@/lib/homeIcons';
-import { isNativeApp, openExternalUrl } from '@/lib/native-routing';
-
-const BILLING_URL = 'https://iwillbuild.com/billing';
 
 export function IconTile({
   item,
@@ -26,10 +23,6 @@ export function IconTile({
 }) {
   const Icon = item.icon;
   const handleClick = () => {
-    if (item.key === 'billing' && isNativeApp) {
-      openExternalUrl(BILLING_URL);
-      return;
-    }
     onNavigate(item.href);
   };
 
