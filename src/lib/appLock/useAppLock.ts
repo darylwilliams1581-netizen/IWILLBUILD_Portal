@@ -35,6 +35,7 @@ import {
   getLockedAt,
   clearLockedAt,
   delayForAttempt,
+  shouldSkipRelock,
 } from './appLockStorage';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -115,6 +116,11 @@ function useAppLockNative(): AppLockState {
   const hasPinSetup = !!pinRecord;
 
   const [isLocked, setIsLocked] = useState<boolean>(() => {
+    // A password or Apple sign-in that just succeeded is the way in.
+    if (shouldSkipRelock()) {
+      clearLockedAt();
+      return false;
+    }
     // On mount: if a PIN is set up and we have a locked_at timestamp, start locked.
     if (!hasPinSetup) return false;
     return getLockedAt() !== null;
@@ -180,9 +186,17 @@ function useAppLockNative(): AppLockState {
       App.addListener('appStateChange', (state: unknown) => {
         const { isActive } = state as { isActive: boolean };
         if (!isActive) {
+          // The Apple sign-in sheet backgrounds the app. That is not a lock.
+          if (shouldSkipRelock()) return;
           // App going to background — record lock time
           setLockedAt(Date.now());
         } else {
+          if (shouldSkipRelock()) {
+            clearLockedAt();
+            setIsLocked(false);
+            setError('');
+            return;
+          }
           // App coming to foreground — if we have a locked_at, show lock screen
           const lockedAt = getLockedAt();
           if (lockedAt !== null) {

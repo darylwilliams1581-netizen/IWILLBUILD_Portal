@@ -10,6 +10,7 @@ import { goBack } from '@/lib/navigation';
 import { invalidateMeCache } from '@/lib/usePermissions';
 import { invalidateSubscriptionCache } from '@/lib/useSubscriptionGate';
 import { finishLoginNavigation } from '@/lib/auth/login-navigation';
+import { markSignInUnlock } from '@/lib/appLock/appLockStorage';
 
 import { isNativeApp } from '@/lib/native-routing';
 
@@ -142,6 +143,7 @@ export default function LoginPage() {
   }, [isAuthenticated, navigate, location.state, location.search, mustChangePassword]);
 
   function completeLogin(destination: string) {
+    markSignInUnlock();
     finishLoginNavigation({
       destination,
       isNative: isNativeApp,
@@ -209,6 +211,7 @@ export default function LoginPage() {
         setError(body.error || 'Apple sign-in failed.');
         return;
       }
+      markSignInUnlock();
       window.location.assign('/home');
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Apple sign-in failed.');

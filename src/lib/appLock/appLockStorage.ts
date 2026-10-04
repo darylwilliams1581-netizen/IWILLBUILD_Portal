@@ -116,6 +116,7 @@ export function delayForAttempt(attempts: number): number {
 // Tracks whether the app is currently "locked" (overlay visible).
 
 const LOCKED_AT_KEY = `${NS}locked_at`;
+const SKIP_UNTIL_KEY = `${NS}skip_until`;
 
 /** Record the moment the app was locked (used to re-lock on resume). */
 export function setLockedAt(ts: number): void {
@@ -131,6 +132,29 @@ export function clearLockedAt(): void {
   localStorage.removeItem(LOCKED_AT_KEY);
 }
 
+/**
+ * A password, PIN, or Apple sign-in is the way in.
+ * Do not show the device PIN on top of that sign-in, and ignore the
+ * brief background event caused by the Apple sheet.
+ */
+export function markSignInUnlock(): void {
+  clearLockedAt();
+  clearLockoutState();
+  try {
+    sessionStorage.setItem(SKIP_UNTIL_KEY, String(Date.now() + 20_000));
+  } catch { /* private browsing */ }
+}
+
+export function shouldSkipRelock(): boolean {
+  try {
+    const raw = sessionStorage.getItem(SKIP_UNTIL_KEY);
+    if (!raw) return false;
+    if (Date.now() < Number(raw)) return true;
+    sessionStorage.removeItem(SKIP_UNTIL_KEY);
+  } catch { /* ignore */ }
+  return false;
+}
+
 // ── Full wipe on logout ───────────────────────────────────────────────────────
 
 /** Call this on logout to remove all local app-lock state. */
@@ -138,6 +162,7 @@ export function clearAppLockState(): void {
   clearPinRecord();
   clearLockoutState();
   clearLockedAt();
+  try { sessionStorage.removeItem(SKIP_UNTIL_KEY); } catch { /* ignore */ }
   // Do NOT clear the device fingerprint — it should survive logout so the
   // same device can re-register a PIN after the next login.
 }
