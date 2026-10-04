@@ -5,6 +5,7 @@ export const APPLE_COMPANY_MONTHLY_ID = 'com.iwillbuild.portal.company.monthly';
 
 export interface AppleProduct {
   id: string;
+  seatCount: number;
   displayName: string;
   description: string;
   displayPrice: string;
@@ -20,12 +21,13 @@ interface PurchaseResult {
 
 interface RestoreResult {
   subscribed: boolean;
+  productId?: string;
   jws?: string;
 }
 
 interface IWBStorePlugin {
-  getProduct(): Promise<AppleProduct>;
-  purchase(): Promise<PurchaseResult>;
+  getProducts(): Promise<{ products: AppleProduct[] }>;
+  purchase(options: { productId: string }): Promise<PurchaseResult>;
   restore(): Promise<RestoreResult>;
   manage(): Promise<void>;
 }
@@ -36,16 +38,49 @@ export function appleStoreAvailable(): boolean {
   return isNative();
 }
 
-export async function getAppleProduct(): Promise<AppleProduct> {
-  return IWBStore.getProduct();
+export async function getAppleProducts(): Promise<AppleProduct[]> {
+  const result = await IWBStore.getProducts();
+  return result.products;
 }
 
-export async function purchaseAppleSubscription(): Promise<PurchaseResult> {
-  const result = await IWBStore.purchase();
+export async function purchaseAppleSubscription(productId: string): Promise<PurchaseResult> {
+  // Apple may charge as soon as the StoreKit sheet is confirmed. Check the
+  // company's server-side billing eligibility before opening that sheet.
+  await assertAppleSubscriptionEligible();
+  const result = await IWBStore.purchase({ productId });
   if (result.status === 'purchased' && result.jws) {
     await confirmAppleTransaction(result.jws);
   }
   return result;
+}
+
+interface SubscriptionEligibilityResponse {
+  eligible?: unknown;
+  error?: string;
+  message?: string;
+  managementMessage?: string;
+}
+
+async function assertAppleSubscriptionEligible(): Promise<void> {
+  let response: Response;
+  try {
+    response = await fetch('/api/subscription/eligibility', {
+      method: 'GET',
+      credentials: 'include',
+      cache: 'no-store',
+      headers: { Accept: 'application/json' },
+    });
+  } catch {
+    throw new Error('Could not check subscription eligibility. Please try again before purchasing.');
+  }
+
+  const body = await response.json().catch(() => ({})) as SubscriptionEligibilityResponse;
+  if (!response.ok || body.eligible !== true) {
+    throw new Error(
+      body.managementMessage || body.message || body.error ||
+      'This company cannot start an Apple subscription right now. Check its current billing provider or try again.',
+    );
+  }
 }
 
 export async function restoreAppleSubscription(): Promise<RestoreResult> {
@@ -65,7 +100,7 @@ async function confirmAppleTransaction(jws: string): Promise<void> {
     method: 'POST',
     credentials: 'include',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ jws, productId: APPLE_COMPANY_MONTHLY_ID }),
+    body: JSON.stringify({ jws }),
   });
   if (!response.ok) {
     const body = await response.json().catch(() => ({})) as { error?: string };

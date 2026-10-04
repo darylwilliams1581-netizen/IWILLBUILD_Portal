@@ -42,6 +42,13 @@ export default async function handler(req: Request, res: Response) {
     const company = await db.query.companies.findFirst({ where: eq(companies.id, profile.companyId) });
     if (!company) return res.status(404).json({ error: 'Company not found.' });
 
+    if (company.stripeSubscriptionId?.startsWith('apple:')) {
+      return res.status(409).json({
+        error: 'apple_managed_subscription',
+        message: 'Apple manages this subscription. Open Manage in Apple Settings to reactivate it.',
+      });
+    }
+
     // ── Require an unambiguous Stripe subscription ────────────────────────────
     if (!company.stripeSubscriptionId) {
       return res.status(422).json({

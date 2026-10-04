@@ -13,6 +13,7 @@ import { usePermissions } from '@/lib/usePermissions';
 import { isNativeApp, openExternalUrl } from '@/lib/native-routing';
 import ManageBackButton from '@/components/ManageBackButton';
 import AppleSubscribeCard from '@/components/billing/AppleSubscribeCard';
+import { manageAppleSubscription } from '@/lib/apple-store';
 import DesktopTopBar from '@/components/DesktopTopBar';
 import DesktopDock from '@/components/DesktopDock';
 import PortalSidebar from '@/components/PortalSidebar';
@@ -545,7 +546,19 @@ export default function BillingPage() {
   const isPastDue = subInfo?.status === 'past_due';
   const isViewOnly = subInfo?.isViewOnly ?? false;
   const hasPaidSub = isActive || isCancelPending;
+  const isAppleBilled = Boolean(subInfo?.stripeSubscriptionId?.startsWith('apple:'));
+  const hasExistingStripePlan = Boolean(subInfo?.stripeSubscriptionId && !isAppleBilled && !isCancelled);
   const canManage = isAdmin || isOwner;
+
+  async function handleManageAppleBilling() {
+    try {
+      if (isNativeApp) await manageAppleSubscription();
+      else window.open('https://apps.apple.com/account/subscriptions', '_blank', 'noopener,noreferrer');
+    } catch {
+      setError('Could not open Apple subscription settings. Please manage IWILLBUILD in your Apple Account subscription settings.');
+    }
+  }
+
   if (isNativeApp) {
     return (
       <div className="flex-1 bg-slate-50 flex flex-col">
@@ -559,14 +572,22 @@ export default function BillingPage() {
             <p className="mt-2 text-sm leading-6 text-slate-600">
               The company plan is purchased and cancelled through Apple. This screen does not open a card payment.
             </p>
+            <p className="mt-2 text-sm leading-6 text-slate-600">
+              Manage team members in IWILLBUILD under Team. Adding or removing a member does not change the Apple subscription.
+            </p>
             {subInfo && (
               <p className="mt-3 text-sm font-semibold text-slate-800">
                 Company status: {planLabel(subInfo.plan)} · {subInfo.status.replaceAll('_', ' ')}
               </p>
             )}
+            {hasExistingStripePlan ? (
+              <p className="mt-3 text-sm leading-6 text-slate-600">
+                This company already has a plan. Manage team members in IWILLBUILD under Team; this app will not start a second subscription.
+              </p>
+            ) : null}
             {error && <p className="mt-3 text-sm text-red-700">{error}</p>}
           </div>
-          <AppleSubscribeCard />
+          {!hasExistingStripePlan ? <AppleSubscribeCard /> : null}
         </div>
       </div>
     );
@@ -669,7 +690,7 @@ export default function BillingPage() {
                   Your portal remains fully active until then. Reactivate before that date to keep your subscription.
                 </p>
               </div>
-              {canManage && <button onClick={handleReactivate} disabled={reactivateLoading} className="shrink-0 flex items-center gap-1.5 bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold px-3 py-1.5 rounded-lg transition-colors disabled:opacity-50">
+              {canManage && !isAppleBilled && <button onClick={handleReactivate} disabled={reactivateLoading} className="shrink-0 flex items-center gap-1.5 bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold px-3 py-1.5 rounded-lg transition-colors disabled:opacity-50">
                   {reactivateLoading ? <Loader2 size={12} className="animate-spin" /> : <RotateCcw size={12} />}
                   Reactivate
                 </button>}
@@ -781,7 +802,16 @@ export default function BillingPage() {
               </div>}
 
             {/* ── Management action buttons (owner/admin + paid sub only) ── */}
-            {canManage && hasPaidSub && <div className="flex flex-wrap gap-3 pt-4 border-t border-slate-100">
+            {canManage && hasPaidSub && isAppleBilled && <div className="flex flex-wrap gap-3 pt-4 border-t border-slate-100">
+                <button onClick={() => void handleManageAppleBilling()} className="flex items-center gap-2 bg-slate-900 hover:bg-slate-700 text-white text-sm font-bold px-4 py-2.5 rounded-xl transition-colors">
+                  <Receipt size={14} />
+                  Manage subscription with Apple
+                  <ExternalLink size={12} className="opacity-60" />
+                </button>
+                <p className="basis-full text-xs text-slate-500">Team access is managed in IWILLBUILD. Apple handles subscription billing and cancellation.</p>
+              </div>}
+
+            {canManage && hasPaidSub && !isAppleBilled && <div className="flex flex-wrap gap-3 pt-4 border-t border-slate-100">
                 {/* Manage Billing — opens Stripe Customer Portal */}
                 <button onClick={handleManageBilling} disabled={portalLoading} className="flex items-center gap-2 bg-slate-900 hover:bg-slate-700 text-white text-sm font-bold px-4 py-2.5 rounded-xl transition-colors disabled:opacity-50">
                   {portalLoading ? <Loader2 size={14} className="animate-spin" /> : <Receipt size={14} />}
@@ -803,7 +833,7 @@ export default function BillingPage() {
               </div>}
 
             {/* Past due — direct to portal */}
-            {canManage && isPastDue && <div className="pt-4 border-t border-slate-100">
+            {canManage && isPastDue && !isAppleBilled && <div className="pt-4 border-t border-slate-100">
                 <button onClick={handleManageBilling} disabled={portalLoading} className="flex items-center gap-2 bg-red-600 hover:bg-red-700 text-white text-sm font-bold px-4 py-2.5 rounded-xl transition-colors disabled:opacity-50">
                   {portalLoading ? <Loader2 size={14} className="animate-spin" /> : <CreditCard size={14} />}
                   Update Payment Method
@@ -813,7 +843,7 @@ export default function BillingPage() {
           </div>
 
           {/* ── Plan cards — always show for owner/admin; show for all when no active sub ── */}
-          {(canManage || !hasPaidSub || isCancelled) && <>
+          {!isAppleBilled && (canManage || !hasPaidSub || isCancelled) && <>
               <h2 className="font-heading font-bold text-base text-slate-800 mb-4">
                 {hasPaidSub && !isCancelled ? 'Change Plan' : isCancelled ? 'Reactivate — Choose a Plan' : 'Choose a Plan'}
               </h2>

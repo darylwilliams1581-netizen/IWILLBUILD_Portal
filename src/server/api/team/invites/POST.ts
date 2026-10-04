@@ -30,32 +30,45 @@ export default async function handler(req: Request, res: Response) {
       return res.status(403).json({ error: 'You do not have permission to invite users.' });
     }
 
-    const { email, name, role = 'member' } = req.body as { email?: string; name?: string; role?: string };
+    const { email, name, role = 'worker' } = req.body as { email?: string; name?: string; role?: string };
     if (!email?.trim()) return res.status(400).json({ error: 'Email is required.' });
+    const validRoles = new Set(['admin', 'manager', 'supervisor', 'worker', 'readonly']);
+    if (!validRoles.has(role)) return res.status(400).json({ error: 'Choose a valid team role.' });
+    if (role === 'admin' && profile.role !== 'owner') {
+      return res.status(403).json({ error: 'Only the company Owner can invite an Admin.' });
+    }
 
     const normalEmail = email.trim().toLowerCase();
     const companyId = profile.companyId;
 
-    // Plan limit check
+    const existingUser = await db.query.user.findFirst({ where: eq(user.email, normalEmail) });
+    if (existingUser) {
+      const existingProfile = await db.query.profiles.findFirst({ where: eq(profiles.userId, existingUser.id) });
+      if (existingProfile?.companyId === companyId && existingProfile.status !== 'inactive') {
+        return res.status(409).json({ error: 'This person is already a member of your company.' });
+      }
+      if (existingProfile?.companyId && existingProfile.companyId !== companyId) {
+        return res.status(409).json({ error: 'This account is already linked to another company. They must use a separate IWILLBUILD account.' });
+      }
+    }
+
+    // Plan limit check. Unexpired invitations reserve seats until accepted or cancelled.
     const plan = await getCompanyPlan(companyId);
     const limits = await getPlanLimits(companyId, plan);
     const [countRow] = await db.execute(
       sql`SELECT COUNT(*) as cnt FROM profiles WHERE company_id = ${companyId} AND status != 'inactive'`
     ) as unknown as [Array<{ cnt: number }>, unknown];
-    const limitCheck = checkLimit(Number(countRow?.[0]?.cnt ?? 0), limits.users, 'Users');
+    const [inviteCountRow] = await db.execute(sql`
+      SELECT COUNT(*) AS cnt FROM company_invites
+      WHERE company_id = ${companyId} AND status = 'pending' AND expires_at > NOW()
+    `) as unknown as [Array<{ cnt: number }>, unknown];
+    const reservedSeats = Number(countRow?.[0]?.cnt ?? 0) + Number(inviteCountRow?.[0]?.cnt ?? 0);
+    const limitCheck = checkLimit(reservedSeats, limits.users, 'Users');
     if (!limitCheck.allowed) {
       return res.status(403).json({ code: limitCheck.code, error: limitCheck.message });
     }
 
     const company = await db.query.companies.findFirst({ where: eq(companies.id, companyId) });
-
-    // Check if already a member
-    const [existingMember] = await db.execute(
-      sql`SELECT p.id FROM profiles p INNER JOIN user u ON u.id = p.user_id WHERE u.email = ${normalEmail} AND p.company_id = ${companyId} AND p.status != 'inactive' LIMIT 1`
-    ) as unknown as [Array<{ id: number }>, unknown];
-    if (existingMember?.length) {
-      return res.status(409).json({ error: 'This person is already a member of your company.' });
-    }
 
     // Check for existing pending invite
     const [existingInvite] = await db.execute(
@@ -79,22 +92,16 @@ export default async function handler(req: Request, res: Response) {
       )
     `);
 
-    // Also create/update the user profile so they appear in the team list
-    const existingUser = await db.query.user.findFirst({ where: eq(user.email, normalEmail) });
-    if (existingUser) {
-      const existingProfile = await db.query.profiles.findFirst({ where: eq(profiles.userId, existingUser.id) });
-      if (!existingProfile) {
-        await db.insert(profiles).values({ userId: existingUser.id, companyId, role, status: 'invited' });
-      } else if (existingProfile.companyId !== companyId) {
-        await db.update(profiles).set({ companyId, role, status: 'invited' }).where(eq(profiles.userId, existingUser.id));
-      }
-    }
+    // Do not create or move a profile until the recipient accepts the invitation.
 
     // Send invite email
-    const inviteUrl = `${process.env.APP_URL ?? 'https://iwillbuild.com'}/accept-invite?token=${token}`;
+    const inviteUrl = `${process.env.APP_URL ?? 'https://iwillbuild.com'}/accept-invite?token=${encodeURIComponent(token)}`;
     let emailSent = false;
     let emailError: string | null = null;
 
+    const escapeHtml = (value: string) => value.replace(/[&<>"']/g, (char) => ({
+      '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
+    }[char] ?? char));
     try {
       const { sendEmail } = await import('../../../email.js');
       await sendEmail({
@@ -107,16 +114,16 @@ export default async function handler(req: Request, res: Response) {
             </div>
             <div style="background: #f9f9f9; padding: 24px; border-radius: 0 0 8px 8px; border: 1px solid #e5e7eb;">
               <h2 style="color: #111; margin-top: 0;">You're invited!</h2>
-              <p style="color: #444;">${session.user.name ?? session.user.email} has invited you to join <strong>${company?.name}</strong> on IWIllBUIlD Portal.</p>
-              ${name ? `<p style="color: #444;">Hi ${name},</p>` : ''}
-              <p style="color: #444;">Your role will be: <strong>${role}</strong></p>
+              <p style="color: #444;">${escapeHtml(session.user.name ?? session.user.email ?? 'A company owner')} has invited you to join <strong>${escapeHtml(company?.name ?? 'IWIllBUIlD')}</strong> on IWIllBUIlD Portal.</p>
+              ${name?.trim() ? `<p style="color: #444;">Hi ${escapeHtml(name.trim())},</p>` : ''}
+              <p style="color: #444;">Your role will be: <strong>${escapeHtml(role)}</strong></p>
               <p style="margin: 24px 0;">
                 <a href="${inviteUrl}" style="background: #7C3AED; color: white; padding: 14px 28px; border-radius: 8px; text-decoration: none; font-weight: bold; display: inline-block;">
                   Accept Invitation
                 </a>
               </p>
               <p style="color: #888; font-size: 13px;">This invite expires in 7 days. If you didn't expect this, you can safely ignore this email.</p>
-              <p style="color: #aaa; font-size: 12px; margin-top: 24px;">Or copy this link: ${inviteUrl}</p>
+              <p style="color: #aaa; font-size: 12px; margin-top: 24px;">Or copy this link: <a href="${inviteUrl}">${inviteUrl}</a></p>
             </div>
           </div>
         `,

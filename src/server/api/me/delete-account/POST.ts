@@ -3,9 +3,9 @@
  *
  * Permanently deletes the authenticated login after BetterAuth verifies the
  * current password. Team members delete only their own account. A sole company
- * owner also deletes the company and its company-scoped records. Owners with
- * other active members must transfer ownership first so the company is not
- * stranded. Active Stripe subscriptions are cancelled before company deletion.
+ * owner also deletes the company and its company-scoped records. An owner with
+ * remaining members must first assign the Owner role to another active member;
+ * then their login can be deleted while the company continues under its new owner.
  */
 import type { Request, Response } from 'express';
 import { eq, ne, and } from 'drizzle-orm';
@@ -62,10 +62,19 @@ export default async function handler(req: Request, res: Response) {
         ),
         columns: { id: true },
       });
-      if (remainingMembers.length > 0) {
+      const remainingOwners = await db.query.profiles.findMany({
+        where: and(
+          eq(profiles.companyId, profile.companyId),
+          ne(profiles.userId, authSession.user.id),
+          eq(profiles.role, 'owner'),
+          eq(profiles.status, 'active'),
+        ),
+        columns: { id: true },
+      });
+      if (remainingMembers.length > 0 && remainingOwners.length === 0) {
         return res.status(409).json({
           error: 'ownership_transfer_required',
-          message: 'Transfer company ownership to another active team member before deleting your account.',
+          message: 'Assign the Owner role to another active team member before deleting your account.',
         });
       }
       if (body.deleteCompanyData !== true) {

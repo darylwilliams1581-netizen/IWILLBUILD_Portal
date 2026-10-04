@@ -14,6 +14,7 @@
 
 import { db } from '../db/client.js';
 import { sql } from 'drizzle-orm';
+import { getAppleSeatCount } from './apple-jws.js';
 
 // ── Hard safety limits (never overrideable) ───────────────────────────────────
 
@@ -114,6 +115,8 @@ const PLAN_LIMITS: Record<string, PlanLimits> = {
  */
 export async function getPlanLimits(companyId: number, plan: string): Promise<PlanLimits> {
   const base: PlanLimits = PLAN_LIMITS[plan] ?? PLAN_LIMITS['trial'];
+  let effective = base;
+  let customUsers: number | null = null;
 
   // Check for custom limits override in company_settings
   try {
@@ -124,13 +127,31 @@ export async function getPlanLimits(companyId: number, plan: string): Promise<Pl
     const raw = rows?.[0]?.custom_limits_json;
     if (raw) {
       const custom = JSON.parse(raw) as Partial<PlanLimits>;
-      return { ...base, ...custom };
+      effective = { ...base, ...custom };
+      customUsers = typeof custom.users === 'number' ? custom.users : null;
     }
   } catch {
     // company_settings may not have the column yet — fall through to base
   }
 
-  return base;
+  // Apple-billed company subscriptions map to fixed seat-count products.
+  // Keep the purchased seat count server-side so every invite path uses it.
+  if (plan === 'company') {
+    try {
+      const [rows] = await db.execute(
+        sql`SELECT stripe_subscription_id, stripe_price_id FROM companies WHERE id = ${companyId} LIMIT 1`
+      ) as unknown as [Array<{ stripe_subscription_id: string | null; stripe_price_id: string | null }>, unknown];
+      const company = rows?.[0];
+      if (company?.stripe_subscription_id?.startsWith('apple:')) {
+        const purchasedSeats = getAppleSeatCount(company.stripe_price_id ?? '') ?? 1;
+        effective = { ...effective, users: customUsers === null ? purchasedSeats : Math.min(customUsers, purchasedSeats) };
+      }
+    } catch {
+      // If the billing columns are unavailable, retain the plan/custom limits.
+    }
+  }
+
+  return effective;
 }
 
 /**

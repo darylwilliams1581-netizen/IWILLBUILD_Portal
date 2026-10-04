@@ -17,6 +17,7 @@ import VerifyEmailPage from './pages/verify-email';
 import VerifyRequiredPage from './pages/verify-required';
 import ForgotPasswordPage from './pages/forgot-password';
 import ResetPasswordPage from './pages/reset-password';
+import AcceptInvitePage from './pages/accept-invite';
 import PrivacyPage from './pages/privacy';
 import TermsPage from './pages/terms';
 import FairUsePage from './pages/fair-use';
@@ -260,6 +261,9 @@ export const routes: RouteObject[] = [{
 }, {
   path: '/reset-password',
   element: <ResetPasswordPage />
+}, {
+  path: '/accept-invite',
+  element: <AcceptInvitePage />
 }, {
   path: '/login-help',
   element: <LoginHelpPage />

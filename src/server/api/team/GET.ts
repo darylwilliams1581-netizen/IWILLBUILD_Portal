@@ -1,8 +1,9 @@
 import type { Request, Response } from 'express';
 import { db } from '../../db/client.js';
-import { profiles, user } from '../../db/schema.js';
+import { profiles, user, companies } from '../../db/schema.js';
 import { eq } from 'drizzle-orm';
 import { getAuth } from '../../../lib/auth/auth.js';
+import { getAppleSeatCount } from '../../lib/apple-jws.js';
 
 export default async function handler(req: Request, res: Response) {
   try {
@@ -20,6 +21,14 @@ export default async function handler(req: Request, res: Response) {
     if (!callerProfile?.companyId) {
       return res.status(403).json({ error: 'No company associated with your account' });
     }
+
+    const company = await db.query.companies.findFirst({
+      where: eq(companies.id, callerProfile.companyId),
+      columns: { stripeSubscriptionId: true, stripePriceId: true },
+    });
+    const appleSeatLimit = company?.stripeSubscriptionId?.startsWith('apple:')
+      ? getAppleSeatCount(company.stripePriceId ?? '') ?? 1
+      : null;
 
     // Allow: owner, admin role, OR perm_admin = true
     const canManageTeam =
@@ -83,7 +92,7 @@ export default async function handler(req: Request, res: Response) {
       joinedAt: r.createdAt,
     }));
 
-    res.json({ members });
+    res.json({ members, appleSeatLimit });
   } catch (error) {
     console.error('GET /api/team error:', error);
     res.status(500).json({ error: 'Failed to fetch team' });

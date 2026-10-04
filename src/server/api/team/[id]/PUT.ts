@@ -1,8 +1,9 @@
 import type { Request, Response } from 'express';
 import { db } from '../../../db/client.js';
 import { profiles } from '../../../db/schema.js';
-import { eq } from 'drizzle-orm';
+import { eq, sql } from 'drizzle-orm';
 import { getAuth } from '../../../../lib/auth/auth.js';
+import { getPlanLimits, getCompanyPlan, checkLimit } from '../../../lib/plan-limits.js';
 
 export default async function handler(req: Request, res: Response) {
   try {
@@ -99,6 +100,20 @@ export default async function handler(req: Request, res: Response) {
       updates.permSeeDollars = true;
       updates.permInvoices = true;
       updates.status = 'active';
+    }
+
+    // Reactivating an inactive profile consumes a seat too. Apply the same
+    // plan limit used by both invitation endpoints before changing its status.
+    if (target.status === 'inactive' && updates.status && updates.status !== 'inactive') {
+      const plan = await getCompanyPlan(callerProfile.companyId);
+      const limits = await getPlanLimits(callerProfile.companyId, plan);
+      const [countRow] = await db.execute(
+        sql`SELECT COUNT(*) as cnt FROM profiles WHERE company_id = ${callerProfile.companyId} AND status != 'inactive'`
+      ) as unknown as [Array<{ cnt: number }>, unknown];
+      const limitCheck = checkLimit(Number(countRow?.[0]?.cnt ?? 0), limits.users, 'Users');
+      if (!limitCheck.allowed) {
+        return res.status(403).json({ code: limitCheck.code, error: limitCheck.message });
+      }
     }
 
     await db.update(profiles).set(updates).where(eq(profiles.id, targetId));

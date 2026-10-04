@@ -1,8 +1,8 @@
 import { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
+import type React from 'react';
 import { Helmet } from '@dr.pogodin/react-helmet';
 import { Users, Plus, Search, Crown, Shield, HardHat, Truck, Eye, UserCheck, Mail, Phone, MoreHorizontal, CheckCircle2, Clock, XCircle, X, ChevronDown, Loader2, AlertCircle, Trash2, Edit2, Lock, ShieldCheck, RefreshCw, ShieldAlert } from 'lucide-react';
-import { useNavigate } from "react-router";
 import { usePermissions } from '@/lib/usePermissions';
 import ManageBackButton from '@/components/ManageBackButton';
 import { useViewOnly } from '@/components/ViewOnlyGuard';
@@ -165,6 +165,15 @@ interface TeamMember {
   permissions: Record<string, boolean>;
   joinedAt: string | null;
 }
+interface TeamInvite {
+  id: number;
+  email: string;
+  name: string | null;
+  role: string;
+  status: 'pending' | 'expired' | 'accepted' | 'cancelled' | string;
+  expires_at: string;
+  created_at: string;
+}
 const fadeUp = {
   hidden: {
     opacity: 0,
@@ -242,7 +251,7 @@ function InviteModal({
     setError('');
     setLoading(true);
     try {
-      const res = await fetch('/api/team/invite', {
+      const res = await fetch('/api/team/invites', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
@@ -256,6 +265,7 @@ function InviteModal({
       });
       const data = (await res.json()) as {
         ok?: boolean;
+        emailSent?: boolean;
         message?: string;
         error?: string;
       };
@@ -264,7 +274,7 @@ function InviteModal({
         setLoading(false);
         return;
       }
-      setSuccess(data.message ?? 'Invite sent!');
+      setSuccess(data.message ?? (data.emailSent ? 'Invite sent!' : 'Invite created. Email delivery needs attention.'));
       setTimeout(() => {
         onSuccess();
         onClose();
@@ -351,7 +361,7 @@ function InviteModal({
               </div>}
 
             <p className="text-xs text-slate-400">
-              They'll be able to sign up at <span className="font-semibold">/signup</span> using this email.
+              They’ll receive an email link to accept the invitation and create their own password. The link expires after 7 days.
             </p>
 
             <div className="flex gap-3 pt-1">
@@ -370,26 +380,21 @@ function InviteModal({
 function EditMemberModal({
   member,
   callerIsOwner,
-  callerIsAdmin,
   onClose,
   onSuccess
 }: {
   member: TeamMember;
   callerIsOwner: boolean;
-  callerIsAdmin: boolean;
   onClose: () => void;
   onSuccess: () => void;
 }) {
   const targetIsOwner = member.role === 'owner';
-  const targetIsAdmin = member.role === 'admin';
   const targetIsDeveloper = member.role === 'developer' || member.role === 'platform_owner';
 
-  // Profile is protected — admin cannot modify owner or developer profiles
-  const targetIsProtected = targetIsOwner || targetIsDeveloper;
-  const viewerIsRestricted = !callerIsOwner && targetIsProtected;
+  // Account and team administration is reserved for the company Owner.
+  const viewerIsRestricted = !callerIsOwner;
 
   // Permissions/role/status are locked whenever the viewer is restricted (non-owner viewing owner/developer)
-  const permsLocked = viewerIsRestricted;
   const roleLocked = viewerIsRestricted;
   const statusLocked = viewerIsRestricted;
   const [role, setRole] = useState<Role>(member.role as Role);
@@ -452,7 +457,7 @@ function EditMemberModal({
     }
   }
   async function handleRemove() {
-    if (!confirm(`Remove ${member.name} from the team? They will be set to inactive.`)) return;
+    if (!window.confirm(`Remove ${member.name} from the team? They will be set to inactive.`)) return;
     setLoading(true);
     try {
       const res = await fetch(`/api/team/${member.id}`, {
@@ -479,7 +484,7 @@ function EditMemberModal({
   // Owners and developers/platform_owners are protected — only the platform owner can remove them,
   // and even then only via account deletion tools (not the team modal).
   // Admins can remove regular members but NOT owners or developers.
-  const canRemove = callerIsOwner && !targetIsOwner && !targetIsDeveloper || !targetIsOwner && !targetIsAdmin && !targetIsDeveloper && callerIsAdmin;
+  const canRemove = callerIsOwner && !targetIsOwner && !targetIsDeveloper;
   return <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} />
       <motion.div initial={{
@@ -512,7 +517,7 @@ function EditMemberModal({
         {/* Protected profile notice */}
         {viewerIsRestricted && <div className="flex items-center gap-2 bg-slate-100 border border-slate-300 rounded-xl px-4 py-3 mb-4 text-xs text-slate-600 font-semibold">
             <Lock size={13} className="shrink-0 text-slate-500" />
-            {targetIsOwner ? 'Owner accounts can only be modified by another Owner.' : 'Developer accounts are protected and cannot be modified by Admins.'}
+            {targetIsOwner ? 'Owner accounts can only be modified by another Owner.' : targetIsDeveloper ? 'Developer accounts are protected.' : 'Only the Owner can manage member roles and account access.'}
           </div>}
 
         <div className={['flex flex-col gap-5 transition-opacity', viewerIsRestricted ? 'opacity-40 pointer-events-none select-none' : ''].join(' ')}>
@@ -548,7 +553,7 @@ function EditMemberModal({
 
           {/* Home Screen Icon Permissions */}
           <div className="border-t border-slate-100 pt-4">
-            <HomeIconPermissions memberId={member.userId} memberRole={member.role} canEdit={callerIsOwner || callerIsAdmin} />
+            <HomeIconPermissions memberId={member.userId} memberRole={member.role} canEdit={callerIsOwner} />
           </div>
 
           {error && <div className="flex items-center gap-2 text-red-600 text-xs bg-red-50 border border-red-200 rounded-lg px-3 py-2">
@@ -576,6 +581,8 @@ function EditMemberModal({
 // ── Main Page ─────────────────────────────────────────────────────────────────
 export default function TeamPage() {
   const [members, setMembers] = useState<TeamMember[]>([]);
+  const [invites, setInvites] = useState<TeamInvite[]>([]);
+  const [appleSeatLimit, setAppleSeatLimit] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [search, setSearch] = useState('');
@@ -588,17 +595,15 @@ export default function TeamPage() {
   } = useViewOnly();
   const [resendingUserId, setResendingUserId] = useState<string | null>(null);
   const [actionMsg, setActionMsg] = useState('');
-  const {
-    isOwner,
-    isAdmin
-  } = usePermissions();
-  const navigate = useNavigate();
-  const canManageVerification = isOwner || isAdmin;
+  const [inviteActionId, setInviteActionId] = useState<number | null>(null);
+  const { isOwner } = usePermissions();
+  const canManageVerification = isOwner;
   const loadTeam = useCallback(async () => {
     try {
-      const res = await fetch('/api/team', {
-        credentials: 'include'
-      });
+      const [res, inviteRes] = await Promise.all([
+        fetch('/api/team', { credentials: 'include' }),
+        fetch('/api/team/invites', { credentials: 'include' }),
+      ]);
       if (!res.ok) {
         const d = (await res.json()) as {
           error?: string;
@@ -609,14 +614,42 @@ export default function TeamPage() {
       }
       const data = (await res.json()) as {
         members: TeamMember[];
+        appleSeatLimit?: number | null;
       };
+      const inviteData = inviteRes.ok ? await inviteRes.json() as { invites?: TeamInvite[] } : { invites: [] };
       setMembers(data.members);
+      setInvites(inviteData.invites ?? []);
+      setAppleSeatLimit(typeof data.appleSeatLimit === 'number' ? data.appleSeatLimit : null);
     } catch {
       setError('Network error loading team');
     } finally {
       setLoading(false);
     }
   }, []);
+  async function handleInviteAction(invite: TeamInvite, action: 'resend' | 'cancel') {
+    setInviteActionId(invite.id);
+    setActionMsg('');
+    try {
+      if (action === 'cancel' && !window.confirm(`Cancel the invitation for ${invite.email}?`)) return;
+      const res = await fetch(`/api/team/invites/${invite.id}/${action}`, {
+        method: 'POST',
+        credentials: 'include',
+      });
+      const data = await res.json() as { ok?: boolean; emailSent?: boolean; error?: string };
+      if (!res.ok) {
+        setActionMsg(data.error ?? `Could not ${action} this invitation.`);
+        return;
+      }
+      setActionMsg(action === 'cancel'
+        ? 'Invitation cancelled.'
+        : data.emailSent ? 'Invitation email resent.' : 'Invitation expiry renewed, but the email could not be sent.');
+      await loadTeam();
+    } catch {
+      setActionMsg('Network error. Please try again.');
+    } finally {
+      setInviteActionId(null);
+    }
+  }
   useEffect(() => {
     loadTeam();
   }, [loadTeam]);
@@ -681,10 +714,10 @@ export default function TeamPage() {
       setOpenMenuId(null);
     }
   }
-  useEffect(() => {
-    loadTeam();
-  }, [loadTeam]);
   const filtered = members.filter(m => m.name.toLowerCase().includes(search.toLowerCase()) || m.email.toLowerCase().includes(search.toLowerCase()) || m.role.toLowerCase().includes(search.toLowerCase()));
+  const activeInviteList = invites.filter(inv => inv.status === 'pending' && new Date(inv.expires_at).getTime() > Date.now());
+  const activeMemberCount = members.filter(m => m.status !== 'inactive').length + activeInviteList.length;
+  const appleSeatFull = appleSeatLimit !== null && activeMemberCount >= appleSeatLimit;
   const stats = [{
     label: 'Owners',
     count: members.filter(m => m.role === 'owner').length,
@@ -707,8 +740,8 @@ export default function TeamPage() {
     border: 'border-emerald-200',
     icon: CheckCircle2
   }, {
-    label: 'Invited',
-    count: members.filter(m => m.status === 'invited').length,
+    label: 'Pending Invites',
+    count: activeInviteList.length + members.filter(m => m.status === 'invited').length,
     color: 'text-violet-700',
     bg: 'bg-violet-50',
     border: 'border-violet-200',
@@ -749,14 +782,16 @@ export default function TeamPage() {
             <button
               type="button"
               onClick={() => !isViewOnly && setShowInvite(true)}
-              disabled={isViewOnly}
-              title={isViewOnly ? 'Subscribe to continue' : undefined}
+              disabled={!isOwner || isViewOnly || appleSeatFull}
+              title={isViewOnly ? 'Subscribe to continue' : appleSeatFull ? `This Apple subscription currently includes ${appleSeatLimit} seat${appleSeatLimit === 1 ? '' : 's'}` : !isOwner ? 'Only the Owner can manage the account and team' : undefined}
               className="w-full flex items-center justify-center gap-2 bg-primary hover:bg-violet-700 text-white text-sm font-bold px-4 py-3 rounded-xl transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               style={{ minHeight: 48 }}
             >
               <Plus size={16} />
               Invite Member
             </button>
+            {appleSeatLimit !== null && <p className="mt-2 text-center text-xs text-slate-500">This Apple subscription includes {appleSeatLimit} seat{appleSeatLimit === 1 ? '' : 's'} total. Change the seat tier in Billing to add or remove seats.</p>}
+            {!isOwner && <p className="mt-2 text-center text-xs text-slate-500">Only the Owner can invite members or manage account access.</p>}
           </div>
         </header>
 
@@ -778,6 +813,32 @@ export default function TeamPage() {
             </div>
 
             {/* Search */}
+            {invites.some(inv => inv.status === 'pending' || inv.status === 'expired') && <section className="bg-white border border-slate-200 rounded-xl p-4">
+              <div className="mb-3 flex items-center justify-between gap-3">
+                <div>
+                  <h2 className="font-bold text-slate-900">Invitations</h2>
+                  <p className="mt-1 text-xs text-slate-500">Workers set their own password from the secure email link.</p>
+                </div>
+                <span className="text-xs font-semibold text-slate-500">{activeInviteList.length} pending</span>
+              </div>
+              <div className="flex flex-col divide-y divide-slate-100">
+                {invites.filter(inv => inv.status === 'pending' || inv.status === 'expired').map(invite => {
+                  const isExpired = invite.status === 'expired' || new Date(invite.expires_at).getTime() <= Date.now();
+                  return <div key={invite.id} className="flex flex-wrap items-center gap-3 py-3 first:pt-0 last:pb-0">
+                    <div className="min-w-0 flex-1">
+                      <div className="truncate text-sm font-semibold text-slate-800">{invite.name || invite.email}</div>
+                      {invite.name && <div className="truncate text-xs text-slate-500">{invite.email}</div>}
+                      <div className="mt-1 text-xs text-slate-400">{ROLE_CONFIG[invite.role as Role]?.label ?? invite.role} · {isExpired ? 'Expired' : 'Expires'} {new Date(invite.expires_at).toLocaleDateString()}</div>
+                    </div>
+                    {isOwner && <div className="flex items-center gap-2">
+                      <button type="button" onClick={() => void handleInviteAction(invite, 'resend')} disabled={inviteActionId === invite.id} className="rounded-lg border border-slate-200 px-3 py-2 text-xs font-semibold text-blue-700 hover:bg-blue-50 disabled:opacity-50">{inviteActionId === invite.id ? 'Working…' : 'Resend'}</button>
+                      <button type="button" onClick={() => void handleInviteAction(invite, 'cancel')} disabled={inviteActionId === invite.id} className="rounded-lg border border-slate-200 px-3 py-2 text-xs font-semibold text-red-700 hover:bg-red-50 disabled:opacity-50">Cancel</button>
+                    </div>}
+                  </div>;
+                })}
+              </div>
+            </section>}
+
             <div className="relative">
               <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
               <input type="text" placeholder="Search by name, email or role…" value={search} onChange={e => setSearch(e.target.value)} className="w-full pl-9 pr-4 py-2.5 bg-white border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-colors" />
@@ -870,7 +931,7 @@ export default function TeamPage() {
                         setOpenMenuId(null);
                       }} className="flex items-center gap-2 w-full px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-50 transition-colors">
                                 <Edit2 size={13} />
-                                {memberIsOwner && !isOwner ? 'View Member' : 'Edit Member'}
+                                {isOwner ? 'Edit Member' : 'View Member'}
                               </button>
                               {/* Verification actions — admin/owner only */}
                               {canManageVerification && !member.emailVerified && <>
@@ -920,7 +981,7 @@ export default function TeamPage() {
       {/* Modals */}
       <AnimatePresence>
         {showInvite && <InviteModal callerIsOwner={isOwner} onClose={() => setShowInvite(false)} onSuccess={loadTeam} />}
-        {editMember && <EditMemberModal member={editMember} callerIsOwner={isOwner} callerIsAdmin={isAdmin} onClose={() => setEditMember(null)} onSuccess={loadTeam} />}
+        {editMember && <EditMemberModal member={editMember} callerIsOwner={isOwner} onClose={() => setEditMember(null)} onSuccess={loadTeam} />}
       </AnimatePresence>
     </div>;
 }

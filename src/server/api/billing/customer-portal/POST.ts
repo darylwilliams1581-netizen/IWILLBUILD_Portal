@@ -34,6 +34,12 @@ export default async function handler(req: Request, res: Response) {
 
     const company = await db.query.companies.findFirst({ where: eq(companies.id, profile.companyId) });
     if (!company) return res.status(404).json({ error: 'Company not found.' });
+    if (company.stripeSubscriptionId?.startsWith('apple:')) {
+      return res.status(409).json({
+        error: 'apple_managed_subscription',
+        message: 'Apple manages this subscription. Use Manage in Apple Settings for billing and cancellation.',
+      });
+    }
     if (!company.stripeCustomerId) {
       return res.status(400).json({
         error: 'No Stripe customer found for this company. Please subscribe to a plan first.',

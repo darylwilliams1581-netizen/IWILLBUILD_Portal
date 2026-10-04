@@ -48,7 +48,28 @@ export default async function handler(req: Request, res: Response) {
 
     const company = await db.query.companies.findFirst({ where: eq(companies.id, profile.companyId) });
     if (!company) return res.status(404).json({ error: 'Company not found.' });
-    const keepStripe = Boolean(company.stripeSubscriptionId) && !company.stripeSubscriptionId.startsWith('apple:');
+
+    const currentStatus = company.subscriptionStatus ?? 'trial';
+    const currentPeriodEnd = company.currentPeriodEnd ? new Date(company.currentPeriodEnd).getTime() : 0;
+    const existingSubscriptionId = company.stripeSubscriptionId ?? '';
+    const existingAppleSubscription = existingSubscriptionId.startsWith('apple:');
+    const currentAccessUnexpired = currentPeriodEnd > Date.now();
+    const activeStatus = ['active', 'cancel_pending', 'cancel_at_period_end', 'past_due'].includes(currentStatus);
+    const staleExternalSubscription = ['cancelled', 'trial_expired'].includes(currentStatus) && !currentAccessUnexpired;
+
+    if (existingAppleSubscription && existingSubscriptionId !== appleSubscriptionId && (currentAccessUnexpired || activeStatus)) {
+      return res.status(409).json({
+        error: 'existing_subscription',
+        message: 'This company already has an active Apple subscription linked to a different purchase.',
+      });
+    }
+
+    if (!existingAppleSubscription && (currentAccessUnexpired || activeStatus || (existingSubscriptionId && !staleExternalSubscription))) {
+      return res.status(409).json({
+        error: 'existing_subscription',
+        message: 'This company already has a paid or managed subscription. Its current billing must end before an Apple subscription can be linked.',
+      });
+    }
 
     await db.update(companies).set({
       plan: 'company',
@@ -56,8 +77,8 @@ export default async function handler(req: Request, res: Response) {
       currentPeriodEnd: new Date(transaction.expiresDate),
       cancelAtPeriodEnd: false,
       cancelledAt: null,
-      stripeSubscriptionId: keepStripe ? company.stripeSubscriptionId : appleSubscriptionId,
-      stripePriceId: keepStripe ? company.stripePriceId : transaction.productId,
+      stripeSubscriptionId: appleSubscriptionId,
+      stripePriceId: transaction.productId,
     }).where(eq(companies.id, profile.companyId));
 
     return res.status(200).json({

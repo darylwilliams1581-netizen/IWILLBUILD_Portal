@@ -134,16 +134,35 @@ export function getAuth() {
               ),
               columns: { id: true },
             });
-            if (remainingMembers.length > 0) {
+            const remainingOwners = await db.query.profiles.findMany({
+              where: and(
+                eq(profiles.companyId, profile.companyId),
+                ne(profiles.userId, currentUser.id),
+                eq(profiles.role, 'owner'),
+                eq(profiles.status, 'active'),
+              ),
+              columns: { userId: true },
+            });
+            if (remainingMembers.length > 0 && remainingOwners.length === 0) {
               throw new APIError('CONFLICT', {
                 message: 'Transfer company ownership to another active team member before deleting your account.',
               });
             }
 
+            // When ownership has been transferred, preserve company billing and
+            // data, and reassign personal file ownership before removing this user.
+            if (remainingOwners.length > 0) {
+              await db
+                .update(companyFiles)
+                .set({ uploadedByUserId: remainingOwners[0].userId })
+                .where(eq(companyFiles.uploadedByUserId, currentUser.id));
+              return;
+            }
+
             const company = await db.query.companies.findFirst({
               where: eq(companies.id, profile.companyId),
             });
-            if (company?.stripeSubscriptionId) {
+            if (company?.stripeSubscriptionId && !company.stripeSubscriptionId.startsWith('apple:')) {
               try {
                 const stripe = await getStripe();
                 await stripe.subscriptions.cancel(company.stripeSubscriptionId);
@@ -155,8 +174,8 @@ export function getAuth() {
               }
             }
 
-            // Company FKs cascade the sole owner's company data. BetterAuth then
-            // removes the auth user, sessions, credentials and two-factor data.
+            // No other active member/owner remains, so company FKs cascade the
+            // company data. BetterAuth then removes the user and auth records.
             await db.delete(companies).where(eq(companies.id, profile.companyId));
             return;
           }

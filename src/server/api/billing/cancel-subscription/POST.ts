@@ -110,6 +110,13 @@ export default async function handler(req: Request, res: Response) {
     const company = await db.query.companies.findFirst({ where: eq(companies.id, profile.companyId) });
     if (!company) return res.status(404).json({ error: 'Company not found.' });
 
+    if (company.stripeSubscriptionId?.startsWith('apple:')) {
+      return res.status(409).json({
+        error: 'apple_managed_subscription',
+        message: 'Apple manages this subscription. Open Manage in Apple Settings to cancel or change it.',
+      });
+    }
+
     const userEmail = session.user.email ?? '';
     const userName = session.user.name ?? userEmail.split('@')[0] ?? 'there';
     const companyName = company.name ?? 'your company';

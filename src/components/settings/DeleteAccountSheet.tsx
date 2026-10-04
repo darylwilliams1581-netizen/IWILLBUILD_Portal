@@ -1,6 +1,8 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { AlertCircle, Loader2, ShieldAlert, Trash2, X } from 'lucide-react';
 import { useMe } from '@/lib/usePermissions';
+import { isNativeApp } from '@/lib/native-routing';
+import { manageAppleSubscription } from '@/lib/apple-store';
 
 const inputClass = 'w-full border border-slate-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-colors';
 const labelClass = 'block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5';
@@ -19,6 +21,35 @@ export function DeleteAccountDialog({
   const [deleteCompanyData, setDeleteCompanyData] = useState(false);
   const [deletingAccount, setDeletingAccount] = useState(false);
   const [deleteError, setDeleteError] = useState('');
+  const [appleBilling, setAppleBilling] = useState(false);
+  const [checkingBilling, setCheckingBilling] = useState(false);
+
+  useEffect(() => {
+    if (!open) return;
+    let cancelled = false;
+    setCheckingBilling(true);
+    fetch('/api/subscription/status', { credentials: 'include', cache: 'no-store' })
+      .then((res) => res.ok ? res.json() as Promise<{ stripeSubscriptionId?: string | null }> : null)
+      .then((data) => {
+        if (!cancelled) setAppleBilling(Boolean(data?.stripeSubscriptionId?.startsWith('apple:')));
+      })
+      .catch(() => {
+        if (!cancelled) setAppleBilling(false);
+      })
+      .finally(() => {
+        if (!cancelled) setCheckingBilling(false);
+      });
+    return () => { cancelled = true; };
+  }, [open]);
+
+  async function openAppleBilling() {
+    try {
+      if (isNativeApp) await manageAppleSubscription();
+      else window.open('https://apps.apple.com/account/subscriptions', '_blank', 'noopener,noreferrer');
+    } catch {
+      setDeleteError('Could not open Apple subscription settings. You can manage this subscription in your Apple Account settings.');
+    }
+  }
 
   function close() {
     if (deletingAccount) return;
@@ -86,7 +117,7 @@ export function DeleteAccountDialog({
             <h2 id="delete-account-title" className="flex items-center gap-2 text-base font-bold text-red-700"><ShieldAlert size={16} />Delete account</h2>
             <p className="mt-1 text-xs leading-relaxed text-slate-600">
               {isOwner
-                ? 'If you are the only active member, this also deletes the company and its jobs, documents and files. Transfer ownership first if other team members remain.'
+                ? 'If you are the only active member, this also deletes the company and its jobs, documents and files. If team members remain, assign the Owner role to another active member first so the company can continue.'
                 : 'Your login and personal profile will be deleted. Company-owned job records and files stay with the company.'}
             </p>
           </div>
@@ -94,8 +125,16 @@ export function DeleteAccountDialog({
         </div>
         <form onSubmit={handleDeleteAccount} className="flex flex-col gap-4">
           <div className="rounded-lg bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-800 leading-relaxed">
-            This cannot be undone. {isOwner ? 'Your company data will be permanently removed and any linked subscription will be cancelled first.' : 'You will immediately lose access to this account.'}
+            This cannot be undone. {isOwner ? 'If you are the last active member, your company data will be removed and its Stripe subscription cancelled. If another Owner remains, the company and subscription continue under them.' : 'You will immediately lose access to this account.'}
           </div>
+          {appleBilling && (
+            <div className="rounded-lg border border-amber-300 bg-amber-50 px-4 py-3 text-sm leading-relaxed text-amber-900">
+              Deleting your IWILLBUILD account does not cancel your Apple subscription. Cancel it through Apple to stop future renewals.
+              <button type="button" onClick={() => void openAppleBilling()} className="mt-2 flex min-h-[44px] items-center font-bold underline underline-offset-2">
+                Manage Apple subscription
+              </button>
+            </div>
+          )}
           <div>
             <label className={labelClass}>Current Password</label>
             <input
@@ -126,7 +165,7 @@ export function DeleteAccountDialog({
                 onChange={(e) => setDeleteCompanyData(e.target.checked)}
                 className="mt-0.5 h-4 w-4 accent-red-600"
               />
-              <span>I understand that deleting my sole-owner account also permanently deletes the company and its data.</span>
+              <span>I understand my login will be deleted. If I am the last active member, the company and its data will also be deleted.</span>
             </label>
           )}
           {deleteError && (
@@ -145,7 +184,7 @@ export function DeleteAccountDialog({
             </button>
             <button
               type="submit"
-              disabled={deletingAccount || !deletePassword || deleteConfirmation !== 'DELETE' || (isOwner && !deleteCompanyData)}
+              disabled={checkingBilling || deletingAccount || !deletePassword || deleteConfirmation !== 'DELETE' || (isOwner && !deleteCompanyData)}
               className="w-full sm:w-auto min-h-[44px] inline-flex items-center justify-center gap-2 rounded-lg bg-red-600 px-4 py-2.5 text-sm font-bold text-white hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-50"
             >
               {deletingAccount ? <Loader2 size={16} className="animate-spin" /> : <Trash2 size={16} />}

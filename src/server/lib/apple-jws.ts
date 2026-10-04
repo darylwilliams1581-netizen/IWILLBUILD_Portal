@@ -2,6 +2,15 @@ import { createVerify, X509Certificate } from 'crypto';
 
 export const APPLE_COMPANY_MONTHLY_ID = 'com.iwillbuild.portal.company.monthly';
 export const APPLE_BUNDLE_ID = 'com.iwillbuild.portal';
+export const APPLE_COMPANY_SUBSCRIPTION_IDS = [
+  APPLE_COMPANY_MONTHLY_ID,
+  ...Array.from({ length: 19 }, (_, index) => `${APPLE_COMPANY_MONTHLY_ID}.seats${index + 2}`),
+] as const;
+
+export function getAppleSeatCount(productId: string): number | null {
+  const index = APPLE_COMPANY_SUBSCRIPTION_IDS.indexOf(productId as typeof APPLE_COMPANY_SUBSCRIPTION_IDS[number]);
+  return index < 0 ? null : index + 1;
+}
 
 const APPLE_ROOT_G3 = `-----BEGIN CERTIFICATE-----
 MIICQzCCAcmgAwIBAgIILcX8iNLFS5UwCgYIKoZIzj0EAwMwZzEbMBkGA1UEAwwS
@@ -64,7 +73,7 @@ export function verifyAppleTransaction(jws: string, now = Date.now()): AppleTran
     environment: String(payload.environment ?? ''),
   };
   if (transaction.bundleId !== APPLE_BUNDLE_ID) throw new Error('This purchase is for a different app.');
-  if (transaction.productId !== APPLE_COMPANY_MONTHLY_ID) throw new Error('This is not the company subscription.');
+  if (getAppleSeatCount(transaction.productId) === null) throw new Error('This is not an IWILLBUILD company subscription.');
   if (!transaction.originalTransactionId) throw new Error('Apple did not provide a transaction id.');
   if (payload.revocationDate) throw new Error('Apple has revoked this subscription.');
   if (!Number.isFinite(transaction.expiresDate) || transaction.expiresDate <= now) {
