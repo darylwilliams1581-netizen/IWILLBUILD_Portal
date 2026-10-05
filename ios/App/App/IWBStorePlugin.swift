@@ -119,12 +119,14 @@ public final class IWBStorePlugin: CAPPlugin, CAPBridgedPlugin {
 
     private static func payload(for product: Product) async throws -> [String: Any] {
         let entitlement = await currentEntitlement()
+        let storefrontCountryCode = await Storefront.current?.countryCode
         return [
             "id": product.id,
             "displayName": product.displayName,
             "description": product.description,
             "displayPrice": product.displayPrice,
             "currencyCode": product.priceFormatStyle.currencyCode,
+            "storefrontCountryCode": storefrontCountryCode ?? "",
             "subscribed": entitlement != nil
         ]
     }

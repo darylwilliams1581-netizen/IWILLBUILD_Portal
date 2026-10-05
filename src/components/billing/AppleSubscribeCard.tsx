@@ -16,6 +16,22 @@ function labelledStorePrice(price: string, currency?: string): string {
   return code ? `${price} ${code}` : price;
 }
 
+function storefrontName(countryCode?: string): string {
+  if (!countryCode) return '';
+  try {
+    return new Intl.DisplayNames(['en'], { type: 'region' }).of(countryCode) ?? countryCode;
+  } catch {
+    return countryCode;
+  }
+}
+
+function productPriceLabel(product: AppleProduct): string {
+  const currency = (product.currencyCode || '').toUpperCase();
+  const country = storefrontName(product.storefrontCountryCode);
+  const amount = `${labelledStorePrice(product.displayPrice, product.currencyCode)}${currency ? ` ${currency}` : ''}`;
+  return country ? `${amount} / month · ${country} App Store` : `${amount} / month`;
+}
+
 export default function AppleSubscribeCard() {
   const [product, setProduct] = useState<AppleProduct | null>(null);
   const [error, setError] = useState('');
@@ -41,6 +57,8 @@ export default function AppleSubscribeCard() {
   }, []);
 
   async function subscribe() {
+    const purchaseProduct = product;
+    if (!purchaseProduct) return;
     setBusy(true);
     setError('');
     setNotice('');
@@ -48,7 +66,7 @@ export default function AppleSubscribeCard() {
       const result = await purchaseAppleSubscription();
       if (result.status === 'purchased') {
         setProduct((current) => current ? { ...current, subscribed: true } : current);
-        setNotice('Subscribed. Apple will renew this plan until you cancel it.');
+        setNotice(`Subscribed at ${productPriceLabel(purchaseProduct)}. Apple manages renewal and cancellation.`);
       } else if (result.status === 'pending') {
         setNotice('Apple is still approving this purchase.');
       }
@@ -66,7 +84,11 @@ export default function AppleSubscribeCard() {
     try {
       const result = await restoreAppleSubscription();
       setProduct((current) => current ? { ...current, subscribed: result.subscribed } : current);
-      setNotice(result.subscribed ? 'Your Apple subscription is restored.' : 'This Apple ID has no active IWILLBUILD subscription.');
+      setNotice(result.subscribed && product
+        ? `Your Apple subscription is restored: ${productPriceLabel(product)}.`
+        : result.subscribed
+          ? 'Your Apple subscription is restored.'
+          : 'This Apple ID has no active IWILLBUILD subscription.');
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Apple could not restore the purchase.');
     } finally {
@@ -83,7 +105,7 @@ export default function AppleSubscribeCard() {
       </p>
       {loading ? <p className="mt-4 text-sm text-slate-500">Loading the App Store price…</p> : null}
       {product ? (
-        <p className="mt-4 text-3xl font-black">{labelledStorePrice(product.displayPrice, product.currencyCode)}<span className="text-base font-semibold text-slate-500"> / month</span></p>
+        <p className="mt-4 text-3xl font-black">{productPriceLabel(product)}</p>
       ) : null}
       {product?.subscribed ? <p className="mt-3 text-sm font-semibold text-emerald-700">This Apple ID is already subscribed.</p> : null}
       {notice ? <p className="mt-3 text-sm text-slate-700">{notice}</p> : null}
@@ -95,7 +117,7 @@ export default function AppleSubscribeCard() {
           onClick={() => void subscribe()}
           className="min-h-[48px] rounded-xl bg-violet-600 px-4 text-sm font-bold text-white disabled:opacity-50"
         >
-          {busy ? 'Please wait…' : 'Subscribe'}
+          {busy ? 'Please wait…' : product ? `Subscribe — ${productPriceLabel(product)}` : 'Subscribe'}
         </button>
         <button
           type="button"
