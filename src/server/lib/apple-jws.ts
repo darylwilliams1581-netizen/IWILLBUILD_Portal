@@ -3,7 +3,7 @@ import { createVerify, X509Certificate } from 'crypto';
 export const APPLE_COMPANY_MONTHLY_ID = 'com.iwillbuild.portal.company.monthly';
 export const APPLE_BUNDLE_ID = 'com.iwillbuild.portal';
 
-const APPLE_ROOT_G3 = `-----BEGIN CERTIFICATE-----
+export const APPLE_ROOT_G3 = `-----BEGIN CERTIFICATE-----
 MIICQzCCAcmgAwIBAgIILcX8iNLFS5UwCgYIKoZIzj0EAwMwZzEbMBkGA1UEAwwS
 QXBwbGUgUm9vdCBDQSAtIEczMSYwJAYDVQQLDB1BcHBsZSBDZXJ0aWZpY2F0aW9u
 IEF1dGhvcml0eTETMBEGA1UECgwKQXBwbGUgSW5jLjELMAkGA1UEBhMCVVMwHhcN
@@ -34,7 +34,7 @@ export function verifyAppleTransaction(jws: string, now = Date.now()): AppleTran
   const [encodedHeader, encodedPayload, encodedSignature] = parts;
   const header = JSON.parse(decode(encodedHeader).toString('utf8')) as { x5c?: string[] };
   const payload = JSON.parse(decode(encodedPayload).toString('utf8')) as Record<string, unknown>;
-  const certificates = (header.x5c ?? []).map((encoded) => new X509Certificate(Buffer.from(encoded, 'base64')));
+  const certificates = (header.x5c ?? []).map(certificateFromX5c);
   if (certificates.length < 2) throw new Error('Apple certificate chain missing.');
 
   const verifier = createVerify('SHA256');
@@ -71,6 +71,24 @@ export function verifyAppleTransaction(jws: string, now = Date.now()): AppleTran
     throw new Error('This Apple subscription is not active.');
   }
   return transaction;
+}
+
+function certificateFromX5c(encoded: string): X509Certificate {
+  try {
+    return new X509Certificate(Buffer.from(encoded, 'base64'));
+  } catch (error) {
+    if (!(error instanceof Error) || !/bad base64 decode/i.test(error.message)) throw error;
+
+    const compact = encoded.replace(/\s/g, '');
+    const der = Buffer.from(compact, 'base64');
+    try {
+      return new X509Certificate(der);
+    } catch {
+      const body = compact.match(/.{1,64}/g)?.join('\n');
+      if (!body) throw error;
+      return new X509Certificate(`-----BEGIN CERTIFICATE-----\n${body}\n-----END CERTIFICATE-----\n`);
+    }
+  }
 }
 
 function decode(value: string): Buffer {

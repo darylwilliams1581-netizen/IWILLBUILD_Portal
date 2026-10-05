@@ -35,8 +35,11 @@ export default async function handler(req: Request, res: Response) {
     try {
       transaction = verifyAppleTransaction(jws);
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Apple could not verify this purchase.';
-      return res.status(402).json({ error: message });
+      console.error(
+        '[billing/apple/confirm] Apple transaction verification failed.',
+        error,
+      );
+      return res.status(402).json({ error: 'Apple could not verify this purchase. Please try again.' });
     }
 
     const appleSubscriptionId = `apple:${transaction.originalTransactionId}`;
