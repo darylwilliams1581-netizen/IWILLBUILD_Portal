@@ -19,7 +19,7 @@ function PolicyFooter({ active }: { active: string }) {
   return (
     <footer className="border-t border-border px-6 py-6 text-center">
       <div className="flex justify-center gap-5 flex-wrap mb-3">
-        {fair_use.navLinks.map(l => (
+        {navLinks.map(l => (
           <Link key={l.to} to={l.to}
             className={`text-sm no-underline transition-colors hover:text-foreground ${l.label === active ? 'text-primary' : 'text-muted-foreground'}`}>
             {l.label}
