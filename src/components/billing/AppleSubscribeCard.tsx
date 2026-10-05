@@ -1,5 +1,4 @@
 import { useEffect, useState } from 'react';
-import { Link } from 'react-router';
 import {
   getAppleProduct,
   manageAppleSubscription,
@@ -7,6 +6,7 @@ import {
   restoreAppleSubscription,
   type AppleProduct,
 } from '@/lib/apple-store';
+import { openExternalUrl, WEB_PORTAL_URL } from '@/lib/native-routing';
 
 export default function AppleSubscribeCard() {
   const [product, setProduct] = useState<AppleProduct | null>(null);
@@ -110,9 +110,9 @@ export default function AppleSubscribeCard() {
         Payment is charged to your Apple ID. The plan renews each month unless you cancel at least 24 hours before the period ends. Cancel and restore from Apple Settings.
       </p>
       <p className="mt-2 text-[11px] text-slate-500">
-        <Link to="/terms" className="underline">Terms</Link>
+        <button type="button" onClick={() => openExternalUrl(`${WEB_PORTAL_URL}/terms`)} className="underline">Terms</button>
         {' · '}
-        <Link to="/privacy" className="underline">Privacy</Link>
+        <button type="button" onClick={() => openExternalUrl(`${WEB_PORTAL_URL}/privacy`)} className="underline">Privacy</button>
       </p>
     </section>
   );

@@ -8,6 +8,7 @@ import { INDUSTRY_LIST, type IndustryId } from '@/lib/industry-config';
 import { goBack } from '@/lib/navigation';
 import { markTermsAccepted } from '@/components/TermsAcceptanceGate';
 import { isNative } from '@/lib/capacitor-plugins';
+import { openExternalUrl, WEB_PORTAL_URL } from '@/lib/native-routing';
 
 // ── Password policy ───────────────────────────────────────────────────────────
 function getPasswordStrength(pw: string) {
@@ -596,7 +597,7 @@ export default function SignupPage() {
                           </div>}
                       </div>
 
-                      <label className="flex items-start gap-2.5 cursor-pointer">
+                      <div className="flex items-start gap-2.5">
                         <input
                           type="checkbox"
                           checked={agreedToTerms}
@@ -605,13 +606,13 @@ export default function SignupPage() {
                         />
                         <span className="text-[11px] leading-snug text-white/55">
                           I agree to the{' '}
-                          <Link to="/terms" target="_blank" className="text-primary hover:text-violet-400 underline">Terms of Use</Link>,{' '}
-                          <Link to="/fair-use" target="_blank" className="text-primary hover:text-violet-400 underline">Fair Use</Link>,{' '}
-                          <Link to="/privacy" target="_blank" className="text-primary hover:text-violet-400 underline">Privacy</Link>
+                          <button type="button" onClick={() => openExternalUrl(`${WEB_PORTAL_URL}/terms`)} className="text-primary hover:text-violet-400 underline">Terms of Use</button>,{' '}
+                          <button type="button" onClick={() => openExternalUrl(`${WEB_PORTAL_URL}/fair-use`)} className="text-primary hover:text-violet-400 underline">Fair Use</button>,{' '}
+                          <button type="button" onClick={() => openExternalUrl(`${WEB_PORTAL_URL}/privacy`)} className="text-primary hover:text-violet-400 underline">Privacy</button>
                           {' '}and{' '}
-                          <Link to="/system-policy" target="_blank" className="text-primary hover:text-violet-400 underline">System Policy</Link>.
+                          <button type="button" onClick={() => openExternalUrl(`${WEB_PORTAL_URL}/system-policy`)} className="text-primary hover:text-violet-400 underline">System Policy</button>.
                         </span>
-                      </label>
+                      </div>
 
                       <div className="flex gap-2 mt-1">
                         <button type="button" onClick={() => {
