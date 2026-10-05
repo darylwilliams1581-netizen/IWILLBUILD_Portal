@@ -81,6 +81,13 @@ public final class IWBStorePlugin: CAPPlugin, CAPBridgedPlugin {
     @objc func restore(_ call: CAPPluginCall) {
         Task {
             do {
+                if let entitlement = await Self.currentEntitlement() {
+                    call.resolve([
+                        "subscribed": true,
+                        "jws": entitlement.jws
+                    ])
+                    return
+                }
                 try await AppStore.sync()
                 let entitlement = await Self.currentEntitlement()
                 call.resolve([

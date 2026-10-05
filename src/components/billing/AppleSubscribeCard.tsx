@@ -17,18 +17,20 @@ function labelledStorePrice(price: string, currency?: string): string {
 }
 
 function storefrontName(countryCode?: string): string {
-  if (!countryCode) return '';
+  const code = (countryCode || '').toUpperCase();
+  if (code === 'USA' || code === 'US') return 'United States';
+  if (code === 'AUS' || code === 'AU') return 'Australia';
+  if (!code) return '';
   try {
-    return new Intl.DisplayNames(['en'], { type: 'region' }).of(countryCode) ?? countryCode;
+    return new Intl.DisplayNames(['en'], { type: 'region' }).of(code) ?? code;
   } catch {
-    return countryCode;
+    return code;
   }
 }
 
 function productPriceLabel(product: AppleProduct): string {
-  const currency = (product.currencyCode || '').toUpperCase();
   const country = storefrontName(product.storefrontCountryCode);
-  const amount = `${labelledStorePrice(product.displayPrice, product.currencyCode)}${currency ? ` ${currency}` : ''}`;
+  const amount = labelledStorePrice(product.displayPrice, product.currencyCode);
   return country ? `${amount} / month · ${country} App Store` : `${amount} / month`;
 }
 
