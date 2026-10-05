@@ -8,6 +8,7 @@ export interface AppleProduct {
   displayName: string;
   description: string;
   displayPrice: string;
+  currencyCode?: string;
   subscribed: boolean;
 }
 

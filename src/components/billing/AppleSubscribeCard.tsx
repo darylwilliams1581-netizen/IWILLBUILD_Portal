@@ -8,6 +8,14 @@ import {
 } from '@/lib/apple-store';
 import { openExternalUrl, WEB_PORTAL_URL } from '@/lib/native-routing';
 
+function labelledStorePrice(price: string, currency?: string): string {
+  const code = (currency || '').toUpperCase();
+  const amount = price.replace(/^(?:US|A)?\$/, '');
+  if (code === 'AUD') return `A$${amount} AUD`;
+  if (code === 'USD') return `US$${amount} USD`;
+  return code ? `${price} ${code}` : price;
+}
+
 export default function AppleSubscribeCard() {
   const [product, setProduct] = useState<AppleProduct | null>(null);
   const [error, setError] = useState('');
@@ -75,7 +83,7 @@ export default function AppleSubscribeCard() {
       </p>
       {loading ? <p className="mt-4 text-sm text-slate-500">Loading the App Store price…</p> : null}
       {product ? (
-        <p className="mt-4 text-3xl font-black">{product.displayPrice}<span className="text-base font-semibold text-slate-500"> / month</span></p>
+        <p className="mt-4 text-3xl font-black">{labelledStorePrice(product.displayPrice, product.currencyCode)}<span className="text-base font-semibold text-slate-500"> / month</span></p>
       ) : null}
       {product?.subscribed ? <p className="mt-3 text-sm font-semibold text-emerald-700">This Apple ID is already subscribed.</p> : null}
       {notice ? <p className="mt-3 text-sm text-slate-700">{notice}</p> : null}

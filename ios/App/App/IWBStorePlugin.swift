@@ -124,6 +124,7 @@ public final class IWBStorePlugin: CAPPlugin, CAPBridgedPlugin {
             "displayName": product.displayName,
             "description": product.description,
             "displayPrice": product.displayPrice,
+            "currencyCode": product.priceFormatStyle.currencyCode,
             "subscribed": entitlement != nil
         ]
     }
