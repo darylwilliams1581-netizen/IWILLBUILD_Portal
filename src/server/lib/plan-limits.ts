@@ -39,9 +39,23 @@ export interface PlanLimits {
 
 const GB = 1024 * 1024 * 1024;
 
+/** Apple Company subscription includes the owner and two workers. */
+export const COMPANY_MAX_USERS = 3;
+
 const PLAN_LIMITS: Record<string, PlanLimits> = {
   trial: {
     users:          2,
+    activeJobs:     5,
+    totalPhotos:    200,
+    storageBytes:   0.5 * GB,
+    costGuideItems: 50,
+    formTemplates:  10,
+    fleetAssets:    3,
+  },
+  // Apple company subscription. Keep the existing trial resource allowances;
+  // only the included team size differs.
+  company: {
+    users:          COMPANY_MAX_USERS,
     activeJobs:     5,
     totalPhotos:    200,
     storageBytes:   0.5 * GB,

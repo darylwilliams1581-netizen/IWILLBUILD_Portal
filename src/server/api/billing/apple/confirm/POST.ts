@@ -9,6 +9,7 @@ import { db } from '../../../../db/client.js';
 import { companies, profiles } from '../../../../db/schema.js';
 import { getAuth } from '../../../../../lib/auth/auth.js';
 import { verifyAppleTransaction } from '../../../../lib/apple-jws.js';
+import { COMPANY_MAX_USERS } from '../../../../lib/plan-limits.js';
 
 function headersFrom(req: Request): Headers {
   const headers = new Headers();
@@ -55,6 +56,7 @@ export default async function handler(req: Request, res: Response) {
 
     await db.update(companies).set({
       plan: 'company',
+      maxUsers: COMPANY_MAX_USERS,
       subscriptionStatus: 'active',
       currentPeriodEnd: new Date(transaction.expiresDate),
       cancelAtPeriodEnd: false,
