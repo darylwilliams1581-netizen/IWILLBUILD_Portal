@@ -7,6 +7,11 @@ import {
   type AppleProduct,
 } from '@/lib/apple-store';
 import { openExternalUrl, WEB_PORTAL_URL } from '@/lib/native-routing';
+import { invalidateSubscriptionCache } from '@/lib/useSubscriptionGate';
+
+interface AppleSubscribeCardProps {
+  onSubscriptionActivated?: () => void;
+}
 
 function labelledStorePrice(price: string, currency?: string): string {
   const code = (currency || '').toUpperCase();
@@ -34,7 +39,7 @@ function productPriceLabel(product: AppleProduct): string {
   return country ? `${amount} / month · ${country} App Store` : `${amount} / month`;
 }
 
-export default function AppleSubscribeCard() {
+export default function AppleSubscribeCard({ onSubscriptionActivated }: AppleSubscribeCardProps) {
   const [product, setProduct] = useState<AppleProduct | null>(null);
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
@@ -69,6 +74,8 @@ export default function AppleSubscribeCard() {
       if (result.status === 'purchased') {
         setProduct((current) => current ? { ...current, subscribed: true } : current);
         setNotice(`Subscribed at ${productPriceLabel(purchaseProduct)}. Apple manages renewal and cancellation.`);
+        invalidateSubscriptionCache();
+        onSubscriptionActivated?.();
       } else if (result.status === 'pending') {
         setNotice('Apple is still approving this purchase.');
       }
@@ -86,6 +93,10 @@ export default function AppleSubscribeCard() {
     try {
       const result = await restoreAppleSubscription();
       setProduct((current) => current ? { ...current, subscribed: result.subscribed } : current);
+      if (result.subscribed) {
+        invalidateSubscriptionCache();
+        onSubscriptionActivated?.();
+      }
       setNotice(result.subscribed && product
         ? `Your Apple subscription is restored: ${productPriceLabel(product)}.`
         : result.subscribed
@@ -103,7 +114,7 @@ export default function AppleSubscribeCard() {
       <p className="text-xs font-bold uppercase tracking-wide text-violet-700">Company plan</p>
       <h2 className="mt-1 text-xl font-black">{product?.displayName || 'IWILLBUILD Company'}</h2>
       <p className="mt-2 text-sm leading-6 text-slate-600">
-        One company subscription, paid by Apple. This app does not take a card payment.
+        IWILLBUILD is free until you subscribe. One subscription covers the owner and two workers. Apple handles payment.
       </p>
       {loading ? <p className="mt-4 text-sm text-slate-500">Loading the App Store price…</p> : null}
       {product ? (
@@ -111,7 +122,7 @@ export default function AppleSubscribeCard() {
       ) : null}
       {product?.subscribed ? <p className="mt-3 text-sm font-semibold text-emerald-700">This Apple ID is already subscribed.</p> : null}
       {notice ? <p className="mt-3 text-sm text-slate-700">{notice}</p> : null}
-      {error ? <p className="mt-3 text-sm text-red-700">{error}</p> : null}
+      {error ? <p role="alert" className="mt-3 text-sm text-red-700">{error}</p> : null}
       <div className="mt-5 grid gap-2">
         <button
           type="button"

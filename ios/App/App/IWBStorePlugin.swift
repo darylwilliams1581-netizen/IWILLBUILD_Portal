@@ -41,19 +41,28 @@ public final class IWBStorePlugin: CAPPlugin, CAPBridgedPlugin {
                 }
                 call.resolve(try await Self.payload(for: product))
             } catch {
-                call.reject(error.localizedDescription)
+                call.reject(Self.diagnosticMessage(for: error))
             }
         }
     }
 
     @objc func purchase(_ call: CAPPluginCall) {
-        Task {
+        Task { @MainActor in
             do {
                 guard let product = try await Self.loadProduct() else {
                     call.reject("The App Store subscription is not available yet.")
                     return
                 }
-                let result = try await product.purchase()
+                let result: Product.PurchaseResult
+                if #available(iOS 17.0, *) {
+                    guard let scene = Self.foregroundPurchaseScene() else {
+                        call.reject("Open IWILLBUILD in the foreground before starting the Apple purchase.")
+                        return
+                    }
+                    result = try await product.purchase(confirmIn: scene)
+                } else {
+                    result = try await product.purchase()
+                }
                 switch result {
                 case .success(let verification):
                     let transaction = try Self.verified(verification)
@@ -73,7 +82,7 @@ public final class IWBStorePlugin: CAPPlugin, CAPBridgedPlugin {
                     call.reject("Apple returned an unknown purchase result.")
                 }
             } catch {
-                call.reject(error.localizedDescription)
+                call.reject(Self.diagnosticMessage(for: error))
             }
         }
     }
@@ -95,7 +104,7 @@ public final class IWBStorePlugin: CAPPlugin, CAPBridgedPlugin {
                     "jws": entitlement?.jws ?? ""
                 ])
             } catch {
-                call.reject(error.localizedDescription)
+                call.reject(Self.diagnosticMessage(for: error))
             }
         }
     }
@@ -114,9 +123,21 @@ public final class IWBStorePlugin: CAPPlugin, CAPBridgedPlugin {
                 try await AppStore.showManageSubscriptions(in: scene)
                 call.resolve()
             } catch {
-                call.reject(error.localizedDescription)
+                call.reject(Self.diagnosticMessage(for: error))
             }
         }
+    }
+
+    @MainActor
+    private static func foregroundPurchaseScene() -> UIWindowScene? {
+        UIApplication.shared.connectedScenes
+            .compactMap { $0 as? UIWindowScene }
+            .first { $0.activationState == .foregroundActive }
+    }
+
+    private static func diagnosticMessage(for error: Error) -> String {
+        let storeError = error as NSError
+        return "\(storeError.localizedDescription) [\(storeError.domain), code \(storeError.code)]"
     }
 
     private static func loadProduct() async throws -> Product? {

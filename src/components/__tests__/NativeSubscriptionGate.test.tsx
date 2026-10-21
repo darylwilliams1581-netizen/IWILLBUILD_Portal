@@ -1,7 +1,7 @@
 /**
  * @vitest-environment jsdom
  */
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const controls = vi.hoisted(() => ({
@@ -33,6 +33,14 @@ vi.mock('@/lib/useSubscriptionGate', () => ({
 
 vi.mock('@/lib/diagnosticBuffer', () => ({
   resetDiagnosticBuffer: controls.resetDiagnosticBuffer,
+}));
+
+vi.mock('@/components/billing/AppleSubscribeCard', () => ({
+  default: ({ onSubscriptionActivated }: { onSubscriptionActivated?: () => void }) => (
+    <button type="button" onClick={() => onSubscriptionActivated?.()}>
+      Simulate confirmed subscription
+    </button>
+  ),
 }));
 
 import NativeSubscriptionGate, {
@@ -84,6 +92,22 @@ describe('NativeSubscriptionGate', () => {
 
     expect(screen.getByRole('heading', { name: 'IWILLBUILD is paused' })).toBeVisible();
     expect(screen.queryByTestId('native-tab-bar')).not.toBeInTheDocument();
+  });
+
+  it('opens the native shell after a confirmed subscription activation', () => {
+    controls.subscription.status = 'cancelled';
+    controls.subscription.isViewOnly = true;
+
+    render(
+      <NativeSubscriptionGate>
+        <div data-testid="native-tab-bar">Native shell</div>
+      </NativeSubscriptionGate>,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Simulate confirmed subscription' }));
+
+    expect(screen.getByTestId('native-tab-bar')).toBeVisible();
+    expect(screen.queryByText('IWILLBUILD is paused')).not.toBeInTheDocument();
   });
 
   it('does not link a paused account to the website checkout', () => {

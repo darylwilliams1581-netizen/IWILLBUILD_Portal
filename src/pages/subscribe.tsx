@@ -64,7 +64,7 @@ export default function SubscribePage() {
         </Helmet>
         <h1 className="text-2xl font-black">Subscribe with Apple</h1>
         <p className="mt-3 max-w-sm text-sm leading-6 text-white/60">
-          The company plan is an App Store subscription. This screen does not take a card payment.
+          IWILLBUILD is free until you subscribe. One subscription covers the owner and two workers. Apple handles payment.
         </p>
         <div className="mt-6 w-full max-w-sm text-left">
           <AppleSubscribeCard />

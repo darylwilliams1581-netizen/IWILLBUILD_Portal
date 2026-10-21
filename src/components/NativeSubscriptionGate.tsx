@@ -50,7 +50,7 @@ function FullScreenLoader() {
   );
 }
 
-function PausedScreen() {
+function PausedScreen({ onSubscriptionActivated }: { onSubscriptionActivated: () => void }) {
   const [loggingOut, setLoggingOut] = useState(false);
 
   async function handleLogout() {
@@ -66,10 +66,10 @@ function PausedScreen() {
         </div>
         <h1 className="text-2xl font-bold tracking-tight">IWILLBUILD is paused</h1>
         <p className="mt-3 text-sm leading-6 text-slate-300">
-          This company account is paused. Subscribe with Apple to continue. There is no card payment in the app.
+          IWILLBUILD is free until you subscribe. One subscription covers the owner and two workers. Subscribe through Apple to unlock the app.
         </p>
         <div className="mt-6 text-left">
-          <AppleSubscribeCard />
+          <AppleSubscribeCard onSubscriptionActivated={onSubscriptionActivated} />
         </div>
 
         <div className="mt-7 grid gap-3">
@@ -90,9 +90,12 @@ function PausedScreen() {
 
 function AuthenticatedNativeSubscriptionGate({ children }: { children: ReactNode }) {
   const { status, isViewOnly, isLoading } = useSubscriptionGate();
+  const [subscriptionActivated, setSubscriptionActivated] = useState(false);
 
   if (isLoading) return <FullScreenLoader />;
-  if (shouldPauseNativeSubscription(status, isViewOnly)) return <PausedScreen />;
+  if (!subscriptionActivated && shouldPauseNativeSubscription(status, isViewOnly)) {
+    return <PausedScreen onSubscriptionActivated={() => setSubscriptionActivated(true)} />;
+  }
   return <>{children}</>;
 }
 
