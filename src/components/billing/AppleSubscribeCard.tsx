@@ -13,6 +13,8 @@ interface AppleSubscribeCardProps {
   onSubscriptionActivated?: () => void;
 }
 
+const AUSTRALIAN_MONTHLY_PRICE = 'A$20.90 AUD / month';
+
 function labelledStorePrice(price: string, currency?: string): string {
   const code = (currency || '').toUpperCase();
   const amount = price.replace(/^(?:US|A)?\$/, '');
@@ -120,11 +122,11 @@ export default function AppleSubscribeCard({ onSubscriptionActivated }: AppleSub
       </p>
       {loading ? <p className="mt-4 text-sm text-slate-500">Loading the App Store price…</p> : null}
       {product ? (
-        <p className="mt-4 text-3xl font-black">{productPriceLabel(product)}</p>
+        <p className="mt-4 text-3xl font-black">{AUSTRALIAN_MONTHLY_PRICE}</p>
       ) : null}
       {product && productStorefront && !usesAustralianStorefront ? (
         <p className="mt-2 text-xs leading-5 text-slate-500">
-          Apple sets this price for the {productStorefront} App Store. Australian pricing appears when your Apple Account storefront is set to Australia.
+          This is the Australian price. Apple will show the price for your {productStorefront} App Store storefront before purchase.
         </p>
       ) : null}
       {product?.subscribed ? <p className="mt-3 text-sm font-semibold text-emerald-700">This Apple ID is already subscribed.</p> : null}
@@ -137,7 +139,7 @@ export default function AppleSubscribeCard({ onSubscriptionActivated }: AppleSub
           onClick={() => void subscribe()}
           className="min-h-[48px] rounded-xl bg-violet-600 px-4 text-sm font-bold text-white disabled:opacity-50"
         >
-          {busy ? 'Please wait…' : product ? `Subscribe — ${productPriceLabel(product)}` : 'Subscribe'}
+          {busy ? 'Please wait…' : product ? `Subscribe — ${AUSTRALIAN_MONTHLY_PRICE}` : 'Subscribe'}
         </button>
         <button
           type="button"
@@ -153,9 +155,12 @@ export default function AppleSubscribeCard({ onSubscriptionActivated }: AppleSub
           onClick={() => void manageAppleSubscription().catch((err: unknown) => setError(err instanceof Error ? err.message : 'Could not open Apple subscription settings.'))}
           className="min-h-[44px] rounded-xl border border-slate-300 px-4 text-sm font-semibold"
         >
-          Manage in Apple Settings
+          Manage / cancel Apple subscription
         </button>
       </div>
+      <p className="mt-2 text-xs leading-5 text-slate-500">
+        Apple handles cancellation. This opens your Apple subscription settings, where you can cancel renewal. Deleting your IWILLBUILD account does not cancel an Apple subscription.
+      </p>
       <p className="mt-4 text-[11px] leading-5 text-slate-500">
         Payment is charged to your Apple ID. The plan renews each month unless you cancel at least 24 hours before the period ends. Cancel and restore from Apple Settings.
       </p>
