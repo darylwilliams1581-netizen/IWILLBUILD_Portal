@@ -1,7 +1,8 @@
 import { registerPlugin } from '@capacitor/core';
 import { isNative } from '@/lib/capacitor-plugins';
 
-export const APPLE_COMPANY_MONTHLY_ID = 'com.iwillbuild.portal.company.monthly';
+/** The current Apple subscription includes the owner and two additional users. */
+export const APPLE_COMPANY_PRODUCT_ID = 'com.iwillbuild.portal.company.seats3';
 
 export interface AppleProduct {
   id: string;
@@ -67,7 +68,7 @@ async function confirmAppleTransaction(jws: string): Promise<void> {
     method: 'POST',
     credentials: 'include',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ jws, productId: APPLE_COMPANY_MONTHLY_ID }),
+    body: JSON.stringify({ jws, productId: APPLE_COMPANY_PRODUCT_ID }),
   });
   if (!response.ok) {
     const body = await response.json().catch(() => ({})) as { error?: string };

@@ -1,6 +1,18 @@
 import { describe, expect, it } from 'vitest';
 import { X509Certificate } from 'node:crypto';
-import { APPLE_ROOT_G3, verifyAppleTransaction } from '../apple-jws';
+import {
+  APPLE_COMPANY_LEGACY_PRODUCT_IDS,
+  APPLE_COMPANY_PRODUCT_ID,
+  APPLE_ROOT_G3,
+  verifyAppleTransaction,
+} from '../apple-jws';
+
+describe('Apple company subscription product IDs', () => {
+  it('uses the three-seat product for new purchases and preserves the legacy SKU', () => {
+    expect(APPLE_COMPANY_PRODUCT_ID).toBe('com.iwillbuild.portal.company.seats3');
+    expect(APPLE_COMPANY_LEGACY_PRODUCT_IDS.has('com.iwillbuild.portal.company.monthly')).toBe(true);
+  });
+});
 
 describe('Apple Root CA - G3 certificate input formats', () => {
   it('parses the configured PEM with the expected fingerprint', () => {

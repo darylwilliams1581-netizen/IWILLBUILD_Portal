@@ -46,6 +46,7 @@ const MS_PER_DAY = 24 * 60 * 60 * 1000;
 
 export type SubscriptionStatus =
   | 'active'
+  | 'complimentary'
   | 'trial'
   | 'trial_expired'
   | 'cancel_at_period_end'
@@ -138,7 +139,7 @@ export async function getSubscriptionInfo(req: Request): Promise<SubscriptionInf
 
 type CompanyRow = typeof companies.$inferSelect;
 
-function resolveCompanyStatus(company: CompanyRow): SubscriptionInfo {
+export function resolveCompanyStatus(company: CompanyRow): SubscriptionInfo {
   const now = new Date();
   const rawStatus = company.subscriptionStatus ?? 'trial';
 
@@ -158,6 +159,13 @@ function resolveCompanyStatus(company: CompanyRow): SubscriptionInfo {
     stripeSubscriptionId: company.stripeSubscriptionId ?? null,
     graceDaysLeft: null as number | null,
   };
+
+  // Owner-console complimentary access is an explicit writable subscription
+  // state. It must survive status resolution instead of falling through to the
+  // inactive/cancelled default.
+  if (rawStatus === 'complimentary') {
+    return { ...base, status: 'complimentary', isViewOnly: false, daysLeft: null };
+  }
 
   // ── Active paid subscription ──────────────────────────────────────────────
   if (rawStatus === 'active') {

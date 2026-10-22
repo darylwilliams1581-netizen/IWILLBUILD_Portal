@@ -45,6 +45,8 @@ export default function AppleSubscribeCard({ onSubscriptionActivated }: AppleSub
   const [notice, setNotice] = useState('');
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
+  const productStorefront = storefrontName(product?.storefrontCountryCode);
+  const usesAustralianStorefront = ['AU', 'AUS'].includes((product?.storefrontCountryCode || '').toUpperCase());
 
   useEffect(() => {
     let cancelled = false;
@@ -119,6 +121,11 @@ export default function AppleSubscribeCard({ onSubscriptionActivated }: AppleSub
       {loading ? <p className="mt-4 text-sm text-slate-500">Loading the App Store price…</p> : null}
       {product ? (
         <p className="mt-4 text-3xl font-black">{productPriceLabel(product)}</p>
+      ) : null}
+      {product && productStorefront && !usesAustralianStorefront ? (
+        <p className="mt-2 text-xs leading-5 text-slate-500">
+          Apple sets this price for the {productStorefront} App Store. Australian pricing appears when your Apple Account storefront is set to Australia.
+        </p>
       ) : null}
       {product?.subscribed ? <p className="mt-3 text-sm font-semibold text-emerald-700">This Apple ID is already subscribed.</p> : null}
       {notice ? <p className="mt-3 text-sm text-slate-700">{notice}</p> : null}

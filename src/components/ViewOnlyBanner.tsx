@@ -32,7 +32,9 @@ export default function ViewOnlyBanner({ variant = 'mobile' }: ViewOnlyBannerPro
   const bannerRef = useRef<HTMLDivElement>(null);
   const canManageBilling = role === 'owner' || role === 'admin';
   const native = isNativeApp;
-  const visible = !isLoading && !dismissed && !!status && status !== 'active' && status !== 'trial' && status !== 'no_company';
+  const visible = !isLoading && !dismissed && !!status &&
+    status !== 'active' && status !== 'complimentary' &&
+    status !== 'trial' && status !== 'no_company';
 
   useEffect(() => {
     if (variant !== 'desktop' || !visible) {

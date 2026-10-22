@@ -15,7 +15,13 @@ public final class IWBStorePlugin: CAPPlugin, CAPBridgedPlugin {
         CAPPluginMethod(name: "manage", returnType: CAPPluginReturnPromise)
     ]
 
-    static let productId = "com.iwillbuild.portal.company.monthly"
+    // New purchases use the 3-seat company plan. Keep the legacy SKU in the
+    // entitlement set so existing subscribers can still restore/manage it.
+    static let productId = "com.iwillbuild.portal.company.seats3"
+    private static let supportedProductIds: Set<String> = [
+        productId,
+        "com.iwillbuild.portal.company.monthly"
+    ]
     private var updates: Task<Void, Never>?
 
     override public func load() {
@@ -161,7 +167,7 @@ public final class IWBStorePlugin: CAPPlugin, CAPBridgedPlugin {
 
     private static func currentEntitlement() async -> (jws: String, id: UInt64)? {
         for await result in Transaction.currentEntitlements {
-            guard let transaction = try? verified(result), transaction.productID == productId else { continue }
+            guard let transaction = try? verified(result), supportedProductIds.contains(transaction.productID) else { continue }
             return (result.jwsRepresentation, transaction.id)
         }
         return nil

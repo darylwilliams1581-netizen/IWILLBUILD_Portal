@@ -19,6 +19,7 @@ import { useState, useEffect } from 'react';
 
 export type SubscriptionStatus =
   | 'active'
+  | 'complimentary'
   | 'trial'
   | 'trial_expired'
   | 'locked_out'
@@ -144,14 +145,35 @@ export function useSubscriptionGate(): SubscriptionGateResult {
   });
 
   useEffect(() => {
-    if (_cache && Date.now() - _cache.fetchedAt < CACHE_TTL_MS) {
-      setResult({ ..._cache, isLoading: false });
-      return;
-    }
+    let cancelled = false;
+    let lastRefreshAt = 0;
+    const load = async (force = false) => {
+      if (!force && _cache && Date.now() - _cache.fetchedAt < CACHE_TTL_MS) {
+        setResult({ ..._cache, isLoading: false });
+        return;
+      }
+      const entry = await fetchStatus();
+      if (!cancelled) setResult({ ...entry, isLoading: false });
+    };
+    const refresh = () => {
+      // Focus and visibility can fire together when returning to a browser tab.
+      if (Date.now() - lastRefreshAt < 1000) return;
+      lastRefreshAt = Date.now();
+      invalidateSubscriptionCache();
+      void load(true);
+    };
+    const onVisibilityChange = () => {
+      if (document.visibilityState === 'visible') refresh();
+    };
 
-    fetchStatus().then((entry) => {
-      setResult({ ...entry, isLoading: false });
-    });
+    void load();
+    window.addEventListener('focus', refresh);
+    document.addEventListener('visibilitychange', onVisibilityChange);
+    return () => {
+      cancelled = true;
+      window.removeEventListener('focus', refresh);
+      document.removeEventListener('visibilitychange', onVisibilityChange);
+    };
   }, []);
 
   return result;

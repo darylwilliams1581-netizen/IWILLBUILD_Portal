@@ -1,6 +1,9 @@
 import { createVerify, X509Certificate } from 'crypto';
 
-export const APPLE_COMPANY_MONTHLY_ID = 'com.iwillbuild.portal.company.monthly';
+export const APPLE_COMPANY_PRODUCT_ID = 'com.iwillbuild.portal.company.seats3';
+export const APPLE_COMPANY_LEGACY_PRODUCT_IDS = new Set([
+  'com.iwillbuild.portal.company.monthly',
+]);
 export const APPLE_BUNDLE_ID = 'com.iwillbuild.portal';
 
 export const APPLE_ROOT_G3 = `-----BEGIN CERTIFICATE-----
@@ -64,7 +67,12 @@ export function verifyAppleTransaction(jws: string, now = Date.now()): AppleTran
     environment: String(payload.environment ?? ''),
   };
   if (transaction.bundleId !== APPLE_BUNDLE_ID) throw new Error('This purchase is for a different app.');
-  if (transaction.productId !== APPLE_COMPANY_MONTHLY_ID) throw new Error('This is not the company subscription.');
+  if (
+    transaction.productId !== APPLE_COMPANY_PRODUCT_ID &&
+    !APPLE_COMPANY_LEGACY_PRODUCT_IDS.has(transaction.productId)
+  ) {
+    throw new Error('This is not the company subscription.');
+  }
   if (!transaction.originalTransactionId) throw new Error('Apple did not provide a transaction id.');
   if (payload.revocationDate) throw new Error('Apple has revoked this subscription.');
   if (!Number.isFinite(transaction.expiresDate) || transaction.expiresDate <= now) {
