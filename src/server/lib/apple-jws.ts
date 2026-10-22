@@ -1,8 +1,8 @@
 import { createVerify, X509Certificate } from 'crypto';
 
-export const APPLE_COMPANY_PRODUCT_ID = 'com.iwillbuild.portal.company.seats3';
+export const APPLE_COMPANY_PRODUCT_ID = 'com.iwillbuild.portal.company.monthly';
 export const APPLE_COMPANY_LEGACY_PRODUCT_IDS = new Set([
-  'com.iwillbuild.portal.company.monthly',
+  'com.iwillbuild.portal.company.seats3',
 ]);
 export const APPLE_BUNDLE_ID = 'com.iwillbuild.portal';
 

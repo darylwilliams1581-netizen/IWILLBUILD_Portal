@@ -15,12 +15,12 @@ public final class IWBStorePlugin: CAPPlugin, CAPBridgedPlugin {
         CAPPluginMethod(name: "manage", returnType: CAPPluginReturnPromise)
     ]
 
-    // New purchases use the 3-seat company plan. Keep the legacy SKU in the
-    // entitlement set so existing subscribers can still restore/manage it.
-    static let productId = "com.iwillbuild.portal.company.seats3"
+    // This is the existing App Store Connect product. Keep the seats3 SKU in
+    // the entitlement set for any purchases created by an earlier build.
+    static let productId = "com.iwillbuild.portal.company.monthly"
     private static let supportedProductIds: Set<String> = [
         productId,
-        "com.iwillbuild.portal.company.monthly"
+        "com.iwillbuild.portal.company.seats3"
     ]
     private var updates: Task<Void, Never>?
 

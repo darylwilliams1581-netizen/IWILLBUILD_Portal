@@ -8,9 +8,9 @@ import {
 } from '../apple-jws';
 
 describe('Apple company subscription product IDs', () => {
-  it('uses the three-seat product for new purchases and preserves the legacy SKU', () => {
-    expect(APPLE_COMPANY_PRODUCT_ID).toBe('com.iwillbuild.portal.company.seats3');
-    expect(APPLE_COMPANY_LEGACY_PRODUCT_IDS.has('com.iwillbuild.portal.company.monthly')).toBe(true);
+  it('uses the configured monthly product for new purchases and preserves the prior SKU', () => {
+    expect(APPLE_COMPANY_PRODUCT_ID).toBe('com.iwillbuild.portal.company.monthly');
+    expect(APPLE_COMPANY_LEGACY_PRODUCT_IDS.has('com.iwillbuild.portal.company.seats3')).toBe(true);
   });
 });
 

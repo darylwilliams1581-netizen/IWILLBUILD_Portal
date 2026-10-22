@@ -2,7 +2,7 @@ import { registerPlugin } from '@capacitor/core';
 import { isNative } from '@/lib/capacitor-plugins';
 
 /** The current Apple subscription includes the owner and two additional users. */
-export const APPLE_COMPANY_PRODUCT_ID = 'com.iwillbuild.portal.company.seats3';
+export const APPLE_COMPANY_PRODUCT_ID = 'com.iwillbuild.portal.company.monthly';
 
 export interface AppleProduct {
   id: string;
