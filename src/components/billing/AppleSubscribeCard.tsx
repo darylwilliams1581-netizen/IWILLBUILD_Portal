@@ -6,7 +6,7 @@ import {
   restoreAppleSubscription,
   type AppleProduct,
 } from '@/lib/apple-store';
-import { openExternalUrl, WEB_PORTAL_URL } from '@/lib/native-routing';
+import { isNativeApp, openExternalUrl, WEB_PORTAL_URL } from '@/lib/native-routing';
 import { invalidateSubscriptionCache } from '@/lib/useSubscriptionGate';
 
 interface AppleSubscribeCardProps {
@@ -14,6 +14,7 @@ interface AppleSubscribeCardProps {
 }
 
 const AUSTRALIAN_MONTHLY_PRICE = 'A$20.90 AUD / month';
+const APPLE_TERMS_URL = 'https://www.apple.com/legal/internet-services/itunes/dev/stdeula/';
 
 function labelledStorePrice(price: string, currency?: string): string {
   const code = (currency || '').toUpperCase();
@@ -39,6 +40,14 @@ function productPriceLabel(product: AppleProduct): string {
   const country = storefrontName(product.storefrontCountryCode);
   const amount = labelledStorePrice(product.displayPrice, product.currencyCode);
   return country ? `${amount} / month · ${country} App Store` : `${amount} / month`;
+}
+
+function openLegal(url: string) {
+  if (isNativeApp) {
+    openExternalUrl(url);
+    return;
+  }
+  window.open(url, '_blank', 'noopener,noreferrer');
 }
 
 export default function AppleSubscribeCard({ onSubscriptionActivated }: AppleSubscribeCardProps) {
@@ -132,6 +141,29 @@ export default function AppleSubscribeCard({ onSubscriptionActivated }: AppleSub
       {product?.subscribed ? <p className="mt-3 text-sm font-semibold text-emerald-700">This Apple ID is already subscribed.</p> : null}
       {notice ? <p className="mt-3 text-sm text-slate-700">{notice}</p> : null}
       {error ? <p role="alert" className="mt-3 text-sm text-red-700">{error}</p> : null}
+      <p className="mt-4 text-sm leading-6">
+        <a
+          href={APPLE_TERMS_URL}
+          className="font-semibold text-violet-700 underline"
+          onClick={(event) => {
+            event.preventDefault();
+            openLegal(APPLE_TERMS_URL);
+          }}
+        >
+          Terms of Use
+        </a>
+        {' · '}
+        <a
+          href={`${WEB_PORTAL_URL}/privacy`}
+          className="font-semibold text-violet-700 underline"
+          onClick={(event) => {
+            event.preventDefault();
+            openLegal(`${WEB_PORTAL_URL}/privacy`);
+          }}
+        >
+          Privacy Policy
+        </a>
+      </p>
       <div className="mt-5 grid gap-2">
         <button
           type="button"
@@ -163,11 +195,6 @@ export default function AppleSubscribeCard({ onSubscriptionActivated }: AppleSub
       </p>
       <p className="mt-4 text-[11px] leading-5 text-slate-500">
         Payment is charged to your Apple ID. The plan renews each month unless you cancel at least 24 hours before the period ends. Cancel and restore from Apple Settings.
-      </p>
-      <p className="mt-2 text-[11px] text-slate-500">
-        <button type="button" onClick={() => openExternalUrl(`${WEB_PORTAL_URL}/terms`)} className="underline">Terms</button>
-        {' · '}
-        <button type="button" onClick={() => openExternalUrl(`${WEB_PORTAL_URL}/privacy`)} className="underline">Privacy</button>
       </p>
     </section>
   );
