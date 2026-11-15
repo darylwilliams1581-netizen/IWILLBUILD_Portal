@@ -1,3 +1,4 @@
+import { stopDrivingWithLogbook } from '@/lib/end-drive-logbook';
 import { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from "react-router";
 import { motion, AnimatePresence } from 'motion/react';
@@ -663,11 +664,10 @@ export default function FleetDetailPage() {
   async function forceStopSession(sessionId: number) {
     setStoppingId(sessionId);
     try {
-      await fetch(`/api/fleet/driver-sessions/${sessionId}/stop`, {
-        method: 'POST',
-        credentials: 'include'
-      });
+      await stopDrivingWithLogbook(sessionId);
       void loadDriverSessions();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Unable to stop drive. Please retry.');
     } finally {
       setStoppingId(null);
     }

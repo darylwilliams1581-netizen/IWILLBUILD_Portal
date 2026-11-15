@@ -1,3 +1,4 @@
+import { stopDrivingWithLogbook } from '@/lib/end-drive-logbook';
 /**
  * HomeScreen — Light-theme icon launcher.
  * Clean white/light-grey background, solid vibrant icon tiles,
@@ -1816,6 +1817,7 @@ function ProfileSheet({
 // ── Main component ────────────────────────────────────────────────────────────
 
 export default function HomeScreen() {
+  const [driveStopError, setDriveStopError] = useState('');
   const navigate = useNavigate();
   const {
     isPlatformOwner,
@@ -2029,14 +2031,13 @@ export default function HomeScreen() {
       {/* ── Active status sub-header ── */}
       <AnimatePresence>
         {(activeStatus?.jobSignIn || activeStatus?.driving || (activeStatus?.drivingSessions?.length ?? 0) > 0) && <ActiveStatusBar status={activeStatus} onJobSignOut={() => setActiveStatusKey(k => k + 1)} onDriveStop={async sessionId => {
-            await fetch(`/api/fleet/driver-sessions/${sessionId}/stop`, {
-              method: 'POST',
-              credentials: 'include'
-            });
-            setActiveStatusKey(k => k + 1);
+            setDriveStopError('');
+            try { await stopDrivingWithLogbook(sessionId); setActiveStatusKey(k => k + 1); }
+            catch (e) { setDriveStopError(e instanceof Error ? e.message : 'Unable to stop drive. Please retry.'); }
           }} />}
       </AnimatePresence>
 
+      {driveStopError && <p role="alert" className="p-3 text-sm text-red-700 bg-red-50">{driveStopError}</p>}
       {/* ── Paged home screen (Dashboard / Field / Manage) ── */}
       {/* PagedHomeScreen handles its own scroll per page and the page dots */}
       <PagedHomeScreen iconPermissions={iconPermissions} role={role ?? ''} isSolo={isSolo} isPlatformOwner={isPlatformOwner} userId={session?.user?.id ?? me?.user?.id ?? ''} onNavigate={handleNavigate} firstName={firstName} greeting={greeting} dateStr={dateStr} />

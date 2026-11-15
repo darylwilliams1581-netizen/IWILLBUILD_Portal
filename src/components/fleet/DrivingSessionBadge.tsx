@@ -8,6 +8,7 @@
  * Also starts GPS telemetry collection while the session is active.
  */
 import { useState } from 'react';
+import { stopDrivingWithLogbook } from '@/lib/end-drive-logbook';
 import { motion, AnimatePresence } from 'motion/react';
 import { Car, X, Loader2, StopCircle } from 'lucide-react';
 import type { DriverSession } from '@/lib/useDriverSession';
@@ -50,19 +51,12 @@ export default function DrivingSessionBadge({ session, onStopped }: Props) {
     setStopping(true);
     setError('');
     try {
-      const res = await fetch(`/api/fleet/driver-sessions/${session.id}/stop`, {
-        method: 'POST',
-        credentials: 'include',
-      });
-      if (!res.ok) {
-        const d = await res.json() as { error?: string };
-        throw new Error(d.error ?? 'Failed to stop session');
+      const data = await stopDrivingWithLogbook(session.id) as {summary?: SessionSummary | null; logbookRequested: boolean};
+      if (data.logbookRequested) {
+        setOpen(false);
+        onStopped();
+        return;
       }
-
-      const data = await res.json() as {
-        ok?: boolean;
-        summary?: SessionSummary | null;
-      };
 
       setOpen(false);
 

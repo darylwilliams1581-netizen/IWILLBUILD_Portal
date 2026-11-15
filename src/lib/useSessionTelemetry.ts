@@ -14,6 +14,7 @@
  * - Falls back gracefully if Geolocation is unavailable.
  */
 import { useEffect, useRef, useCallback } from 'react';
+import { DRIVE_STOPPED, stopRequested } from './fleet-drive-logbook';
 import type { FleetAnalyticsSettings } from './useFleetAnalytics';
 
 export interface TelemetryPoint {
@@ -71,6 +72,7 @@ export function useSessionTelemetry(
   }, []);
 
   const addPoint = useCallback((pos: GeolocationPosition) => {
+    if (!sessionIdRef.current || stopRequested(sessionIdRef.current)) return;
     const s = settingsRef.current;
     const pt: TelemetryPoint = {
       recorded_at: new Date(pos.timestamp).toISOString(),
@@ -100,7 +102,7 @@ export function useSessionTelemetry(
   // GPS watch effect — only depends on sessionId, NOT on settings.
   // Settings are read via settingsRef so they never cause a teardown/restart.
   useEffect(() => {
-    if (!sessionId) return;
+    if (!sessionId || stopRequested(sessionId)) return;
 
     // Reset first-flush state for new session
     flushedFirstRef.current = false;
@@ -126,7 +128,7 @@ export function useSessionTelemetry(
     // Regular flush timer
     flushTimerRef.current = setInterval(() => { void flush(); }, FLUSH_INTERVAL_MS);
 
-    return () => {
+    const shutdown = () => {
       // Stop GPS
       if (watchIdRef.current !== null) {
         if ('geolocation' in navigator) {
@@ -149,13 +151,20 @@ export function useSessionTelemetry(
       // Final flush on unmount
       void flush();
     };
+    const onStop = (event: Event) => {
+      if ((event as CustomEvent<{ sessionId: number }>).detail?.sessionId === sessionId) shutdown();
+    };
+    window.addEventListener(DRIVE_STOPPED, onStop);
+    return () => { window.removeEventListener(DRIVE_STOPPED, onStop); shutdown(); };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sessionId]); // intentionally omit addPoint/flush — they're stable callbacks
 
   /** Call this when a collision event is detected (e.g. accelerometer spike) */
   function reportCollision() {
     if (!settingsRef.current.enable_collision_alerts) return;
+    if (!sessionIdRef.current || stopRequested(sessionIdRef.current)) return;
     navigator.geolocation?.getCurrentPosition((pos) => {
+      if (!sessionIdRef.current || stopRequested(sessionIdRef.current)) return;
       const pt: TelemetryPoint = {
         recorded_at: new Date().toISOString(),
         lat:         pos.coords.latitude,

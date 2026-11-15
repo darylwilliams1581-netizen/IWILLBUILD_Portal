@@ -57,6 +57,8 @@ import {
 } from 'react';
 import { getNativeGeo, isNative, getAppPlugin } from './capacitor-plugins';
 import type { GpsPermissionStatus } from './useGpsPermission';
+import { stopDrivingWithLogbook } from './end-drive-logbook';
+import { DRIVE_STOPPED, stopRequested } from './fleet-drive-logbook';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -171,6 +173,7 @@ export function DriverSessionProvider({ children }: Props) {
     locationPermissionStatus: GpsPermissionStatus,
     gpsStatusVal: GpsStatusValue,
   ) => {
+    if (stopRequested(sessionId)) return;
     try {
       await fetch(`/api/fleet/driver-sessions/${sessionId}/heartbeat`, {
         method: 'POST',
@@ -194,6 +197,7 @@ export function DriverSessionProvider({ children }: Props) {
     heading: number | null,
     accuracy: number | null,
   ) => {
+    if (stopRequested(sessionId) || sessionIdRef.current !== sessionId) return false;
     try {
       const res = await fetch(`/api/fleet/driver-sessions/${sessionId}/telemetry`, {
         method: 'POST',
@@ -224,7 +228,7 @@ export function DriverSessionProvider({ children }: Props) {
       // Only mark live if the server confirmed at least one point was stored.
       // (stored === 0 means tracking is disabled in analytics settings — still OK,
       //  but we don't claim "live" since no data was persisted.)
-      if (stored > 0) {
+      if (stored > 0 && !stopRequested(sessionId) && sessionIdRef.current === sessionId) {
         lastAcceptedRef.current = Date.now();
         setGpsStatusBoth('live');
         void sendHeartbeat(sessionId, permStatusRef.current, 'live');
@@ -297,7 +301,7 @@ export function DriverSessionProvider({ children }: Props) {
 
   const pushGpsNow = useCallback(async () => {
     const sid = sessionIdRef.current;
-    if (!sid) return;
+    if (!sid || stopRequested(sid)) return;
 
     // If permission is denied/unavailable, don't attempt
     const perm = permStatusRef.current;
@@ -308,6 +312,7 @@ export function DriverSessionProvider({ children }: Props) {
     }
 
     const fix = await getCurrentPositionOnce();
+    if (stopRequested(sid) || sessionIdRef.current !== sid) return;
     if (!fix) {
       if (gpsStatusRef.current !== 'denied' && gpsStatusRef.current !== 'unavailable') {
         setGpsStatusBoth('waiting_fix');
@@ -328,6 +333,7 @@ export function DriverSessionProvider({ children }: Props) {
     }
 
     Promise.resolve(getNativeGeo()).then((geo) => {
+      if (stopRequested(sessionId) || sessionIdRef.current !== sessionId || !mountedRef.current) return;
       if (!geo) {
         diag('native geo not available — relying on interval push');
         return;
@@ -356,6 +362,11 @@ export function DriverSessionProvider({ children }: Props) {
           );
         }
       ).then((watchId) => {
+        if (stopRequested(sessionId) || sessionIdRef.current !== sessionId || !mountedRef.current) {
+          void geo.clearWatch({ id: watchId });
+          if (sessionIdRef.current === sessionId) watchActiveRef.current = false;
+          return;
+        }
         nativeWatchCleanupRef.current = () => {
           diag('clearing native watchPosition');
           watchActiveRef.current = false;
@@ -373,6 +384,7 @@ export function DriverSessionProvider({ children }: Props) {
   // ── Start web watchPosition ──────────────────────────────────────────────────
 
   const startWebWatch = useCallback((sessionId: number) => {
+    if (stopRequested(sessionId)) return;
     if (watchActiveRef.current) {
       diag('web watchPosition already active — skipping duplicate start');
       return;
@@ -443,6 +455,7 @@ export function DriverSessionProvider({ children }: Props) {
   // ── Start tracking for a session ─────────────────────────────────────────────
 
   const startTracking = useCallback((sessionId: number) => {
+    if (stopRequested(sessionId)) return;
     diag('startTracking', {
       sessionId,
       platform: isNative() ? 'native' : 'web',
@@ -487,6 +500,16 @@ export function DriverSessionProvider({ children }: Props) {
     lastAcceptedRef.current = null;
   }, [stopWatchers, stopIntervals]);
 
+  useEffect(() => {
+    const onStop = (event: Event) => {
+      const id = (event as CustomEvent<{ sessionId: number }>).detail?.sessionId;
+      if (id !== sessionIdRef.current) return;
+      stopTracking();
+    };
+    window.addEventListener(DRIVE_STOPPED, onStop);
+    return () => window.removeEventListener(DRIVE_STOPPED, onStop);
+  }, [stopTracking]);
+
   // ── Session refresh ──────────────────────────────────────────────────────────
 
   const refresh = useCallback(async () => {
@@ -506,13 +529,11 @@ export function DriverSessionProvider({ children }: Props) {
   // ── Stop session ─────────────────────────────────────────────────────────────
 
   const stopSession = useCallback(async (sessionId: number) => {
-    await fetch(`/api/fleet/driver-sessions/${sessionId}/stop`, {
-      method: 'POST',
-      credentials: 'include',
-    });
+    await stopDrivingWithLogbook(sessionId);
+    stopTracking();
     if (mountedRef.current) setSession(null);
     sessionIdRef.current = null;
-  }, []);
+  }, [stopTracking]);
 
   // ── reportGpsState (called by DriverGpsStatus) ───────────────────────────────
 
@@ -542,6 +563,7 @@ export function DriverSessionProvider({ children }: Props) {
     }
 
     const sessionId = session.id;
+    if (stopRequested(sessionId)) { stopTracking(); return; }
 
     if (sessionIdRef.current === sessionId) {
       // Same session — tracking already running, nothing to do
@@ -550,6 +572,7 @@ export function DriverSessionProvider({ children }: Props) {
 
     // New session started
     diag('new session detected — starting tracking', { sessionId });
+    stopTracking();
     sessionIdRef.current = sessionId;
     startTracking(sessionId);
 
@@ -592,7 +615,7 @@ export function DriverSessionProvider({ children }: Props) {
     try {
       const result = App.addListener('appStateChange', (state: { isActive: boolean }) => {
         diag('appStateChange', { isActive: state.isActive });
-        if (state.isActive && sessionIdRef.current !== null) {
+        if (state.isActive && sessionIdRef.current !== null && !stopRequested(sessionIdRef.current)) {
           // Returned to foreground with an active session
           diag('foreground — refreshing session and restarting watcher');
           void refresh();

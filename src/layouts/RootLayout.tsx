@@ -13,6 +13,7 @@ import DocumentActionsWidget from '@/components/DocumentActionsWidget';
 import { useRef } from 'react';
 import { recordRouteChange } from '@/lib/diagnosticCapture';
 import NativeSubscriptionGate from '@/components/NativeSubscriptionGate';
+import EndDriveLogbookDialog from '@/components/fleet/EndDriveLogbookDialog';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 interface RootLayoutProps {
@@ -142,6 +143,7 @@ export default function RootLayout({ children }: RootLayoutProps) {
         <ClientOnly>
           <ActivePing />
           <PortalBanners pathname={location.pathname} />
+          {!isPublicRoute(location.pathname) && <EndDriveLogbookDialog />}
         </ClientOnly>
         <DeferredMount>
           <OfflineSyncManager />

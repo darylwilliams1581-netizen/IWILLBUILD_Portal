@@ -1,10 +1,10 @@
-name: Capacitor TestFlight Restore
+name: Approved App Fleet TestFlight
 
 on:
   workflow_dispatch:
 
 concurrency:
-  group: capacitor-testflight-restore
+  group: capacitor-testflight
   cancel-in-progress: false
 
 jobs:
@@ -23,6 +23,9 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Test Fleet Start, Stop and recovery
+        run: npm run test:fleet-native
+
       - name: Build web assets and sync iOS
         run: npm run build:cap
 
@@ -35,7 +38,7 @@ jobs:
           ruby-version: "3.3"
           bundler-cache: true
 
-      - name: Build and upload completed portal
+      - name: Build approved portal and upload to TestFlight
         env:
           ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
           ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}

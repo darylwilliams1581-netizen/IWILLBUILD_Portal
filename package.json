@@ -26,7 +26,8 @@
     "clean": "rm -rf dist node_modules/.vite",
     "reset": "npm run clean && npm install",
     "start": "node dist/server.bundle.mjs",
-    "audit": "better-npm-audit audit --level high --registry=https://registry.npmjs.org"
+    "audit": "better-npm-audit audit --level high --registry=https://registry.npmjs.org",
+    "test:fleet-native": "vitest run --config vitest.fleet-native.config.ts"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1075.0",
@@ -181,7 +182,8 @@
     "tsx": "^4.22.4",
     "typescript": "^5.7.2",
     "vite": "^6.4.2",
-    "vitest": "^4.1.9"
+    "vitest": "^4.1.9",
+    "fake-indexeddb": "6.2.8"
   },
   "engines": {
     "node": ">=22.22.0"

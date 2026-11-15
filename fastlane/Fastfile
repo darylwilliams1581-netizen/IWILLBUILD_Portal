@@ -14,20 +14,16 @@ platform :ios do
       is_key_content_base64: false
     )
 
-    latest = 31
-    begin
-      latest = latest_testflight_build_number(
-        api_key: api_key,
-        app_identifier: "com.iwillbuild.portal",
-        version: "13"
-      )
-    rescue => e
-      UI.important("Could not read TestFlight build number (#{e.message}); using 31")
-    end
+    # Read the latest uploaded train and fail if Apple cannot be queried.
+    # Version 13 is closed; the approved Capacitor app continues on version 14.
+    latest = latest_testflight_build_number(
+      api_key: api_key,
+      app_identifier: "com.iwillbuild.portal"
+    )
     requested_build = get_build_number(
       xcodeproj: "ios/App/App.xcodeproj"
     ).to_i
-    next_build = [latest.to_i + 1, requested_build, 32].max
+    next_build = [latest.to_i + 1, requested_build, 97].max
     increment_build_number(
       build_number: next_build,
       xcodeproj: "ios/App/App.xcodeproj"
@@ -68,7 +64,7 @@ platform :ios do
     upload_to_testflight(
       api_key: api_key,
       skip_waiting_for_build_processing: true,
-      changelog: "My Billing stays in the app and uses the Apple subscription."
+      changelog: "Approved portal app with Fleet logbook Start/Stop, required odometers when logbook is enabled, and recoverable trip completion. Test logbook on/off, offline retry and GPS stopping."
     )
   end
 end
