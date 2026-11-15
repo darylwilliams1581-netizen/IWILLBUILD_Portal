@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { useSession } from '@/lib/auth/auth-client';
 import { useMe } from '@/lib/usePermissions';
 import { useFieldSheetScrollLock } from '@/lib/useFieldSheetScrollLock';
+import RecentDestinationChips from './RecentDestinationChips';
 import {
   completionKey, emptyAnswers, LOGBOOK_CHANGED, PURPOSES,
   recoverDriveLogbook, saveDriveCompletion, type CompletionAnswers,
@@ -28,6 +29,11 @@ export default function EndDriveLogbookDialog() {
   useEffect(() => {
     setDismissed([]); setMessage(''); setError('');
   }, [ownerKey]);
+  useEffect(() => {
+    const open = () => { setDismissed([]); reload(); };
+    window.addEventListener('iwb:open-logbook-completion', open);
+    return () => window.removeEventListener('iwb:open-logbook-completion', open);
+  }, []);
 
   useEffect(() => {
     let cancelled = false, running = false, again = false;
@@ -146,6 +152,8 @@ export function CompletionForm({ trip, owner, onClose, onSaved }: {
           <select id="drive-purpose" value={answers.purpose} onChange={e => change({ purpose: e.target.value })} className="w-full border rounded-xl p-2 mt-1">
             <option value="">Select purpose…</option>{PURPOSES.map(p => <option key={p}>{p}</option>)}</select>
           <label htmlFor="drive-destination" className="block text-sm mt-3">Destination / journey description</label>
+          <RecentDestinationChips companyId={owner.companyId} userId={owner.userId}
+            onSelect={destination => change({ destination })} />
           <input id="drive-destination" maxLength={500} value={answers.destination} onChange={e => change({ destination: e.target.value })} className="w-full border rounded-xl p-2 mt-1" />
           {answers.purpose === 'Other — specify reason' && <><label htmlFor="drive-reason" className="block text-sm mt-3">Reason</label>
             <input id="drive-reason" maxLength={1000} value={answers.reason} onChange={e => change({ reason: e.target.value })} className="w-full border rounded-xl p-2 mt-1" /></>}

@@ -3,14 +3,15 @@ import { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from "react-router";
 import { motion, AnimatePresence } from 'motion/react';
 import { Helmet } from '@dr.pogodin/react-helmet';
-import { Truck, ChevronLeft, Edit2, Check, X, Loader2, AlertCircle, ClipboardList, Calendar as _Calendar, Wrench, Archive, CheckCircle2, XCircle, AlertTriangle, Plus, Clock, FolderOpen, Car, StopCircle, Trash2, Gauge, Bell, ChevronDown, ChevronUp, ArrowLeft } from 'lucide-react';
+import { Truck, ChevronLeft, Edit2, Check, X, Loader2, AlertCircle, ClipboardList, Calendar as _Calendar, Wrench, Archive, CheckCircle2, XCircle, AlertTriangle, Plus, Clock, FolderOpen, Car, StopCircle, Trash2, Gauge, BookOpen, Bell, ChevronDown, ChevronUp, ArrowLeft } from 'lucide-react';
 import PortalErrorBoundary from '@/components/PortalErrorBoundary';
 import FilePanel from '@/components/FilePanel';
 import { usePermissions } from '@/lib/usePermissions';
 import NotesPanel from '@/components/notes/NotesPanel';
+import FleetLogbookPanel from '@/components/fleet/FleetLogbookPanel';
 import { goBack } from '@/lib/navigation';
 import { fetchAsset, updateAsset, deleteAsset, fetchPrestarts, submitPrestart, ASSET_TYPES, ASSET_STATUSES, getAssetStatusStyle, type FleetAsset, type FleetPrestart, type CreateAssetPayload } from '@/lib/fleet-api';
-type Tab = 'details' | 'prestarts' | 'maintenance' | 'history' | 'files' | 'notes';
+type Tab = 'details' | 'prestarts' | 'maintenance' | 'history' | 'files' | 'logbook' | 'notes';
 
 // ── Prestart Modal ────────────────────────────────────────────────────────────
 interface PrestartModalProps {
@@ -807,6 +808,10 @@ export default function FleetDetailPage() {
                   label: 'Files',
                   icon: FolderOpen
                 }, {
+                  key: 'logbook',
+                  label: 'Logbook',
+                  icon: BookOpen
+                }, {
                   key: 'notes',
                   label: 'Notes',
                   icon: Bell
@@ -819,6 +824,8 @@ export default function FleetDetailPage() {
                     {label}
                   </button>)}
               </div>
+
+              {activeTab === 'logbook' && <FleetLogbookPanel key={asset.id} asset={asset} onAssetUpdated={setAsset} />}
 
               {/* ── Details tab ── */}
               {activeTab === 'details' && <div className="bg-white rounded-xl border border-border p-5 flex flex-col gap-1">

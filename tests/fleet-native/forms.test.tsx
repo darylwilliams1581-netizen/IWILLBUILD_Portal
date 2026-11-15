@@ -6,6 +6,8 @@ import StartDrivingModal from '@/components/fleet/StartDrivingModal';
 import DrivingSessionBadge from '@/components/fleet/DrivingSessionBadge';
 import EndDriveLogbookDialog, { CompletionForm } from '@/components/fleet/EndDriveLogbookDialog';
 import { completionKey, saveDriveCompletion, emptyAnswers, recoverDriveLogbook } from '@/lib/end-drive-logbook';
+import { readRecentDestinations, rememberDestination } from '@/lib/recent-destinations';
+import RecentDestinationChips from '@/components/fleet/RecentDestinationChips';
 import { putActiveTrip, getPendingTrips, loadActiveTrip, type InProgressTrip } from '@/lib/tripLogbookStore';
 configure({ asyncUtilTimeout: 5000 });
 const mocks = vi.hoisted(() => ({ user: 'driver', company: 1, start: vi.fn(), stop: vi.fn(), captures: [] as any[] }));
@@ -134,4 +136,51 @@ it('administrator-ended capture opens for its original driver without consulting
   render(<EndDriveLogbookDialog />); await screen.findByRole('dialog');
   expect(await screen.findByText('Starting odometer: 1000 km')).toBeTruthy();
   expect((await loadActiveTrip(1, 'driver', 7))?.endDatetime).toBe(trip.endDatetime);
+});
+
+it('recent chips fill an editable field without saving; only the saved destination enters history', async () => {
+  rememberDestination(1, 'driver', '42 Smith St — site inspection');
+  await putActiveTrip(trip); const done = vi.fn();
+  render(<CompletionForm trip={trip} owner={owner} onClose={() => {}} onSaved={done} />);
+  expect(screen.queryByRole('group', { name: 'Recent destinations' })).toBeNull();
+  fireEvent.click(screen.getByRole('button', { name: 'Business' }));
+  const field = screen.getByLabelText('Destination / journey description') as HTMLInputElement;
+  expect(field.value).toBe('');
+  fireEvent.click(screen.getByRole('button', { name: '42 Smith St — site inspection' }));
+  expect(field.value).toBe('42 Smith St — site inspection');
+  expect(done).not.toHaveBeenCalled();
+  expect(await getPendingTrips(1, 'driver', 7)).toHaveLength(0);
+  fireEvent.change(field, { target: { value: '42 Smith St — repair visit' } });
+  fireEvent.click(screen.getByRole('button', { name: 'Save trip' }));
+  await screen.findByRole('alert');
+  expect(readRecentDestinations(1, 'driver')).toEqual(['42 Smith St — site inspection']);
+  fireEvent.change(screen.getByLabelText('Purpose'), { target: { value: 'Site travel' } });
+  fireEvent.change(screen.getByLabelText('Ending odometer (km)'), { target: { value: '1100' } });
+  fireEvent.click(screen.getByRole('button', { name: 'Save trip' }));
+  await waitFor(() => expect(done).toHaveBeenCalledWith(false));
+  expect(readRecentDestinations(1, 'driver')).toEqual(['42 Smith St — repair visit', '42 Smith St — site inspection']);
+  expect((await getPendingTrips(1, 'driver', 7))[0].destination).toBe('42 Smith St — repair visit');
+});
+it('chips never retain the previous company or driver on rerender', () => {
+  rememberDestination(1, 'driver', 'First company site');
+  rememberDestination(2, 'driver', 'Second company site');
+  const ui = render(<RecentDestinationChips companyId={1} userId="driver" onSelect={() => {}} />);
+  expect(screen.getByRole('button', { name: 'First company site' })).toBeTruthy();
+  ui.rerender(<RecentDestinationChips companyId={2} userId="driver" onSelect={() => {}} />);
+  expect(screen.queryByRole('button', { name: 'First company site' })).toBeNull();
+  expect(screen.getByRole('button', { name: 'Second company site' })).toBeTruthy();
+  ui.rerender(<RecentDestinationChips companyId={2} userId="other" onSelect={() => {}} />);
+  expect(screen.queryByRole('group', { name: 'Recent destinations' })).toBeNull();
+});
+it('private completion does not remember a leftover business destination', async () => {
+  await putActiveTrip(trip);
+  await saveDriveCompletion(trip, { ...emptyAnswers, tripType: 'private', odometerEnd: '1100', destination: 'Private address' }, owner);
+  expect(readRecentDestinations(1, 'driver')).toEqual([]);
+});
+it('business completion succeeds when the optional suggestion cache is full', async () => {
+  await putActiveTrip(trip);
+  vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => { throw Error('Full'); });
+  await expect(saveDriveCompletion(trip, { ...emptyAnswers, tripType: 'business', purpose: 'Site travel',
+    odometerEnd: '1100', destination: '42 Smith St — repair visit' }, owner)).resolves.toEqual({ synced: false });
+  expect(await getPendingTrips(1, 'driver', 7)).toHaveLength(1);
 });

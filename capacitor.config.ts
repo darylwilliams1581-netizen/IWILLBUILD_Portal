@@ -42,7 +42,7 @@ import type { CapacitorConfig } from '@capacitor/cli';
 // Increment this before every App Store / TestFlight upload.
 // Minimum build for the approved-app Fleet logbook release. Fastlane increments
 // above the latest App Store Connect build before archiving.
-const IOS_BUILD_NUMBER = 97;
+const IOS_BUILD_NUMBER = 98;
 
 const config: CapacitorConfig = {
   // Reverse-domain app identifier — must match your Apple/Google developer account

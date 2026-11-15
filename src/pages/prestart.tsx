@@ -189,6 +189,9 @@ function PrestartForm({
         <label className="text-gray-500 text-xs font-semibold uppercase tracking-wide block mb-2">
           Is the equipment safe to operate?
         </label>
+        <p className="text-sm text-gray-600 leading-relaxed mb-3">
+          Before you select <strong>Yes, safe</strong>, check tyre pressure, tread and damage, oil and fluid levels, leaks, lights, mirrors, brakes and any warning lights. Make sure loads are secure and report any faults. If unsure, select <strong>Not safe</strong> and Flag the issue.
+        </p>
         <div className="grid grid-cols-2 gap-2">
           <button type="button" onClick={() => setForm(f => ({
           ...f,

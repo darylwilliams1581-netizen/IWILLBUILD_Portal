@@ -3,6 +3,7 @@ import {
   type Owner,
 } from './fleet-drive-logbook';
 import { completeTrip, listOwnerTrips, syncPendingTrips, type InProgressTrip } from './tripLogbookStore';
+import { rememberDestination } from './recent-destinations';
 
 export const LOGBOOK_CHANGED = 'iwb:end-drive-logbook';
 export const PURPOSES = ['Site travel', 'Client meeting', 'Materials / equipment pickup', 'Delivery', 'Office / depot', 'Vehicle servicing / repairs', 'Other — specify reason'] as const;
@@ -93,6 +94,7 @@ export async function saveDriveCompletion(trip: InProgressTrip, answers: Complet
     prestartAtHome: business && answers.prestartAtHome,
   });
   if (!id) throw Error('This entry was already queued. Reopen the logbook to check its status.');
+  if (business) rememberDestination(owner.companyId, owner.userId, answers.destination);
   try { localStorage.removeItem(completionKey(trip)); } catch { /* The committed queue is authoritative. */ }
   let synced = false;
   if (navigator.onLine) {
